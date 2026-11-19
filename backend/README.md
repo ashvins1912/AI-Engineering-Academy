@@ -54,3 +54,5 @@ The tenant and user UUIDs come only from signed JWT claims. Issuer, audience, ex
 - Current API has no frontend identity integration. Browser uploader remains a local teaching path; do not send real documents until identity, privacy, retention and consent are integrated.
 
 No cloud resources, external model APIs or paid hosting were provisioned.
+
+This API is not yet production-certified or deployed. Complete every gate above and run integration/security/performance tests before use with real tenant data.
