@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from functools import lru_cache
 from uuid import UUID
+from urllib.parse import urlparse
 
 import jwt
 from fastapi import Depends, HTTPException, status
@@ -28,6 +29,9 @@ def _jwks_client(url: str) -> PyJWKClient:
 
 def _verification_key(token: str, settings):
     if settings.jwks_url:
+        parsed = urlparse(settings.jwks_url)
+        if parsed.scheme != "https" or not parsed.hostname:
+            raise ValueError("JWKS URL must use HTTPS")
         return _jwks_client(settings.jwks_url).get_signing_key_from_jwt(token).key
     if settings.jwt_public_key:
         return settings.jwt_public_key
