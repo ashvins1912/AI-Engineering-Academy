@@ -1,0 +1,32 @@
+{
+  "name": "ai-engineering-academy",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "typecheck": "tsc -b",
+    "validate:curriculum": "node scripts/validate-curriculum.mjs",
+    "validate:phase3": "node scripts/validate-phase3.mjs",
+    "validate:phase4": "node scripts/validate-phase4.mjs",
+    "validate:phase5": "node scripts/validate-phase5.mjs",
+    "validate:phase6": "node scripts/validate-phase6.mjs",
+    "validate:documents": "node scripts/validate-document-ingestion.mjs"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "vite": "latest",
+    "typescript": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "lucide-react": "latest",
+    "pdfjs-dist": "^4.10.38",
+    "mammoth": "^1.9.0"
+  },
+  "devDependencies": {
+    "@types/react": "latest",
+    "@types/react-dom": "latest"
+  }
+}

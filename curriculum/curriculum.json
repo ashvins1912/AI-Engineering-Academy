@@ -1,0 +1,103 @@
+{
+  "schemaVersion": "1.1.0",
+  "title": "AI Engineering Academy",
+  "stages": [
+    {
+      "id": "stage-1",
+      "title": "Mathematics, Python & Data Foundations",
+      "modules": [
+        "Mathematics for AI",
+        "Python and data engineering foundations"
+      ]
+    },
+    {
+      "id": "stage-2",
+      "title": "Classical Machine Learning",
+      "modules": [
+        "Supervised learning",
+        "Unsupervised learning and evaluation"
+      ]
+    },
+    {
+      "id": "stage-3",
+      "title": "Deep Learning",
+      "modules": [
+        "Neural network internals",
+        "Neural architectures"
+      ]
+    },
+    {
+      "id": "stage-4",
+      "title": "Transformers, LLMs & Generative AI",
+      "modules": [
+        "Transformer internals",
+        "LLM engineering"
+      ]
+    },
+    {
+      "id": "stage-5",
+      "title": "RAG, Visual RAG & Knowledge Systems",
+      "modules": [
+        "RAG foundations",
+        "Advanced RAG and Visual RAG"
+      ]
+    },
+    {
+      "id": "stage-6",
+      "title": "AI Agents & Agentic Systems",
+      "modules": [
+        "Agent foundations",
+        "Agent architectures and frameworks"
+      ]
+    },
+    {
+      "id": "stage-7",
+      "title": "MCP, A2A, ACP & Tool Ecosystems",
+      "modules": [
+        "Model Context Protocol",
+        "A2A and ACP interoperability"
+      ]
+    },
+    {
+      "id": "stage-8",
+      "title": "Automation & Workflow Orchestration",
+      "modules": [
+        "Workflow engineering"
+      ]
+    },
+    {
+      "id": "stage-9",
+      "title": "MLOps, LLMOps & AI DevOps",
+      "modules": [
+        "Model and prompt lifecycle",
+        "AI DevOps and deployment"
+      ]
+    },
+    {
+      "id": "stage-10",
+      "title": "Security, Observability & Production Architecture",
+      "modules": [
+        "AI security and governance",
+        "Observability, reliability and FinOps"
+      ]
+    },
+    {
+      "id": "stage-11",
+      "title": "Enterprise Capstone & Architecture",
+      "modules": [
+        "Enterprise knowledge and operations platform"
+      ]
+    }
+  ],
+  "lessonBlueprintCount": 84,
+  "lessonContract": [
+    "objectives",
+    "prerequisites",
+    "intuition",
+    "workedExample",
+    "workflow",
+    "exercises",
+    "assessment",
+    "productionNote"
+  ]
+}

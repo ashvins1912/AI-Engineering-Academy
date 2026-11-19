@@ -1,2 +1,65 @@
-# AI-Engineering-Academy
-AI Engineering Academy covered use full resource and draft in web ui with tracking based learning to improve bad revised and quick interview revision 
+# AI Engineering Academy
+
+A standalone, project-first learning platform for AI engineering: foundations, ML, deep learning, transformers, RAG/Visual RAG/GraphRAG, agents, MCP, A2A/ACP, automation, LLMOps, DevOps, security and production deployment.
+
+## Product principles
+- Teach concepts with intuition, numerical walkthroughs, diagrams and runnable labs.
+- Progress from implementation-from-scratch to framework-assisted production patterns.
+- Evaluate retrieval, agent behavior, quality, latency, reliability and cost—not just whether a demo runs.
+- Keep learner progress account-backed; browser storage is only a temporary UI cache.
+- Make every external action permissioned, observable, auditable and recoverable.
+- Run the learning platform cheaply by default. No paid infrastructure is provisioned by this project.
+
+## Repository status
+This is an independent project with an implemented curriculum explorer and interactive Phase 3/4/5/6 learning workbenches. It remains an educational frontend: production authentication, account-backed mastery, model-provider integrations, sandboxed code execution and deployment secrets must be implemented before public production use.
+
+## Planned stack
+- Frontend: React, TypeScript, Vite
+- API: Node.js, TypeScript, Express
+- Persistence: PostgreSQL (learner accounts, mastery, submissions) with optional pgvector for labs
+- AI lab service: Python, FastAPI (isolated service; optional in early milestones)
+- Local development: Docker Compose
+- CI: GitHub Actions
+- Observability: OpenTelemetry-compatible traces and structured logs
+
+## Quick start
+```bash
+npm install
+npm run dev
+```
+
+The current UI is a curriculum explorer and lesson-detail engine backed by typed local seed data. It supports topic search, expandable modules, lesson objectives, prerequisites, worked examples, step-by-step workflows, exercises, assessment criteria, production notes, bookmarks and browser-local completion progress. It does not claim account persistence until the API and database milestones are completed.
+
+## Current implementation status
+- Phase 1 foundation: curriculum navigation, search, responsive layout, lesson detail view, browser-local bookmarks and completion state.
+- Phase 2 baseline: 11 stages, 84 lesson blueprints, reusable lesson contract and curriculum validation script.
+- Six foundational deep dives currently include concrete numerical examples: vectors, gradient descent, linear regression, self-attention, chunking and MCP architecture. Other lessons use the shared instructional scaffold and still need individually authored technical content.
+- Phase 3 interactive labs: vector/matrix calculator, Monte Carlo π estimator, animated gradient descent visualizer, SGD/momentum/Adam comparison and Python data-processing mini-lab.
+- Phase 4 classical ML workbench: linear/logistic regression, decision-tree impurity, KNN, an educational linear SVM solver, K-means and neural-network forward/backprop/optimizer traces.
+- Phase 4 deep-learning architecture labs: step-through CNN convolution/feature maps/max pooling; scalar RNN/LSTM-style sequence-state tracing; dropout/L2/batch-normalization demonstrations; softmax and multiclass precision/recall/F1; and illustrative underfit/overfit training-validation curves with checkpoint selection.
+- Phase 4 lesson deep dives now include numerical examples and workflows for CNNs, recurrent models, classification metrics and generalization.
+- Phase 5 transformer workbench: toy tokenization/vocabulary IDs, embedding lookup with positional vectors, scaled dot-product Q/K/V attention, causal masking, two-head attention, transformer-block residual/normalization/MLP flow, and autoregressive decoding with temperature/top-k/top-p.
+- Phase 5 lesson deep dives include numerical examples for tokenization, embeddings, multi-head attention, decoder-only generation and sampling.
+- Phase 6 RAG workbench: browser-local PDF.js text extraction, Mammoth DOCX raw-text extraction, adjustable chunking and overlap, dense/sparse/hybrid retrieval comparison, candidate reranking and evidence-context assembly, GraphRAG entity traversal, schematic page-level Visual RAG, and retrieval/answer evaluation concepts.
+- Phase 6 lesson deep dives: ingestion, vector indexes, retrieval/RRF, grounded generation, reranking, GraphRAG, Visual RAG and RAG evaluation.
+- PDF/DOCX ingestion accepts PDF and DOCX files up to 10 MB each, caps PDFs at 50 pages and extracted text at 500,000 characters, validates basic file signatures, and keeps extracted text in browser memory only. PDF page boundaries are retained; DOCX tables are flattened to text. Scanned PDFs are not OCRed.
+- Phase 6 retrieval lab scores are intentionally transparent teaching simulations: hashed-term vectors are not trained embeddings, lexical overlap is not production BM25, reranking is a heuristic cross-encoder-style score, the page viewer is schematic (no OCR is run), and benchmark values are illustrative—not measured model performance.
+- These labs are deterministic, client-side teaching visualizations. The recurrent cell, regularization controls and generalization curves are intentionally simplified demonstrations, not trained production models. The 2→2→1 network remains a fixed-weight backpropagation trace. The Phase 5 tokenizer uses a tiny illustrative vocabulary and merge rule; embeddings/projections are fixed teaching values, and decoding is deterministic filtered argmax rather than a full LLM sampler. These labs explain computation and are not model-provider integrations.
+- Run `npm run validate:curriculum`, `npm run validate:phase3`, `npm run validate:phase4`, `npm run validate:phase5`, `npm run validate:phase6` and `npm run validate:documents` to run curriculum and numerical sanity checks.
+- Full build/typecheck remains unverified: React, React DOM, Lucide, PDF.js, Mammoth and their type packages could not be installed in this environment, and npm registry access/cache was unavailable. A temporary declaration-based syntax smoke check is not equivalent to a build against the real dependencies.
+
+## Documentation
+- `docs/PRODUCT_SCOPE.md` — product definition and acceptance criteria
+- `docs/ARCHITECTURE.md` — target architecture and trust boundaries
+- `docs/CURRICULUM.md` — full learning path
+- `docs/LEARNING_STANDARD.md` — mandatory lesson structure
+- `docs/ROADMAP.md` — incremental implementation plan
+- `docs/SECURITY.md` — safety and security requirements
+- `docs/DEPLOYMENT.md` — low-cost deployment strategy
+- `curriculum/curriculum.json` — machine-readable stage/module index
+
+## Important terminology
+- MCP means Model Context Protocol.
+- A2A is the agent-to-agent interoperability protocol.
+- ACP is ambiguous: this curriculum distinguishes IBM/BeeAI Agent Communication Protocol (historical/evolving interoperability context) from the Agent Client Protocol used by coding agents and IDEs.
+- Visual RAG (sometimes written V-RAG) means retrieval over visual content such as page images, diagrams, charts and screenshots. If a named research system uses the acronym VRAG differently, teach it as a separate named approach rather than conflating terminology.

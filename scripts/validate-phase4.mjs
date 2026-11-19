@@ -1,0 +1,80 @@
+import { readFileSync } from 'node:fs'
+import assert from 'node:assert/strict'
+
+const component = readFileSync(new URL('../src/components/MLLabs.tsx', import.meta.url), 'utf8')
+const advanced = readFileSync(new URL('../src/components/AdvancedDeepLearningLabs.tsx', import.meta.url), 'utf8')
+const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
+const curriculum = readFileSync(new URL('../src/data/curriculum.ts', import.meta.url), 'utf8')
+const required = [
+  ['linear regression', 'Mean squared error'],
+  ['logistic regression', 'Binary cross-entropy'],
+  ['decision tree impurity', 'Information gain'],
+  ['KNN classifier', 'K nearest neighbors'],
+  ['linear SVM training', 'hinge-loss subgradient updates'],
+  ['K-means clustering', 'Run assignment + update'],
+  ['neural network forward pass', 'Pre-activation z'],
+  ['backpropagation', 'Backpropagate one update'],
+  ['multilayer 2-2-1 network trace', 'Two-layer network: 2 → 2 → 1'],
+  ['hidden-layer chain rule', 'hiddenDelta1'],
+  ['optimizer comparison', 'Run 30 training steps']
+]
+for (const [label, token] of required) {
+  assert.ok(component.includes(token), `Missing ${label}`)
+  console.log(`PASS ${label}`)
+}
+for (const [label, token] of [
+  ['CNN convolution and feature maps', 'Convolution, activation and pooling'],
+  ['CNN kernel selector', 'Vertical edge'],
+  ['stepwise convolution animation', 'Next convolution step'],
+  ['max pooling', '2×2 max-pooling'],
+  ['vanilla RNN recurrence', 'Vanilla RNN'],
+  ['LSTM gated state', 'Forget gate f'],
+  ['dropout and L2 regularization', 'Dropout probability'],
+  ['batch normalization', 'Batch normalization'],
+  ['softmax multiclass', 'Softmax, cross-entropy and confusion matrix'],
+  ['per-class precision recall F1', 'Class ${i} · P / R / F1'],
+  ['generalization experiment', 'Underfitting versus overfitting'],
+  ['early stopping checkpoint', 'Early-stop checkpoint']
+]) {
+  assert.ok(advanced.includes(token), `Missing ${label}`)
+  console.log(`PASS ${label}`)
+}
+assert.ok(component.includes('<AdvancedDeepLearningLabs/>'), 'Advanced labs must be integrated into the workbench')
+assert.ok(app.includes('<MLLabs/>'), 'ML workbench must be reachable from Stage 2')
+assert.ok(app.includes("active.id==='stage-2'"), 'ML workbench must be attached to Stage 2')
+assert.ok(app.includes("active.id==='stage-3'"), 'Neural network lab must be reachable from Stage 3')
+for (const topic of ['logistic-regression','trees','svm-knn','clustering','perceptron','forward','backprop','optimizers','cnn','sequence','metrics','training']) assert.ok(curriculum.includes(`'${topic}'`) || curriculum.includes(`  ${topic}:`), `Missing detailed lesson override: ${topic}`)
+console.log('PASS Stage 2/3 integration and 12 detailed lesson overrides')
+
+// Neural network gradient sanity check.
+const sigmoid = z => 1/(1+Math.exp(-z))
+let w=.4,b=.1
+const x=.8,target=1
+const before=.5*(sigmoid(x*w+b)-target)**2
+for(let i=0;i<100;i++){const y=sigmoid(x*w+b),g=(y-target)*y*(1-y)*x,gb=(y-target)*y*(1-y);w-=.5*g;b-=.5*gb}
+const after=.5*(sigmoid(x*w+b)-target)**2
+assert.ok(after<before, `Neuron gradient updates should lower loss (${before} -> ${after})`)
+console.log('PASS neural network gradient updates reduce loss')
+
+// Decision tree impurity reduction.
+const H=p=>p===0||p===1?0:-p*Math.log2(p)-(1-p)*Math.log2(1-p)
+assert.ok(H(3/6)-(3/6)*H(0)-(3/6)*H(1)>0)
+console.log('PASS decision-tree information gain sanity check')
+
+// Linear SVM should separate the deterministic toy dataset.
+let wx=0,wy=0,bias=0
+const svmRows=[{x:1,y:1.2,label:-1},{x:1.5,y:1.8,label:-1},{x:2,y:1.1,label:-1},{x:2.2,y:2.3,label:-1},{x:2.8,y:1.7,label:-1},{x:3.2,y:3.5,label:1},{x:3.8,y:3.1,label:1},{x:4.2,y:4.1,label:1},{x:4.8,y:3.6,label:1},{x:5.2,y:4.8,label:1},{x:1.2,y:2.5,label:-1},{x:4.5,y:2.8,label:1}]
+for(let epoch=0;epoch<700;epoch++){let gx=wx,gy=wy,gb=0;for(const p of svmRows){if(p.label*(wx*p.x+wy*p.y+bias)<1){gx-=p.label*p.x;gy-=p.label*p.y;gb-=p.label}}wx-=.01*gx;wy-=.01*gy;bias-=.01*gb}
+assert.ok(svmRows.every(p=>p.label*(wx*p.x+wy*p.y+bias)>0))
+console.log('PASS linear SVM learns a separating hyperplane')
+
+// Convolution dimensions/value, softmax normalization, and multiclass metrics.
+const input=[[1,0,1,0,1],[0,1,1,1,0],[1,1,1,0,0],[0,1,0,1,1],[1,0,0,1,0]]
+const kernel=[[1,0,-1],[1,0,-1],[1,0,-1]]
+const conv=Array.from({length:3},(_,r)=>Array.from({length:3},(_,c)=>kernel.reduce((sum,row,ri)=>sum+row.reduce((s,v,ci)=>s+v*input[r+ri][c+ci],0),0)))
+assert.equal(conv.length,3);assert.equal(conv[0].length,3);assert.equal(conv[0][0],-1)
+const logits=[1.2,.3,-.4],exps=logits.map(x=>Math.exp(x-Math.max(...logits))),probs=exps.map(x=>x/exps.reduce((a,b)=>a+b,0))
+assert.ok(Math.abs(probs.reduce((a,b)=>a+b,0)-1)<1e-12)
+const tp=8,fp=2,fn=4,precision=tp/(tp+fp),recall=tp/(tp+fn),f1=2*precision*recall/(precision+recall)
+assert.ok(Math.abs(precision-.8)<1e-12 && Math.abs(recall-2/3)<1e-12 && f1>.72 && f1<.73)
+console.log('PASS CNN convolution dimensions/value, softmax normalization and precision/recall/F1')
