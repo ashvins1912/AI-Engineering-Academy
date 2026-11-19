@@ -29,20 +29,17 @@
 - Record audit events for sensitive actions.
 - Never log credentials, full sensitive prompts or personal data unnecessarily.
 
-
 ## Browser document ingestion safeguards
-- PDF and DOCX parsing currently runs in the learner's browser; file bytes are not sent to an API.
-- Accept only `.pdf` and `.docx`, and validate the PDF or ZIP container signature before parsing.
-- Enforce a 10 MB file limit, 50-page PDF limit and 500,000-character extracted-text limit.
-- Treat extracted text as untrusted input. Do not render it as HTML or execute macros/scripts. DOCX extraction is raw-text only.
-- Scanned PDF OCR is not implemented. Do not claim image/table OCR or visual understanding from this text parser.
-- This client-side parser is an educational ingestion feature, not a malware scanner or a substitute for server-side isolation, antivirus scanning, quotas and tenant ACL enforcement in a production ingestion service.
-
+- PDF/DOCX parsing in the browser remains a teaching path; file bytes are not sent to an API.
+- Accept only `.pdf` and `.docx`, validate file signatures and enforce 10 MB, 50-page and 500,000-character limits.
+- Treat extracted text as untrusted input. Do not render it as HTML or execute macros/scripts.
+- This client parser is not a malware scanner or production ingestion service.
 
 ## Server-side document API security
-- Validate JWT signature, issuer, audience, expiry and trusted tenant claim. Tenant scope is never accepted from a user-controlled body/query/header.
-- API routes constrain document and chunk queries by authenticated tenant; document deletion is owner-only unless the principal has tenant-admin role.
-- SQL migration enables and forces RLS. The API sets `app.tenant_id` transaction-locally on every tenant-scoped request and connects using a restricted non-owner role in the Compose example.
-- Cross-tenant integration tests, a real identity-provider/JWKS integration, malware scanning, private object storage, quotas, audit logs and distributed rate limiting are still required before public production use.
-- OCR, parsing and embedding are hostile-input and CPU-heavy surfaces: use bounded worker processes, timeouts, file/page limits and per-tenant concurrency controls.
-
+- Verify signed RS256 JWTs, issuer, audience, expiry, issued-at and required tenant/user UUID claims. Prefer HTTPS JWKS with bounded caching and key rotation; static RS256 PEM is fallback only.
+- Derive tenant scope only from signed claims; never trust tenant IDs supplied by clients.
+- Constrain every document/chunk query by tenant and enforce PostgreSQL RLS. Connect with a dedicated role that is neither superuser nor BYPASSRLS.
+- Enforce request-body limits before multipart parsing. Keep upload, page and extracted-text limits.
+- CI includes JWT verification tests and an opt-in PostgreSQL RLS integration test using `ACADEMY_TEST_DATABASE_URL`.
+- Remaining release gates: actual Academy identity-provider integration, durable isolated ingestion workers, malware scanning, encrypted object storage if raw-file retention is required, distributed rate limiting and tenant quotas, audit/metrics, backups, load tests and independent security review.
+- The current ingestion endpoint performs OCR and embeddings synchronously in the request and is not suitable for public production exposure or a 512 MB Render Free instance.
