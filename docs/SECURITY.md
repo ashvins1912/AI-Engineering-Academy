@@ -37,3 +37,12 @@
 - Treat extracted text as untrusted input. Do not render it as HTML or execute macros/scripts. DOCX extraction is raw-text only.
 - Scanned PDF OCR is not implemented. Do not claim image/table OCR or visual understanding from this text parser.
 - This client-side parser is an educational ingestion feature, not a malware scanner or a substitute for server-side isolation, antivirus scanning, quotas and tenant ACL enforcement in a production ingestion service.
+
+
+## Server-side document API security
+- Validate JWT signature, issuer, audience, expiry and trusted tenant claim. Tenant scope is never accepted from a user-controlled body/query/header.
+- API routes constrain document and chunk queries by authenticated tenant; document deletion is owner-only unless the principal has tenant-admin role.
+- SQL migration enables and forces RLS. The API sets `app.tenant_id` transaction-locally on every tenant-scoped request and connects using a restricted non-owner role in the Compose example.
+- Cross-tenant integration tests, a real identity-provider/JWKS integration, malware scanning, private object storage, quotas, audit logs and distributed rate limiting are still required before public production use.
+- OCR, parsing and embedding are hostile-input and CPU-heavy surfaces: use bounded worker processes, timeouts, file/page limits and per-tenant concurrency controls.
+
