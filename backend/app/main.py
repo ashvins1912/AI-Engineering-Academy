@@ -5,6 +5,7 @@ from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.concurrency import run_in_threadpool
 from sqlalchemy import func, select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sentence_transformers import SentenceTransformer
 from .config import get_settings
@@ -72,11 +73,20 @@ async def ingest_document(
         return DocumentOut(id=existing.id,title=existing.title,media_type=existing.media_type,status=existing.status,page_count=existing.page_count,chunks=count or 0)
     document = Document(tenant_id=principal.tenant_id, owner_id=principal.user_id, title=extracted.title, media_type=extracted.media_type, sha256=extracted.sha256, status="indexing", page_count=len(extracted.pages))
     session.add(document)
-    await session.flush()
-    for idx, ((page_number, content), vector) in enumerate(zip(chunks, vectors, strict=True)):
-        session.add(Chunk(tenant_id=principal.tenant_id, document_id=document.id, chunk_index=idx, page_number=page_number, content=content, embedding=vector.tolist()))
-    document.status = "ready"
-    await session.commit()
+    try:
+        await session.flush()
+        for idx, ((page_number, content), vector) in enumerate(zip(chunks, vectors, strict=True)):
+            session.add(Chunk(tenant_id=principal.tenant_id, document_id=document.id, chunk_index=idx, page_number=page_number, content=content, embedding=vector.tolist()))
+        document.status = "ready"
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        await set_tenant_context(session, str(principal.tenant_id))
+        existing = await session.scalar(select(Document).where(Document.tenant_id == principal.tenant_id, Document.sha256 == extracted.sha256))
+        if existing is None:
+            raise HTTPException(409, "Document conflicted with another ingestion request") from None
+        count = await session.scalar(select(func.count(Chunk.id)).where(Chunk.tenant_id == principal.tenant_id, Chunk.document_id == existing.id))
+        return DocumentOut(id=existing.id,title=existing.title,media_type=existing.media_type,status=existing.status,page_count=existing.page_count,chunks=count or 0)
     return DocumentOut(id=document.id,title=document.title,media_type=document.media_type,status=document.status,page_count=document.page_count,chunks=len(chunks))
 
 @app.get("/v1/documents", response_model=list[DocumentOut])
