@@ -11,7 +11,6 @@ class Settings(BaseSettings):
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     embedding_dimension: int = 384
     embedding_device: str = "cpu"
-    upload_dir: str = "./data/uploads"
     max_upload_bytes: int = 10 * 1024 * 1024
     max_pdf_pages: int = 50
     max_ocr_pages: int = 20
