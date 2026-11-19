@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import DocumentIngestion, { type IngestedDocument } from './DocumentIngestion'
-import { FileSearch, Scissors, Layers3, GitBranch, Eye, Gauge, ArrowRight, Database, Network } from 'lucide-react'
+import { FileSearch, Scissors, Layers3, Eye, Gauge, ArrowRight, Database, Network } from 'lucide-react'
 
 type Lab = 'ingest'|'chunk'|'retrieve'|'rerank'|'graph'|'visual'|'evaluate'
 const corpus = [
@@ -11,7 +11,7 @@ const corpus = [
  {id:'D5',title:'Privacy and account data',text:'Account holders can request a copy of personal data and ask support to correct inaccurate profile information.',tags:['privacy','personal data','account','support']}
 ]
 const terms=(s:string)=>s.toLowerCase().match(/[a-z0-9]+/g)??[]
-const vector=(s:string)=>{const v=Array(8).fill(0) as number[];for(const t of terms(s)){let h=0;for(let i=0;i<t.length;i++)h=(h*31+t.charCodeAt(i))|0;v[Math.abs(h)%8]+=1}const n=Math.sqrt(v.reduce((a,x)=>a+x*x,0))||1;return v.map(x=>x/n)}
+const vector=(s:string)=>{const v:number[]=Array.from({length:8},()=>0);for(const t of terms(s)){let h=0;for(let i=0;i<t.length;i++)h=(h*31+t.charCodeAt(i))|0;v[Math.abs(h)%8]+=1}const n=Math.sqrt(v.reduce((a,x)=>a+x*x,0))||1;return v.map(x=>x/n)}
 const cosine=(a:number[],b:number[])=>a.reduce((s,x,i)=>s+x*b[i],0)
 const sparse=(q:string,d:string)=>{const qts=[...new Set(terms(q))],dt=terms(d);return qts.reduce((s,t)=>s+(dt.includes(t)?1+Math.log(1+dt.filter(x=>x===t).length):0),0)/(qts.length||1)}
 const examples=['How long do I have to ask for my money back?','How many days does express delivery take?','What damage is covered by the product guarantee?','How do I arrange a pickup for an item?']
