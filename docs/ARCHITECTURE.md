@@ -30,3 +30,12 @@ AI lab requests are dispatched to a dedicated lab service or isolated job runner
 - Keep content version and assessment version on every result.
 - Use tenant/user scoping in every query.
 - Do not store raw provider API keys in learner records.
+
+
+## Phase 6 production ingestion service
+- `backend/` contains a separately deployable FastAPI service for PDF/DOCX extraction, OCR, embedding and hybrid retrieval.
+- PostgreSQL + pgvector stores document chunks and normalized embeddings. Tenant IDs are derived from signed JWT claims only.
+- Scanned PDF pages with little/no extracted text can be rendered by Poppler and passed to Tesseract. This CPU-intensive work currently runs in the API request, not a durable worker.
+- SentenceTransformers `all-MiniLM-L6-v2` creates 384-dimensional embeddings. Retrieval combines pgvector cosine candidates and explicit Okapi BM25 (tenant-local IDF, TF and length normalization). Hybrid ranking uses RRF.
+- See `backend/README.md` for setup and production gates. The API is a code foundation, not a provisioned or production-operated service.
+
