@@ -56,3 +56,5 @@ The tenant and user UUIDs come only from signed JWT claims. Issuer, audience, ex
 No cloud resources, external model APIs or paid hosting were provisioned.
 
 This API is not yet production-certified or deployed. Complete every gate above and run integration/security/performance tests before use with real tenant data.
+
+The lexical score is true Okapi BM25 (k1=1.2, b=0.75) using simple alphanumeric tokenization; relevance quality still needs evaluation against a golden query set.
