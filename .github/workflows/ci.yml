@@ -1,0 +1,29 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install
+      - run: npm run validate:curriculum
+      - run: npm run validate:phase3
+      - run: npm run validate:phase4
+      - run: npm run validate:phase5
+      - run: npm run validate:phase6
+      - run: npm run validate:documents
+      - run: npm run validate:production-rag
+      - run: npm run typecheck
+      - run: npm run build
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m compileall -q backend/app backend/tests
