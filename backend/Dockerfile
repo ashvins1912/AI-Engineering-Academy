@@ -1,5 +1,5 @@
 FROM python:3.11-slim
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 HOME=/tmp HF_HOME=/tmp/huggingface TRANSFORMERS_CACHE=/tmp/huggingface
 RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr poppler-utils libmagic1 \
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
