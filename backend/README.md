@@ -57,4 +57,4 @@ Run `python -m pytest tests -q` from this directory. Unit tests validate RS256 t
 - Benchmark BM25 against a golden query set before making relevance-quality claims.
 - The frontend is not connected to this API because no trusted login/token flow is configured. Browser uploader remains a local teaching path. Do not send real documents until identity, privacy, retention and consent are integrated.
 
-No cloud resources, external model APIs or paid hosting were provisioned. This API is not production-certified or deployed. It is not suitable for a 512 MB Render Free instance: the sentence-transformer model, OCR and parsing can exceed that memory budget.
+No cloud resources, external model APIs or paid hosting were provisioned. This API is not yet production-certified or deployed. It is not suitable for a 512 MB Render Free instance: the sentence-transformer model, OCR and parsing can exceed that memory budget.
