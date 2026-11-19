@@ -15,6 +15,7 @@ from .models import Chunk, Document
 from .schemas import DocumentOut, SearchHit, SearchRequest
 from .security import Principal, current_principal, require_admin
 from .middleware import SimpleRateLimitMiddleware
+from .request_limits import RequestBodyLimitMiddleware
 
 cfg = get_settings()
 _model: SentenceTransformer | None = None
@@ -37,6 +38,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="AI Engineering Academy Ingestion API", version="0.2.0", lifespan=lifespan)
 origins = [origin.strip() for origin in cfg.cors_origins.split(",") if origin.strip()]
 app.add_middleware(SimpleRateLimitMiddleware)
+app.add_middleware(RequestBodyLimitMiddleware)
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["GET", "POST", "DELETE"], allow_headers=["Authorization", "Content-Type", "Idempotency-Key"])
 
 @app.get("/health/live")
