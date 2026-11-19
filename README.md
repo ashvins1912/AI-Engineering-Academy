@@ -63,3 +63,13 @@ The current UI is a curriculum explorer and lesson-detail engine backed by typed
 - A2A is the agent-to-agent interoperability protocol.
 - ACP is ambiguous: this curriculum distinguishes IBM/BeeAI Agent Communication Protocol (historical/evolving interoperability context) from the Agent Client Protocol used by coding agents and IDEs.
 - Visual RAG (sometimes written V-RAG) means retrieval over visual content such as page images, diagrams, charts and screenshots. If a named research system uses the acronym VRAG differently, teach it as a separate named approach rather than conflating terminology.
+
+
+## Phase 6 server-side ingestion API foundation
+- `backend/` adds a FastAPI document API for server-side PDF/DOCX parsing, scanned-PDF OCR (Poppler + Tesseract), sentence-transformer embeddings (`all-MiniLM-L6-v2`), pgvector cosine search, explicit Okapi BM25 scoring and reciprocal-rank fusion.
+- The API validates signed JWTs and derives user/tenant identity only from trusted claims. PostgreSQL row-level security is enabled and forced in the migration; the API sets transaction-local `app.tenant_id`, while every query also includes tenant scope.
+- Endpoints: `POST /v1/documents`, `GET /v1/documents`, `DELETE /v1/documents/{id}`, `POST /v1/search`, and tenant-admin `GET /v1/admin/tenant-health`. Health endpoints are `/health/live` and `/health/ready`.
+- Local setup: see `backend/README.md` and `backend/docker-compose.yml`. The embedding model is CPU-capable but memory intensive; this API is not suitable for a 512 MB free service with inline OCR/embedding. Keep model inference and parsing in bounded workers or run locally until capacity is approved.
+- This is a backend implementation foundation, **not yet production-certified or deployed**. Remaining gates include actual identity-provider/JWKS integration, cross-tenant integration tests with the restricted DB role, asynchronous OCR/embedding workers, private object storage, malware scanning, distributed rate limits/quotas, observability, backups and load/security testing.
+- The existing browser uploader remains a local teaching path; it is not connected to the authenticated API because the Academy frontend has no configured identity integration. Do not send real documents to this API until identity, privacy and retention controls are integrated.
+
