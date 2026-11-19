@@ -13,3 +13,4 @@ Pillow==11.2.1
 PyJWT[crypto]==2.10.1
 httpx==0.28.1
 pdf2image==1.17.0
+pytest==8.3.5
