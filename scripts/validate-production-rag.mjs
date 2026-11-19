@@ -1,0 +1,30 @@
+import { readFileSync, existsSync } from 'node:fs'
+import assert from 'node:assert/strict'
+const read = p => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8')
+const required = [
+ ['FastAPI application','backend/app/main.py','FastAPI('],
+ ['JWT signature and claims validation','backend/app/security.py','jwt.decode('],
+ ['server-derived tenant claim','backend/app/security.py','tenant_id = UUID'],
+ ['server-side PDF extraction','backend/app/ingestion.py','PdfReader'],
+ ['scanned PDF OCR','backend/app/ingestion.py','pytesseract.image_to_string'],
+ ['DOCX parsing','backend/app/ingestion.py','DocxDocument'],
+ ['real transformer embeddings','backend/app/main.py','SentenceTransformer'],
+ ['pgvector cosine search','backend/app/main.py','embedding <=>'],
+ ['Okapi BM25 scoring','backend/app/main.py','bm25_score'],
+ ['BM25 inverse document frequency','backend/app/main.py','ln(1 + (corpus.n - ts.df + 0.5) / (ts.df + 0.5))'],
+ ['BM25 length normalization','backend/app/main.py','1.2 * (0.25 + 0.75 * n.doc_len / corpus.avgdl)'],
+ ['reciprocal rank fusion','backend/app/main.py','1.0/(60+r.bm25_rank)'],
+ ['tenant-scoped SQL','backend/app/main.py','Chunk.tenant_id == principal.tenant_id'],
+ ['database RLS','backend/migrations/001_initial.sql','CREATE POLICY tenant_documents_isolation'],
+ ['rate limiter','backend/app/middleware.py','Rate limit exceeded'],
+ ['upload limits','backend/app/config.py','max_upload_bytes'],
+ ['OCR and BM25 limitations documented','backend/README.md','not yet production']
+]
+for (const [name,path,token] of required) {
+  assert.ok(existsSync(new URL(`../${path}`, import.meta.url)), `${path} missing`)
+  assert.ok(read(path).includes(token), `${name} missing`)
+  console.log(`PASS ${name}`)
+}
+const pkg = JSON.parse(read('package.json'))
+assert.ok(pkg.scripts['validate:production-rag'], 'validation command missing')
+console.log('PASS production RAG API contract checks')
