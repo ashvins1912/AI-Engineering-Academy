@@ -26,5 +26,5 @@ jobs:
         with:
           python-version: "3.11"
       - run: python -m compileall -q backend/app backend/tests
-      - run: python -m pip install pytest fastapi pydantic-settings "PyJWT[crypto]" pypdf python-docx pytesseract pdf2image Pillow
+      - run: python -m pip install pytest fastapi pydantic-settings "PyJWT[crypto]" "SQLAlchemy[asyncio]" asyncpg pgvector pypdf python-docx pytesseract pdf2image Pillow
       - run: cd backend && python -m pytest tests -q
