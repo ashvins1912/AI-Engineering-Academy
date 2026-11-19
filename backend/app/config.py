@@ -5,6 +5,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_prefix="ACADEMY_", extra="ignore")
     database_url: str = "postgresql+asyncpg://academy:academy@localhost:5432/academy"
     jwt_public_key: str = ""
+    jwks_url: str = ""
+    max_request_bytes: int = 11 * 1024 * 1024
     jwt_algorithm: str = "RS256"
     jwt_issuer: str = ""
     jwt_audience: str = "ai-engineering-academy"
