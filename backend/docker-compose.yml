@@ -1,0 +1,29 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: academy
+      POSTGRES_USER: postgres_admin
+      POSTGRES_PASSWORD: postgres-admin-local-only
+    ports: ["5432:5432"]
+    volumes: ["academy-postgres:/var/lib/postgresql/data", "./migrations/000_local_role.sql:/docker-entrypoint-initdb.d/000_local_role.sql:ro", "./migrations/001_initial.sql:/docker-entrypoint-initdb.d/001_initial.sql:ro"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres_admin -d academy"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+  api:
+    build: .
+    environment:
+      ACADEMY_DATABASE_URL: postgresql+asyncpg://academy_app:academy-app-local-only@postgres:5432/academy
+      ACADEMY_JWT_PUBLIC_KEY: ${ACADEMY_JWT_PUBLIC_KEY:?Set a trusted JWT public key}
+      ACADEMY_JWT_ISSUER: ${ACADEMY_JWT_ISSUER:?Set trusted JWT issuer}
+      ACADEMY_JWT_AUDIENCE: ai-engineering-academy
+      ACADEMY_OCR_ENABLED: "true"
+      ACADEMY_EMBEDDING_DEVICE: cpu
+    ports: ["8000:8000"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+volumes:
+  academy-postgres:
