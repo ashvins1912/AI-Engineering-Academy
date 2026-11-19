@@ -58,3 +58,5 @@ No cloud resources, external model APIs or paid hosting were provisioned.
 This API is not yet production-certified or deployed. Complete every gate above and run integration/security/performance tests before use with real tenant data.
 
 The lexical score is true Okapi BM25 (k1=1.2, b=0.75) using simple alphanumeric tokenization; relevance quality still needs evaluation against a golden query set.
+
+Enforce an HTTP request-body cap at the reverse proxy/API gateway, because multipart framing is parsed before endpoint-level file limits apply.
