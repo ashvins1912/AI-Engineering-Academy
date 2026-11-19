@@ -28,3 +28,8 @@ Recommended learning-platform deployment:
 - Cost and quota visibility.
 
 No hosting resources are provisioned by this scaffold.
+
+
+## Phase 6 ingestion API (local-first)
+The optional backend lives in `backend/`. It requires Python 3.11, PostgreSQL with pgvector, Tesseract and Poppler. See `backend/README.md` and `backend/docker-compose.yml`. Sentence-transformer model weights download on first use and are memory intensive; for a 512 MB service, do not colocate model loading, OCR and API serving. Move OCR/embedding to bounded worker capacity or run locally. No cloud resources are provisioned by this repository.
+
