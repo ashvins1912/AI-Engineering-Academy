@@ -17,6 +17,12 @@ class SimpleRateLimitMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         key = request.client.host if request.client else "unknown"
         now = monotonic()
+        if key not in self.events and len(self.events) >= 10000:
+            expired = [client for client, events in self.events.items() if not events or now - events[-1] > 60]
+            for client in expired:
+                self.events.pop(client, None)
+            if len(self.events) >= 10000:
+                return JSONResponse({"detail": "Rate limiter capacity reached"}, status_code=503)
         queue = self.events[key]
         while queue and now - queue[0] > 60:
             queue.popleft()
