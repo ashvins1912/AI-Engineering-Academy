@@ -54,11 +54,16 @@ def extract_document(filename: str, content_type: str, data: bytes) -> Extracted
                 ocr_pages += 1
                 if ocr_pages > cfg.max_ocr_pages:
                     raise IngestionError(f"OCR page budget exceeded ({cfg.max_ocr_pages} pages)")
-                images = convert_from_bytes(data, first_page=index, last_page=index, dpi=cfg.ocr_dpi, fmt="png", thread_count=1, timeout=60)
-                if images:
-                    text = pytesseract.image_to_string(images[0], lang=cfg.ocr_language, timeout=25).strip()
-                    images[0].close()
-                    ocr_used = True
+                try:
+                    images = convert_from_bytes(data, first_page=index, last_page=index, dpi=cfg.ocr_dpi, fmt="png", thread_count=1, timeout=60)
+                    if images:
+                        try:
+                            text = pytesseract.image_to_string(images[0], lang=cfg.ocr_language, timeout=25).strip()
+                            ocr_used = True
+                        finally:
+                            images[0].close()
+                except Exception as exc:
+                    raise IngestionError(f"OCR failed on page {index}; verify Poppler, Tesseract and language packs") from exc
             pages.append(ExtractedPage(index, text, ocr_used))
         media_type = "application/pdf"
     elif suffix == ".docx" and content_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
