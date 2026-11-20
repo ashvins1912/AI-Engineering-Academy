@@ -46,6 +46,7 @@ def test_ingestion_job_claim_retry_dead_letter_replay_and_retention_lifecycle():
             async with sessions() as session:
                 await mark_job_failed(session, tenant_id, job_id, attempts=1, max_attempts=2, error_code="transient")
             async with sessions() as session:
+                await set_tenant_context(session, str(tenant_id))
                 job = await session.get(IngestionJob, job_id)
                 assert job.status == "queued"
                 assert job.error_code == "transient"
@@ -59,6 +60,7 @@ def test_ingestion_job_claim_retry_dead_letter_replay_and_retention_lifecycle():
             async with sessions() as session:
                 await mark_job_failed(session, tenant_id, job_id, attempts=2, max_attempts=2, error_code="permanent")
             async with sessions() as session:
+                await set_tenant_context(session, str(tenant_id))
                 job = await session.get(IngestionJob, job_id)
                 assert job.status == "dead"
                 job.completed_at = datetime.now(timezone.utc) - timedelta(days=31)
