@@ -64,6 +64,11 @@ def test_forwarded_ip_is_used_only_from_trusted_peer():
     assert resolve_client_ip(request, {"192.0.2.1"}) == "203.0.113.5"
 
 
+def test_trusted_proxy_cidr_is_supported():
+    request = _request("10.2.3.4", {"x-forwarded-for": "203.0.113.8"})
+    assert resolve_client_ip(request, {"10.0.0.0/8"}) == "203.0.113.8"
+
+
 def test_malformed_forwarded_ip_falls_back_to_trusted_peer():
     request = _request("192.0.2.1", {"x-forwarded-for": "not-an-ip"})
     assert resolve_client_ip(request, {"192.0.2.1"}) == "192.0.2.1"
