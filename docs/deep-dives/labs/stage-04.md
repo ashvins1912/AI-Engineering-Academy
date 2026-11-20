@@ -146,6 +146,10 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ---
 
+## Stage 4 integrated project execution
+
+Run `python examples/stage-04/mini_causal_lm.py` and `python -m unittest discover -s examples/stage-04 -p 'test_*.py' -v`. Inspect `examples/stage-04/MODEL_CARD.md`, `PROJECT_DFD.md` and `incident-report.md`. The fixed-weight toy transformer is an educational computation trace, not a trained or production LLM.
+
 ## Stage completion evidence
 
 - [ ] Every lesson implementation runs from a clean environment.
