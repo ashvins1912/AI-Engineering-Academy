@@ -62,11 +62,11 @@ export default function StudentReflection({ lesson }: { lesson: Lesson }) {
     <p className="reflection-intro">Be honest. Confidence is your own feeling; mastery is earned through code, tests and real implementation evidence. Your ratings help identify what needs another explanation.</p>
     <div className="reflection-ratings">
       {scale('Readability', record.readability, v => update('readability', v), ['Very hard','Hard','Okay','Easy','Very easy'])}
-      {scale('Ease of learning', record.ease, v => update('ease', v), ['Very hard','Hard','Okay','Easy','Very easy','Excellent'])}
+      {scale('Ease of learning', record.ease, v => update('ease', v), ['Very hard','Hard','Okay','Easy','Very easy'])}
       {scale('Concept understanding', record.concept, v => update('concept', v), ['Not yet','Recognize it','Explain with help','Explain independently','Teach it'], 0)}
       {scale('Implementation confidence', record.implementation, v => update('implementation', v), ['No confidence','Need full guidance','Can follow a tutorial','Can build independently','Can adapt for production'], 0)}
-      {scale('Visual / DFD usefulness', record.visual, v => update('visual', v), ['Not useful','Slightly useful','Somewhat clear','Clear','Very clear','Essential'])}
-      {scale('Practice difficulty', record.difficulty, v => update('difficulty', v), ['Very easy','Easy','Balanced','Hard','Very hard','Expert-level'])}
+      {scale('Visual / DFD usefulness', record.visual, v => update('visual', v), ['Not useful','Slightly useful','Somewhat clear','Clear','Very clear'])}
+      {scale('Practice difficulty', record.difficulty, v => update('difficulty', v), ['Very easy','Easy','Balanced','Hard','Very hard'])}
     </div>
     <div className="reflection-proficiency">
       <label className="reflection-field"><span>Current level — zero to expertise</span>
