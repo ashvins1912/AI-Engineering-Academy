@@ -71,3 +71,8 @@ flowchart TD
 - [AWS AI API deployment](../production-playbooks/04-aws-deployment.md): Docker, ECR, ECS Fargate, IAM roles, private networking, secrets, CloudWatch, CI/CD, rollback, cost estimates and teardown discipline.
 
 Complete these after the core MLOps lessons. Do not fine-tune or provision cloud resources until the relevant evaluation, budget and security gates are satisfied.
+
+
+## Interview preparation integration
+
+Use the [Agentic AI Interview Preparation track](../interview-prep/README.md) to practice this stage in timed interview conditions. The track includes a scenario prompt, answer outline, interviewer follow-ups, failure injection and a scored self-review rubric.

@@ -59,3 +59,8 @@ flowchart TD
   H --> I[Audit and redact]
   I --> J[Close or resume session]
 ```
+
+
+## Interview preparation integration
+
+Use the [Agentic AI Interview Preparation track](../interview-prep/README.md) to practice this stage in timed interview conditions. The track includes a scenario prompt, answer outline, interviewer follow-ups, failure injection and a scored self-review rubric.

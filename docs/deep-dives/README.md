@@ -38,3 +38,8 @@ For deeper implementation beyond the stage lab specifications, continue with the
 - AWS container deployment with ECR, ECS Fargate, IAM, secrets, monitoring and rollback.
 
 Each playbook adds decision trees, realistic failure injection, debugging tables, evaluation gates and a measurable improvement sequence.
+
+
+## Agentic AI interview preparation
+
+Use the [Agentic AI Interview Studio](../interview-prep/README.md) after the relevant lessons in Stages 6–11. It maps interview rounds to the existing agent, protocol, orchestration, LLMOps, security and enterprise capstone content. Complete the system-design and multi-agent coordination rounds before attempting the timed final mock interview.

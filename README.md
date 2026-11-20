@@ -83,3 +83,8 @@ The complete topic-first guides for all 11 stages and 84 lesson topics are index
 ## Production engineering playbooks
 
 The next layer turns the curriculum into tool-based implementation practice: [Production AI Engineering Playbooks](docs/production-playbooks/README.md). It includes end-to-end RAG with Qdrant, LangSmith and Guardrails AI; multi-agent workflows with LangGraph and FastMCP; PEFT fine-tuning with LoRA/QLoRA; and an AWS ECR/ECS Fargate deployment path. Each playbook includes architecture diagrams, when-to-use decisions, implementation tasks, test fixtures, failure diagnosis, recovery paths, evaluation criteria and improvement plans. These are learning guides; AWS resources are not provisioned and model training is not claimed unless a learner runs it.
+
+
+## Agentic AI interview preparation
+
+The [Agentic AI Interview Studio](docs/interview-prep/README.md) connects Stages 6–11 to a structured five-round interview path: agent fundamentals, system design, multi-agent coordination, evaluation/debugging and production architecture. It includes scenario prompts, expected answer structure, interviewer follow-ups, scoring rubrics, failure drills and a capstone mock interview. The in-app studio is a self-practice aid; rubric selections and draft answers are saved in browser storage, not account-level mastery.

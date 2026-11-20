@@ -64,3 +64,8 @@ flowchart TD
   H --> I[Observe SLO, quality and cost]
   I --> J[Canary promote or rollback]
 ```
+
+
+## Interview preparation integration
+
+Use the [Agentic AI Interview Preparation track](../interview-prep/README.md) to practice this stage in timed interview conditions. The track includes a scenario prompt, answer outline, interviewer follow-ups, failure injection and a scored self-review rubric.

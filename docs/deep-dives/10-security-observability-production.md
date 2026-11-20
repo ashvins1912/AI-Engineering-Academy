@@ -56,3 +56,8 @@ flowchart TD
   H -- yes --> I[Block, degrade or alert]
   H -- no --> J[Return response and audit]
 ```
+
+
+## Interview preparation integration
+
+Use the [Agentic AI Interview Preparation track](../interview-prep/README.md) to practice this stage in timed interview conditions. The track includes a scenario prompt, answer outline, interviewer follow-ups, failure injection and a scored self-review rubric.
