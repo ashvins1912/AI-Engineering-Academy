@@ -74,4 +74,4 @@ Run `python -m pytest tests -q` from this directory. Unit tests cover RS256 toke
 - Add a configured generation provider, structured grounded-answer output, citation validation and abstention tests before enabling answer generation.
 - Run migration verification, load/security tests, backup/restore drills and independent security review.
 
-No cloud resources, external model APIs or paid hosting were provisioned. This API is not production-certified or deployed. It is not suitable for a 512 MB Render Free instance: the sentence-transformer model, OCR and parsing can exceed that memory budget.
+No cloud resources, external model APIs or paid hosting were provisioned. This API is not yet production-certified or deployed. It is not suitable for a 512 MB Render Free instance: the sentence-transformer model, OCR and parsing can exceed that memory budget.
