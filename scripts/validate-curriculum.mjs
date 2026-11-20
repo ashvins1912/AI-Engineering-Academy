@@ -7,15 +7,12 @@ const required = ['vectors', 'calculus', 'linear-regression', 'attention', 'chun
 const missing = required.filter(id => !lessonIds.includes(id))
 const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
 const practice = readFileSync(new URL('../src/components/LessonPractice.tsx', import.meta.url), 'utf8')
-const lessonStage = new Map()
-let activeStage = 0
-for (const line of source.split('\n')) {
-  const stageMatch = line.match(/id:\s*'(?:stage-)(\d+)'/)
-  if (stageMatch) activeStage = Number(stageMatch[1])
-  const lessonMatch = line.match(/lesson\('([^']+)'/)
-  if (lessonMatch) lessonStage.set(lessonMatch[1], activeStage)
-}
-const missingLessonLabs = [...lessonStage.entries()].filter(([id, stage]) => {
+const stageMatches = [...source.matchAll(/id:\s*'stage-(\d+)'/g)]
+const lessonStagePairs = [...source.matchAll(/lesson\('([^']+)'/g)].map(lessonMatch => {
+  const stageMatch = stageMatches.filter(match => match.index < lessonMatch.index).at(-1)
+  return { id: lessonMatch[1], stage: Number(stageMatch?.[1] ?? 0) }
+})
+const missingLessonLabs = lessonStagePairs.filter(({ id, stage }) => {
   try {
     const pack = readFileSync(new URL(`../docs/deep-dives/labs/stage-${String(stage).padStart(2, '0')}.md`, import.meta.url), 'utf8')
     return !pack.includes(`## ${id} —`)
@@ -47,7 +44,7 @@ const checks = [
   ['official references and practice criteria', practice.includes('Primary references') && practice.includes('YOUR SUBMISSION')],
   ['complete deep-dive guides for all 11 stages', missingGuides.length === 0],
   ['lesson workbench links to stage deep-dive guide', practice.includes('Lesson learning resources') && practice.includes('docs/deep-dives/')],
-  ['individual lab pack coverage for every lesson', lessonStage.size === lessonIds.length && missingLessonLabs.length === 0],
+  ['individual lab pack coverage for every lesson', lessonStagePairs.length === lessonIds.length && missingLessonLabs.length === 0],
   ['lab packs include worked fixtures and verification evidence', ['Worked fixture:', 'Expected result:', 'Verification tests:', 'Interview checks:', 'Submission evidence:'].every(section => stagesText.includes(section))]
 ]
 for (const [label, passed] of checks) console.log(`${passed ? 'PASS' : 'FAIL'} ${label}`)
@@ -55,4 +52,4 @@ if (missing.length) console.error(`Missing lesson identifiers: ${missing.join(',
 if (missingGuides.length) console.error(`Missing deep-dive guides: ${missingGuides.join(', ')}`)
 if (missingLessonLabs.length) console.error(`Missing individual lesson labs: ${missingLessonLabs.map(([id]) => id).join(', ')}`)
 if (checks.some(([, passed]) => !passed)) process.exit(1)
-console.log(`Validated ${stageIds.length} stages, ${lessonIds.length} lesson blueprints and ${lessonStage.size - missingLessonLabs.length} individual lesson labs.`)
+console.log(`Validated ${stageIds.length} stages, ${lessonIds.length} lesson blueprints and ${lessonStagePairs.length - missingLessonLabs.length} individual lesson labs.`)
