@@ -193,3 +193,54 @@
 
 /* Real PDF/DOCX ingestion lab */
 .document-ingestion{margin:18px 0;padding:16px;border:1px solid #344566;background:#101b2e;border-radius:11px}.document-ingestion-head{display:flex;align-items:center;justify-content:space-between;gap:14px}.document-ingestion-head strong{font:600 13px 'Space Grotesk';color:#e0e8fa}.document-ingestion-head p{font-size:11px;line-height:1.55;color:#91a0ba;margin:5px 0 0}.document-ingestion-head button:disabled{opacity:.65;cursor:wait}.document-safety{display:flex;align-items:flex-start;gap:8px;margin-top:13px;color:#81cdb2;font-size:10px;line-height:1.55}.document-safety svg{flex:none}.document-message{display:flex;align-items:flex-start;gap:8px;padding:10px 11px;border-radius:8px;margin-top:10px;font-size:11px;line-height:1.5}.document-message.error{background:#321c28;border:1px solid #71394b;color:#ffb3c2}.document-message.success{background:#142b2b;border:1px solid #285b51;color:#a4e8d2}.uploaded-documents{display:grid;gap:7px;margin-top:12px}.uploaded-document{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #2b3b55;background:#0d1728;border-radius:8px;color:#aab8ff}.uploaded-document>div{flex:1;min-width:0}.uploaded-document strong,.uploaded-document span{display:block;overflow-wrap:anywhere}.uploaded-document strong{font-size:11px;color:#dce5f8}.uploaded-document span{font-size:10px;color:#8190aa;margin-top:3px}.uploaded-document button{border:0;background:transparent;color:#9baac2;cursor:pointer;padding:5px}.uploaded-document button:hover{color:#ff9bad}.document-note{font-size:10px;line-height:1.55;color:#7f8da6;margin:11px 0 0}.spin{animation:spin .9s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}@media(max-width:540px){.document-ingestion-head{align-items:flex-start;flex-direction:column}.document-ingestion-head button{width:100%}}
+
+
+/* Guided lesson practice workbench: applies to every curriculum lesson */
+.practice-engine{margin:22px 0;padding:18px;border:1px solid #3b5274;border-radius:13px;background:linear-gradient(145deg,#111e31,#0c1726);color:#dce7f8}
+.practice-title{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:20px}
+.practice-title h3{font:600 19px 'Space Grotesk';color:#edf3ff;margin:6px 0}
+.practice-title p{max-width:720px;font-size:11px;line-height:1.65;color:#9dafc8;margin:0}
+.practice-stage{flex:none;padding:6px 9px;border:1px solid #52658a;border-radius:20px;font:10px 'DM Mono';color:#b9c9ff}
+.practice-subhead{display:flex;align-items:center;gap:10px;margin:20px 0 11px;color:#aebfff}
+.practice-subhead>svg{flex:none}
+.practice-subhead strong,.practice-subhead span{display:block}
+.practice-subhead strong{font:600 12px 'Space Grotesk';color:#e1eaff}
+.practice-subhead span{font-size:10px;color:#879bb8;margin-top:3px;line-height:1.5}
+.practice-flow{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:12px}
+.practice-flow-list{display:grid;gap:7px}
+.practice-flow-node{display:grid;grid-template-columns:27px 1fr auto;align-items:center;gap:9px;width:100%;padding:10px;border:1px solid #314762;border-radius:8px;background:#111f32;text-align:left;color:#c3d1e5;font-size:10px;line-height:1.45;cursor:pointer}
+.practice-flow-node.active{border-color:#8da2ff;background:#1c2e4b;box-shadow:inset 3px 0 #9aabff}
+.practice-flow-node.passed{border-color:#376c62;color:#a9d9c9}
+.practice-node-number{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#263a59;color:#dce6ff;font:11px 'DM Mono'}
+.practice-flow-node.passed .practice-node-number{background:#1d4a40;color:#a7e3d0}
+.practice-node-arrow{font:9px 'DM Mono';color:#8297b8}
+.practice-step-detail{align-self:stretch;padding:15px;border:1px solid #3b5275;border-radius:9px;background:#172842}
+.practice-step-detail>span,.practice-setup-meta,.practice-code-head>span,.practice-assignment>span{font:9px 'DM Mono';letter-spacing:.06em;color:#9aadd0}
+.practice-step-detail h4{font:600 14px 'Space Grotesk';color:#edf3ff;margin:9px 0}
+.practice-step-detail p{font-size:11px;line-height:1.7;color:#aebed5;white-space:pre-line}
+.practice-step-actions{display:flex;justify-content:space-between;gap:8px;margin-top:16px}
+.practice-step-actions button,.practice-code-head button{display:inline-flex;align-items:center;gap:6px;padding:7px 9px;border:1px solid #4a6083;border-radius:7px;background:#1d3150;color:#dce7fa;font-size:10px;cursor:pointer}
+.practice-step-actions button:disabled{opacity:.4;cursor:not-allowed}
+.practice-setup,.practice-code,.practice-run{border:1px solid #304762;border-radius:8px;background:#091321}
+.practice-setup{padding:12px}
+.practice-setup-meta{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.practice-setup pre,.practice-code{overflow:auto;margin:10px 0 0;padding:13px;color:#c9d9f1;font:10px/1.7 'DM Mono';white-space:pre}
+.practice-code-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 11px;border:1px solid #344d6d;border-bottom:0;border-radius:8px 8px 0 0;background:#14243a}
+.practice-code-head>span{font:9px 'DM Mono';color:#9db2d5}
+.practice-code-head button{padding:5px 8px}
+.practice-code{margin:0;border-radius:0 0 8px 8px;max-height:420px}
+.practice-run{margin-top:9px;padding:12px}
+.practice-run>div{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.practice-run strong{display:flex;align-items:center;gap:6px;font-size:11px;color:#b9e3d4}
+.practice-run code{font:10px 'DM Mono';color:#d7e3f7;overflow-wrap:anywhere}
+.practice-run p{font-size:10px;line-height:1.6;color:#a8bad2;margin:9px 0 0}
+.practice-run b{color:#dbe7fa}
+.practice-checks{display:grid;gap:8px;margin:0;padding-left:19px;color:#b7c7dc;font-size:10px;line-height:1.65}
+.practice-checks li::marker{color:#9aabff}
+.production-checks li::marker{color:#80cdb1}
+.practice-assignment{margin-top:17px;padding:14px;border:1px solid #52688b;border-radius:9px;background:#172944}
+.practice-assignment>span{display:block;color:#aebfff}
+.practice-assignment>strong{display:block;margin-top:5px;font:600 13px 'Space Grotesk';color:#edf3ff}
+.practice-assignment p{font-size:10px;line-height:1.65;color:#b5c5dc;margin:8px 0 0}
+.practice-assignment b{color:#e1eaff}
+@media(max-width:720px){.practice-flow{grid-template-columns:1fr}.practice-title{flex-direction:column}.practice-stage{align-self:flex-start}.practice-engine{padding:13px}.practice-setup-meta{display:grid}.practice-code{font-size:9px}.practice-step-actions button{font-size:9px}}
