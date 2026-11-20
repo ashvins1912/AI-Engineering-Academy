@@ -10,6 +10,12 @@ class ProductionRAGMigrationTests(unittest.TestCase):
         self.assertIn("tenant_document_acl_isolation", sql)
         self.assertIn("tenant_ingestion_jobs_isolation", sql)
 
+    def test_raw_object_retention_has_delete_marker_and_lease(self):
+        sql = (Path(__file__).parents[1] / "migrations" / "003_raw_object_retention.sql").read_text()
+        self.assertIn("raw_object_deleted_at", sql)
+        self.assertIn("raw_object_delete_lease_until", sql)
+        self.assertIn("ix_ingestion_jobs_raw_object_cleanup", sql)
+
     def test_document_visibility_defaults_to_private(self):
         sql = (Path(__file__).parents[1] / "migrations" / "002_document_acl_ingestion_jobs.sql").read_text()
         self.assertIn("visibility varchar(16) NOT NULL DEFAULT 'private'", sql)
