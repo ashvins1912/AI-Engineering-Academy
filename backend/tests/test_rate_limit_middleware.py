@@ -69,6 +69,24 @@ def test_trusted_proxy_cidr_is_supported():
     assert resolve_client_ip(request, {"10.0.0.0/8"}) == "203.0.113.8"
 
 
+def test_middleware_accepts_trusted_proxy_cidr_configuration():
+    fake = FakeEngine()
+    app = FastAPI()
+
+    @app.get("/resource")
+    async def resource(request: Request):
+        return {"client": request.client.host}
+
+    app.add_middleware(
+        PostgresRateLimitMiddleware,
+        database_engine=fake,
+        limit=2,
+        trusted_proxy_ips="10.0.0.0/8",
+    )
+    response = TestClient(app).get("/resource", headers={"x-forwarded-for": "203.0.113.9"})
+    assert response.status_code == 200
+
+
 def test_malformed_forwarded_ip_falls_back_to_trusted_peer():
     request = _request("192.0.2.1", {"x-forwarded-for": "not-an-ip"})
     assert resolve_client_ip(request, {"192.0.2.1"}) == "192.0.2.1"
