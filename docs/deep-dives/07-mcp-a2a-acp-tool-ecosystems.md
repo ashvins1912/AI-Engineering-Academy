@@ -41,3 +41,21 @@ Trace a complete MCP lifecycle, distinguish MCP from agent-to-agent protocols, a
 - MCP Python SDK: https://github.com/modelcontextprotocol/python-sdk
 - A2A protocol: https://a2a-protocol.org/
 - Agent Client Protocol: https://agentclientprotocol.com/
+
+
+## Stage workflow diagram
+
+Use this flow as the implementation order. The decision branches are the points where tests, policy checks or operational controls must stop unsafe progress.
+
+```mermaid
+flowchart TD
+  A[Host or agent runtime] --> B[Discover peer/server]
+  B --> C[Negotiate protocol and capabilities]
+  C --> D[Authenticate identity]
+  D --> E[Authorize requested capability]
+  E --> F[Validate schema and limits]
+  F --> G[Invoke tool or submit task]
+  G --> H[Stream progress/result]
+  H --> I[Audit and redact]
+  I --> J[Close or resume session]
+```
