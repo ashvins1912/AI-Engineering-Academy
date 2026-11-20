@@ -40,3 +40,24 @@ Explain the state machine, demonstrate crash recovery and idempotency, enforce a
 - LangGraph: https://langchain-ai.github.io/langgraph/
 - Pydantic: https://docs.pydantic.dev/
 - OWASP Agentic AI guidance: https://genai.owasp.org/
+
+
+## Stage workflow diagram
+
+Use this flow as the implementation order. The decision branches are the points where tests, policy checks or operational controls must stop unsafe progress.
+
+```mermaid
+flowchart TD
+  A[User goal] --> B[Typed state and policy]
+  B --> C[Plan next step]
+  C --> D[Validate tool and arguments]
+  D --> E{Approval required?}
+  E -- yes --> F[Human approval]
+  F -->|approved| G[Execute scoped tool]
+  F -->|denied| H[Stop safely]
+  E -- no --> G
+  G --> I[Persist observation and checkpoint]
+  I --> J{Done or budget exhausted?}
+  J -- no --> C
+  J -- yes --> K[Final response and trace]
+```
