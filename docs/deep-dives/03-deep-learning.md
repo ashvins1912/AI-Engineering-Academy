@@ -34,3 +34,22 @@ Explain the chain rule through a network, verify gradients numerically, diagnose
 - PyTorch tutorials: https://pytorch.org/tutorials/
 - Autograd: https://pytorch.org/tutorials/beginner/basics/autogradqs_tutorial.html
 - Reproducibility: https://pytorch.org/docs/stable/notes/randomness.html
+
+
+## Stage workflow diagram
+
+Use this flow as the implementation order. The decision branches are the points where tests, policy checks or operational controls must stop unsafe progress.
+
+```mermaid
+flowchart TD
+  A[Dataset and deterministic split] --> B[Batch and tensorize]
+  B --> C[Forward pass]
+  C --> D[Loss]
+  D --> E[Backpropagation]
+  E --> F[Optimizer update]
+  F --> G{Validation improved?}
+  G -- yes --> H[Checkpoint model and optimizer]
+  G -- no --> I[Diagnose gradients and regularization]
+  I --> F
+  H --> J[Final evaluation and inference package]
+```
