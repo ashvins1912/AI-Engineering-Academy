@@ -4,6 +4,7 @@ import { curriculum, type Lesson } from './data/curriculum'
 import MathLabs from './components/MathLabs'
 import Stage1MasteryLabs from './components/Stage1MasteryLabs'
 import MLLabs from './components/MLLabs'
+import Stage2MasteryLabs from './components/Stage2MasteryLabs'
 import TransformerLabs from './components/TransformerLabs'
 import RAGLabs from './components/RAGLabs'
 import LessonPractice from './components/LessonPractice'
@@ -58,8 +59,8 @@ export default function App() {
       <section className="main-panel"><div className="stage-heading"><div><div className="eyebrow">STAGE {String(stageNumber).padStart(2,'0')} · LEARNING PATH</div><h2>{active.title}</h2><p>{active.outcome}</p></div><div className="stage-icon"><Cpu size={27}/></div></div>
         {active.id==='stage-1'&&<div className="phase-lab-launch"><div><strong>Interactive foundations lab</strong><p>Seven guided topics with step-by-step numerical animations, failure labs and mastery checks.</p></div><button className="lab-primary" onClick={()=>setShowLabs(v=>!v)}>{showLabs?'Hide labs':'Open 7 mastery gates'} <ChevronRight size={15}/></button></div>}
         {active.id==='stage-1'&&showLabs&&<><Stage1MasteryLabs/><MathLabs/></>}
-        {active.id==='stage-2'&&<div className="phase-lab-launch"><div><strong>Interactive machine learning workbench</strong><p>Train and inspect classical ML models, clustering and neural network learning mechanics.</p></div><button className="lab-primary" onClick={()=>setShowMLLabs(v=>!v)}>{showMLLabs?'Hide workbench':'Open 11 interactive labs'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-2'&&showMLLabs&&<MLLabs/>}
+        {active.id==='stage-2'&&<div className="phase-lab-launch"><div><strong>Interactive machine learning workbench</strong><p>Seven classical ML topics with editable numerical experiments, failure analysis and practical mastery evidence.</p></div><button className="lab-primary" onClick={()=>setShowMLLabs(v=>!v)}>{showMLLabs?'Hide workbench':'Open 7 mastery gates + workbench'} <ChevronRight size={15}/></button></div>}
+        {active.id==='stage-2'&&showMLLabs&&<><Stage2MasteryLabs/><MLLabs/></>}
         {active.id==='stage-3'&&<div className="phase-lab-launch"><div><strong>Interactive neural network lab</strong><p>Explore neural-network gradients, CNN feature maps, recurrent sequence state, regularization and model evaluation.</p></div><button className="lab-primary" onClick={()=>setShowDeepLabs(v=>!v)}>{showDeepLabs?'Hide neural lab':'Open neural network lab'} <ChevronRight size={15}/></button></div>}
         {active.id==='stage-3'&&showDeepLabs&&<MLLabs initialTab="network"/>}
         {active.id==='stage-4'&&<div className="phase-lab-launch"><div><strong>Interactive transformer and LLM workbench</strong><p>Trace token IDs, embeddings, Q/K/V attention, multi-head projections, transformer blocks and next-token decoding.</p></div><button className="lab-primary" onClick={()=>setShowTransformerLabs(v=>!v)}>{showTransformerLabs?'Hide transformer labs':'Open 6 transformer labs'} <ChevronRight size={15}/></button></div>}

@@ -496,3 +496,45 @@
 .stage1-evidence>strong{font-size:10px;color:#aebaff;margin-bottom:3px}
 .stage1-evidence label{display:flex;gap:8px;align-items:flex-start;font-size:10px;line-height:1.5;color:#c5d1e4}
 .stage1-evidence input{accent-color:#8fe1c6;margin-top:2px;flex:0 0 auto}
+
+/* Stage 2: classical machine-learning mastery workbench */
+.stage2-mastery{margin:22px 0;padding:20px;border:1px solid #354765;border-radius:16px;background:linear-gradient(145deg,#101d31,#0b1423);color:#e6edfc}
+.stage2-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
+.stage2-head h2{font:600 22px 'Space Grotesk';margin:8px 0;color:#eef3ff}
+.stage2-head p{font-size:11px;line-height:1.7;color:#9eacc3;max-width:760px}
+.stage2-progress{min-width:88px;padding:12px;border:1px solid #354765;border-radius:10px;text-align:center;background:#14233a}
+.stage2-progress strong{display:block;font:700 23px 'DM Mono';color:#8ee2c6}
+.stage2-progress span{font-size:9px;color:#9eacc3}
+.stage2-tabs{display:flex;gap:7px;overflow-x:auto;padding:12px 0}
+.stage2-tabs button{flex:0 0 auto;border:1px solid #354765;border-radius:8px;background:#14233a;color:#bdc9dc;padding:9px 11px;font:600 10px 'DM Sans';cursor:pointer}
+.stage2-tabs button.active{border-color:#9aa8ff;background:#29395c;color:#fff}
+.stage2-card{border:1px solid #344969;border-radius:12px;background:#101b2e;padding:16px}
+.stage2-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.stage2-panel{min-width:0;padding:14px;border:1px solid #2e405d;border-radius:10px;background:#132139}
+.stage2-panel h3{font:600 12px 'DM Sans';color:#e5edff;margin:0 0 12px}
+.stage2-panel p{font-size:10px;line-height:1.65;color:#aab9d0}
+.stage2-value{padding:10px;margin:9px 0;border:1px solid #354765;border-radius:8px;background:#172742;font:700 14px 'DM Mono';color:#8fe1c6}
+.stage2-slider{display:block;margin:12px 0}
+.stage2-slider span{display:flex;justify-content:space-between;font-size:10px;color:#b9c7dd;margin-bottom:6px}
+.stage2-slider strong{font:11px 'DM Mono';color:#aebaff}
+.stage2-slider input{width:100%;accent-color:#91a0ff}
+.stage2-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:8px 0;border-bottom:1px solid #2b3d58;font-size:9px;color:#bdc9dc}
+.stage2-row strong{color:#8fe1c6}
+.stage2-row em{font-style:normal;color:#aebaff;text-align:right}
+.stage2-bars{height:12px;background:#27364e;border-radius:8px;overflow:hidden;margin:12px 0}
+.stage2-bars i{display:block;height:100%;background:#61d8b3;border-radius:8px}
+.stage2-bars span{display:block;font-size:9px;color:#aab9d0;margin-top:7px;background:transparent}
+.stage2-vote{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:10px;color:#bdc9dc;padding:5px 0}
+.stage2-vote select{border:1px solid #34445f;border-radius:6px;background:#0b1423;color:#e2eafa;padding:5px}
+.stage2-panel>button,.stage2-assessment>button{border:1px solid #91a0ff;border-radius:7px;background:#8796f5;color:#10192c;padding:8px 11px;font:600 10px 'DM Sans';cursor:pointer;margin:5px 6px 5px 0}
+.stage2-assessment{margin-top:14px;padding:14px;border:1px solid #3b4f70;border-radius:10px;background:#14233a}
+.stage2-assessment h3{font:600 12px/1.6 'DM Sans';color:#eff3ff;margin:7px 0 10px}
+.stage2-options,.stage2-evidence{display:grid;gap:8px;margin:10px 0}
+.stage2-options label,.stage2-evidence label{display:flex;gap:8px;align-items:flex-start;font-size:10px;line-height:1.5;color:#c4d0e3}
+.stage2-options input,.stage2-evidence input{accent-color:#91a0ff;margin-top:2px}
+.stage2-evidence{padding:12px;border:1px solid #354765;border-radius:8px;background:#101c30}
+.stage2-evidence>strong{font-size:10px;color:#aebaff}
+.stage2-assessment p{font-size:10px;line-height:1.6}
+.stage2-assessment p.correct{color:#83dfb9}
+.stage2-assessment p.incorrect{color:#f2b47c}
+@media(max-width:760px){.stage2-head{flex-direction:column}.stage2-grid{grid-template-columns:1fr}.stage2-progress{align-self:flex-start}}
