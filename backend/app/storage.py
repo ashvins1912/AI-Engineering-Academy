@@ -91,15 +91,24 @@ class S3PrivateObjectStore:
         return f"{self.prefix}/{safe}" if self.prefix else safe
 
     def put(self, key: str, data: bytes) -> None:
-        self.client.put_object(Bucket=self.bucket, Key=self._key(key), Body=data,
-                               ServerSideEncryption="aws:kms", SSEKMSKeyId=self.kms_key_id)
+        try:
+            self.client.put_object(Bucket=self.bucket, Key=self._key(key), Body=data,
+                                   ServerSideEncryption="aws:kms", SSEKMSKeyId=self.kms_key_id)
+        except Exception:
+            raise StorageError("private object write failed") from None
 
     def get(self, key: str) -> bytes:
-        response = self.client.get_object(Bucket=self.bucket, Key=self._key(key))
-        return response["Body"].read()
+        try:
+            response = self.client.get_object(Bucket=self.bucket, Key=self._key(key))
+            return response["Body"].read()
+        except Exception:
+            raise StorageError("private object read failed") from None
 
     def delete(self, key: str) -> None:
-        self.client.delete_object(Bucket=self.bucket, Key=self._key(key))
+        try:
+            self.client.delete_object(Bucket=self.bucket, Key=self._key(key))
+        except Exception:
+            raise StorageError("private object delete failed") from None
 
 
 def create_object_store(settings) -> PrivateObjectStore:
