@@ -1,0 +1,274 @@
+{
+  "version": "1.0.0",
+  "description": "Synthetic RAG golden set for regression testing; not production benchmark data.",
+  "queries": [
+    {
+      "id": "Q01",
+      "question": "How long after delivery can a refund be requested?",
+      "expected_evidence_ids": [
+        "policy-refund"
+      ],
+      "answerable": true,
+      "category": "refund"
+    },
+    {
+      "id": "Q02",
+      "question": "What condition must an item meet for a refund?",
+      "expected_evidence_ids": [
+        "policy-refund"
+      ],
+      "answerable": true,
+      "category": "refund"
+    },
+    {
+      "id": "Q03",
+      "question": "Do I need proof of purchase for a refund?",
+      "expected_evidence_ids": [
+        "policy-refund"
+      ],
+      "answerable": true,
+      "category": "refund"
+    },
+    {
+      "id": "Q04",
+      "question": "Who can approve a refund exception?",
+      "expected_evidence_ids": [
+        "policy-refund"
+      ],
+      "answerable": true,
+      "category": "refund"
+    },
+    {
+      "id": "Q05",
+      "question": "How long does standard shipping take?",
+      "expected_evidence_ids": [
+        "policy-shipping"
+      ],
+      "answerable": true,
+      "category": "shipping"
+    },
+    {
+      "id": "Q06",
+      "question": "What is the delivery time for express shipping?",
+      "expected_evidence_ids": [
+        "policy-shipping"
+      ],
+      "answerable": true,
+      "category": "shipping"
+    },
+    {
+      "id": "Q07",
+      "question": "When does shipment tracking become available?",
+      "expected_evidence_ids": [
+        "policy-shipping"
+      ],
+      "answerable": true,
+      "category": "shipping"
+    },
+    {
+      "id": "Q08",
+      "question": "How many business days should standard delivery take?",
+      "expected_evidence_ids": [
+        "policy-shipping"
+      ],
+      "answerable": true,
+      "category": "shipping"
+    },
+    {
+      "id": "Q09",
+      "question": "How long is the electronics warranty?",
+      "expected_evidence_ids": [
+        "policy-warranty"
+      ],
+      "answerable": true,
+      "category": "warranty"
+    },
+    {
+      "id": "Q10",
+      "question": "Are accidental damages covered by warranty?",
+      "expected_evidence_ids": [
+        "policy-warranty"
+      ],
+      "answerable": true,
+      "category": "warranty"
+    },
+    {
+      "id": "Q11",
+      "question": "What does the limited warranty cover?",
+      "expected_evidence_ids": [
+        "policy-warranty"
+      ],
+      "answerable": true,
+      "category": "warranty"
+    },
+    {
+      "id": "Q12",
+      "question": "Are unauthorized repairs covered?",
+      "expected_evidence_ids": [
+        "policy-warranty"
+      ],
+      "answerable": true,
+      "category": "warranty"
+    },
+    {
+      "id": "Q13",
+      "question": "Can an account holder request a copy of personal data?",
+      "expected_evidence_ids": [
+        "policy-privacy"
+      ],
+      "answerable": true,
+      "category": "privacy"
+    },
+    {
+      "id": "Q14",
+      "question": "How do I correct inaccurate profile information?",
+      "expected_evidence_ids": [
+        "policy-privacy"
+      ],
+      "answerable": true,
+      "category": "privacy"
+    },
+    {
+      "id": "Q15",
+      "question": "Are data export requests verified?",
+      "expected_evidence_ids": [
+        "policy-privacy"
+      ],
+      "answerable": true,
+      "category": "privacy"
+    },
+    {
+      "id": "Q16",
+      "question": "Who can request an account data copy?",
+      "expected_evidence_ids": [
+        "policy-privacy"
+      ],
+      "answerable": true,
+      "category": "privacy"
+    },
+    {
+      "id": "Q17",
+      "question": "What should I do after suspicious sign-in activity?",
+      "expected_evidence_ids": [
+        "policy-security"
+      ],
+      "answerable": true,
+      "category": "security"
+    },
+    {
+      "id": "Q18",
+      "question": "Which sign-in protection should learners enable?",
+      "expected_evidence_ids": [
+        "policy-security"
+      ],
+      "answerable": true,
+      "category": "security"
+    },
+    {
+      "id": "Q19",
+      "question": "When should compromised credentials be rotated?",
+      "expected_evidence_ids": [
+        "policy-security"
+      ],
+      "answerable": true,
+      "category": "security"
+    },
+    {
+      "id": "Q20",
+      "question": "Who receives suspicious sign-in reports?",
+      "expected_evidence_ids": [
+        "policy-security"
+      ],
+      "answerable": true,
+      "category": "security"
+    },
+    {
+      "id": "Q21",
+      "question": "What must a new learner complete first?",
+      "expected_evidence_ids": [
+        "policy-onboarding"
+      ],
+      "answerable": true,
+      "category": "onboarding"
+    },
+    {
+      "id": "Q22",
+      "question": "When do advanced learning modules unlock?",
+      "expected_evidence_ids": [
+        "policy-onboarding"
+      ],
+      "answerable": true,
+      "category": "onboarding"
+    },
+    {
+      "id": "Q23",
+      "question": "How do learners choose a learning path?",
+      "expected_evidence_ids": [
+        "policy-onboarding"
+      ],
+      "answerable": true,
+      "category": "onboarding"
+    },
+    {
+      "id": "Q24",
+      "question": "Which assessment is required before advanced modules?",
+      "expected_evidence_ids": [
+        "policy-onboarding"
+      ],
+      "answerable": true,
+      "category": "onboarding"
+    },
+    {
+      "id": "Q25",
+      "question": "How long are uploaded workspace documents retained?",
+      "expected_evidence_ids": [
+        "policy-retention"
+      ],
+      "answerable": true,
+      "category": "retention"
+    },
+    {
+      "id": "Q26",
+      "question": "What happens to indexes after a deletion request?",
+      "expected_evidence_ids": [
+        "policy-retention"
+      ],
+      "answerable": true,
+      "category": "retention"
+    },
+    {
+      "id": "Q27",
+      "question": "When do deleted records expire from backups?",
+      "expected_evidence_ids": [
+        "policy-retention"
+      ],
+      "answerable": true,
+      "category": "retention"
+    },
+    {
+      "id": "Q28",
+      "question": "Who can access a private workspace document?",
+      "expected_evidence_ids": [
+        "policy-access"
+      ],
+      "answerable": true,
+      "category": "access"
+    },
+    {
+      "id": "Q29",
+      "question": "Can a tenant administrator audit document access?",
+      "expected_evidence_ids": [
+        "policy-access"
+      ],
+      "answerable": true,
+      "category": "access"
+    },
+    {
+      "id": "Q30",
+      "question": "Can a document be shared outside its tenant by default?",
+      "expected_evidence_ids": [],
+      "answerable": false,
+      "category": "no-answer"
+    }
+  ]
+}
