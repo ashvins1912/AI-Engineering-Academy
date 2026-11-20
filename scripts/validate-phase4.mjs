@@ -109,14 +109,6 @@ assert.ok(app.includes('<Stage2MasteryLabs/>'), 'Stage 2 mastery labs must be in
 console.log('PASS seven Stage 2 mastery topics, ten reference algorithms and cross-validated model-comparison project')
 
 
-// Stage 3's seven deep-learning mastery gates must be reachable and evidence-based.
-const stage3Mastery = readFileSync(new URL('../src/components/Stage3MasteryLabs.tsx', import.meta.url), 'utf8')
-for (const id of ['perceptron','forward','backprop','optimizers','cnn','sequence','training']) assert.ok(stage3Mastery.includes(`id:'${id}'`), `Missing Stage 3 mastery topic: ${id}`)
-for (const token of ['Gradient check','LSTM gate state','Train vs validation curves','Required evidence','Mastery gate passed']) assert.ok(stage3Mastery.includes(token), `Missing Stage 3 mastery feature: ${token}`)
-assert.ok(app.includes('<Stage3MasteryLabs/>'), 'Stage 3 mastery labs must be integrated into the learning path')
-console.log('PASS seven evidence-gated Stage 3 deep-learning topics')
-
-
 // Stage 3 deep-learning mastery, numerical references and checkpointed project.
 const stage3Mastery = readFileSync(new URL('../src/components/Stage3MasteryLabs.tsx', import.meta.url), 'utf8')
 const stage3Guide = readFileSync(new URL('../docs/deep-dives/03-deep-learning.md', import.meta.url), 'utf8')
