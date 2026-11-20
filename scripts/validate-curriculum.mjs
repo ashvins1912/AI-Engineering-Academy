@@ -21,8 +21,8 @@ const missingLessonLabs = lessonStagePairs.filter(({ id, stage }) => {
 
 const incompleteLessonLabs = lessonStagePairs.filter(({ id, stage }) => {
   try {
-    const pack = readFileSync(new URL(\`../docs/deep-dives/labs/stage-\${String(stage).padStart(2, '0')}.md\`, import.meta.url), 'utf8')
-    const section = pack.split(/\n(?=## [\w-]+ — )/).find(block => block.startsWith(\`## \${id} —\`))
+    const pack = readFileSync(new URL('../docs/deep-dives/labs/stage-' + String(stage).padStart(2, '0') + '.md', import.meta.url), 'utf8')
+    const section = pack.split(/\n(?=## [\w-]+ — )/).find(block => block.startsWith('## ' + id + ' —'))
     const requiredSections = ['**Implementation task:**', '**Worked fixture:**', '**Expected result:**', '**Verification tests:**', '**Debugging checklist:**', '**Interview checks:**', '**Submission evidence:**']
     return !section || section.includes('undefined') || requiredSections.some(label => !section.includes(label))
   } catch { return true }
