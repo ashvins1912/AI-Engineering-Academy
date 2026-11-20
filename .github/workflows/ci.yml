@@ -19,6 +19,7 @@ jobs:
       - run: npm run validate:stage1
       - run: npm run validate:stage2
       - run: npm run validate:stage3
+      - run: npm run validate:stage4
       - run: npm run validate:phase3
       - run: npm run validate:phase4
       - run: npm run validate:phase5
