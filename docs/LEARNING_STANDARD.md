@@ -22,3 +22,19 @@ A lesson is not complete if it is only prose, a list of definitions, a copied di
 
 ## Mastery evidence
 Track separate evidence for conceptual explanation, calculation/reasoning, implementation, debugging and applied design. Completion is not equivalent to mastery.
+
+## Interactive implementation workbench requirement
+
+Every lesson detail view must expose a guided practice workbench in addition to its conceptual notes. The workbench must include:
+
+1. An interactive, step-selectable workflow based on the lesson's own workflow sequence.
+2. Local environment setup commands that create an isolated Python environment and install only the lesson-track packages required by the example.
+3. A copyable starter implementation with a clear run command and expected observation.
+4. Debugging prompts that deliberately target likely shape, data, protocol, security or operational failures for the topic.
+5. A production checklist appropriate to the stage, including validation, authorization, reliability, observability, resource limits and cost where relevant.
+6. Official primary documentation links for the relevant technical ecosystem.
+7. An independent practice submission and explicit completion criteria.
+
+The Academy website itself must not execute arbitrary learner code. Code is copied into a learner-controlled local environment or notebook. Interactive visualizations may remain deterministic browser-side teaching simulations and must label simplifications honestly.
+
+A starter snippet is a launch point, not a substitute for the full assignment. Topic-specific lessons should progressively add implementation-from-scratch, framework-assisted implementation, tests, failure injection and production design.
