@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from sqlalchemy import or_, select, update
+from sqlalchemy import func, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .db import set_tenant_context
@@ -16,28 +16,62 @@ def retry_delay_seconds(attempt: int, base_seconds: int = 5, max_seconds: int = 
     return min(max_seconds, base_seconds * (2 ** min(attempt - 1, 20)))
 
 
-async def claim_next_job(session: AsyncSession, tenant_id: UUID, lease_seconds: int = 300) -> dict | None:
-    """Claim one tenant-scoped job with SKIP LOCKED; run one worker per tenant scope."""
+def can_claim_job(active_jobs: int, max_concurrent_jobs: int) -> bool:
+    if active_jobs < 0 or max_concurrent_jobs < 1:
+        raise ValueError("active_jobs must be non-negative and concurrency limit positive")
+    return active_jobs < max_concurrent_jobs
+
+
+async def claim_next_job(
+    session: AsyncSession,
+    tenant_id: UUID,
+    lease_seconds: int = 300,
+    max_concurrent_jobs: int = 1,
+) -> dict | None:
+    """Claim one job while serializing tenant quota checks across worker processes."""
     if lease_seconds < 30:
         raise ValueError("lease_seconds must be at least 30")
+    if max_concurrent_jobs < 1:
+        raise ValueError("max_concurrent_jobs must be positive")
     await set_tenant_context(session, str(tenant_id))
+    # A transaction-scoped advisory lock makes the count-and-claim operation atomic
+    # across independent worker processes for the same tenant. Hash collisions only
+    # serialize unrelated tenants; they cannot weaken tenant isolation.
+    await session.execute(
+        text("SELECT pg_advisory_xact_lock(hashtextextended(:tenant_id, 0))"),
+        {"tenant_id": str(tenant_id)},
+    )
     now = datetime.now(timezone.utc)
     await session.execute(
         update(IngestionJob)
-        .where(IngestionJob.tenant_id == tenant_id, IngestionJob.status == "processing",
-               IngestionJob.lease_until < now, IngestionJob.attempts >= IngestionJob.max_attempts)
-        .values(status="dead", lease_until=None, error_code="lease_expired_max_attempts")
+        .where(
+            IngestionJob.tenant_id == tenant_id,
+            IngestionJob.status == "processing",
+            IngestionJob.lease_until < now,
+            IngestionJob.attempts >= IngestionJob.max_attempts,
+        )
+        .values(status="dead", lease_until=None, error_code="lease_expired_max_attempts", completed_at=now)
     )
-    await session.commit()
-    await set_tenant_context(session, str(tenant_id))
+    active_jobs = await session.scalar(
+        select(func.count(IngestionJob.id)).where(
+            IngestionJob.tenant_id == tenant_id,
+            IngestionJob.status == "processing",
+            IngestionJob.lease_until > now,
+        )
+    ) or 0
+    if not can_claim_job(active_jobs, max_concurrent_jobs):
+        await session.rollback()
+        return None
     statement = (
         select(IngestionJob)
         .where(
             IngestionJob.tenant_id == tenant_id,
             IngestionJob.attempts < IngestionJob.max_attempts,
             IngestionJob.next_attempt_at <= now,
-            or_(IngestionJob.status == "queued",
-                (IngestionJob.status == "processing") & (IngestionJob.lease_until < now)),
+            or_(
+                IngestionJob.status == "queued",
+                (IngestionJob.status == "processing") & (IngestionJob.lease_until < now),
+            ),
         )
         .order_by(IngestionJob.created_at.asc())
         .with_for_update(skip_locked=True)
@@ -61,6 +95,60 @@ async def claim_next_job(session: AsyncSession, tenant_id: UUID, lease_seconds: 
     }
 
 
+async def cancel_queued_job(
+    session: AsyncSession,
+    tenant_id: UUID,
+    job_id: UUID,
+    owner_id: UUID,
+    is_admin: bool = False,
+) -> dict:
+    """Cancel only queued jobs; processing jobs cannot be safely interrupted mid-parser."""
+    await set_tenant_context(session, str(tenant_id))
+    statement = select(IngestionJob).where(
+        IngestionJob.id == job_id,
+        IngestionJob.tenant_id == tenant_id,
+    )
+    if not is_admin:
+        statement = statement.where(IngestionJob.owner_id == owner_id)
+    job = await session.scalar(statement.with_for_update())
+    if job is None:
+        raise LookupError("ingestion job not found")
+    if job.status == "cancelled":
+        await session.rollback()
+        return {"object_key": job.object_key, "changed": False}
+    if job.status != "queued":
+        await session.rollback()
+        raise ValueError("only queued ingestion jobs can be cancelled")
+    job.status = "cancelled"
+    job.lease_until = None
+    job.completed_at = datetime.now(timezone.utc)
+    await session.commit()
+    return {"object_key": job.object_key, "changed": True}
+
+
+async def replay_dead_job(session: AsyncSession, tenant_id: UUID, job_id: UUID) -> IngestionJob:
+    """Requeue one dead-letter job for an administrator after inspecting its error."""
+    await set_tenant_context(session, str(tenant_id))
+    job = await session.scalar(
+        select(IngestionJob)
+        .where(IngestionJob.id == job_id, IngestionJob.tenant_id == tenant_id)
+        .with_for_update()
+    )
+    if job is None:
+        raise LookupError("ingestion job not found")
+    if job.status != "dead":
+        await session.rollback()
+        raise ValueError("only dead-letter jobs can be replayed")
+    job.status = "queued"
+    job.attempts = 0
+    job.next_attempt_at = datetime.now(timezone.utc)
+    job.lease_until = None
+    job.error_code = None
+    job.completed_at = None
+    await session.commit()
+    return job
+
+
 async def mark_job_succeeded(session: AsyncSession, tenant_id: UUID, job_id: UUID, document_id: UUID) -> None:
     await set_tenant_context(session, str(tenant_id))
     job = await session.scalar(select(IngestionJob).where(IngestionJob.id == job_id, IngestionJob.tenant_id == tenant_id))
@@ -79,11 +167,16 @@ async def mark_job_failed(session: AsyncSession, tenant_id: UUID, job_id: UUID, 
     job = await session.scalar(select(IngestionJob).where(IngestionJob.id == job_id, IngestionJob.tenant_id == tenant_id))
     if job is None:
         raise LookupError("ingestion job not found")
+    if job.status == "cancelled":
+        await session.rollback()
+        return
     delay = retry_delay_seconds(max(1, attempts))
     job.status = "dead" if attempts >= max_attempts else "queued"
     job.next_attempt_at = datetime.now(timezone.utc) + timedelta(seconds=delay)
     job.lease_until = None
     job.error_code = error_code[:80]
+    if job.status == "dead":
+        job.completed_at = datetime.now(timezone.utc)
     await session.commit()
 
 

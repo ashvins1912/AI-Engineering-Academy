@@ -23,6 +23,7 @@ from .storage import StorageError, create_object_store
 from .security import Principal, current_principal, require_admin
 from .middleware import SimpleRateLimitMiddleware
 from .request_limits import RequestBodyLimitMiddleware
+from .jobs import cancel_queued_job, replay_dead_job
 
 cfg = get_settings()
 logger = logging.getLogger('academy.api')
@@ -203,6 +204,75 @@ async def get_ingestion_job(
         created_at=job.created_at.isoformat() if job.created_at else None,
         completed_at=job.completed_at.isoformat() if job.completed_at else None,
     )
+
+@app.delete("/v1/ingestion-jobs/{job_id}", status_code=204)
+async def cancel_ingestion_job(
+    job_id: UUID,
+    principal: Principal = Depends(current_principal),
+    session: AsyncSession = Depends(get_session),
+):
+    is_admin = bool({"tenant_admin", "platform_admin"} & set(principal.roles))
+    try:
+        result = await cancel_queued_job(
+            session, principal.tenant_id, job_id, principal.user_id, is_admin=is_admin
+        )
+    except LookupError:
+        raise HTTPException(404, "Ingestion job not found") from None
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from None
+    if result["changed"]:
+        try:
+            store = create_object_store(cfg)
+            await run_in_threadpool(store.delete, result["object_key"])
+        except (StorageError, OSError):
+            logger.warning("cancelled_ingestion_object_cleanup_pending", extra={
+                "tenant_id": str(principal.tenant_id), "job_id": str(job_id)
+            })
+    return None
+
+
+@app.get("/v1/admin/ingestion-jobs/dead", response_model=list[IngestionJobOut])
+async def list_dead_ingestion_jobs(
+    principal: Principal = Depends(require_admin),
+    session: AsyncSession = Depends(get_session),
+):
+    await set_tenant_context(session, str(principal.tenant_id))
+    jobs = (await session.scalars(
+        select(IngestionJob)
+        .where(IngestionJob.tenant_id == principal.tenant_id, IngestionJob.status == "dead")
+        .order_by(IngestionJob.created_at.desc())
+        .limit(100)
+    )).all()
+    return [
+        IngestionJobOut(
+            id=job.id, filename=job.filename, status=job.status, attempts=job.attempts,
+            document_id=job.document_id, error_code=job.error_code,
+            created_at=job.created_at.isoformat() if job.created_at else None,
+            completed_at=job.completed_at.isoformat() if job.completed_at else None,
+        )
+        for job in jobs
+    ]
+
+
+@app.post("/v1/admin/ingestion-jobs/{job_id}/replay", response_model=IngestionJobOut, status_code=202)
+async def replay_ingestion_job(
+    job_id: UUID,
+    principal: Principal = Depends(require_admin),
+    session: AsyncSession = Depends(get_session),
+):
+    try:
+        job = await replay_dead_job(session, principal.tenant_id, job_id)
+    except LookupError:
+        raise HTTPException(404, "Ingestion job not found") from None
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from None
+    return IngestionJobOut(
+        id=job.id, filename=job.filename, status=job.status, attempts=job.attempts,
+        document_id=job.document_id, error_code=job.error_code,
+        created_at=job.created_at.isoformat() if job.created_at else None,
+        completed_at=None,
+    )
+
 
 @app.get("/v1/documents", response_model=list[DocumentOut])
 async def list_documents(principal: Principal = Depends(current_principal), session: AsyncSession = Depends(get_session)):

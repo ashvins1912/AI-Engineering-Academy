@@ -28,6 +28,13 @@ const required = [
  ['RLS-protected ingestion jobs','backend/migrations/002_document_acl_ingestion_jobs.sql','tenant_ingestion_jobs_isolation'],
  ['private document default','backend/app/models.py','default="private"'],
  ['bounded retry backoff','backend/app/jobs.py','retry_delay_seconds'],
+ ['tenant worker concurrency quota','backend/app/jobs.py','pg_advisory_xact_lock(hashtextextended'],
+ ['configurable tenant worker quota','backend/app/config.py','ingestion_max_concurrent_jobs_per_tenant'],
+ ['queued-job cancellation policy','backend/app/jobs.py','cancel_queued_job'],
+ ['dead-letter replay policy','backend/app/jobs.py','replay_dead_job'],
+ ['cancel ingestion endpoint','backend/app/main.py','/v1/ingestion-jobs/{job_id}'],
+ ['dead-letter review endpoint','backend/app/main.py','/v1/admin/ingestion-jobs/dead'],
+ ['dead-letter replay endpoint','backend/app/main.py','/v1/admin/ingestion-jobs/{job_id}/replay'],
  ['remote embedding adapter','backend/app/embeddings.py','encode_texts_async'],
  ['grounded generation adapter','backend/app/generation.py','OpenAICompatibleProvider'],
  ['exact-span citation validator','backend/app/citations.py','validate_citations'],
@@ -42,4 +49,8 @@ for (const [name,path,token] of required) {
 }
 const pkg = JSON.parse(read('package.json'))
 assert.ok(pkg.scripts['validate:production-rag'], 'validation command missing')
+const jobTests = read('backend/tests/test_jobs.py')
+const apiTests = read('backend/tests/test_async_ingestion_api.py')
+assert.ok(jobTests.includes('can_claim_job'), 'tenant quota policy tests missing')
+assert.ok(apiTests.includes('cancel_and_dead_letter_admin_routes_exist'), 'job lifecycle route tests missing')
 console.log('PASS production RAG API contract checks')

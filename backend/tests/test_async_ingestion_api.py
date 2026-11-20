@@ -12,6 +12,12 @@ class AsyncIngestionAPIContractTests(unittest.TestCase):
         self.assertEqual(upload.status_code, 202)
         self.assertEqual(status.status_code or 200, 200)
 
+    def test_cancel_and_dead_letter_admin_routes_exist(self):
+        routes = {(route.path, tuple(sorted(route.methods or []))): route for route in app.routes}
+        self.assertIn(("/v1/ingestion-jobs/{job_id}", ("DELETE",)), routes)
+        self.assertIn(("/v1/admin/ingestion-jobs/dead", ("GET",)), routes)
+        self.assertIn(("/v1/admin/ingestion-jobs/{job_id}/replay", ("POST",)), routes)
+
     def test_document_schema_exposes_visibility(self):
         schema = DocumentOut.model_json_schema()
         self.assertIn("visibility", schema["properties"])

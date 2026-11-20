@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     clamav_port: int = 3310
     ingestion_job_max_attempts: int = 5
     ingestion_job_lease_seconds: int = 900
+    ingestion_max_concurrent_jobs_per_tenant: int = 1
 
 @lru_cache
 def get_settings() -> Settings:

@@ -37,7 +37,7 @@ async def _renew_lease(tenant_id: UUID, job_id: UUID, lease_seconds: int) -> Non
 async def process_one(tenant_id: UUID) -> bool:
     settings = get_settings()
     async with SessionLocal() as session:
-        job = await claim_next_job(session, tenant_id, settings.ingestion_job_lease_seconds)
+        job = await claim_next_job(session, tenant_id, settings.ingestion_job_lease_seconds, settings.ingestion_max_concurrent_jobs_per_tenant)
     if job is None:
         return False
 
