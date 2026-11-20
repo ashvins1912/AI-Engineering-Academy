@@ -384,3 +384,55 @@
 .interview-rubric input{accent-color:#8998ff;margin-top:1px}
 .interview-footnote{font-size:9px;color:#7888a4;line-height:1.6;margin:13px 0 0}
 @media(max-width:760px){.interview-rounds{grid-template-columns:repeat(2,minmax(0,1fr))}.interview-feedback{grid-template-columns:1fr}.interview-studio-head{flex-direction:column}.interview-progress{text-align:left}}
+
+
+/* Senior architect review: animated request flow */
+.architecture-flow{margin:26px 0 32px;padding:22px;border:1px solid #354765;border-radius:16px;background:linear-gradient(145deg,#101d31,#0b1423)}
+.architecture-flow-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:18px}
+.architecture-kicker{display:flex;align-items:center;gap:7px;font:10px 'DM Mono';letter-spacing:1.2px;color:#aab8ff}
+.architecture-flow-head h2{font:600 22px 'Space Grotesk';margin:9px 0 6px;color:#edf2ff}
+.architecture-flow-head p{font-size:11px;line-height:1.7;color:#9aa9c1;max-width:760px;margin:0}
+.architecture-count{font:12px 'DM Mono';color:#c5d0ff;white-space:nowrap}
+.architecture-track{display:grid;grid-template-columns:repeat(9,minmax(100px,1fr));gap:7px;overflow-x:auto;padding:3px 1px 12px}
+.architecture-node{min-height:94px;text-align:left;border:1px solid #2d405e;border-radius:9px;padding:10px;background:#111e32;color:#b7c5dc;cursor:pointer;transition:border-color .2s,background .2s,transform .2s}
+.architecture-node:hover{transform:translateY(-2px);border-color:#7f91ed}
+.architecture-node.active{border-color:#91a0ff;background:#253459;box-shadow:0 0 0 2px #8798ff20;animation:flowPulse 1.5s ease-in-out infinite}
+.architecture-node.visited{border-color:#416e75;background:#132b34}
+.architecture-node-number{display:block;font:10px 'DM Mono';color:#9caeff;margin-bottom:9px}
+.architecture-node strong{display:block;font:600 10px/1.4 'DM Sans';color:#e2e9fa}
+.architecture-node small{display:block;font:9px 'DM Mono';color:#8192b0;margin-top:6px}
+.architecture-detail{border:1px solid #344969;border-radius:11px;background:#101b2e;padding:15px;animation:flowEnter .24s ease-out}
+.architecture-detail-top{display:flex;flex-direction:column;gap:5px;margin-bottom:13px}
+.architecture-detail-top span,.architecture-detail-grid small{font:9px 'DM Mono';letter-spacing:1px;color:#9eafff}
+.architecture-detail-top strong{font:600 16px 'Space Grotesk';color:#eef2ff}
+.architecture-detail-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.architecture-detail-grid>div{padding:11px;border:1px solid #2a3c59;border-radius:8px;background:#121f34}
+.architecture-detail-grid p{font-size:10px;line-height:1.65;color:#b1bfd5;margin:7px 0 0}
+.architecture-controls{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+.architecture-controls button{display:flex;align-items:center;gap:6px;border:1px solid #3b4d6d;border-radius:7px;padding:8px 11px;background:#1a2943;color:#d8e1f5;font:600 10px 'DM Sans';cursor:pointer}
+.architecture-controls button.next{background:#8594fa;border-color:#a0adff;color:#0b1223}
+.architecture-controls button:disabled{opacity:.35;cursor:not-allowed}
+@keyframes flowPulse{0%,100%{box-shadow:0 0 0 1px #8999ff20}50%{box-shadow:0 0 0 4px #8999ff35}}
+@keyframes flowEnter{from{opacity:.55;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+/* Per-topic student reflection */
+.student-reflection{margin:24px 0 8px;padding:18px;border:1px solid #394b68;border-radius:13px;background:#101a2b}
+.reflection-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.reflection-kicker{display:flex;align-items:center;gap:6px;font:9px 'DM Mono';letter-spacing:1px;color:#aab8ff}
+.reflection-heading h3{font:600 17px 'Space Grotesk';margin:8px 0;color:#e8efff}
+.reflection-local{font:9px 'DM Mono';color:#8da0bf;white-space:nowrap}
+.reflection-intro{font-size:10px;line-height:1.65;color:#9baac1;margin:3px 0 14px}
+.reflection-ratings{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.reflection-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.reflection-field>span,.reflection-notes label>span{font-size:10px;color:#c5d0e4}
+.reflection-field select,.reflection-notes textarea,.reflection-notes select{width:100%;border:1px solid #34445f;border-radius:7px;background:#0b1423;color:#e2eafa;padding:9px;font:10px 'DM Sans'}
+.reflection-proficiency{margin-top:12px;padding:12px;border:1px solid #2b3e5a;border-radius:8px;background:#121f33}
+.reflection-proficiency p{font-size:9px;color:#8fa0bb;margin:7px 0 0}
+.reflection-notes{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:12px}
+.reflection-notes label{display:flex;flex-direction:column;gap:6px}
+.reflection-notes textarea{min-height:88px;resize:vertical;line-height:1.6}
+.reflection-notes label:nth-child(3),.reflection-notes label:nth-child(4){grid-column:1/-1}
+.reflection-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:13px}
+.reflection-actions button{display:flex;align-items:center;gap:6px;border:1px solid #9aa7ff;border-radius:7px;background:#8291f5;color:#0b1223;padding:8px 12px;font:600 10px 'DM Sans';cursor:pointer}
+.reflection-actions span{font-size:9px;color:#91a2be}
+@media(max-width:760px){.architecture-flow-head{flex-direction:column}.architecture-track{grid-template-columns:repeat(9,125px)}.architecture-detail-grid{grid-template-columns:1fr}.reflection-ratings{grid-template-columns:1fr 1fr}.reflection-notes{grid-template-columns:1fr}.reflection-notes label:nth-child(3),.reflection-notes label:nth-child(4){grid-column:auto}.reflection-heading{flex-direction:column}}
