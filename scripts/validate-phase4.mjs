@@ -90,3 +90,27 @@ for (const token of ['Information gain','Bagging vote experiment','Nearest neigh
 }
 assert.ok(app.includes('<Stage2MasteryLabs/>'), 'Stage 2 mastery labs must be integrated into the learning path')
 console.log('PASS seven evidence-gated Stage 2 classical ML topics')
+
+
+// Stage 2 classical ML mastery and model-comparison project contracts.
+const stage2Mastery = readFileSync(new URL('../src/components/Stage2MasteryLabs.tsx', import.meta.url), 'utf8')
+const stage2Guide = readFileSync(new URL('../docs/deep-dives/02-classical-machine-learning.md', import.meta.url), 'utf8')
+const stage2Pack = readFileSync(new URL('../docs/deep-dives/labs/stage-02.md', import.meta.url), 'utf8')
+const stage2Python = readFileSync(new URL('../examples/stage-02/classical_ml.py', import.meta.url), 'utf8')
+const stage2Tests = readFileSync(new URL('../examples/stage-02/test_classical_ml.py', import.meta.url), 'utf8')
+const modelProject = readFileSync(new URL('../examples/stage-02/model_comparison.py', import.meta.url), 'utf8')
+const modelTests = readFileSync(new URL('../examples/stage-02/test_model_comparison.py', import.meta.url), 'utf8')
+for (const id of ['linear-regression','logistic-regression','trees','svm-knn','clustering','pca','metrics']) {
+  assert.ok(stage2Mastery.includes(`id:'${id}'`), `Missing Stage 2 interactive topic: ${id}`)
+  assert.ok(stage2Pack.includes(`## ${id} —`), `Missing Stage 2 lab pack topic: ${id}`)
+}
+for (const section of ['Worked calculation','Numerical animation storyboard','Failure lab','Assessment gate']) {
+  assert.ok(stage2Guide.includes(section), `Missing Stage 2 guide section: ${section}`)
+}
+for (const fn of ['linear_regression','sigmoid','binary_cross_entropy','information_gain','majority_vote','knn_predict','kmeans_step','pca_2d','confusion_metrics','roc_auc']) {
+  assert.ok(stage2Python.includes(`def ${fn}(`), `Missing Stage 2 reference algorithm: ${fn}`)
+}
+assert.ok((stage2Tests.match(/    def test_/g)||[]).length>=15, 'Stage 2 algorithm suite needs at least 15 tests')
+assert.ok((modelTests.match(/    def test_/g)||[]).length>=5, 'Stage 2 project suite needs at least five tests')
+for (const token of ['stratified_folds','fit_scaler','fit_logistic','fit_bagged_stumps','validation_used_for_fit']) assert.ok(modelProject.includes(token), `Missing model comparison invariant: ${token}`)
+console.log('PASS seven Stage 2 mastery topics, ten reference algorithms and cross-validated model-comparison project')
