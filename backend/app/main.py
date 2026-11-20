@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 from hashlib import sha256
+import logging
 from pathlib import Path
 from uuid import UUID, uuid4
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
@@ -22,6 +23,7 @@ from .middleware import SimpleRateLimitMiddleware
 from .request_limits import RequestBodyLimitMiddleware
 
 cfg = get_settings()
+logger = logging.getLogger('academy.api')
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Schema creation is intentionally not automatic in production; run migrations first.
