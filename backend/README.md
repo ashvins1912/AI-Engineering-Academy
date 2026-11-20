@@ -7,7 +7,7 @@ FastAPI service for PDF/DOCX parsing, scanned-PDF OCR, sentence-transformer embe
 - Python 3.11+
 - PostgreSQL 16+ with pgvector
 - Tesseract OCR and Poppler installed
-- First-use model download for sentence-transformers/all-MiniLM-L6-v2 (384 dimensions, CPU supported; first load is memory intensive)
+- Either a local first-use download of sentence-transformers/all-MiniLM-L6-v2 (384 dimensions; memory intensive) or a configured OpenAI-compatible remote embeddings endpoint
 - Optional ClamAV daemon for upload malware scanning
 
 ## Run locally
@@ -28,6 +28,7 @@ The API listens on port 8000.
 - `GET /v1/documents`
 - `DELETE /v1/documents/{id}` owner or tenant admin
 - `POST /v1/search` JSON `{"query":"...","top_k":5}`
+- `POST /v1/answer` grounded answer with validated exact-span citations; disabled by default
 - `GET /v1/admin/tenant-health` tenant admin
 
 ## Asynchronous ingestion, storage and malware scanning
@@ -44,7 +45,7 @@ The tenant ID is an operator-supplied trusted worker scope, never a browser para
 
 `ACADEMY_STORAGE_BACKEND=local` is for local development only. Production should use `ACADEMY_STORAGE_BACKEND=s3`, a private bucket, KMS key, bucket policy blocking public access, lifecycle/retention and deletion controls. The S3 adapter uses SSE-KMS. Configure `ACADEMY_MALWARE_SCAN_REQUIRED=true` and a reachable ClamAV daemon for public uploads; the API fails closed if scanning is required but unavailable. Local storage is not durable or shared across ephemeral instances.
 
-The synchronous `/v1/documents` endpoint remains for compatibility. The worker currently uses the local SentenceTransformers model path; isolate it from the API process and provision worker memory/CPU separately before deployment.
+The synchronous `/v1/documents` endpoint remains for compatibility. The worker and API use the same configured embedding adapter. Set `ACADEMY_EMBEDDING_PROVIDER=http` with an authenticated OpenAI-compatible `/embeddings` endpoint to keep model weights out of API/worker memory; local SentenceTransformers remains the default for development.
 
 ## OCR and parsing
 
@@ -52,7 +53,11 @@ PDF text is extracted page-by-page with pypdf. Pages with fewer than 20 characte
 
 ## Embeddings and retrieval
 
-SentenceTransformers `all-MiniLM-L6-v2` creates normalized 384-dimensional vectors. pgvector cosine search retrieves semantic candidates. The lexical path calculates Okapi BM25 using tenant-local corpus size, average chunk length, document frequency and term frequency, with k1=1.2 and b=0.75. Hybrid ordering uses reciprocal-rank fusion (RRF, k=60). Tokenization is lowercase alphanumeric; language-specific stemming/analyzers need benchmarking. Do not change models/dimensions without versioned re-embedding.
+The default local SentenceTransformers `all-MiniLM-L6-v2` adapter creates normalized 384-dimensional vectors. An opt-in HTTP adapter supports an OpenAI-compatible embeddings endpoint and validates response count, ordering, dimension and finite values. Remote endpoints are disabled until configured. pgvector cosine search retrieves semantic candidates. The lexical path calculates Okapi BM25 using tenant-local corpus size, average chunk length, document frequency and term frequency, with k1=1.2 and b=0.75. Hybrid ordering uses reciprocal-rank fusion (RRF, k=60). Tokenization is lowercase alphanumeric; language-specific stemming/analyzers need benchmarking. Do not change models/dimensions without versioned re-embedding.
+
+## Grounded generation and citation validation
+
+`POST /v1/answer` is disabled unless `ACADEMY_GENERATION_ENABLED=true` and a model endpoint, API key and model name are configured. It retrieves only ACL-filtered evidence, applies a bounded character budget, treats document content as untrusted instructions, requests structured JSON and verifies every cited source ID and exact quote span against the retrieved chunks. Invalid citations or provider abstention produce an empty abstained answer. Exact-span validation does not prove semantic entailment for every claim; golden-set faithfulness and human review remain release gates. No provider credentials are stored in this repository.
 
 ## Tenant security and identity
 
@@ -71,7 +76,7 @@ Run `python -m pytest tests -q` from this directory. Unit tests cover RS256 toke
 - Add raw-object retention/deletion workflows and encrypted backup/restore verification.
 - Replace the in-memory single-process rate limiter with a distributed limiter and add audit events, metrics and trace correlation.
 - Store OCR confidence and layout/region metadata; add sandboxed parser isolation and multilingual OCR evaluation.
-- Add a configured generation provider, structured grounded-answer output, citation validation and abstention tests before enabling answer generation.
+- Configure and security-review the chosen generation/embedding provider; evaluate semantic entailment, citation completeness, prompt-injection resistance, abstention quality, privacy and provider data-retention terms before enabling answer generation.
 - Run migration verification, load/security tests, backup/restore drills and independent security review.
 
-No cloud resources, external model APIs or paid hosting were provisioned. This API is not yet production-certified or deployed. It is not suitable for a 512 MB Render Free instance: the sentence-transformer model, OCR and parsing can exceed that memory budget.
+No cloud resources, external model APIs or paid hosting were provisioned. This API is not yet production-certified or deployed. The local SentenceTransformer, OCR and parsing can exceed a 512 MB Render Free memory budget. Remote embeddings reduce model memory but do not remove OCR/worker CPU, queue, storage and database constraints.
