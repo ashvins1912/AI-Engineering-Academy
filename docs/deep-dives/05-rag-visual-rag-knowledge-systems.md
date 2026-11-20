@@ -74,3 +74,8 @@ flowchart TD
   J --> K[Validate citations and abstention]
   K --> L[Answer plus trace]
 ```
+
+
+## Production implementation extension
+
+Continue with [Production RAG with Qdrant, LangSmith and Guardrails AI](../production-playbooks/01-production-rag-qdrant-langsmith.md). It adds a runnable local-first implementation sequence, tenant/ACL threat tests, dense-vs-lexical-vs-hybrid experiments, RRF and reranking, citation validation, LangSmith trace design, Guardrails validation boundaries and a retrieval debugging decision tree. Use the playbook after understanding the concepts in this stage guide.
