@@ -33,7 +33,7 @@ export default function Stage4MasteryLabs(){
  const gateCount=topics.filter(gatePassed).length
  const rawTokens=text.trim()?text.trim().split(/\s+/).flatMap(word=>word.length>5?[word.slice(0,3),word.slice(3)]:[word]):[]
  const tokens=rawTokens.slice(0,maxTokens)
- const tokenVector=[.2,.1,.7],positionVector=[position*.02,position*.04,-position*.01]
+ const tokenVector=[.2+tokenId*.01,.1+tokenId*.005,.7-tokenId*.01],positionVector=[position*.02,position*.04,-position*.01]
  const combined=tokenVector.map((v,i)=>v+positionVector[i])
  const q=[q1,q2],keys=[[1,0],[0,1],[.5,.5]],values=[[2,0],[0,4],[1,1]]
  const scores=keys.map(k=>dot(q,k)/Math.sqrt(2)),weights=softmax(scores),attended=[0,1].map(d=>weights.reduce((s,w,i)=>s+w*values[i][d],0))
