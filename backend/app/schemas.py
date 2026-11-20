@@ -22,3 +22,14 @@ class SearchHit(BaseModel):
     dense_score: float
     bm25_score: float
     hybrid_score: float
+
+
+class IngestionJobOut(BaseModel):
+    id: UUID
+    filename: str
+    status: str
+    attempts: int
+    document_id: UUID | None = None
+    error_code: str | None = None
+    created_at: str | None = None
+    completed_at: str | None = None
