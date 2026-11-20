@@ -142,6 +142,9 @@ async def replay_dead_job(session: AsyncSession, tenant_id: UUID, job_id: UUID) 
     if job.raw_object_deleted_at is not None:
         await session.rollback()
         raise ValueError("source object has expired and cannot be replayed")
+    if job.raw_object_delete_lease_until is not None and job.raw_object_delete_lease_until > datetime.now(timezone.utc):
+        await session.rollback()
+        raise ValueError("source object retention cleanup is in progress")
     job.status = "queued"
     job.attempts = 0
     job.next_attempt_at = datetime.now(timezone.utc)
@@ -223,7 +226,7 @@ async def claim_expired_raw_objects(
             IngestionJob.tenant_id == tenant_id,
             IngestionJob.status.in_(("succeeded", "dead", "cancelled")),
             IngestionJob.raw_object_deleted_at.is_(None),
-            func.coalesce(IngestionJob.completed_at, IngestionJob.updated_at, IngestionJob.created_at) <= cutoff,
+            func.coalesce(IngestionJob.completed_at, IngestionJob.created_at) <= cutoff,
             or_(
                 IngestionJob.raw_object_delete_lease_until.is_(None),
                 IngestionJob.raw_object_delete_lease_until < now,
