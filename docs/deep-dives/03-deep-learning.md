@@ -56,7 +56,7 @@ flowchart LR
  G --> U[Optimizer update]
 ```
 **Animation storyboard:** highlight the forward graph, then reverse arrows and display each local derivative and accumulated gradient. Compare analytic gradient with a central finite difference.
-**Implementation:** neuron_loss_gradient, forward_2_2_1 and finite_difference.
+**Implementation:** neuron_loss_gradient and finite_difference in deep_learning.py, plus mlp_forward and mlp_binary_loss_gradients in advanced_deep_learning.py. The MLP reference returns every layer's gradients and is checked parameter-by-parameter against central differences.
 **Failure lab:** reverse subtraction, omit batch averaging, transpose a gradient, use epsilon too large/small and inspect vanishing/exploding signals.
 **Mastery gate:** derive the chain rule, match numerical gradients within tolerance and diagnose one deliberately corrupted gradient.
 
@@ -76,7 +76,7 @@ flowchart TD
  U --> R[Regularization and validation]
 ```
 **Animation storyboard:** run SGD, momentum and Adam on the same quadratic from the same initial value. Show parameter, loss, gradient norm and optimizer state. Toggle dropout train/eval and vary L2.
-**Implementation:** optimizer_step, dropout and batch_norm.
+**Implementation:** optimizer_step, dropout and batch_norm in deep_learning.py, plus regularization_penalty in advanced_deep_learning.py. The training project uses momentum SGD and persists velocity state.
 **Failure lab:** excessive learning rate, stale optimizer state after resume, dropout left enabled at inference and weight decay confused with L2.
 **Mastery gate:** explain optimizer state, compare convergence, and distinguish regularization mechanisms.
 
@@ -113,7 +113,7 @@ flowchart LR
  O --> H2[New hidden hₜ]
 ```
 **Animation storyboard:** advance token by token, preserve hidden/cell state, then reset state and reverse input order to show why sequence order matters.
-**Implementation:** rnn_sequence and lstm_step.
+**Implementation:** rnn_sequence and lstm_step in deep_learning.py, plus rnn_bptt_gradients in advanced_deep_learning.py. Verify recurrent-weight and input-weight gradients against finite differences.
 **Failure lab:** shuffled order, missing padding mask, state reused across independent samples and long-sequence instability.
 **Mastery gate:** calculate recurrent state and gates, explain BPTT and state-reset boundaries.
 
@@ -151,7 +151,7 @@ Resume:
 Tests:
 `python -m unittest discover -s examples/stage-03 -p 'test_*.py' -v`
 
-The project trains a deterministic two-hidden-unit neural classifier, uses separate train/validation/test partitions, tracks validation loss, saves checkpoint state and reports held-out metrics. Review PROJECT_DATA_CARD.md, PROJECT_DFD.md, MODEL_CARD.md and incident-report.md. The synthetic dataset is educational only.
+The project trains a deterministic two-hidden-unit neural classifier with momentum SGD, separate train/validation/test partitions and early stopping. Checkpoints persist model parameters, momentum velocities, scheduler state, deterministic RNG metadata, epoch and data position; resume tests verify those fields. The report includes held-out metrics and best epoch. Review PROJECT_DATA_CARD.md, PROJECT_DFD.md, MODEL_CARD.md and incident-report.md. The synthetic dataset is educational only.
 
 ## Stage 3 mastery gate
 Pass all seven evidence checklists, match analytic and finite-difference gradients, reproduce convolution and recurrent traces, compare optimizer behavior, diagnose generalization and complete checkpoint/resume tests. Stage 4 remains blocked until the full stage is validated.
