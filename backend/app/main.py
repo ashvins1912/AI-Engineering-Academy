@@ -226,7 +226,12 @@ async def delete_document(document_id: UUID, principal: Principal = Depends(curr
 @app.post("/v1/search", response_model=list[SearchHit])
 async def search_documents(body: SearchRequest, principal: Principal = Depends(current_principal), session: AsyncSession = Depends(get_session)):
     await set_tenant_context(session, str(principal.tenant_id))
-    query_vector = (await run_in_threadpool(encode_texts, [body.query]))[0].tolist()
+    try:
+        query_vector = (await encode_texts_async([body.query]))[0]
+    except EmbeddingProviderUnavailable:
+        raise HTTPException(503, "Embedding provider is unavailable") from None
+    except EmbeddingProviderFailed:
+        raise HTTPException(502, "Embedding provider failed") from None
     # Okapi BM25: tenant-local N, average document length, term frequency and document frequency.
     # Query terms are lowercased alphanumeric tokens; k1=1.2 and b=0.75.
     statement = text("""
