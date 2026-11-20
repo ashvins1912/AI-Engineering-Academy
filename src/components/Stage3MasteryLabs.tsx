@@ -48,7 +48,6 @@ export default function Stage3MasteryLabs(){
  const conv=Array.from({length:2},(_,r)=>Array.from({length:2},(_,c)=>activeKernel.reduce((sum,row,ri)=>sum+row.reduce((s,v,ci)=>s+v*image[r+ri][c+ci],0),0)))
  const seq=[1,0,-1]
  const states=seq.reduce((arr,x)=>{const prev=arr.at(-1)??0;arr.push(Math.tanh(x+.5*prev));return arr},[] as number[])
- const h=states[clamp(sequenceStep-1,0,2)]??0
  const f=sigmoid(.7),i=sigmoid(-.2),o=sigmoid(.4),candidate=Math.tanh(.3),cell=f*.5+i*candidate,lstm=o*Math.tanh(cell)
  const training=Array.from({length:20},(_,e)=>({epoch:e+1,train:.05+.9*Math.exp(-e*.22)+.0008*e,valid:.08+.8*Math.exp(-e*.17)+regularization*.012*e+Math.max(0,e-8)*.014}))
  const best=training.reduce((b,p)=>p.valid<b.valid?p:b,training[0])
