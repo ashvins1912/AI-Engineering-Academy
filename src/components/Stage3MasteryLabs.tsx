@@ -12,7 +12,6 @@ const topics:Topic[]=[
  {id:'training',label:'07 · Generalization',title:'Generalization, checkpointing and training systems',question:'What should early stopping monitor?',options:['Training loss only','Validation metric with a defined patience rule','The largest batch size'],answer:1,explanation:'Early stopping monitors held-out validation behavior and restores the best checkpoint, not simply the last epoch.',evidence:['Compare training and validation curves','Identify overfitting and underfitting','Save and resume model plus optimizer state','Report best epoch and held-out evaluation']}
 ]
 const sigmoid=(x:number)=>1/(1+Math.exp(-Math.max(-30,Math.min(30,x))))
-const clamp=(x:number,min:number,max:number)=>Math.min(max,Math.max(min,x))
 export default function Stage3MasteryLabs(){
  const [active,setActive]=useState<Id>('perceptron')
  const [answers,setAnswers]=useState<Record<string,number>>({})
@@ -51,7 +50,6 @@ export default function Stage3MasteryLabs(){
  const f=sigmoid(.7),i=sigmoid(-.2),o=sigmoid(.4),candidate=Math.tanh(.3),cell=f*.5+i*candidate,lstm=o*Math.tanh(cell)
  const training=Array.from({length:20},(_,e)=>({epoch:e+1,train:.05+.9*Math.exp(-e*.22)+.0008*e,valid:.08+.8*Math.exp(-e*.17)+regularization*.012*e+Math.max(0,e-8)*.014}))
  const best=training.reduce((b,p)=>p.valid<b.valid?p:b,training[0])
- const selectAnswer=(v:number)=>{setAnswers(a=>({...a,[active]:v}));setChecked(c=>({...c,[active]:false}))}
  const verify=()=>setChecked(c=>({...c,[active]:true}))
  return <section className="stage3-mastery" aria-label="Stage 3 deep learning mastery labs">
   <header className="stage3-head"><div><span className="eyebrow">STAGE 3 · DEEP LEARNING</span><h2>Seven neural-network mastery gates</h2><p>Inspect tensors, gradients, optimizer state, feature maps, sequence memory and generalization behavior with small reproducible examples.</p></div><div className="stage3-progress"><strong>{count}/7</strong><span>gates passed</span></div></header>
