@@ -1,63 +1,156 @@
 {
   "schemaVersion": "1.0.0",
-  "topic": { "id": "attention-score-example", "title": "Attention score walkthrough", "stage": 4, "estimatedMinutes": 35 },
-  "state": "tested",
+  "topic": {
+    "id": "attention-score-example",
+    "title": "Attention score walkthrough",
+    "stage": 4,
+    "estimatedMinutes": 35
+  },
+  "state": "runnable",
   "learning": {
-    "outcomes": ["Calculate a dot-product attention score for a tiny query and key", "Explain why scaled dot products are passed through softmax", "Trace how attention weights combine value vectors"],
-    "prerequisites": ["Vector dot products", "Basic probability"],
+    "outcomes": [
+      "Calculate a dot-product attention score for a tiny query and key",
+      "Explain why scaled dot products are passed through softmax",
+      "Trace how attention weights combine value vectors"
+    ],
+    "prerequisites": [
+      "Vector dot products",
+      "Basic probability"
+    ],
     "glossary": [
-      { "term": "Query", "definition": "A learned vector representing the information a token is looking for." },
-      { "term": "Key", "definition": "A learned vector used to measure how relevant a token is to a query." }
+      {
+        "term": "Query",
+        "definition": "A learned vector representing the information a token is looking for."
+      },
+      {
+        "term": "Key",
+        "definition": "A learned vector used to measure how relevant a token is to a query."
+      }
     ]
   },
   "explanation": {
     "problem": "A token needs to combine information from other tokens in its context.",
     "plainLanguage": "Imagine each token asking a question. Other tokens offer keys that can match that question. The matching scores decide how much information each token contributes. Attention makes this selection differentiable so a model can learn useful patterns from data.",
     "mentalModel": "Score relevance first, turn scores into weights, then use those weights to combine value vectors.",
-    "limitations": ["Attention weights are not a complete explanation of model behavior."]
+    "limitations": [
+      "Attention weights are not a complete explanation of model behavior."
+    ]
   },
   "useCase": {
     "scenario": "A decoder model processes a sentence and uses earlier tokens to build the next token representation.",
-    "actors": ["Tokenizer", "Transformer layer"],
-    "inputs": ["Token embeddings", "Learned projection matrices"],
-    "constraints": ["Future tokens must be masked in causal decoding."],
-    "outputs": ["Context-aware token representation"],
+    "actors": [
+      "Tokenizer",
+      "Transformer layer"
+    ],
+    "inputs": [
+      "Token embeddings",
+      "Learned projection matrices"
+    ],
+    "constraints": [
+      "Future tokens must be masked in causal decoding."
+    ],
+    "outputs": [
+      "Context-aware token representation"
+    ],
     "successMetric": "Numerical output matches the deterministic reference fixture."
   },
   "architecture": {
-    "diagram": "visual/attention-flow.mmd",
-    "components": ["Embedding input", "Q/K/V projections", "Score and softmax", "Weighted value output"],
-    "dataFlow": [
-      { "from": "Embedding input", "to": "Q/K/V projections", "payload": "token vectors", "purpose": "Create query, key and value representations" },
-      { "from": "Score and softmax", "to": "Weighted value output", "payload": "attention weights and values", "purpose": "Combine relevant token information" }
+    "diagram": "content/examples/visual/attention-flow.mmd",
+    "components": [
+      "Embedding input",
+      "Q/K/V projections",
+      "Score and softmax",
+      "Weighted value output"
     ],
-    "trustBoundaries": ["Model weights and input data are treated as separate assets."],
-    "failurePaths": ["Incorrect tensor dimensions cause a matrix multiplication failure."]
+    "dataFlow": [
+      {
+        "from": "Embedding input",
+        "to": "Q/K/V projections",
+        "payload": "token vectors",
+        "purpose": "Create query, key and value representations"
+      },
+      {
+        "from": "Score and softmax",
+        "to": "Weighted value output",
+        "payload": "attention weights and values",
+        "purpose": "Combine relevant token information"
+      }
+    ],
+    "trustBoundaries": [
+      "Model weights and input data are treated as separate assets."
+    ],
+    "failurePaths": [
+      "Incorrect tensor dimensions cause a matrix multiplication failure."
+    ]
   },
   "visual": {
-    "kind": "interactive", "fixture": "fixtures/attention-small.json",
+    "kind": "interactive",
+    "fixture": "content/examples/fixtures/attention-small.json",
     "steps": [
-      { "label": "Project vectors", "explanation": "Create Q, K and V from the input.", "expectedState": "Q, K and V have matching token dimensions." },
-      { "label": "Calculate weights", "explanation": "Scale scores and apply softmax.", "expectedState": "Weights sum to one for each unmasked query." }
+      {
+        "label": "Project vectors",
+        "explanation": "Create Q, K and V from the input.",
+        "expectedState": "Q, K and V have matching token dimensions."
+      },
+      {
+        "label": "Calculate weights",
+        "explanation": "Scale scores and apply softmax.",
+        "expectedState": "Weights sum to one for each unmasked query."
+      }
     ],
-    "accessibility": ["Every step has a text explanation.", "The visual supports keyboard step navigation."]
+    "accessibility": [
+      "Every step has a text explanation.",
+      "The visual supports keyboard step navigation."
+    ]
   },
   "workedExample": {
     "problem": "Combine two value vectors using a query and two keys.",
     "input": "q=[1,0], k1=[1,0], k2=[0,1], v1=[2,0], v2=[0,4]",
     "steps": [
-      { "operation": "Dot products", "reasoning": "Compare the query with each key.", "result": "scores=[1,0]" },
-      { "operation": "Softmax", "reasoning": "Normalize the scores into weights.", "result": "weights≈[0.731,0.269]" }
+      {
+        "operation": "Dot products",
+        "reasoning": "Compare the query with each key.",
+        "result": "scores=[1,0]"
+      },
+      {
+        "operation": "Softmax",
+        "reasoning": "Normalize the scores into weights.",
+        "result": "weights≈[0.731,0.269]"
+      }
     ],
     "expectedOutput": "weighted value≈[1.462,1.076]"
   },
   "implementations": [
-    { "language": "python", "path": "examples/attention.py", "runCommand": "python examples/attention.py", "testsPath": "tests/test_attention.py", "expectedResult": "weighted value≈[1.462,1.076]" }
+    {
+      "language": "python",
+      "path": "content/examples/attention.py",
+      "runCommand": "python examples/attention.py",
+      "testsPath": "content/examples/tests/test_attention.py",
+      "expectedResult": "weighted value≈[1.462,1.076]"
+    }
   ],
   "failures": [
-    { "name": "Shape mismatch", "symptom": "Matrix multiplication raises a dimension error.", "rootCause": "Query and key dimensions do not align.", "recovery": "Assert the final dimension before multiplication.", "regressionTest": "Test mismatched vector dimensions." },
-    { "name": "Unstable softmax", "symptom": "Probabilities contain infinity or NaN.", "rootCause": "Exponentials overflow for large logits.", "recovery": "Subtract the maximum score before exponentiation.", "regressionTest": "Test large positive and negative scores." },
-    { "name": "Causal leakage", "symptom": "A decoder position can use a future token.", "rootCause": "The causal mask is missing or inverted.", "recovery": "Apply the upper-triangular mask before softmax.", "regressionTest": "Assert future-position weights are zero." }
+    {
+      "name": "Shape mismatch",
+      "symptom": "Matrix multiplication raises a dimension error.",
+      "rootCause": "Query and key dimensions do not align.",
+      "recovery": "Assert the final dimension before multiplication.",
+      "regressionTest": "Test mismatched vector dimensions."
+    },
+    {
+      "name": "Unstable softmax",
+      "symptom": "Probabilities contain infinity or NaN.",
+      "rootCause": "Exponentials overflow for large logits.",
+      "recovery": "Subtract the maximum score before exponentiation.",
+      "regressionTest": "Test large positive and negative scores."
+    },
+    {
+      "name": "Causal leakage",
+      "symptom": "A decoder position can use a future token.",
+      "rootCause": "The causal mask is missing or inverted.",
+      "recovery": "Apply the upper-triangular mask before softmax.",
+      "regressionTest": "Assert future-position weights are zero."
+    }
   ],
   "practice": {
     "guided": "Calculate the attention output for two tokens by hand.",
@@ -67,16 +160,46 @@
   },
   "assessment": {
     "rubric": [
-      { "criterion": "Explain query, key and value roles", "weight": 20, "evidence": "Closed-book explanation" },
-      { "criterion": "Calculate intermediate values", "weight": 20, "evidence": "Correct numeric trace" },
-      { "criterion": "Implement and test the operation", "weight": 35, "evidence": "Passing code tests" },
-      { "criterion": "Diagnose a failure", "weight": 25, "evidence": "Root cause and regression test" }
+      {
+        "criterion": "Explain query, key and value roles",
+        "weight": 20,
+        "evidence": "Closed-book explanation"
+      },
+      {
+        "criterion": "Calculate intermediate values",
+        "weight": 20,
+        "evidence": "Correct numeric trace"
+      },
+      {
+        "criterion": "Implement and test the operation",
+        "weight": 35,
+        "evidence": "Passing code tests"
+      },
+      {
+        "criterion": "Diagnose a failure",
+        "weight": 25,
+        "evidence": "Root cause and regression test"
+      }
     ],
     "passThreshold": 80,
-    "evidence": ["Passing implementation tests", "Failure diagnosis and regression test"]
+    "evidence": [
+      "Passing implementation tests",
+      "Failure diagnosis and regression test"
+    ]
   },
   "references": [
-    { "title": "Attention Is All You Need", "url": "https://arxiv.org/abs/1706.03762", "sourceType": "paper", "checkedOn": "2026-11-20" },
-    { "title": "PyTorch scaled dot product attention", "url": "https://docs.pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention.html", "sourceType": "official-docs", "checkedOn": "2026-11-20", "version": "stable" }
+    {
+      "title": "Attention Is All You Need",
+      "url": "https://arxiv.org/abs/1706.03762",
+      "sourceType": "paper",
+      "checkedOn": "2026-11-20"
+    },
+    {
+      "title": "PyTorch scaled dot product attention",
+      "url": "https://docs.pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention.html",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-20",
+      "version": "stable"
+    }
   ]
 }
