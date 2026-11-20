@@ -18,7 +18,8 @@
     "validate:topic-contract": "node scripts/validate-topic-contract.mjs",
     "audit:topic-migration": "node scripts/audit-topic-migration.mjs",
     "validate:stage1": "node scripts/validate-stage1.mjs",
-    "validate:stage2": "node scripts/validate-stage2.mjs"
+    "validate:stage2": "node scripts/validate-stage2.mjs",
+    "validate:stage3": "node scripts/validate-stage3.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
