@@ -28,8 +28,8 @@ class CitationValidationTests(unittest.TestCase):
     def test_exact_retrieved_quote_is_validated(self):
         result = validate_citations([{"source_id": "chunk-1", "quote": "within thirty days"}], self.evidence)
         self.assertTrue(result["all_valid"])
-        self.assertEqual(result["valid"][0]["start_char"], 25)
-        self.assertEqual(result["valid"][0]["end_char"], 43)
+        self.assertEqual(result["valid"][0]["start_char"], 22)
+        self.assertEqual(result["valid"][0]["end_char"], 39)
 
     def test_fabricated_source_is_rejected(self):
         result = validate_citations([{"source_id": "missing", "quote": "anything"}], self.evidence)
@@ -48,6 +48,14 @@ class CitationValidationTests(unittest.TestCase):
         ], self.evidence)
         self.assertFalse(result["all_valid"])
         self.assertEqual(result["invalid"][0]["reason"], "duplicate_citation")
+
+    def test_distinct_quotes_from_same_chunk_are_allowed(self):
+        result = validate_citations([
+            {"source_id": "chunk-1", "quote": "Refunds are"},
+            {"source_id": "chunk-1", "quote": "within thirty days"},
+        ], self.evidence)
+        self.assertTrue(result["all_valid"])
+        self.assertEqual(len(result["valid"]), 2)
 
     def test_empty_citation_list_is_not_valid(self):
         self.assertFalse(validate_citations([], self.evidence)["all_valid"])
