@@ -104,3 +104,8 @@ See the [evidence-based improvement roadmap](docs/ROADMAP_TO_5_OF_5.md) for the 
 ## Topic content quality contract
 
 New topic content follows the [machine-readable topic contract](docs/TOPIC_CONTENT_CONTRACT.md), backed by a strict JSON Schema, a runnable scaled-attention example, a negative validation test and CI checks. Existing lessons remain compatible while the 84-topic curriculum is migrated in evidence-backed stages.
+
+
+## Topic authoring and quality contract
+
+The [Topic Content Authoring Guide](docs/CONTENT_AUTHORING.md) documents the strict topic schema, evidence-based content states, artifact layout and safe implementation rules. The reference topic contract is checked by `npm run validate:topic-contract` in CI. This is the first Phase 0 slice; it does not yet mean all 84 topics satisfy the new contract.
