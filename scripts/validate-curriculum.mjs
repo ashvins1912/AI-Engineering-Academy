@@ -19,6 +19,15 @@ const missingLessonLabs = lessonStagePairs.filter(({ id, stage }) => {
   } catch { return true }
 })
 
+const incompleteLessonLabs = lessonStagePairs.filter(({ id, stage }) => {
+  try {
+    const pack = readFileSync(new URL(\`../docs/deep-dives/labs/stage-\${String(stage).padStart(2, '0')}.md\`, import.meta.url), 'utf8')
+    const section = pack.split(/\n(?=## [\w-]+ — )/).find(block => block.startsWith(\`## \${id} —\`))
+    const requiredSections = ['**Implementation task:**', '**Worked fixture:**', '**Expected result:**', '**Verification tests:**', '**Debugging checklist:**', '**Interview checks:**', '**Submission evidence:**']
+    return !section || section.includes('undefined') || requiredSections.some(label => !section.includes(label))
+  } catch { return true }
+})
+
 const deepDiveFiles = [
   '01-mathematics-python-data.md', '02-classical-machine-learning.md', '03-deep-learning.md',
   '04-transformers-llms-generative-ai.md', '05-rag-visual-rag-knowledge-systems.md',
@@ -45,11 +54,13 @@ const checks = [
   ['complete deep-dive guides for all 11 stages', missingGuides.length === 0],
   ['lesson workbench links to stage deep-dive guide', practice.includes('Lesson learning resources') && practice.includes('docs/deep-dives/')],
   ['individual lab pack coverage for every lesson', lessonStagePairs.length === lessonIds.length && missingLessonLabs.length === 0],
+  ['every lesson lab has all seven required content sections', incompleteLessonLabs.length === 0],
   ['lab packs include worked fixtures and verification evidence', ['Worked fixture:', 'Expected result:', 'Verification tests:', 'Interview checks:', 'Submission evidence:'].every(section => stagesText.includes(section))]
 ]
 for (const [label, passed] of checks) console.log(`${passed ? 'PASS' : 'FAIL'} ${label}`)
 if (missing.length) console.error(`Missing lesson identifiers: ${missing.join(', ')}`)
 if (missingGuides.length) console.error(`Missing deep-dive guides: ${missingGuides.join(', ')}`)
-if (missingLessonLabs.length) console.error(`Missing individual lesson labs: ${missingLessonLabs.map(([id]) => id).join(', ')}`)
+if (missingLessonLabs.length) console.error(`Missing individual lesson labs: ${missingLessonLabs.map(({ id }) => id).join(', ')}`)
+if (incompleteLessonLabs.length) console.error(`Incomplete individual lesson labs: ${incompleteLessonLabs.map(({ id, stage }) => `${stage}:${id}`).join(', ')}`)
 if (checks.some(([, passed]) => !passed)) process.exit(1)
 console.log(`Validated ${stageIds.length} stages, ${lessonIds.length} lesson blueprints and ${lessonStagePairs.length - missingLessonLabs.length} individual lesson labs.`)
