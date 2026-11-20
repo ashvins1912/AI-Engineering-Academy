@@ -43,3 +43,14 @@ A starter snippet is a launch point, not a substitute for the full assignment. T
 ## Stage deep-dive guides
 
 The stage-level guides in [docs/deep-dives](deep-dives/README.md) provide topic-specific coverage for all 84 lesson topics across the 11 stages. Each guide includes concept and derivation goals, implementation labs, tests and failure cases, production considerations, an end-to-end project, required artifacts and a mastery gate. Lesson workbenches link to the matching stage guide. Every one of the 84 lessons now has an individual lab specification in `docs/deep-dives/labs/` with a task, worked fixture, expected result, verification tests, debugging checklist, interview checks and submission evidence. These specifications define what a learner must implement and how to verify it. They are not a claim that every lesson has a complete reference solution or a separate production-sized application; expanding executable reference solutions and automated grading remains a distinct future milestone.
+
+
+## Student reflection after every practice
+
+Every lesson must collect learner feedback after practice. The current UI captures readability (1–5), ease of learning (1–5), concept understanding (0–4), implementation confidence (0–4), visual/DFD usefulness (1–5), challenge difficulty (1–5), current proficiency (0–7), implementation evidence, personal notes, challenges/root causes/fixes and the next learning action.
+
+Keep self-reported confidence separate from demonstrated mastery. A self-rating cannot unlock an expert level without objective evidence from code, tests, debugging and applied design. Until account persistence is integrated, label reflections clearly as browser-local and do not claim they are synchronized across devices.
+
+## Visual walkthrough acceptance contract
+
+A topic-specific visual walkthrough should show the input, component/data boundaries, intermediate transformations, decision branches, output/persisted state, a deliberate failure and the corrected path. It must provide previous/next, play/pause where continuous animation is appropriate, reset, speed control, a step indicator, explanatory text and an accessible static fallback. The visual must use the same worked fixture and expected values as the topic's code and tests.
