@@ -36,7 +36,7 @@ services:
   worker:
     build: .
     profiles: ["worker"]
-    command: ["python", "-m", "app.worker", "--tenant-id", "${ACADEMY_WORKER_TENANT_ID:?Set a trusted worker tenant ID}"]
+    command: ["python", "-m", "app.worker", "--tenant-id", "${ACADEMY_WORKER_TENANT_ID:-00000000-0000-0000-0000-000000000000}"]
     environment:
       ACADEMY_DATABASE_URL: postgresql+asyncpg://academy_app:academy-app-local-only@postgres:5432/academy
       ACADEMY_EMBEDDING_DEVICE: cpu
