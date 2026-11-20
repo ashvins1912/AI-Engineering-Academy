@@ -27,3 +27,14 @@ These guides expand the 84 lesson blueprints into a practical learning path. Eac
 6. Pass the mastery gate by demonstrating the skill, not merely marking the lesson complete.
 
 The guides and lesson lab packs are linked directly from the in-app lesson workbench. They do not replace the interactive numerical labs or claim that every external model can run on a low-memory/free hosting tier. Heavy model training is optional and must be sized to available local or approved compute.
+
+
+## Production tool-based practice
+
+For deeper implementation beyond the stage lab specifications, continue with the [Production AI Engineering Playbooks](../production-playbooks/README.md):
+- RAG with Qdrant, LangSmith and Guardrails AI.
+- Multi-agent orchestration with LangGraph, observability and FastMCP tools.
+- Fine-tuning with Hugging Face PEFT, LoRA and QLoRA.
+- AWS container deployment with ECR, ECS Fargate, IAM, secrets, monitoring and rollback.
+
+Each playbook adds decision trees, realistic failure injection, debugging tables, evaluation gates and a measurable improvement sequence.
