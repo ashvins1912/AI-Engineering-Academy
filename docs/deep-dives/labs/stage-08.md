@@ -2,75 +2,75 @@
 
 This workbook turns each lesson into a verifiable practical task. Run exercises in an isolated local environment; no learner code is executed by the Academy service. Record your code, test output and short explanation in your learning notes.
 
-## workflow-patterns — Draw and implement a saga with compensation branches.
+## workflow-patterns — Workflow patterns
 
-**Implementation task:** Reserve stock→authorize payment→book shipment; shipment fails.
+**Implementation task:** Draw and implement a saga with compensation branches.
 
-**Worked fixture:** Payment void and stock release execute in reverse dependency order.
+**Worked fixture:** Reserve stock→authorize payment→book shipment; shipment fails.
 
-**Expected result:** Test compensation failure and ambiguous outcome.
+**Expected result:** Payment void and stock release execute in reverse dependency order.
 
-**Verification tests:** How does saga differ from a database transaction?
+**Verification tests:** Test compensation failure and ambiguous outcome.
 
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Debugging checklist:** How does saga differ from a database transaction?
 
-**Interview checks:** undefined
+**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
 
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
-
----
-
-## event-driven — Publish typed CloudEvent and deduplicate consumer deliveries.
-
-**Implementation task:** event id evt-1 delivered twice, then evt-2 out of order.
-
-**Worked fixture:** evt-1 side effect happens once; ordering policy is explicit.
-
-**Expected result:** Test poison event, schema version and replay.
-
-**Verification tests:** Why use an outbox for DB-write plus event publication?
-
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
-
-**Interview checks:** undefined
-
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
+**Submission evidence:** undefined
 
 ---
 
-## durable — Persist workflow state and recover after worker crash.
+## event-driven — Event-driven automation
 
-**Implementation task:** Wait activity then continue; crash after activity completion before state update.
+**Implementation task:** Publish typed CloudEvent and deduplicate consumer deliveries.
 
-**Worked fixture:** Resume does not repeat non-idempotent effect.
+**Worked fixture:** event id evt-1 delivered twice, then evt-2 out of order.
 
-**Expected result:** Test retry exhaustion, heartbeat timeout and deterministic replay.
+**Expected result:** evt-1 side effect happens once; ordering policy is explicit.
 
-**Verification tests:** Which steps must be idempotent in durable execution?
+**Verification tests:** Test poison event, schema version and replay.
 
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Debugging checklist:** Why use an outbox for DB-write plus event publication?
 
-**Interview checks:** undefined
+**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
 
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
+**Submission evidence:** undefined
 
 ---
 
-## automation-tools — Verify webhook signature and map provider payload to internal event.
+## durable — Durable workflow engines
 
-**Implementation task:** Valid HMAC payload, altered payload and expired timestamp.
+**Implementation task:** Persist workflow state and recover after worker crash.
 
-**Worked fixture:** Valid accepted; altered/expired rejected; normalized event emitted.
+**Worked fixture:** Wait activity then continue; crash after activity completion before state update.
 
-**Expected result:** Test replay, schema drift and rate limit.
+**Expected result:** Resume does not repeat non-idempotent effect.
 
-**Verification tests:** Why validate signature before processing webhook body?
+**Verification tests:** Test retry exhaustion, heartbeat timeout and deterministic replay.
 
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Debugging checklist:** Which steps must be idempotent in durable execution?
 
-**Interview checks:** undefined
+**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
 
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
+**Submission evidence:** undefined
+
+---
+
+## automation-tools — Automation platform integration
+
+**Implementation task:** Verify webhook signature and map provider payload to internal event.
+
+**Worked fixture:** Valid HMAC payload, altered payload and expired timestamp.
+
+**Expected result:** Valid accepted; altered/expired rejected; normalized event emitted.
+
+**Verification tests:** Test replay, schema drift and rate limit.
+
+**Debugging checklist:** Why validate signature before processing webhook body?
+
+**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+
+**Submission evidence:** undefined
 
 ---
 
