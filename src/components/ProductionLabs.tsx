@@ -33,6 +33,12 @@ const labs:Lab[] = [
 ]
 
 const iconFor = (id:LabKey) => id==='rag'?Database:id==='agents'?Workflow:id==='finetune'?Activity:Cloud
+const questions:Record<LabKey,{prompt:string;options:string[];answer:number;explanation:string}> = {
+ rag:{prompt:'A matching document belongs to another tenant. What should happen?',options:['Return it but hide the citation','Exclude it with a server-derived ACL filter','Ask the model whether access is allowed'],answer:1,explanation:'Authorization belongs in trusted backend filters before evidence reaches the model.'},
+ agents:{prompt:'What prevents a resumed graph from repeating an external side effect?',options:['A checkpoint alone','A longer system prompt','Idempotency plus durable intent/result tracking'],answer:2,explanation:'Checkpoints restore state; idempotency and durable result tracking protect external side effects.'},
+ finetune:{prompt:'Facts change weekly. What is the best first choice?',options:['Fine-tune on last week’s facts','Use versioned RAG or an approved live API','Increase LoRA rank'],answer:1,explanation:'Frequently changing knowledge belongs in retrieval or a live source, not model weights.'},
+ aws:{prompt:'ECS cannot pull an ECR image. What should you inspect first?',options:['Task execution role and ECR repository policy','End-user application role','Load balancer TLS certificate'],answer:0,explanation:'The ECS task execution role is used for image pulls; the task role is for app runtime access.'}
+}
 
 export default function ProductionLabs() {
  const [activeId,setActiveId]=useState<LabKey>('rag')
@@ -40,15 +46,18 @@ export default function ProductionLabs() {
  const [ran,setRan]=useState(false)
  const [completed,setCompleted]=useState<string[]>([])
  const [configValue,setConfigValue]=useState(8)
+ const [selectedAnswer,setSelectedAnswer]=useState<number|null>(null)
+ const [answerChecked,setAnswerChecked]=useState(false)
  const active=labs.find(l=>l.id===activeId) ?? labs[0]
  const configLabel=activeId==='rag'?'Candidate top-K':activeId==='agents'?'Maximum graph steps':activeId==='finetune'?'Training epochs':'Desired ECS task count'
  const configUnit=activeId==='rag'?'chunks':activeId==='agents'?'steps':activeId==='finetune'?'epochs':'tasks'
  const configMin=activeId==='rag'?2:activeId==='agents'?2:1
  const configMax=activeId==='rag'?20:activeId==='agents'?16:activeId==='finetune'?8:6
  const scenario=active.scenarios.find(s=>s.id===scenarioId) ?? active.scenarios[0]
+ const quiz=questions[activeId]
  const Icon=iconFor(active.id)
  const reset=()=>setRan(false)
- const chooseLab=(id:LabKey)=>{setActiveId(id);setScenarioId('happy');setRan(false);setConfigValue(id==='rag'?8:id==='agents'?8:id==='finetune'?3:2)}
+ const chooseLab=(id:LabKey)=>{setActiveId(id);setScenarioId('happy');setRan(false);setConfigValue(id==='rag'?8:id==='agents'?8:id==='finetune'?3:2);setSelectedAnswer(null);setAnswerChecked(false)}
  const stateAt=(index:number)=>!ran?'idle':scenario.failedAt===undefined?'passed':index<scenario.failedAt?'passed':index===scenario.failedAt?'failed':'blocked'
  const markComplete=()=>setCompleted(old=>old.includes(active.id)?old:[...old,active.id])
  const passed=ran?(scenario.failedAt===undefined?active.steps.length:scenario.failedAt):0
@@ -77,7 +86,8 @@ export default function ProductionLabs() {
       <div className="production-recommendation"><strong><ShieldCheck size={15}/> Recommended fix / improvement</strong><p>{scenario.fix}</p></div>
       <div className="production-metrics"><strong>SIMULATED SIGNALS</strong>{scenario.signals.map(x=><span key={x}>{x}</span>)}<span>{configLabel}: {configValue} {configUnit}</span></div>
       <div className="production-run-summary"><span>{passed}/{active.steps.length} stages completed before stop</span><span>{scenario.failedAt===undefined?'No failure injected':`Failure at step ${scenario.failedAt+1}`}</span></div>
-      <button className="production-complete" onClick={markComplete}><CheckCircle2 size={15}/>{completed.includes(active.id)?'Lab marked explored':'Mark lab explored'}</button>
+      <div className="production-mastery"><strong>Mastery check</strong><p>{quiz.prompt}</p><div>{quiz.options.map((option,index)=><button key={option} className={selectedAnswer===index?'selected':''} onClick={()=>{setSelectedAnswer(index);setAnswerChecked(false)}}>{String.fromCharCode(65+index)}. {option}</button>)}</div><button className="production-check-answer" disabled={selectedAnswer===null} onClick={()=>setAnswerChecked(true)}>Check answer</button>{answerChecked&&<p className={selectedAnswer===quiz.answer?'mastery-correct':'mastery-incorrect'}>{selectedAnswer===quiz.answer?'Correct. ':'Try again. '}{quiz.explanation}</p>}</div>
+      <button className="production-complete" disabled={!answerChecked||selectedAnswer!==quiz.answer} onClick={markComplete}><CheckCircle2 size={15}/>{completed.includes(active.id)?'Mastery completed':'Complete mastery check'}</button>
      </>}
     </aside>
    </div>
