@@ -109,3 +109,7 @@ New topic content follows the [machine-readable topic contract](docs/TOPIC_CONTE
 ## Topic authoring and quality contract
 
 The [Topic Content Authoring Guide](docs/CONTENT_AUTHORING.md) documents the strict topic schema, evidence-based content states, artifact layout and safe implementation rules. The reference topic contract is checked by `npm run validate:topic-contract` in CI. This is the first Phase 0 slice; it does not yet mean all 84 topics satisfy the new contract.
+
+
+## Transformer and LLM internals mastery
+The Stage 4 [Transformer and LLM deep-dive](docs/deep-dives/04-transformers-llms.md) covers tokenization, embeddings, Q/K/V attention, causal masks, multi-head attention, transformer blocks, autoregressive decoding, LoRA and inference engineering. Its eight interactive mastery gates are integrated in the Stage 4 learning view; the fixed-weight reference project is explicitly educational, not a trained LLM.
