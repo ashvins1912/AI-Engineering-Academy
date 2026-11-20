@@ -127,8 +127,14 @@ Pass when loss decreases for a stable configuration, the oversized step is detec
 ### Mental model
 Treat a data pipeline as a sequence of explicit boundaries: read bytes, parse records, validate schema, normalize values, deduplicate, transform, and report. Keep pure functions separate from filesystem I/O. Use type hints, dataclasses, pathlib, context managers, iterators/generators, exceptions, structured logging and deterministic tests. Fail with row-level context; do not silently discard malformed data.
 
+### Worked calculation
+For the record `{"id":"u-17","value":"12.5"}`, parsing converts the string "12.5" to the finite numeric value 12.5 while preserving the identifier as a string. A blank value is not zero: it is a validation error. A repeated ID is detected against the set of identifiers already seen.
+
+### Numerical animation storyboard
+Animate one CSV row through the pipeline: raw text line → parsed fields → required-column check → numeric conversion → uniqueness check → accepted/rejected result. Highlight the exact field and row number when a check fails, and increment valid/error/duplicate counters only after the row is fully classified.
+
 ### Implementation
-Run `python examples/stage-01/foundations.py python-core --input examples/stage-01/fixtures/people.csv`. The CLI validates required columns, integer conversion and unique IDs, retains valid records and reports invalid rows with line numbers. It exits non-zero for a missing file or invalid schema.
+Run `python examples/stage-01/foundations.py python-core --input examples/stage-01/fixtures/people.csv`. The CLI validates required columns, numeric conversion and unique IDs, retains valid records and reports invalid rows with line numbers. It exits non-zero for a missing file or invalid schema.
 
 ### Failure lab
 Test missing/empty file, malformed CSV quoting, Unicode, null fields, duplicate identifiers, wrong numeric types and unexpected columns. Ensure the error identifies the row and field without dumping sensitive raw records.
