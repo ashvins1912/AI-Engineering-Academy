@@ -6,7 +6,11 @@ services:
       POSTGRES_USER: postgres_admin
       POSTGRES_PASSWORD: postgres-admin-local-only
     ports: ["5432:5432"]
-    volumes: ["academy-postgres:/var/lib/postgresql/data", "./migrations/000_local_role.sql:/docker-entrypoint-initdb.d/000_local_role.sql:ro", "./migrations/001_initial.sql:/docker-entrypoint-initdb.d/001_initial.sql:ro"]
+    volumes:
+      - academy-postgres:/var/lib/postgresql/data
+      - ./migrations/000_local_role.sql:/docker-entrypoint-initdb.d/000_local_role.sql:ro
+      - ./migrations/001_initial.sql:/docker-entrypoint-initdb.d/001_initial.sql:ro
+      - ./migrations/002_document_acl_ingestion_jobs.sql:/docker-entrypoint-initdb.d/002_document_acl_ingestion_jobs.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres_admin -d academy"]
       interval: 5s
@@ -21,9 +25,29 @@ services:
       ACADEMY_JWT_AUDIENCE: ai-engineering-academy
       ACADEMY_OCR_ENABLED: "true"
       ACADEMY_EMBEDDING_DEVICE: cpu
+      ACADEMY_STORAGE_BACKEND: local
+      ACADEMY_STORAGE_ROOT: /app/var/private-uploads
+      ACADEMY_MALWARE_SCAN_REQUIRED: "false"
     ports: ["8000:8000"]
+    volumes: ["academy-private-uploads:/app/var/private-uploads"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+  worker:
+    build: .
+    profiles: ["worker"]
+    command: ["python", "-m", "app.worker", "--tenant-id", "${ACADEMY_WORKER_TENANT_ID:?Set a trusted worker tenant ID}"]
+    environment:
+      ACADEMY_DATABASE_URL: postgresql+asyncpg://academy_app:academy-app-local-only@postgres:5432/academy
+      ACADEMY_EMBEDDING_DEVICE: cpu
+      ACADEMY_STORAGE_BACKEND: local
+      ACADEMY_STORAGE_ROOT: /app/var/private-uploads
+      ACADEMY_INGESTION_JOB_LEASE_SECONDS: "900"
+      ACADEMY_MALWARE_SCAN_REQUIRED: "false"
+    volumes: ["academy-private-uploads:/app/var/private-uploads"]
     depends_on:
       postgres:
         condition: service_healthy
 volumes:
   academy-postgres:
+  academy-private-uploads:
