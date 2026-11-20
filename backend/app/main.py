@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 from hashlib import sha256
+from pathlib import Path
 from uuid import UUID, uuid4
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -113,6 +114,14 @@ async def enqueue_ingestion(
         raise HTTPException(422, "Visibility must be private or tenant")
     if visibility == "tenant" and not ({"tenant_admin", "platform_admin"} & set(principal.roles)):
         raise HTTPException(403, "Tenant-wide sharing requires an administrator")
+    filename_suffix = Path(file.filename).suffix.lower()
+    allowed_types = {
+        ".pdf": "application/pdf",
+        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    }
+    if filename_suffix not in allowed_types or file.content_type != allowed_types[filename_suffix]:
+        await file.close()
+        raise HTTPException(415, "Only signature-validated PDF and DOCX uploads are accepted")
     data = await file.read(cfg.max_upload_bytes + 1)
     await file.close()
     if not data:
@@ -135,7 +144,7 @@ async def enqueue_ingestion(
     try:
         store = create_object_store(cfg)
         await run_in_threadpool(store.put, object_key, data)
-    except StorageError:
+    except (StorageError, OSError):
         raise HTTPException(503, "Private object storage is unavailable") from None
 
     await set_tenant_context(session, str(principal.tenant_id))
