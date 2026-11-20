@@ -1,6 +1,6 @@
 import math,unittest
 from deep_learning import (batch_norm,conv2d_valid,dropout,early_stopping,finite_difference,
-                           forward_2_2_1,generalization_gap,list if False else lstm_step,
+                           forward_2_2_1,generalization_gap,lstm_step,
                            max_pool2d,neuron_loss_gradient,optimizer_step,relu,rnn_sequence,sigmoid)
 
 class DeepLearningReferenceTests(unittest.TestCase):
