@@ -39,11 +39,16 @@ export default function ProductionLabs() {
  const [scenarioId,setScenarioId]=useState('happy')
  const [ran,setRan]=useState(false)
  const [completed,setCompleted]=useState<string[]>([])
+ const [configValue,setConfigValue]=useState(8)
  const active=labs.find(l=>l.id===activeId) ?? labs[0]
+ const configLabel=activeId==='rag'?'Candidate top-K':activeId==='agents'?'Maximum graph steps':activeId==='finetune'?'Training epochs':'Desired ECS task count'
+ const configUnit=activeId==='rag'?'chunks':activeId==='agents'?'steps':activeId==='finetune'?'epochs':'tasks'
+ const configMin=activeId==='rag'?2:activeId==='agents'?2:1
+ const configMax=activeId==='rag'?20:activeId==='agents'?16:activeId==='finetune'?8:6
  const scenario=active.scenarios.find(s=>s.id===scenarioId) ?? active.scenarios[0]
  const Icon=iconFor(active.id)
  const reset=()=>setRan(false)
- const chooseLab=(id:LabKey)=>{setActiveId(id);setScenarioId('happy');setRan(false)}
+ const chooseLab=(id:LabKey)=>{setActiveId(id);setScenarioId('happy');setRan(false);setConfigValue(id==='rag'?8:id==='agents'?8:id==='finetune'?3:2)}
  const stateAt=(index:number)=>!ran?'idle':scenario.failedAt===undefined?'passed':index<scenario.failedAt?'passed':index===scenario.failedAt?'failed':'blocked'
  const markComplete=()=>setCompleted(old=>old.includes(active.id)?old:[...old,active.id])
  const passed=ran?(scenario.failedAt===undefined?active.steps.length:scenario.failedAt):0
@@ -60,6 +65,7 @@ export default function ProductionLabs() {
     <div className="production-lab-work">
      <div className="production-lab-section-title"><strong>1. Choose a scenario</strong><span>Healthy run or controlled failure injection</span></div>
      <div className="production-scenario-list">{active.scenarios.map(s=><button key={s.id} className={scenarioId===s.id?'selected':''} onClick={()=>{setScenarioId(s.id);setRan(false)}}><span className={s.failedAt===undefined?'scenario-dot healthy':'scenario-dot warning'}/><span><b>{s.title}</b><small>{s.description}</small></span></button>)}</div>
+     <div className="production-config"><label htmlFor="production-config-slider"><strong>Experiment configuration</strong><span>{configLabel}: <b>{configValue} {configUnit}</b></span></label><input id="production-config-slider" type="range" min={configMin} max={configMax} value={configValue} onChange={e=>{setConfigValue(Number(e.target.value));setRan(false)}}/><div><span>{configMin}</span><span>{configMax}</span></div></div>
      <div className="production-lab-section-title"><strong>2. Run the visual trace</strong><span>{active.objective}</span></div>
      <div className="production-flow">{active.steps.map((step,i)=>{const state=stateAt(i);return <div key={step} className={`production-flow-step ${state}`}><span className="production-flow-number">{state==='passed'?<CheckCircle2 size={15}/>:state==='failed'?<AlertTriangle size={15}/>:i+1}</span><span>{step}</span>{i<active.steps.length-1&&<ArrowRight size={14} className="production-flow-arrow"/>}</div>})}</div>
      <div className="production-run-controls"><button className="production-run" onClick={()=>setRan(true)}><Play size={15}/> Run scenario</button><button className="production-reset" onClick={reset}><RotateCcw size={14}/> Reset trace</button><span className={`production-run-status ${ran?(scenario.failedAt===undefined?'ok':'warn'):''}`}>{!ran?'Ready to simulate':scenario.failedAt===undefined?'Successful run':'Failure reproduced'}</span></div>
@@ -69,7 +75,7 @@ export default function ProductionLabs() {
       <div className="production-outcome"><span>OBSERVED OUTCOME</span><p>{scenario.outcome}</p></div>
       <div className="production-diagnosis"><strong><AlertTriangle size={15}/> Root-cause analysis</strong><p>{scenario.diagnosis}</p></div>
       <div className="production-recommendation"><strong><ShieldCheck size={15}/> Recommended fix / improvement</strong><p>{scenario.fix}</p></div>
-      <div className="production-metrics"><strong>SIMULATED SIGNALS</strong>{scenario.signals.map(x=><span key={x}>{x}</span>)}</div>
+      <div className="production-metrics"><strong>SIMULATED SIGNALS</strong>{scenario.signals.map(x=><span key={x}>{x}</span>)}<span>{configLabel}: {configValue} {configUnit}</span></div>
       <div className="production-run-summary"><span>{passed}/{active.steps.length} stages completed before stop</span><span>{scenario.failedAt===undefined?'No failure injected':`Failure at step ${scenario.failedAt+1}`}</span></div>
       <button className="production-complete" onClick={markComplete}><CheckCircle2 size={15}/>{completed.includes(active.id)?'Lab marked explored':'Mark lab explored'}</button>
      </>}
