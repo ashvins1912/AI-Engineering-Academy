@@ -1,0 +1,88 @@
+import { useEffect, useMemo, useState } from 'react'
+
+type TopicId = 'vectors'|'probability'|'calculus'|'optimization'|'python'|'pandas'|'leakage'
+type Topic = { id:TopicId; label:string; title:string; outcome:string; question:string; options:string[]; answer:number; explanation:string }
+const topics:Topic[] = [
+ {id:'vectors',label:'01 · Tensors',title:'Vectors, matrices and tensor shapes',outcome:'Predict dimensions and trace every multiply-accumulate.',question:'A (2×3) matrix multiplied by a (3×4) matrix produces which shape?',options:['(2×4)','(3×3)','(4×2)'],answer:0,explanation:'The inner dimensions 3 match; the outer dimensions 2 and 4 remain.'},
+ {id:'probability',label:'02 · Probability',title:'Probability and Bayes’ rule',outcome:'Separate prior, likelihood, evidence and posterior.',question:'With prior 0.2, sensitivity 0.8 and false-positive rate 0.1, what is P(A|B)?',options:['0.20','0.667','0.80'],answer:1,explanation:'P(B)=0.8×0.2+0.1×0.8=0.24, so P(A|B)=0.16/0.24≈0.667.'},
+ {id:'calculus',label:'03 · Calculus',title:'Derivatives and gradients',outcome:'Compare analytic derivatives with finite differences.',question:'For f(w)=(w−3)², what is f′(1)?',options:['−4','−2','4'],answer:0,explanation:'f′(w)=2(w−3), therefore f′(1)=−4.'},
+ {id:'optimization',label:'04 · Optimization',title:'Optimization foundations',outcome:'Observe how learning rate changes the parameter trajectory.',question:'What is the update rule for gradient descent?',options:['w ← w + η∇L','w ← w − η∇L','w ← η/L'],answer:1,explanation:'Move opposite the gradient to reduce the objective locally.'},
+ {id:'python',label:'05 · Python',title:'Python for data work',outcome:'Trace a row through parsing, validation and error reporting.',question:'Should a blank numeric field silently become zero?',options:['Yes, always','Only in training data','No; apply an explicit missing-value policy'],answer:2,explanation:'Missing and zero have different meanings. Preserve the distinction and report or handle it by policy.'},
+ {id:'pandas',label:'06 · NumPy/Pandas',title:'NumPy and Pandas',outcome:'Inspect masks, grouping and join cardinality.',question:'What can a many-to-many join do to row counts?',options:['Always preserve row count','Multiply matching rows','Automatically deduplicate'],answer:1,explanation:'Multiple matches on both sides create a Cartesian multiplication for each key.'},
+ {id:'leakage',label:'07 · Data quality',title:'Data quality and leakage',outcome:'Prove validation data does not influence fitted preprocessing.',question:'When should a scaler be fitted?',options:['On train only, then applied to validation/test','On all data before splitting','On validation only'],answer:0,explanation:'Fit learned preprocessing on training data only; reuse those fitted parameters on held-out data.'}
+]
+
+const clamp=(n:number,min:number,max:number)=>Math.min(max,Math.max(min,n))
+export default function Stage1MasteryLabs(){
+ const [active,setActive]=useState<TopicId>('vectors')
+ const [answers,setAnswers]=useState<Record<string,number>>({})
+ const [checked,setChecked]=useState<Record<string,boolean>>({})
+ const topic=topics.find(t=>t.id===active)!
+ const [vectorStep,setVectorStep]=useState(0)
+ const [prior,setPrior]=useState(.2),[sensitivity,setSensitivity]=useState(.8),[falsePositive,setFalsePositive]=useState(.1)
+ const [point,setPoint]=useState(1),[epsilon,setEpsilon]=useState(.1)
+ const [rate,setRate]=useState(.1),[optStep,setOptStep]=useState(0),[playing,setPlaying]=useState(false)
+ const [pipelineStep,setPipelineStep]=useState(0)
+ const [duplicateJoin,setDuplicateJoin]=useState(false)
+ const [validationValue,setValidationValue]=useState(1000)
+ const [showLeak,setShowLeak]=useState(true)
+ const optimization=useMemo(()=>{let w=0;const path=[{w,loss:(w-3)**2}];for(let i=0;i<30;i++){w-=rate*2*(w-3);path.push({w,loss:(w-3)**2});if(!Number.isFinite(w)||Math.abs(w)>100)break}return path},[rate])
+ useEffect(()=>{if(!playing)return;const timer=window.setInterval(()=>setOptStep(s=>{if(s>=optimization.length-1){setPlaying(false);return s}return s+1}),450);return()=>window.clearInterval(timer)},[playing,optimization.length])
+ const posteriorDenominator=sensitivity*prior+falsePositive*(1-prior)
+ const posterior=posteriorDenominator===0?0:sensitivity*prior/posteriorDenominator
+ const derivative=(point:number)=>2*(point-3)
+ const central=( (point+epsilon-3)**2 - (point-epsilon-3)**2 )/(2*epsilon)
+ const cohort={truePositive:Math.round(1000*prior*sensitivity),falsePositive:Math.round(1000*(1-prior)*falsePositive)}
+ const pipeline=[{name:'Read source',detail:'Open CSV bytes with a known encoding and preserve the source path.'},{name:'Parse row',detail:'Convert each CSV record into named string fields.'},{name:'Validate schema',detail:'Require id and value; report missing fields with line numbers.'},{name:'Normalize',detail:'Parse finite numeric values; never coerce blank to zero.'},{name:'Check uniqueness',detail:'Detect repeated IDs and classify the row as rejected.'}]
+ const pipelineExamples=[{id:'u-17',value:'12.5',status:'valid'},{id:'',value:'8',status:'missing id'},{id:'u-18',value:'oops',status:'invalid number'},{id:'u-17',value:'14',status:'duplicate id'}]
+ const pandasRows=[{team:'A',score:10,active:true},{team:'A',score:20,active:false},{team:'B',score:5,active:true}]
+ const activeRows=pandasRows.filter(r=>r.active)
+ const joinRows=duplicateJoin?4:3
+ const train=[0,2,4]
+ const trainMean=train.reduce((a,b)=>a+b,0)/train.length
+ const globalMean=(train.reduce((a,b)=>a+b,0)+validationValue)/(train.length+1)
+ const current=optimization[clamp(optStep,0,optimization.length-1)]??optimization[0]
+ const selectAnswer=(value:number)=>{setAnswers(a=>({...a,[active]:value}));setChecked(c=>({...c,[active]:false}))}
+ const verify=()=>setChecked(c=>({...c,[active]:true}))
+ const resetAnimation=()=>{setPlaying(false);setOptStep(0)}
+ return <section className="stage1-mastery" aria-label="Stage 1 interactive mastery labs">
+  <header className="stage1-mastery-head"><div><span className="eyebrow">STAGE 1 · SEVEN MASTERY GATES</span><h2>Mathematics, Python & Data Foundations</h2><p>Manipulate the inputs, advance calculations one step at a time, inspect failure cases and verify your understanding before moving on.</p></div><div className="stage1-progress"><strong>{topics.filter(t=>checked[t.id]&&answers[t.id]===t.answer).length}/7</strong><span>gates passed</span></div></header>
+  <nav className="stage1-topic-tabs" aria-label="Stage 1 topics">{topics.map(t=><button key={t.id} className={active===t.id?'active':''} onClick={()=>setActive(t.id)}>{t.label}{checked[t.id]&&answers[t.id]===t.answer?' ✓':''}</button>)}</nav>
+  <div className="stage1-lab-card">
+   <div className="stage1-lab-title"><div><span className="eyebrow">TOPIC {topics.findIndex(t=>t.id===active)+1} OF 7</span><h3>{topic.title}</h3><p>{topic.outcome}</p></div></div>
+   {active==='vectors'&&<div className="stage1-grid">
+    <div className="stage1-panel"><h4>Matrix A × vector x</h4><div className="matrix-pair"><pre>A = [ 1  2 ]\n    [ 3  4 ]</pre><pre>x = [ 2 ]\n    [ 1 ]</pre></div><p>Output shape: (2×2) × (2×1) = (2×1)</p><input aria-label="Multiply-accumulate step" type="range" min="0" max="3" value={vectorStep} onChange={e=>setVectorStep(Number(e.target.value))}/><div className="stage1-metric-row"><span>Row {vectorStep<2?1:2}</span><strong>{vectorStep%2===0?'1':'2'} of 2</strong></div><p>Multiply-accumulate: {vectorStep===0?'1 × 2 = 2':vectorStep===1?'2 × 1 = 2':vectorStep===2?'3 × 2 = 6':'4 × 1 = 4'}</p><p>Running row total: <strong>{vectorStep===0?2:vectorStep===1?4:vectorStep===2?6:10}</strong></p><button onClick={()=>setVectorStep(s=>(s+1)%4)}>Next multiply</button><button className="secondary" onClick={()=>setVectorStep(0)}>Reset</button></div>
+    <div className="stage1-panel"><h4>Shape contracts</h4><p>Matrix multiplication is valid only when the left inner dimension equals the right inner dimension. Broadcasting aligns axes from the right and permits equal dimensions or a dimension of one.</p><div className="stage1-result">A × x = <strong>[4, 10]ᵀ</strong></div><p>Try to explain why the result has two values and why a 2×3 matrix cannot multiply a 2×2 matrix.</p></div>
+   </div>}
+   {active==='probability'&&<div className="stage1-grid">
+    <div className="stage1-panel"><h4>Adjust the evidence model</h4><StageSlider label="Prior P(A)" value={prior} min={0} max={1} step={.01} onChange={setPrior}/><StageSlider label="Sensitivity P(B|A)" value={sensitivity} min={0} max={1} step={.01} onChange={setSensitivity}/><StageSlider label="False positive P(B|¬A)" value={falsePositive} min={0} max={1} step={.01} onChange={setFalsePositive}/><div className="stage1-equation">P(A|B) = P(B|A)P(A) / P(B)</div><div className="stage1-result"><strong>{(posterior*100).toFixed(1)}%</strong><span>posterior probability</span></div></div>
+    <div className="stage1-panel"><h4>1,000-person cohort view</h4><div className="stage1-bars"><div><span>True positives</span><strong>{cohort.truePositive}</strong><i style={{width:(cohort.truePositive/1000*100)+'%'}}/></div><div><span>False positives</span><strong>{cohort.falsePositive}</strong><i style={{width:(cohort.falsePositive/1000*100)+'%'}}/></div></div><p>P(B) = {(posteriorDenominator*100).toFixed(1)}% of the population. Posterior = true positives ÷ all positive results.</p><p className="stage1-note">Small base rates can make false positives a large share of positive results, even with a sensitive test.</p></div>
+   </div>}
+   {active==='calculus'&&<div className="stage1-grid">
+    <div className="stage1-panel"><h4>Finite-difference explorer</h4><StageSlider label="Evaluation point w" value={point} min={-1} max={7} step={.1} onChange={setPoint}/><StageSlider label="Step size ε" value={epsilon} min={.01} max={1} step={.01} onChange={setEpsilon}/><div className="stage1-result"><strong>f′({point.toFixed(1)}) = {derivative(point).toFixed(3)}</strong><span>analytic derivative</span></div><div className="stage1-result"><strong>{central.toFixed(3)}</strong><span>central finite difference</span></div></div>
+    <div className="stage1-panel"><h4>Local slope interpretation</h4><svg viewBox="0 0 360 190" role="img" aria-label="Quadratic curve and derivative marker"><line x1="15" y1="160" x2="345" y2="160" stroke="currentColor"/><path d={Array.from({length:81},(_,i)=>{const x=-1+i*.1,y=(x-3)**2;return (i?'L':'M')+(15+(x+1)*40)+' '+(160-y*5)}).join(' ')} fill="none" stroke="#8ea0ff" strokeWidth="2"/><circle cx={15+(point+1)*40} cy={160-(point-3)**2*5} r="5" fill="#5ed8b2"/><text x="20" y="18" fill="currentColor" fontSize="10">f(w) = (w − 3)²</text></svg><p>Central difference samples f(w+ε) and f(w−ε), then estimates the tangent slope. Reduce ε carefully: too large adds approximation error; too small magnifies floating-point error.</p></div>
+   </div>}
+   {active==='optimization'&&<div className="stage1-grid">
+    <div className="stage1-panel"><h4>Gradient descent on f(w)=(w−3)²</h4><StageSlider label="Learning rate η" value={rate} min={.01} max={1.05} step={.01} onChange={v=>{setRate(v);resetAnimation()}}/><div className="stage1-controls"><button onClick={()=>setPlaying(p=>!p)}>{playing?'Pause':'Play animation'}</button><button onClick={()=>{setPlaying(false);setOptStep(s=>Math.min(s+1,optimization.length-1))}}>Step</button><button className="secondary" onClick={resetAnimation}>Reset</button></div><div className="stage1-result"><strong>w = {current.w.toFixed(4)}</strong><span>step {optStep} · loss {current.loss.toFixed(5)}</span></div></div>
+    <div className="stage1-panel"><h4>Parameter trajectory</h4><svg viewBox="0 0 360 190" role="img" aria-label="Gradient descent trajectory on a quadratic objective"><line x1="15" y1="160" x2="345" y2="160" stroke="currentColor"/><path d={Array.from({length:81},(_,i)=>{const x=-1+i*.1,y=(x-3)**2;return (i?'L':'M')+(15+(x+1)*40)+' '+(160-y*5)}).join(' ')} fill="none" stroke="#8ea0ff" strokeWidth="2"/>{optimization.slice(0,optStep+1).map((p,i)=><circle key={i} cx={15+(p.w+1)*40} cy={160-p.loss*5} r="3" fill="#5ed8b2"/>)}<circle cx={15+(current.w+1)*40} cy={160-current.loss*5} r="6" fill="#ffc47d"/></svg><p>{rate<.08?'Small steps: stable but slow.':rate<.5?'Moderate step: steady progress for this quadratic.':'Large step: may overshoot or diverge; inspect the trajectory.'}</p></div>
+   </div>}
+   {active==='python'&&<div className="stage1-grid">
+    <div className="stage1-panel"><h4>CSV ingestion pipeline</h4><div className="stage1-step-list">{pipeline.map((p,i)=><button key={p.name} className={pipelineStep===i?'active':''} onClick={()=>setPipelineStep(i)}>{i+1}. {p.name}</button>)}</div><p>{pipeline[pipelineStep].detail}</p><div className="stage1-result"><strong>{pipelineExamples[pipelineStep%pipelineExamples.length].status}</strong><span>example row classification</span></div><button onClick={()=>setPipelineStep(s=>(s+1)%pipeline.length)}>Next pipeline step</button></div>
+    <div className="stage1-panel"><h4>Rows and explicit outcomes</h4>{pipelineExamples.map((r,i)=><div className="stage1-data-row" key={i}><code>{r.id||'(blank)'}</code><code>{r.value}</code><strong>{r.status}</strong></div>)}<p>Keep raw source data separate from normalized records. Include line number, field and validation reason in errors.</p></div>
+   </div>}
+   {active==='pandas'&&<div className="stage1-grid">
+    <div className="stage1-panel"><h4>Boolean mask → groupby</h4>{pandasRows.map((r,i)=><div className={'stage1-data-row '+(!r.active?'muted':'')} key={i}><code>{r.team}</code><code>{r.score}</code><strong>{r.active?'included':'filtered out'}</strong></div>)}<div className="stage1-result"><strong>A = 10 · B = 5</strong><span>active group sums</span></div></div>
+    <div className="stage1-panel"><h4>Join-cardinality failure lab</h4><label className="stage1-check"><input type="checkbox" checked={duplicateJoin} onChange={e=>setDuplicateJoin(e.target.checked)}/> Add a duplicate matching key on the right table</label><div className="stage1-result"><strong>{duplicateJoin?'4':'3'} rows</strong><span>joined output (illustrative)</span></div><p>{duplicateJoin?'A duplicate key multiplies matching rows. Aggregates may be inflated unless join cardinality is validated.':'Unique-key join preserves the expected three-row input count in this fixture.'}</p><p className="stage1-note">Production check: assert one-to-one / many-to-one relationships where required and compare row counts before and after joins.</p></div>
+   </div>}
+   {active==='leakage'&&<div className="stage1-grid">
+    <div className="stage1-panel"><h4>Train-only preprocessing</h4><StageSlider label="Validation value" value={validationValue} min={0} max={2000} step={10} onChange={setValidationValue}/><div className="stage1-result"><strong>{trainMean.toFixed(2)}</strong><span>train-only fitted mean</span></div><div className="stage1-result"><strong>{globalMean.toFixed(2)}</strong><span>incorrect global fitted mean</span></div><button onClick={()=>setShowLeak(v=>!v)}>{showLeak?'Hide':'Show'} validation leakage path</button><p>{showLeak?'The validation value influences global preprocessing here. This is leakage: fit the scaler on train rows only.':'Correct path: fit preprocessing on training rows; transform validation with the frozen training statistics.'}</p></div>
+    <div className="stage1-panel"><h4>Data split invariant</h4><div className="stage1-data-row"><strong>Train entities</strong><code>customer-1, customer-2</code></div><div className="stage1-data-row"><strong>Validation entities</strong><code>customer-3</code></div><div className="stage1-result"><strong>Intersection = ∅</strong><span>entity-disjoint split</span></div><p>Also enforce time ordering, point-in-time feature availability and target-derived-field exclusions.</p></div>
+   </div>}
+   <div className="stage1-assessment"><div><span className="eyebrow">MASTERY CHECK</span><h4>{topic.question}</h4></div><div className="stage1-options">{topic.options.map((option,i)=><label key={option}><input type="radio" name={'gate-'+active} checked={answers[active]===i} onChange={()=>selectAnswer(i)}/>{option}</label>)}</div><button onClick={verify} disabled={answers[active]===undefined}>Check answer</button>{checked[active]&&<p className={answers[active]===topic.answer?'correct':'incorrect'}>{answers[active]===topic.answer?'Gate passed. ':'Not yet. '}{topic.explanation}</p>}</div>
+  </div>
+ </section>
+}
+
+function StageSlider({label,value,min,max,step,onChange}:{label:string;value:number;min:number;max:number;step:number;onChange:(v:number)=>void}){
+ return <label className="stage1-slider"><span>{label}<strong>{Number(value.toFixed(2))}</strong></span><input type="range" min={min} max={max} step={step} value={value} onChange={e=>onChange(Number(e.target.value))}/></label>
+}
