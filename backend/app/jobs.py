@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from sqlalchemy import or_, select
+from sqlalchemy import or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .db import set_tenant_context
@@ -22,6 +22,12 @@ async def claim_next_job(session: AsyncSession, tenant_id: UUID, lease_seconds: 
         raise ValueError("lease_seconds must be at least 30")
     await set_tenant_context(session, str(tenant_id))
     now = datetime.now(timezone.utc)
+    await session.execute(
+        update(IngestionJob)
+        .where(IngestionJob.tenant_id == tenant_id, IngestionJob.status == "processing",
+               IngestionJob.lease_until < now, IngestionJob.attempts >= IngestionJob.max_attempts)
+        .values(status="dead", lease_until=None, error_code="lease_expired_max_attempts")
+    )
     statement = (
         select(IngestionJob)
         .where(
@@ -77,3 +83,14 @@ async def mark_job_failed(session: AsyncSession, tenant_id: UUID, job_id: UUID, 
     job.lease_until = None
     job.error_code = error_code[:80]
     await session.commit()
+
+
+async def renew_job_lease(session: AsyncSession, tenant_id: UUID, job_id: UUID, lease_seconds: int = 300) -> bool:
+    await set_tenant_context(session, str(tenant_id))
+    result = await session.execute(
+        update(IngestionJob)
+        .where(IngestionJob.id == job_id, IngestionJob.tenant_id == tenant_id, IngestionJob.status == "processing")
+        .values(lease_until=datetime.now(timezone.utc) + timedelta(seconds=lease_seconds))
+    )
+    await session.commit()
+    return bool(result.rowcount)
