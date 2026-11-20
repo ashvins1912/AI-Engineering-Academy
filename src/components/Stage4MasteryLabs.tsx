@@ -52,7 +52,6 @@ export default function Stage4MasteryLabs(){
  let cum=0;const nucleus=topKProbs.filter((x,i)=>{if(cum>=topP&&i>0)return false;cum+=x.p;return true})
  const adapterParams=rank*(4096+4096),fullParams=4096*4096
  const kvBytes=2*layers*context*32*128*2
- const selectAnswer=(value:number)=>{setAnswers(a=>({...a,[active]:value}));setChecked(c=>({...c,[active]:false}))}
  const verify=()=>setChecked(c=>({...c,[active]:true}))
  return <section className="stage4-mastery" aria-label="Stage 4 transformer and LLM mastery labs">
   <header className="stage4-head"><div><span className="eyebrow">STAGE 4 · TRANSFORMERS & LLM INTERNALS</span><h2>Eight transformer mastery gates</h2><p>Follow token IDs through embeddings, attention, transformer blocks, decoding and inference constraints. Each gate requires numerical and implementation evidence.</p></div><div className="stage4-progress"><strong>{gateCount}/8</strong><span>gates passed</span></div></header>
