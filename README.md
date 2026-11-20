@@ -95,3 +95,8 @@ The [Agentic AI Interview Studio](docs/interview-prep/README.md) connects Stages
 The detailed [Senior Architect Review](docs/CURRICULUM_ARCHITECT_REVIEW.md) scores all 84 topics individually, documents the current content gaps, and defines the target Academy architecture, end-to-end AI request DFD, visual animation contract, student self-rating rubric and prioritized improvement plan. The lesson detail view now includes a student reflection panel for readability, learning ease, understanding, implementation confidence, visual usefulness, difficulty, proficiency level, implementation evidence and challenges. Reflections are currently saved in browser storage; account-level sync is not yet connected.
 
 The home page also includes a step-through production AI request flow, covering identity, authorization, orchestration, retrieval, model inference, approval, tool execution, durable state and observability.
+
+
+## Roadmap to 5/5 learning-product readiness
+
+See the [evidence-based improvement roadmap](docs/ROADMAP_TO_5_OF_5.md) for the quality gates, 84-topic lesson contract, staged delivery plan, learner mastery model, animation standards, CI strategy and recommended primary resources required to reach a verifiable 5/5 learning experience.
