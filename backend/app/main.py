@@ -13,9 +13,11 @@ from .config import get_settings
 from .db import engine, get_session, set_tenant_context
 from .ingestion import IngestionError, chunk_pages, extract_document
 from .models import Chunk, Document, IngestionJob
-from .schemas import DocumentOut, IngestionJobOut, SearchHit, SearchRequest
+from .schemas import AnswerOut, AnswerRequest, DocumentOut, IngestionJobOut, SearchHit, SearchRequest
+from .citations import pack_evidence
+from .generation import GenerationFailed, GenerationUnavailable, OpenAICompatibleProvider, generate_grounded_answer
 from .access import document_access_filter
-from .embeddings import encode_texts
+from .embeddings import encode_texts_async, EmbeddingProviderFailed, EmbeddingProviderUnavailable
 from .malware import ClamAVScanner, MalwareDetected, ScannerUnavailable, scan_upload
 from .storage import StorageError, create_object_store
 from .security import Principal, current_principal, require_admin
@@ -78,7 +80,12 @@ async def ingest_document(
     chunks = chunk_pages(extracted.pages)
     if not chunks:
         raise HTTPException(422, "Document produced no indexable chunks")
-    vectors = await run_in_threadpool(encode_texts, [content for _, content in chunks])
+    try:
+        vectors = await encode_texts_async([content for _, content in chunks])
+    except EmbeddingProviderUnavailable:
+        raise HTTPException(503, "Embedding provider is unavailable") from None
+    except EmbeddingProviderFailed:
+        raise HTTPException(502, "Embedding provider failed") from None
     await set_tenant_context(session, str(principal.tenant_id))
     existing = await session.scalar(select(Document).where(Document.tenant_id == principal.tenant_id, Document.sha256 == extracted.sha256))
     if existing:
@@ -283,6 +290,42 @@ async def search_documents(body: SearchRequest, principal: Principal = Depends(c
     """)
     rows = (await session.execute(statement, {"embedding": str(query_vector), "tenant_id": str(principal.tenant_id), "user_id": str(principal.user_id), "is_admin": bool({"tenant_admin", "platform_admin"} & set(principal.roles)), "query": body.query, "top_k": body.top_k})).mappings().all()
     return [SearchHit(**row) for row in rows]
+
+
+@app.post("/v1/answer", response_model=AnswerOut)
+async def grounded_answer(
+    body: AnswerRequest,
+    principal: Principal = Depends(current_principal),
+    session: AsyncSession = Depends(get_session),
+):
+    if not cfg.generation_enabled:
+        raise HTTPException(503, "Grounded answer generation is disabled until a provider is configured")
+    request = SearchRequest(query=body.query, top_k=body.top_k)
+    try:
+        hits = await search_documents(request, principal, session)
+        evidence = pack_evidence([
+            {"source_id": str(hit.chunk_id), "document_id": str(hit.document_id),
+             "page_number": hit.page_number, "text": hit.content}
+            for hit in hits
+        ], max_chars=cfg.generation_context_chars)
+        provider = OpenAICompatibleProvider(cfg)
+        result = await generate_grounded_answer(
+            body.query, evidence, provider,
+            max_tokens=min(body.max_tokens, cfg.generation_max_tokens),
+        )
+    except EmbeddingProviderUnavailable:
+        raise HTTPException(503, "Embedding provider is unavailable") from None
+    except EmbeddingProviderFailed:
+        raise HTTPException(502, "Embedding provider failed") from None
+    except GenerationUnavailable:
+        raise HTTPException(503, "Grounded generation provider is unavailable") from None
+    except GenerationFailed:
+        raise HTTPException(502, "Grounded generation provider failed validation or request") from None
+    return AnswerOut(
+        answer=result["answer"], citations=result["citations"], abstained=result["abstained"],
+        reason=result["reason"], retrieval_count=len(hits), model=result.get("model"),
+    )
+
 
 @app.get("/v1/admin/tenant-health")
 async def tenant_health(principal: Principal = Depends(require_admin), session: AsyncSession = Depends(get_session)):
