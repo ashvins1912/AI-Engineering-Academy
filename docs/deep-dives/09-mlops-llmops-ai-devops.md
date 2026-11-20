@@ -63,3 +63,11 @@ flowchart TD
   I -- no --> J[Rollback known-good bundle]
   I -- yes --> K[Promote and monitor]
 ```
+
+
+## Production implementation extensions
+
+- [Fine-tuning with LoRA and QLoRA](../production-playbooks/03-fine-tuning-lora-qlora.md): dataset hygiene, baseline evaluation, PEFT configuration, compute limits, adapter packaging, regression diagnosis and release manifests.
+- [AWS AI API deployment](../production-playbooks/04-aws-deployment.md): Docker, ECR, ECS Fargate, IAM roles, private networking, secrets, CloudWatch, CI/CD, rollback, cost estimates and teardown discipline.
+
+Complete these after the core MLOps lessons. Do not fine-tune or provision cloud resources until the relevant evaluation, budget and security gates are satisfied.
