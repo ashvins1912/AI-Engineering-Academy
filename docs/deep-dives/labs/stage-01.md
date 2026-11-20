@@ -48,7 +48,7 @@ This workbook turns every Stage 1 lesson into a verifiable implementation. Run f
 
 **Verification tests:** Check several points, compare multiple epsilon values, reject epsilon≤0 and test a deliberately reversed subtraction sign.
 
-**Debugging checklist:** Confirm the numerator order; compare with an analytic derivative; vary epsilon; check finite values; state when the derivative is undefined.
+**Debugging checklist:** Confirm the numerator order; compare with an analytic derivative; vary epsilon; check finite values; state when the derivative does not exist.
 
 **Interview checks:** Why is central difference usually more accurate than forward difference? Explain partial derivatives and the chain rule.
 
