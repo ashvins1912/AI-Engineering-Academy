@@ -2,165 +2,165 @@
 
 This workbook turns each lesson into a verifiable practical task. Run exercises in an isolated local environment; no learner code is executed by the Academy service. Record your code, test output and short explanation in your learning notes.
 
-## agent-loop — Implement observe→decide→validate→execute with a hard step budget.
+## agent-loop — Agent loop and control flow
 
-**Implementation task:** Tool add(2,3), max_steps=3; second scenario repeats same call.
+**Implementation task:** Implement observe→decide→validate→execute with a hard step budget.
 
-**Worked fixture:** Returns 5 and terminates; repeated action hits budget and stops safely.
+**Worked fixture:** Tool add(2,3), max_steps=3; second scenario repeats same call.
 
-**Expected result:** Test unknown tool, invalid schema and timeout.
+**Expected result:** Returns 5 and terminates; repeated action hits budget and stops safely.
 
-**Verification tests:** Why must model decisions pass server-side validation?
+**Verification tests:** Test unknown tool, invalid schema and timeout.
 
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Debugging checklist:** Why must model decisions pass server-side validation?
 
-**Interview checks:** undefined
+**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
 
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
-
----
-
-## planning — Convert a user task into a typed dependency DAG and topologically order it.
-
-**Implementation task:** Tasks: fetch→summarize→review; review depends on summarize.
-
-**Worked fixture:** Valid order respects dependencies; cycle is rejected.
-
-**Expected result:** Test missing dependency, cycle and impossible task.
-
-**Verification tests:** When should planner re-plan rather than retry?
-
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
-
-**Interview checks:** undefined
-
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
+**Submission evidence:** undefined
 
 ---
 
-## memory — Implement memory records with source, timestamp, expiry and sensitivity labels.
+## planning — Planning and task decomposition
 
-**Implementation task:** Fact A valid until date X; newer fact B contradicts A.
+**Implementation task:** Convert a user task into a typed dependency DAG and topologically order it.
 
-**Worked fixture:** Retrieval prefers current supported fact and reports conflict when unresolved.
+**Worked fixture:** Tasks: fetch→summarize→review; review depends on summarize.
 
-**Expected result:** Test stale memory, sensitive field exclusion and injected memory text.
+**Expected result:** Valid order respects dependencies; cycle is rejected.
 
-**Verification tests:** How should memory deletion/retention be enforced?
+**Verification tests:** Test missing dependency, cycle and impossible task.
 
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Debugging checklist:** When should planner re-plan rather than retry?
 
-**Interview checks:** undefined
+**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
 
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
-
----
-
-## state — Persist state before/after a side effect and resume after simulated crash.
-
-**Implementation task:** Payment-like mock side effect with idempotency key order-123.
-
-**Worked fixture:** Retry returns same result without duplicate side effect.
-
-**Expected result:** Crash before write, after write and duplicate event.
-
-**Verification tests:** What is the exactly-once illusion and how is idempotency used?
-
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
-
-**Interview checks:** undefined
-
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
+**Submission evidence:** undefined
 
 ---
 
-## human-loop — Require approval for an irreversible tool and bind approval to exact arguments.
+## memory — Agent memory and context engineering
 
-**Implementation task:** Transfer amount=100 to account A; change amount to 1000 after approval.
+**Implementation task:** Implement memory records with source, timestamp, expiry and sensitivity labels.
 
-**Worked fixture:** Original approved action allowed; modified arguments rejected.
+**Worked fixture:** Fact A valid until date X; newer fact B contradicts A.
 
-**Expected result:** Test expired, denied and replayed approval.
+**Expected result:** Retrieval prefers current supported fact and reports conflict when unresolved.
 
-**Verification tests:** What should an approval record bind to?
+**Verification tests:** Test stale memory, sensitive field exclusion and injected memory text.
 
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Debugging checklist:** How should memory deletion/retention be enforced?
 
-**Interview checks:** undefined
+**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
 
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
-
----
-
-## patterns — Compare router and supervisor/worker for a three-task read-only workflow.
-
-**Implementation task:** Tasks: search docs, calculate total, summarize evidence.
-
-**Worked fixture:** Router selects correct specialist; supervisor aggregates with provenance.
-
-**Expected result:** Test worker failure and contradictory outputs.
-
-**Verification tests:** When is a deterministic pipeline better than multi-agent delegation?
-
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
-
-**Interview checks:** undefined
-
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
+**Submission evidence:** undefined
 
 ---
 
-## langgraph — Model a conditional graph with checkpoint and approval interrupt.
+## state — State, checkpoints and durable execution
 
-**Implementation task:** Nodes classify→retrieve→draft; mutation node requires approval.
+**Implementation task:** Persist state before/after a side effect and resume after simulated crash.
 
-**Worked fixture:** Checkpoint resumes at correct node; unauthorized edge never runs.
+**Worked fixture:** Payment-like mock side effect with idempotency key order-123.
 
-**Expected result:** Test cyclic edge, state schema change and resume.
+**Expected result:** Retry returns same result without duplicate side effect.
 
-**Verification tests:** What does checkpointing persist in a graph workflow?
+**Verification tests:** Crash before write, after write and duplicate event.
 
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Debugging checklist:** What is the exactly-once illusion and how is idempotency used?
 
-**Interview checks:** undefined
+**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
 
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
-
----
-
-## frameworks — Implement same two-tool workflow with raw functions and one orchestration framework.
-
-**Implementation task:** Tools lookup_policy and add_numbers; same fixtures and max steps.
-
-**Worked fixture:** Compare trace, retries, code size and latency; outputs match.
-
-**Expected result:** Test framework upgrade and adapter boundary.
-
-**Verification tests:** Which requirements justify a framework dependency?
-
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
-
-**Interview checks:** undefined
-
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
+**Submission evidence:** undefined
 
 ---
 
-## agent-eval — Evaluate agent traces against task success and tool-call expectations.
+## human-loop — Human-in-the-loop controls
 
-**Implementation task:** 10 deterministic tasks; 2 include tool failure.
+**Implementation task:** Require approval for an irreversible tool and bind approval to exact arguments.
 
-**Worked fixture:** Report completion, correct tool-call rate, policy violations, latency.
+**Worked fixture:** Transfer amount=100 to account A; change amount to 1000 after approval.
 
-**Expected result:** Test flaky tool, extra calls and adversarial instruction.
+**Expected result:** Original approved action allowed; modified arguments rejected.
 
-**Verification tests:** Why is final-answer evaluation insufficient for agents?
+**Verification tests:** Test expired, denied and replayed approval.
 
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Debugging checklist:** What should an approval record bind to?
 
-**Interview checks:** undefined
+**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
 
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
+**Submission evidence:** undefined
+
+---
+
+## patterns — Agent design patterns
+
+**Implementation task:** Compare router and supervisor/worker for a three-task read-only workflow.
+
+**Worked fixture:** Tasks: search docs, calculate total, summarize evidence.
+
+**Expected result:** Router selects correct specialist; supervisor aggregates with provenance.
+
+**Verification tests:** Test worker failure and contradictory outputs.
+
+**Debugging checklist:** When is a deterministic pipeline better than multi-agent delegation?
+
+**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+
+**Submission evidence:** undefined
+
+---
+
+## langgraph — Graph-based agent orchestration
+
+**Implementation task:** Model a conditional graph with checkpoint and approval interrupt.
+
+**Worked fixture:** Nodes classify→retrieve→draft; mutation node requires approval.
+
+**Expected result:** Checkpoint resumes at correct node; unauthorized edge never runs.
+
+**Verification tests:** Test cyclic edge, state schema change and resume.
+
+**Debugging checklist:** What does checkpointing persist in a graph workflow?
+
+**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+
+**Submission evidence:** undefined
+
+---
+
+## frameworks — Framework comparison
+
+**Implementation task:** Implement same two-tool workflow with raw functions and one orchestration framework.
+
+**Worked fixture:** Tools lookup_policy and add_numbers; same fixtures and max steps.
+
+**Expected result:** Compare trace, retries, code size and latency; outputs match.
+
+**Verification tests:** Test framework upgrade and adapter boundary.
+
+**Debugging checklist:** Which requirements justify a framework dependency?
+
+**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+
+**Submission evidence:** undefined
+
+---
+
+## agent-eval — Agent evaluation
+
+**Implementation task:** Evaluate agent traces against task success and tool-call expectations.
+
+**Worked fixture:** 10 deterministic tasks; 2 include tool failure.
+
+**Expected result:** Report completion, correct tool-call rate, policy violations, latency.
+
+**Verification tests:** Test flaky tool, extra calls and adversarial instruction.
+
+**Debugging checklist:** Why is final-answer evaluation insufficient for agents?
+
+**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+
+**Submission evidence:** undefined
 
 ---
 
