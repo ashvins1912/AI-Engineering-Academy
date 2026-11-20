@@ -18,14 +18,6 @@ const q=[1,0],keys=[[1,0],[0,1]],vals=[[2,0],[0,4]],weights=softmax(keys.map(k=>
 assert.ok(out[0]>out[1]);console.log('PASS softmax normalization, causal mask and attention weighted-sum invariants')
 
 
-// Stage 4's eight mastery gates complement the transformer computation workbench.
-const stage4Mastery = readFileSync(new URL('../src/components/Stage4MasteryLabs.tsx', import.meta.url), 'utf8')
-for (const id of ['tokenization','embeddings','attention','masking','multihead','block','decoding','engineering']) assert.ok(stage4Mastery.includes(`id:'${id}'`), `Missing Stage 4 mastery topic: ${id}`)
-for (const token of ['Scaled dot-product attention','Causal mask matrix','Parallel attention heads','LoRA parameter estimate','KV-cache memory estimate','Required evidence','Mastery gate passed']) assert.ok(stage4Mastery.includes(token), `Missing Stage 4 interactive feature: ${token}`)
-assert.ok(app.includes('<Stage4MasteryLabs/>'), 'Eight Stage 4 mastery labs must be integrated')
-console.log('PASS eight evidence-gated Stage 4 transformer and LLM topics')
-
-
 // Stage 4 eight-topic transformer/LLM mastery and end-to-end causal LM project.
 const stage4Mastery = readFileSync(new URL('../src/components/Stage4MasteryLabs.tsx', import.meta.url), 'utf8')
 const stage4Guide = readFileSync(new URL('../docs/deep-dives/04-transformers-llms.md', import.meta.url), 'utf8')
