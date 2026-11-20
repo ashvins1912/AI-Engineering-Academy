@@ -9,7 +9,7 @@ Use Python 3.11+. Run reference and project tests with `python -m unittest disco
 **Verification tests:** activation ranges, saturation, XOR and invalid input width.
 **Debugging checklist:** trace the smallest failing input, inspect every intermediate tensor/value, verify shapes and numeric ranges, reproduce the defect with a focused test, and retain the regression test after fixing it.
 **Interview checks:** explain the underlying equation, the main trade-off, and one failure mode without reading the guide.
-**Submission evidence:** provide the runnable implementation, command/output, passing positive and negative tests, a numerical walkthrough and a concise failure analysis. Include a parameter-by-parameter analytic-versus-numeric gradient table.
+**Submission evidence:** provide the runnable implementation, command/output, passing positive and negative tests, a numerical walkthrough and a concise failure analysis.
 **Failure lab:** remove hidden activation and prove the stack remains affine.
 **Submission evidence:** hand derivation, output trace, XOR explanation and negative test.
 
@@ -31,15 +31,15 @@ Use Python 3.11+. Run reference and project tests with `python -m unittest disco
 **Verification tests:** epsilon bounds, sign error, bias gradient, all MLP weight/bias gradients and invalid shapes.
 **Debugging checklist:** trace the smallest failing input, inspect every intermediate tensor/value, verify shapes and numeric ranges, reproduce the defect with a focused test, and retain the regression test after fixing it.
 **Interview checks:** explain the underlying equation, the main trade-off, and one failure mode without reading the guide.
-**Submission evidence:** provide the runnable implementation, command/output, passing positive and negative tests, a numerical walkthrough and a concise failure analysis.
+**Submission evidence:** provide the runnable implementation, command/output, passing positive and negative tests, a numerical walkthrough and a concise failure analysis. Include a parameter-by-parameter analytic-versus-numeric gradient table.
 **Failure lab:** remove activation derivative or input multiplier and inspect mismatch.
 **Submission evidence:** chain-rule derivation, gradient trace and regression test.
 
 ## optimizers — Optimizers and regularization
-**Implementation task:** Compare SGD, momentum and Adam on one quadratic; test dropout and batch normalization.
+**Implementation task:** Compare SGD, momentum and Adam on one quadratic; calculate L1/L2 penalties; test dropout and batch normalization.
 **Worked fixture:** θ=1,g=.5,η=.1.
 **Expected result:** SGD gives θ=.95; other methods retain distinct optimizer state.
-**Verification tests:** optimizer state persistence, invalid learning rate, dropout train/eval and constant batch.
+**Verification tests:** optimizer state persistence, invalid learning rate, L1/L2 penalty values, dropout train/eval and constant batch.
 **Debugging checklist:** trace the smallest failing input, inspect every intermediate tensor/value, verify shapes and numeric ranges, reproduce the defect with a focused test, and retain the regression test after fixing it.
 **Interview checks:** explain the underlying equation, the main trade-off, and one failure mode without reading the guide.
 **Submission evidence:** provide the runnable implementation, command/output, passing positive and negative tests, a numerical walkthrough and a concise failure analysis.
@@ -58,10 +58,10 @@ Use Python 3.11+. Run reference and project tests with `python -m unittest disco
 **Submission evidence:** per-cell multiply-accumulate trace and feature-map shape.
 
 ## sequence — RNNs, LSTMs and sequence models
-**Implementation task:** Trace a scalar RNN and one LSTM gate update.
+**Implementation task:** Trace a scalar RNN and one LSTM gate update; implement BPTT for recurrent and input weights.
 **Worked fixture:** x=[1,0,−1], h₀=0, hₜ=tanh(xₜ+.5hₜ₋₁).
 **Expected result:** three hidden states in original sequence order.
-**Verification tests:** reversed order, state reset and gate bounds.
+**Verification tests:** reversed order, state reset, gate bounds and finite-difference BPTT gradient parity.
 **Debugging checklist:** trace the smallest failing input, inspect every intermediate tensor/value, verify shapes and numeric ranges, reproduce the defect with a focused test, and retain the regression test after fixing it.
 **Interview checks:** explain the underlying equation, the main trade-off, and one failure mode without reading the guide.
 **Submission evidence:** provide the runnable implementation, command/output, passing positive and negative tests, a numerical walkthrough and a concise failure analysis.
