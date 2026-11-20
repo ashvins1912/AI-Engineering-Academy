@@ -82,6 +82,8 @@ export default function LessonPractice({ lesson }: { lesson: Lesson }) {
   return <section className="practice-engine">
     <div className="practice-title"><div><span className="eyebrow">IMPLEMENTATION WORKBENCH</span><h3>Practice this lesson like an engineer</h3><p>Follow the workflow, configure a local environment, implement a minimal version, verify the result and debug failures.</p></div><span className="practice-stage">STAGE {String(stage).padStart(2, '0')}</span></div>
 
+    <div className="practice-guide-link"><strong>Complete stage guide</strong><span>Read the full topic sequence, derivations, labs, tests, project and mastery gate.</span><a href={`https://github.com/ashvins1912/AI-Engineering-Academy/blob/feature/deep-module-practice-workflows/docs/deep-dives/${['','01-mathematics-python-data.md','02-classical-machine-learning.md','03-deep-learning.md','04-transformers-llms-generative-ai.md','05-rag-visual-rag-knowledge-systems.md','06-ai-agents.md','07-mcp-a2a-acp-tool-ecosystems.md','08-automation-workflow-orchestration.md','09-mlops-llmops-ai-devops.md','10-security-observability-production.md','11-enterprise-capstone.md'][stage]}`} target="_blank" rel="noreferrer">Open stage {String(stage).padStart(2, '0')} guide ↗</a></div>
+
     <div className="practice-subhead"><WorkflowIcon/><div><strong>Interactive execution flow</strong><span>Move through each step and inspect its expected action.</span></div></div>
     <div className="practice-flow">
       <div className="practice-flow-list">
