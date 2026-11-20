@@ -11,7 +11,7 @@ class AdvancedClassicalMLTests(unittest.TestCase):
     def test_linear_svm_separates_simple_margin_fixture(self):
         X = [[2, 2], [2, 3], [3, 2], [-2, -2], [-2, -3], [-3, -2]]
         y = [1, 1, 1, 0, 0, 0]
-        model = fit_linear_svm(X, y, learning_rate=0.05, regularization=0.01, epochs=1200)
+        model = fit_linear_svm(X, y, learning_rate=0.01, regularization=0.01, epochs=5000)
         self.assertEqual(predict_linear_svm(model, X), y)
         self.assertGreater(len(model["support_vector_indices"]), 0)
         self.assertGreater(len(model["objective_history"]), 0)
