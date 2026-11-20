@@ -15,7 +15,7 @@ def split_dataset(rows):
     return train,validation,test
 def initial_state():
     return {"epoch":0,"w1":[[.15,-.2],[.1,.2]],"b1":[0.0,0.0],"w2":[.1,-.1],"b2":0.0,
-            "best_validation_loss":float("inf"),"best_epoch":0,"best_model":None,"patience_count":0}
+            "best_validation_loss":1e30,"best_epoch":0,"best_model":None,"patience_count":0}
 def forward(state,x):
     hidden=[math.tanh(sum(state["w1"][j][k]*x[k] for k in range(2))+state["b1"][j]) for j in range(2)]
     probability=sigmoid(sum(state["w2"][j]*hidden[j] for j in range(2))+state["b2"])
