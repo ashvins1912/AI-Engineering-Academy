@@ -9,7 +9,7 @@ Use Python 3.11+. Run reference and project tests with `python -m unittest disco
 **Verification tests:** activation ranges, saturation, XOR and invalid input width.
 **Debugging checklist:** trace the smallest failing input, inspect every intermediate tensor/value, verify shapes and numeric ranges, reproduce the defect with a focused test, and retain the regression test after fixing it.
 **Interview checks:** explain the underlying equation, the main trade-off, and one failure mode without reading the guide.
-**Submission evidence:** provide the runnable implementation, command/output, passing positive and negative tests, a numerical walkthrough and a concise failure analysis.
+**Submission evidence:** provide the runnable implementation, command/output, passing positive and negative tests, a numerical walkthrough and a concise failure analysis. Include a parameter-by-parameter analytic-versus-numeric gradient table.
 **Failure lab:** remove hidden activation and prove the stack remains affine.
 **Submission evidence:** hand derivation, output trace, XOR explanation and negative test.
 
@@ -25,10 +25,10 @@ Use Python 3.11+. Run reference and project tests with `python -m unittest disco
 **Submission evidence:** shape table and every intermediate activation.
 
 ## backprop — Loss and backpropagation
-**Implementation task:** Derive a sigmoid neuron's gradient and compare with finite differences.
+**Implementation task:** Derive a sigmoid neuron's gradient, implement full two-hidden-unit MLP backpropagation and compare every parameter group with finite differences.
 **Worked fixture:** x=.8,w=.4,b=.1,y=1.
 **Expected result:** finite analytic and numerical gradients agree within tolerance.
-**Verification tests:** epsilon bounds, sign error and bias gradient.
+**Verification tests:** epsilon bounds, sign error, bias gradient, all MLP weight/bias gradients and invalid shapes.
 **Debugging checklist:** trace the smallest failing input, inspect every intermediate tensor/value, verify shapes and numeric ranges, reproduce the defect with a focused test, and retain the regression test after fixing it.
 **Interview checks:** explain the underlying equation, the main trade-off, and one failure mode without reading the guide.
 **Submission evidence:** provide the runnable implementation, command/output, passing positive and negative tests, a numerical walkthrough and a concise failure analysis.
@@ -71,7 +71,7 @@ Use Python 3.11+. Run reference and project tests with `python -m unittest disco
 ## training — Generalization and training systems
 **Implementation task:** Train, validate, checkpoint, resume and restore the best epoch.
 **Worked fixture:** validation losses=[.9,.7,.5,.55,.6], patience=2.
-**Expected result:** best epoch 3; stop at epoch 5.
+**Expected result:** best epoch 3; stop at epoch 5. The checkpoint must also retain optimizer velocities, scheduler epoch, deterministic RNG metadata and data-loader position.
 **Verification tests:** missing checkpoint, corrupt state, early-stop patience and resume epoch.
 **Debugging checklist:** trace the smallest failing input, inspect every intermediate tensor/value, verify shapes and numeric ranges, reproduce the defect with a focused test, and retain the regression test after fixing it.
 **Interview checks:** explain the underlying equation, the main trade-off, and one failure mode without reading the guide.
