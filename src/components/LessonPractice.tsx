@@ -13,7 +13,7 @@ type PracticeSpec = {
 }
 
 const stageOf = (id: string) => Number(id.match(/^stage-(\d+):/)?.[1] ?? 1)
-const slugOf = (id: string) => id.split(':').at(-1) ?? id
+const slugOf = (id: string) => id.split(':').pop() ?? id
 
 const specs: Record<string, Partial<PracticeSpec>> = {
   vectors: { code: 'import numpy as np\n\na = np.array([2.0, 3.0])\nb = np.array([4.0, 1.0])\nprint("dot:", np.dot(a, b))\n\nA = np.array([[1.0, 2.0], [3.0, 4.0]])\nx = np.array([2.0, 1.0])\nprint("A @ x:", A @ x)\nprint("shapes:", A.shape, x.shape, (A @ x).shape)', run: 'python lesson.py', expected: 'dot: 11.0; A @ x: [4. 10.]; output shape: (2,)', debug: ['Check that inner matrix dimensions match.', 'Distinguish element-wise * from matrix multiplication @.', 'Inspect dtype and shape before broadcasting.'] },
@@ -53,7 +53,7 @@ export default function LessonPractice({ lesson }: { lesson: Lesson }) {
   const stage = stageOf(lesson.id)
   const slug = slugOf(lesson.id)
   const base = useMemo(() => baseForStage(stage), [stage])
-  const spec: PracticeSpec = { ...base, ...(specs[slug] ?? {}) }
+  const spec: PracticeSpec = { ...base, ...(specs[slug] ?? {}) }\n  const setup = [...new Set([...base.install, ...(specs[slug]?.install ?? [])])]
   const [step, setStep] = useState(0)
   const [copied, setCopied] = useState(false)
   const copy = async () => {
