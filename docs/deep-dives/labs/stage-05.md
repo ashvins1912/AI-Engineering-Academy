@@ -4,217 +4,217 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## ingestion — Document ingestion and parsing
 
-**Implementation task:** Build a parser adapter that returns normalized text plus source/page provenance.
+**Implementation task:** Document ingestion and parsing
 
-**Worked fixture:** Two-page PDF: page 1 policy paragraph; page 2 table; include corrupt-file fixture.
+**Worked fixture:** Build a parser adapter that returns normalized text plus source/page provenance.
 
-**Expected result:** Each extracted segment has document_id, page number and parser version.
+**Expected result:** Two-page PDF: page 1 policy paragraph; page 2 table; include corrupt-file fixture.
 
-**Verification tests:** Test encrypted/corrupt PDF, scanned page and empty extraction.
+**Verification tests:** Each extracted segment has document_id, page number and parser version.
 
 **Debugging checklist:** Why must extraction provenance survive chunking?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Test encrypted/corrupt PDF, scanned page and empty extraction.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
 ## chunking — Chunking strategies
 
-**Implementation task:** Compare fixed 5-token chunks with sentence/heading-aware chunks and overlap.
+**Implementation task:** Chunking strategies
 
-**Worked fixture:** Text: 'Refunds apply within 30 days. Exceptions require manager approval.'
+**Worked fixture:** Compare fixed 5-token chunks with sentence/heading-aware chunks and overlap.
 
-**Expected result:** Boundary-aware chunks retain the exception with its condition; record offsets.
+**Expected result:** Text: 'Refunds apply within 30 days. Exceptions require manager approval.'
 
-**Verification tests:** Test sentence crossing boundary and chunk overlap >= chunk size.
+**Verification tests:** Boundary-aware chunks retain the exception with its condition; record offsets.
 
 **Debugging checklist:** How does overlap trade recall against duplicated context?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Test sentence crossing boundary and chunk overlap >= chunk size.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
 ## embeddings — Embedding models and vector spaces
 
-**Implementation task:** Encode two documents and a query; rank using normalized cosine similarity.
+**Implementation task:** Embedding models and vector spaces
 
-**Worked fixture:** Docs 'reset password' and 'refund within 30 days'; query 'money back'.
+**Worked fixture:** Encode two documents and a query; rank using normalized cosine similarity.
 
-**Expected result:** Print vector dimensions and descending similarity ranking; scores are not probabilities.
+**Expected result:** Docs 'reset password' and 'refund within 30 days'; query 'money back'.
 
-**Verification tests:** Test dimension mismatch and model-version mismatch.
+**Verification tests:** Print vector dimensions and descending similarity ranking; scores are not probabilities.
 
 **Debugging checklist:** Why must query and document vectors share an embedding space?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Test dimension mismatch and model-version mismatch.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
 ## vector-db — Vector indexes and databases
 
-**Implementation task:** Create exact cosine baseline then compare approximate index recall.
+**Implementation task:** Vector indexes and databases
 
-**Worked fixture:** Four normalized vectors in 2-D; query [1,0], top-2.
+**Worked fixture:** Create exact cosine baseline then compare approximate index recall.
 
-**Expected result:** Exact ranking is reproducible; report ANN Recall@2 against exact baseline.
+**Expected result:** Four normalized vectors in 2-D; query [1,0], top-2.
 
-**Verification tests:** Test duplicate IDs, empty index and metadata filter selectivity.
+**Verification tests:** Exact ranking is reproducible; report ANN Recall@2 against exact baseline.
 
 **Debugging checklist:** What recall/latency trade-off does ANN indexing introduce?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Test duplicate IDs, empty index and metadata filter selectivity.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
 ## retrieval — Retrieval strategies
 
-**Implementation task:** Compare dense, lexical and reciprocal-rank fusion on labeled queries.
+**Implementation task:** Retrieval strategies
 
-**Worked fixture:** Corpus has exact policy ID 'POL-17' and paraphrase 'money returned'.
+**Worked fixture:** Compare dense, lexical and reciprocal-rank fusion on labeled queries.
 
-**Expected result:** Lexical wins exact ID; dense can win paraphrase; fusion combines rank evidence.
+**Expected result:** Corpus has exact policy ID 'POL-17' and paraphrase 'money returned'.
 
-**Verification tests:** Test typo, stale document and ACL-restricted item.
+**Verification tests:** Lexical wins exact ID; dense can win paraphrase; fusion combines rank evidence.
 
 **Debugging checklist:** Why does hybrid retrieval help identifier-heavy corpora?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Test typo, stale document and ACL-restricted item.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
 ## generation — Grounded answer generation
 
-**Implementation task:** Generate an answer only from retrieved evidence and validate citation IDs.
+**Implementation task:** Grounded answer generation
 
-**Worked fixture:** Evidence E1 says 30-day refund; E2 says final-sale exception.
+**Worked fixture:** Generate an answer only from retrieved evidence and validate citation IDs.
 
-**Expected result:** Answer cites E1 and E2; unsupported question yields abstention.
+**Expected result:** Evidence E1 says 30-day refund; E2 says final-sale exception.
 
-**Verification tests:** Test fabricated citation, conflicting evidence and injection in document.
+**Verification tests:** Answer cites E1 and E2; unsupported question yields abstention.
 
 **Debugging checklist:** Why is retrieved text evidence, not trusted instruction?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Test fabricated citation, conflicting evidence and injection in document.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
 ## reranking — Reranking and relevance optimization
 
-**Implementation task:** Retrieve top 5 candidates then rerank query-document pairs.
+**Implementation task:** Reranking and relevance optimization
 
-**Worked fixture:** One query, 5 passages; relevant passage initially ranked 4th.
+**Worked fixture:** Retrieve top 5 candidates then rerank query-document pairs.
 
-**Expected result:** Reranker promotes relevant passage; report latency and nDCG change.
+**Expected result:** One query, 5 passages; relevant passage initially ranked 4th.
 
-**Verification tests:** Test truncation, timeout and candidate omission.
+**Verification tests:** Reranker promotes relevant passage; report latency and nDCG change.
 
 **Debugging checklist:** Why can't reranking recover a document absent from candidates?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Test truncation, timeout and candidate omission.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
 ## agentic-rag — Adaptive and agentic RAG
 
-**Implementation task:** Add one bounded second retrieval when evidence coverage is insufficient.
+**Implementation task:** Adaptive and agentic RAG
 
-**Worked fixture:** Question needs policy date and exception; first query finds only date.
+**Worked fixture:** Add one bounded second retrieval when evidence coverage is insufficient.
 
-**Expected result:** Second retrieval finds exception; stop after at most 2 retrieval rounds.
+**Expected result:** Question needs policy date and exception; first query finds only date.
 
-**Verification tests:** Test no-result loop and max-iteration enforcement.
+**Verification tests:** Second retrieval finds exception; stop after at most 2 retrieval rounds.
 
 **Debugging checklist:** When is iterative retrieval worth its latency?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Test no-result loop and max-iteration enforcement.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
 ## graphrag — GraphRAG and knowledge graphs
 
-**Implementation task:** Extract entity-relation triples with source span, then answer a two-hop query.
+**Implementation task:** GraphRAG and knowledge graphs
 
-**Worked fixture:** Alice worksFor Acme; Acme locatedIn Bengaluru; each edge has evidence ID.
+**Worked fixture:** Extract entity-relation triples with source span, then answer a two-hop query.
 
-**Expected result:** Two-hop path Alice→Acme→Bengaluru with both evidence references.
+**Expected result:** Alice worksFor Acme; Acme locatedIn Bengaluru; each edge has evidence ID.
 
-**Verification tests:** Test ambiguous Alice and unsupported relation.
+**Verification tests:** Two-hop path Alice→Acme→Bengaluru with both evidence references.
 
 **Debugging checklist:** Why must graph edges retain provenance and confidence?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Test ambiguous Alice and unsupported relation.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
 ## visual-rag — Visual RAG for PDFs and images
 
-**Implementation task:** Render a PDF page and link OCR text/table region to page image coordinates.
+**Implementation task:** Visual RAG for PDFs and images
 
-**Worked fixture:** Page with a 2-column table and rotated scan fixture.
+**Worked fixture:** Render a PDF page and link OCR text/table region to page image coordinates.
 
-**Expected result:** OCR output includes page index and bounding box for each selected region.
+**Expected result:** Page with a 2-column table and rotated scan fixture.
 
-**Verification tests:** Test rotation, low resolution and table cell order.
+**Verification tests:** OCR output includes page index and bounding box for each selected region.
 
 **Debugging checklist:** Why can text-only extraction lose diagram/table structure?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Test rotation, low resolution and table cell order.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
 ## multimodal-rag — Audio and video RAG
 
-**Implementation task:** Index timestamped transcript segments and sampled video keyframes.
+**Implementation task:** Audio and video RAG
 
-**Worked fixture:** Clip transcript at 00:10 and 00:35; sample frames at 00:12 and 00:40.
+**Worked fixture:** Index timestamped transcript segments and sampled video keyframes.
 
-**Expected result:** Retrieved segment links to source time range and frame timestamp.
+**Expected result:** Clip transcript at 00:10 and 00:35; sample frames at 00:12 and 00:40.
 
-**Verification tests:** Test timestamp drift, silence and repeated frames.
+**Verification tests:** Retrieved segment links to source time range and frame timestamp.
 
 **Debugging checklist:** How do you preserve synchronization across modalities?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Test timestamp drift, silence and repeated frames.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
 ## rag-eval — RAG evaluation and optimization
 
-**Implementation task:** Build a golden query set with expected evidence IDs and calculate Recall@K.
+**Implementation task:** RAG evaluation and optimization
 
-**Worked fixture:** 5 queries, expected evidence sets; one query has no answer.
+**Worked fixture:** Build a golden query set with expected evidence IDs and calculate Recall@K.
 
-**Expected result:** Report Recall@1/3 and citation precision; no-answer query should abstain.
+**Expected result:** 5 queries, expected evidence sets; one query has no answer.
 
-**Verification tests:** Test ACL boundary, stale docs and prompt injection.
+**Verification tests:** Report Recall@1/3 and citation precision; no-answer query should abstain.
 
 **Debugging checklist:** How do retrieval and answer faithfulness metrics differ?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Test ACL boundary, stale docs and prompt injection.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
