@@ -17,7 +17,7 @@ FastAPI service for PDF/DOCX parsing, scanned-PDF OCR, sentence-transformer embe
 3. Apply `migrations/000_local_role.sql`, `migrations/001_initial.sql` and `migrations/002_document_acl_ingestion_jobs.sql`, and `migrations/003_raw_object_retention.sql`, and `migrations/004_distributed_rate_limits.sql` as a database administrator.
 4. From this directory run `docker compose up --build`, or install `requirements.txt` in a Python 3.11 virtual environment and run `uvicorn app.main:app --host 0.0.0.0 --port 8000`. The local Compose database initialization mounts migrations 000–004; if the PostgreSQL volume already existed before migrations 003 or 004 were added, apply those migrations manually once.
 
-The API listens on port 8000. Rate limiting is shared across API instances through PostgreSQL. Set `ACADEMY_RATE_LIMIT_PER_MINUTE` to tune the fixed-window quota. If the service is behind a reverse proxy, set `ACADEMY_TRUSTED_PROXY_IPS` to a comma-separated allowlist of immediate proxy peer IPs; forwarded client headers are ignored from untrusted peers. The rate limiter stores only SHA-256 client-key digests and fails closed with 503 if PostgreSQL is unavailable.
+The API listens on port 8000. Rate limiting is shared across API instances through PostgreSQL. Set `ACADEMY_RATE_LIMIT_PER_MINUTE` to tune the fixed-window quota. If the service is behind a reverse proxy, set `ACADEMY_TRUSTED_PROXY_IPS` to a comma-separated allowlist of immediate proxy peer IPs or CIDR ranges; forwarded client headers are ignored from untrusted peers. The rate limiter stores only SHA-256 client-key digests and fails closed with 503 if PostgreSQL is unavailable.
 
 ## API
 
