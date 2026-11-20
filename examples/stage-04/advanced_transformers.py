@@ -52,7 +52,7 @@ def multi_head_attention(
     if not query or not key or not value or len(key) != len(value):
         raise ValueError("query, key and value sequences must be non-empty and key/value aligned")
     width = len(query[0])
-    if width == 0 or any(len(row) != width for row in query) or any(len(row) != width for row in key + value):
+    if width == 0 or any(len(row) != width for row in query) or any(len(row) != width for row in list(key) + list(value)):
         raise ValueError("query, key and value hidden widths must match")
     if heads < 1 or width % heads:
         raise ValueError("hidden width must be divisible by positive head count")
