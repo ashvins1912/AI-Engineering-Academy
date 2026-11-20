@@ -29,7 +29,7 @@ class CitationValidationTests(unittest.TestCase):
         result = validate_citations([{"source_id": "chunk-1", "quote": "within thirty days"}], self.evidence)
         self.assertTrue(result["all_valid"])
         self.assertEqual(result["valid"][0]["start_char"], 22)
-        self.assertEqual(result["valid"][0]["end_char"], 39)
+        self.assertEqual(result["valid"][0]["end_char"], 40)
 
     def test_fabricated_source_is_rejected(self):
         result = validate_citations([{"source_id": "missing", "quote": "anything"}], self.evidence)
