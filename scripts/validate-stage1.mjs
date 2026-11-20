@@ -32,11 +32,11 @@ for (const invariant of ['test_dot_and_matrix_multiplication','test_bayes_poster
 for (const topic of ['vectors','probability','calculus','optimization','python','pandas','leakage']) {
   if (!interactive.includes(`id:'${topic}'`)) throw new Error(`Missing interactive mastery lab: ${topic}`)
 }
-for (const feature of ['Play animation','Step','Check answer','Finite-difference explorer','Join-cardinality failure lab','Train-only preprocessing']) {
+for (const feature of ['Play animation','Step','Check answer','Required implementation evidence','Mastery gate passed','Finite-difference explorer','Join-cardinality failure lab','Train-only preprocessing']) {
   if (!interactive.includes(feature)) throw new Error(`Missing interactive Stage 1 feature: ${feature}`)
 }
 if (!app.includes('<Stage1MasteryLabs/>')) throw new Error('Seven Stage 1 mastery labs are not integrated into the Stage 1 UI')
-const projectFiles = ['examples/stage-01/project_pipeline.py','examples/stage-01/test_project_pipeline.py','examples/stage-01/fixtures/tabular_project.csv','examples/stage-01/PROJECT_DATA_CARD.md','examples/stage-01/PROJECT_DFD.md','examples/stage-01/incident-report.md']
+const projectFiles = ['examples/stage-01/project_pipeline.py','examples/stage-01/test_project_pipeline.py','examples/stage-01/fixtures/tabular_project.csv','examples/stage-01/fixtures/tabular_project_leakage.csv','examples/stage-01/PROJECT_DATA_CARD.md','examples/stage-01/PROJECT_DFD.md','examples/stage-01/incident-report.md']
 for (const file of projectFiles) if (!existsSync(file)) throw new Error(`Missing integrated project artifact: ${file}`)
 const projectTestCount = (projectTests.match(/    def test_/g) || []).length
 if (projectTestCount < 10) throw new Error(`Integrated project needs at least 10 tests; found ${projectTestCount}`)

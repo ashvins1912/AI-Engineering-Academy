@@ -491,3 +491,8 @@
 .stage1-assessment p.correct{color:#83dfb9}
 .stage1-assessment p.incorrect{color:#f2b47c}
 @media(max-width:760px){.stage1-mastery-head{flex-direction:column}.stage1-grid{grid-template-columns:1fr}.stage1-progress{align-self:flex-start}}
+
+.stage1-evidence{display:grid;gap:8px;margin:14px 0;padding:12px;border:1px solid #354765;border-radius:8px;background:#101c30}
+.stage1-evidence>strong{font-size:10px;color:#aebaff;margin-bottom:3px}
+.stage1-evidence label{display:flex;gap:8px;align-items:flex-start;font-size:10px;line-height:1.5;color:#c5d1e4}
+.stage1-evidence input{accent-color:#8fe1c6;margin-top:2px;flex:0 0 auto}

@@ -55,9 +55,10 @@ class IntegratedPipelineTests(unittest.TestCase):
         self.assertLessEqual(max(r.event_date for r in train),min(r.event_date for r in valid))
         self.assertFalse({r.entity_id for r in train}&{r.entity_id for r in valid})
 
-    def test_entity_reuse_across_time_is_rejected(self):
-        rows=[Record("a","same",date(2024,1,1),1,0),Record("b","same",date(2025,2,1),2,1)]
-        with self.assertRaisesRegex(ValueError,"entity leakage"): split_by_time_and_entity(rows,date(2025,1,1))
+    def test_intentionally_leaking_fixture_is_rejected(self):
+        records = load_records(Path("examples/stage-01/fixtures/tabular_project_leakage.csv"))
+        with self.assertRaisesRegex(ValueError, "entity leakage"):
+            split_by_time_and_entity(records, date(2025, 1, 1))
 
     def test_empty_validation_partition_is_rejected(self):
         rows=[Record("a","e1",date(2024,1,1),1,0)]
