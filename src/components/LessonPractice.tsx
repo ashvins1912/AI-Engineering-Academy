@@ -53,7 +53,8 @@ export default function LessonPractice({ lesson }: { lesson: Lesson }) {
   const stage = stageOf(lesson.id)
   const slug = slugOf(lesson.id)
   const base = useMemo(() => baseForStage(stage), [stage])
-  const spec: PracticeSpec = { ...base, ...(specs[slug] ?? {}) }\n  const setup = [...new Set([...base.install, ...(specs[slug]?.install ?? [])])]
+  const spec: PracticeSpec = { ...base, ...(specs[slug] ?? {}) }
+  const setup = [...new Set([...base.install, ...(specs[slug]?.install ?? [])])]
   const [step, setStep] = useState(0)
   const [copied, setCopied] = useState(false)
   const copy = async () => {
@@ -92,7 +93,7 @@ export default function LessonPractice({ lesson }: { lesson: Lesson }) {
     </div>
 
     <div className="practice-subhead"><Terminal size={17}/><div><strong>1. Configure your local environment</strong><span>Commands are a learning setup, not dependencies added to this Academy website.</span></div></div>
-    <div className="practice-setup"><div className="practice-setup-meta"><span>ENVIRONMENT SETUP</span><span>Python 3.11+ · isolated virtual environment</span></div><pre><code>{[...spec.install, ...(spec.install.some(x => x.includes('pip install')) ? [] : ['# Install the library required by the selected lesson']), '# Create lesson.py and paste the example below'].join('\n')}</code></pre></div>
+    <div className="practice-setup"><div className="practice-setup-meta"><span>ENVIRONMENT SETUP</span><span>Python 3.11+ · isolated virtual environment</span></div><pre><code>{[...setup, '# Create lesson.py and paste the example below'].join('\n')}</code></pre></div>
 
     <div className="practice-subhead"><Code2 size={17}/><div><strong>2. Implement the core mechanism</strong><span>Start with the smallest working example; then adapt it to the lesson exercise.</span></div></div>
     <div className="practice-code-head"><span>{spec.language.toUpperCase()} · STARTER IMPLEMENTATION</span><button onClick={copy}><Clipboard size={13}/>{copied ? 'Copied' : 'Copy code'}</button></div>
