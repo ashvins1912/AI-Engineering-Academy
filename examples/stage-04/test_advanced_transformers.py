@@ -62,8 +62,8 @@ class AdvancedTransformerTests(unittest.TestCase):
             transformer_block([[1, 2]], 1, [[1]], [0], [[1, 2]], [0, 0])
 
     def test_autoregressive_generation_stops_and_tracks_cache_positions(self):
-        transitions = {1: [0.0, 3.0, 1.0], 2: [3.0, 0.0, 1.0]}
-        result = generate_autoregressive([1], transitions, 5, stop_id=0, seed=3)
+        transitions = {1: [3.0, 0.0, 1.0], 2: [3.0, 0.0, 1.0]}
+        result = generate_autoregressive([1], transitions, 5, stop_id=0, top_k=1, seed=3)
         self.assertEqual(result["stop_reason"], "stop_token")
         self.assertEqual(result["token_ids"][-1], 0)
         self.assertEqual(len(result["kv_cache_positions"]), len(result["steps"]))
