@@ -34,6 +34,18 @@ function validate(value, shape, path = '$') {
 }
 
 validate(example, schema)
+
+const artifactPaths = [
+  example.architecture?.diagram,
+  example.visual?.fixture,
+  ...(example.implementations ?? []).flatMap(item => [item.path, item.testsPath])
+].filter(Boolean)
+for (const artifactPath of artifactPaths) {
+  try { readFileSync(new URL(artifactPath, root)) }
+  catch { failures.push(`artifact path does not exist: ${artifactPath}`) }
+}
+const rubricWeight = (example.assessment?.rubric ?? []).reduce((sum, item) => sum + item.weight, 0)
+if (rubricWeight !== 100) failures.push(`assessment.rubric weights must total 100 (found ${rubricWeight})`)
 if (failures.length) {
   console.error('FAIL valid topic example')
   failures.forEach(message => console.error(`  - ${message}`))
