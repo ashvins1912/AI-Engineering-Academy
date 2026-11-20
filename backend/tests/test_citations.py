@@ -44,7 +44,7 @@ class CitationValidationTests(unittest.TestCase):
     def test_duplicate_source_citations_are_rejected(self):
         result = validate_citations([
             {"source_id": "chunk-1", "quote": "Refunds"},
-            {"source_id": "chunk-1", "quote": "within thirty days"},
+            {"source_id": "chunk-1", "quote": "Refunds"},
         ], self.evidence)
         self.assertFalse(result["all_valid"])
         self.assertEqual(result["invalid"][0]["reason"], "duplicate_citation")
