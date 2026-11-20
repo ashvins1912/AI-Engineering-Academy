@@ -81,6 +81,8 @@ Avoid copying a vendor tutorial. Explain the underlying concept first, then use 
 - Added a complete scaled dot-product attention example record and linked source, test, visual diagram and deterministic fixture.
 - Added `scripts/validate-topic-contract.mjs`, including artifact-path checks, a 100-point rubric check and a negative test that verifies an incomplete record is rejected.
 - Added `npm run validate:topic-contract` and wired it into GitHub Actions CI.
+- Added `scripts/audit-topic-migration.mjs` to inventory all 84 stable curriculum IDs, detect duplicates and report canonical artifact coverage by stage without blocking legacy topics during migration.
+- Added `npm run audit:topic-migration` to CI so the migration baseline remains visible as stage batches are upgraded.
 - Added `docs/CONTENT_AUTHORING.md` to explain authoring, evidence-based content states, artifact layout, reproducibility and safe execution boundaries.
 
 **Not yet complete:** the schema has not yet been applied to all 84 curriculum topics; the current validator exercises the reference record rather than scanning every topic; full diagram/code fixture parity and all topic-specific code execution are still future Phase 0 work. Do not mark Phase 0 complete until those checks are automated and demonstrated in CI.
