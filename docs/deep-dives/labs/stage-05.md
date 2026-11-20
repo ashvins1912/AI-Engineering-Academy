@@ -4,7 +4,7 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## ingestion — Document ingestion and parsing
 
-**Implementation task:** Build a parser adapter that returns normalized text plus source/page provenance.
+**Implementation task:** Build PDF/DOCX parser adapters and a manifest containing source hash, tenant, owner, parser version, page offsets and OCR provenance.
 
 **Worked fixture:** Two-page PDF: page 1 policy paragraph; page 2 table; include corrupt-file fixture.
 
@@ -22,7 +22,7 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## chunking — Chunking strategies
 
-**Implementation task:** Compare fixed 5-token chunks with sentence/heading-aware chunks and overlap.
+**Implementation task:** Implement fixed and sentence-aware chunking with parent IDs, exact character offsets and bounded overlap.
 
 **Worked fixture:** Text: 'Refunds apply within 30 days. Exceptions require manager approval.'
 
@@ -40,7 +40,7 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## rag-embeddings — Embedding models and vector spaces
 
-**Implementation task:** Encode two documents and a query; rank using normalized cosine similarity.
+**Implementation task:** Compare normalized cosine and dot product; record embedding model/version/dimension and reject incompatible vectors.
 
 **Worked fixture:** Docs 'reset password' and 'refund within 30 days'; query 'money back'.
 
@@ -58,7 +58,7 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## vector-db — Vector indexes and databases
 
-**Implementation task:** Create exact cosine baseline then compare approximate index recall.
+**Implementation task:** Build exact cosine top-K as ground truth, then measure ANN Recall@K, latency and selective metadata-filter behavior.
 
 **Worked fixture:** Four normalized vectors in 2-D; query [1,0], top-2.
 
@@ -76,7 +76,7 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## retrieval — Retrieval strategies
 
-**Implementation task:** Compare dense, lexical and reciprocal-rank fusion on labeled queries.
+**Implementation task:** Implement BM25, dense ranking and weighted RRF; evaluate exact identifiers, paraphrases, typos and ACL filtering.
 
 **Worked fixture:** Corpus has exact policy ID 'POL-17' and paraphrase 'money returned'.
 
@@ -94,7 +94,7 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## generation — Grounded answer generation
 
-**Implementation task:** Generate an answer only from retrieved evidence and validate citation IDs.
+**Implementation task:** Create a provider-neutral grounded-answer contract, validate source IDs and exact quoted spans, and abstain on unsupported questions.
 
 **Worked fixture:** Evidence E1 says 30-day refund; E2 says final-sale exception.
 
@@ -112,7 +112,7 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## reranking — Reranking and relevance optimization
 
-**Implementation task:** Retrieve top 5 candidates then rerank query-document pairs.
+**Implementation task:** Retrieve a broad candidate set, rerank query-document pairs, deduplicate overlaps and pack a bounded evidence context.
 
 **Worked fixture:** One query, 5 passages; relevant passage initially ranked 4th.
 
@@ -130,7 +130,7 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## agentic-rag — Adaptive and agentic RAG
 
-**Implementation task:** Add one bounded second retrieval when evidence coverage is insufficient.
+**Implementation task:** Add bounded query decomposition/rewrite with explicit max rounds, timeout, no-result stop and coverage threshold.
 
 **Worked fixture:** Question needs policy date and exception; first query finds only date.
 
@@ -148,7 +148,7 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## graphrag — GraphRAG and knowledge graphs
 
-**Implementation task:** Extract entity-relation triples with source span, then answer a two-hop query.
+**Implementation task:** Extract typed triples with confidence and source spans; resolve aliases and traverse a bounded two-hop evidence graph.
 
 **Worked fixture:** Alice worksFor Acme; Acme locatedIn Bengaluru; each edge has evidence ID.
 
@@ -166,7 +166,7 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## visual-rag — Visual RAG for PDFs and images
 
-**Implementation task:** Render a PDF page and link OCR text/table region to page image coordinates.
+**Implementation task:** Validate page-region bounding boxes, OCR confidence and layout/table references while preserving page image identity.
 
 **Worked fixture:** Page with a 2-column table and rotated scan fixture.
 
@@ -184,7 +184,7 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## multimodal-rag — Audio and video RAG
 
-**Implementation task:** Index timestamped transcript segments and sampled video keyframes.
+**Implementation task:** Align timestamped transcript segments with sampled keyframes under an explicit time-gap tolerance.
 
 **Worked fixture:** Clip transcript at 00:10 and 00:35; sample frames at 00:12 and 00:40.
 
@@ -202,7 +202,7 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## rag-eval — RAG evaluation and optimization
 
-**Implementation task:** Build a golden query set with expected evidence IDs and calculate Recall@K.
+**Implementation task:** Build a versioned golden set and calculate Recall@K, Precision@K, MRR, nDCG, citation precision and abstention.
 
 **Worked fixture:** 5 queries, expected evidence sets; one query has no answer.
 
