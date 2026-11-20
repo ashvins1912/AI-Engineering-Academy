@@ -248,3 +248,7 @@
 .practice-references{display:flex;flex-wrap:wrap;gap:8px;list-style:none;margin:0;padding:0}
 .practice-references a{display:inline-flex;padding:8px 10px;border:1px solid #405777;border-radius:7px;background:#14243a;color:#c5d5f2;text-decoration:none;font-size:10px}
 .practice-references a:hover{border-color:#91a5ff;color:#edf2ff}
+
+
+.practice-guide-link{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:14px 16px;margin:18px 0;border:1px solid var(--border,#334155);border-radius:12px;background:rgba(59,130,246,.06)}
+.practice-guide-link strong{font-size:13px}.practice-guide-link span{flex:1 1 260px;color:var(--muted,#94a3b8);font-size:12px}.practice-guide-link a{color:var(--accent,#60a5fa);font-size:12px;font-weight:700;text-decoration:none}.practice-guide-link a:hover{text-decoration:underline}
