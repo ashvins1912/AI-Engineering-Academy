@@ -26,9 +26,20 @@ class TrainingProjectTests(unittest.TestCase):
             path=Path(d)/"state.json";report=train_project(path,epochs=35,patience=10)
             self.assertTrue(path.exists());self.assertGreaterEqual(report["best_epoch"],1)
             self.assertEqual(report["split_counts"],{"train":15,"validation":5,"test":5})
+            state=load_checkpoint(path)
+            self.assertIn("velocity_w1",state["optimizer_state"])
+            self.assertEqual(state["scheduler_state"]["last_epoch"],state["epoch"])
+            self.assertEqual(state["rng_state"],{"seed":7,"deterministic":True})
+            self.assertEqual(state["data_position"],0)
     def test_resume_continues_from_checkpoint_epoch(self):
         with tempfile.TemporaryDirectory() as d:
             path=Path(d)/"state.json";first=train_project(path,epochs=5)
             second=train_project(path,epochs=8,resume=True)
             self.assertGreaterEqual(second["epochs_run"],first["epochs_run"])
+    def test_checkpoint_rejects_missing_optimizer_state(self):
+        with tempfile.TemporaryDirectory() as d:
+            path=Path(d)/"state.json";state=initial_state();state.pop("optimizer_state")
+            save_checkpoint(path,state)
+            with self.assertRaisesRegex(ValueError,"missing required training state"):load_checkpoint(path)
+
 if __name__=="__main__":unittest.main()
