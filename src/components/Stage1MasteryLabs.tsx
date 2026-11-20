@@ -36,8 +36,6 @@ export default function Stage1MasteryLabs(){
  const pipeline=[{name:'Read source',detail:'Open CSV bytes with a known encoding and preserve the source path.'},{name:'Parse row',detail:'Convert each CSV record into named string fields.'},{name:'Validate schema',detail:'Require id and value; report missing fields with line numbers.'},{name:'Normalize',detail:'Parse finite numeric values; never coerce blank to zero.'},{name:'Check uniqueness',detail:'Detect repeated IDs and classify the row as rejected.'}]
  const pipelineExamples=[{id:'u-17',value:'12.5',status:'valid'},{id:'',value:'8',status:'missing id'},{id:'u-18',value:'oops',status:'invalid number'},{id:'u-17',value:'14',status:'duplicate id'}]
  const pandasRows=[{team:'A',score:10,active:true},{team:'A',score:20,active:false},{team:'B',score:5,active:true}]
- const activeRows=pandasRows.filter(r=>r.active)
- const joinRows=duplicateJoin?4:3
  const train=[0,2,4]
  const trainMean=train.reduce((a,b)=>a+b,0)/train.length
  const globalMean=(train.reduce((a,b)=>a+b,0)+validationValue)/(train.length+1)
