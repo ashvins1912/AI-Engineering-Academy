@@ -203,7 +203,7 @@ Pass when no entity crosses a split, temporal ordering is preserved, validation/
 
 ## Stage 1 integrated project — Reproducible tabular ML pipeline
 
-Build ingestion → schema validation → cleaning → feature generation → entity/time-aware split → train-only preprocessing → artifact export → data card. Include at least 10 automated tests, one intentionally failing leakage fixture, a data-flow diagram, tensor-shape table, deterministic run command and a short incident report explaining one fixed failure.
+Implemented reference: `python examples/stage-01/project_pipeline.py --input examples/stage-01/fixtures/tabular_project.csv --output build/stage-01/tabular-pipeline.json --cutoff 2025-01-01`. Run all project tests with `python -m unittest discover -s examples/stage-01 -p 'test_*.py' -v`. The pipeline performs ingestion → schema validation → deterministic feature generation → time/entity-aware split → train-only preprocessing → JSON artifact export. Review `examples/stage-01/PROJECT_DATA_CARD.md`, `PROJECT_DFD.md` and `incident-report.md`. The suite includes more than 10 regression tests, including an injected entity-leakage failure.
 
 ## Stage 1 mastery gate
 
