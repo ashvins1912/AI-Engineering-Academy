@@ -19,12 +19,12 @@ FastAPI service for server-side PDF/DOCX parsing, scanned-PDF OCR, real sentence
 docker compose up --build
 ```
 
-The API listens on port 8000. Alternatively, create a Python virtual environment, install `requirements.txt`, apply `migrations/000_local_role.sql` and `migrations/001_initial.sql` as a database administrator, then run `uvicorn app.main:app --host 0.0.0.0 --port 8000`.
+The API listens on port 8000. Alternatively, create a Python virtual environment, install `requirements.txt`, apply `migrations/000_local_role.sql`, `migrations/001_initial.sql` and `migrations/002_document_acl_ingestion_jobs.sql` as a database administrator, then run `uvicorn app.main:app --host 0.0.0.0 --port 8000`.
 
 ## API
 
 - `GET /health/live`, `GET /health/ready`
-- `POST /v1/documents` multipart field `file`, bearer JWT required
+- `POST /v1/ingestion-jobs` multipart field `file`, optional `visibility=private|tenant`, returns 202 and a durable job ID\n- `GET /v1/ingestion-jobs/{id}` owner/tenant-admin job status\n- `POST /v1/documents` synchronous compatibility path; prefer the async job API
 - `GET /v1/documents`
 - `DELETE /v1/documents/{id}` owner or tenant admin
 - `POST /v1/search` JSON `{"query":"...","top_k":5}`
@@ -40,7 +40,7 @@ SentenceTransformers `all-MiniLM-L6-v2` creates normalized 384-dimensional vecto
 
 ## Tenant security and identity
 
-The tenant and user UUIDs come only from signed RS256 JWT claims. The verifier checks issuer, audience, expiry, issued-at, and required UUID claims. Prefer `ACADEMY_JWKS_URL` over a static public key; JWKS sets are cached for five minutes and refreshed for unknown key IDs. The algorithm is pinned to RS256. Tenant IDs are never read from request bodies or headers. Every document/chunk query filters on tenant_id; PostgreSQL RLS is enabled and forced, and the API sets transaction-local app.tenant_id before tenant-scoped SQL. Run as a restricted non-owner DB role with no BYPASSRLS.
+The tenant and user UUIDs come only from signed RS256 JWT claims. The verifier checks issuer, audience, expiry, issued-at, and required UUID claims. Prefer `ACADEMY_JWKS_URL` over a static public key; JWKS sets are cached for five minutes and refreshed for unknown key IDs. The algorithm is pinned to RS256. Tenant IDs are never read from request bodies or headers. Every document/chunk/ACL/job query is tenant-scoped; PostgreSQL RLS is enabled and forced, and the API/worker set transaction-local app.tenant_id before tenant-scoped SQL. Documents default to private visibility; tenant-wide visibility requires an administrator. Explicit user grants are enforced by list/search predicates and the RLS-protected document_acl table. Grant provisioning must validate target tenant membership before it is exposed as an API operation. Run as a restricted non-owner DB role with no BYPASSRLS.
 
 ## Verification
 
