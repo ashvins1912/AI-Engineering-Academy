@@ -34,3 +34,20 @@ Calculate key metrics by hand, explain each estimator's objective, identify leak
 - User guide: https://scikit-learn.org/stable/user_guide.html
 - Evaluation: https://scikit-learn.org/stable/modules/model_evaluation.html
 - Preprocessing: https://scikit-learn.org/stable/modules/preprocessing.html
+
+
+## Stage workflow diagram
+
+Use this flow as the implementation order. The decision branches are the points where tests, policy checks or operational controls must stop unsafe progress.
+
+```mermaid
+flowchart TD
+  A[Define target and baseline] --> B[Leakage-safe split]
+  B --> C[Preprocessing pipeline]
+  C --> D[Train candidate estimators]
+  D --> E[Cross-validation and tuning]
+  E --> F[Threshold and calibration]
+  F --> G[Slice error analysis]
+  G --> H[Compare quality latency and memory]
+  H --> I[Model card and selection decision]
+```
