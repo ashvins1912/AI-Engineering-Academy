@@ -115,3 +115,26 @@ for (const id of ['perceptron','forward','backprop','optimizers','cnn','sequence
 for (const token of ['Gradient check','LSTM gate state','Train vs validation curves','Required evidence','Mastery gate passed']) assert.ok(stage3Mastery.includes(token), `Missing Stage 3 mastery feature: ${token}`)
 assert.ok(app.includes('<Stage3MasteryLabs/>'), 'Stage 3 mastery labs must be integrated into the learning path')
 console.log('PASS seven evidence-gated Stage 3 deep-learning topics')
+
+
+// Stage 3 deep-learning mastery, numerical references and checkpointed project.
+const stage3Mastery = readFileSync(new URL('../src/components/Stage3MasteryLabs.tsx', import.meta.url), 'utf8')
+const stage3Guide = readFileSync(new URL('../docs/deep-dives/03-deep-learning.md', import.meta.url), 'utf8')
+const stage3Pack = readFileSync(new URL('../docs/deep-dives/labs/stage-03.md', import.meta.url), 'utf8')
+const stage3Python = readFileSync(new URL('../examples/stage-03/deep_learning.py', import.meta.url), 'utf8')
+const stage3Tests = readFileSync(new URL('../examples/stage-03/test_deep_learning.py', import.meta.url), 'utf8')
+const trainingProject = readFileSync(new URL('../examples/stage-03/training_project.py', import.meta.url), 'utf8')
+const trainingTests = readFileSync(new URL('../examples/stage-03/test_training_project.py', import.meta.url), 'utf8')
+const stage3ModelCard = readFileSync(new URL('../examples/stage-03/MODEL_CARD.md', import.meta.url), 'utf8')
+for (const id of ['perceptron','forward','backprop','optimizers','cnn','sequence','training']) {
+  assert.ok(stage3Mastery.includes(`id:'${id}'`), `Missing Stage 3 interactive topic: ${id}`)
+  assert.ok(stage3Pack.includes(`## ${id} —`), `Missing Stage 3 lab pack topic: ${id}`)
+}
+for (const section of ['Worked example','Animation storyboard','Failure lab','Mastery gate']) assert.ok(stage3Guide.includes(section), `Missing Stage 3 guide section: ${section}`)
+for (const fn of ['neuron_forward','neuron_loss_gradient','finite_difference','forward_2_2_1','conv2d_valid','max_pool2d','rnn_sequence','lstm_step','dropout','batch_norm','optimizer_step','early_stopping']) assert.ok(stage3Python.includes(`def ${fn}(`), `Missing Stage 3 reference operation: ${fn}`)
+assert.ok((stage3Tests.match(/    def test_/g)||[]).length>=15, 'Stage 3 reference suite needs at least 15 tests')
+assert.ok((trainingTests.match(/    def test_/g)||[]).length>=7, 'Stage 3 project suite needs at least seven tests')
+for (const token of ['train_epoch','best_validation_loss','patience_count','save_checkpoint','load_checkpoint']) assert.ok(trainingProject.includes(token), `Missing checkpointed training behavior: ${token}`)
+for (const token of ['Intended use','Prohibited use','Limitations']) assert.ok(stage3ModelCard.includes(token), `Missing Stage 3 model card section: ${token}`)
+assert.ok(app.includes('<Stage3MasteryLabs/>'), 'Stage 3 mastery labs must be integrated into the learning path')
+console.log('PASS seven Stage 3 mastery topics, deep-learning reference operations and checkpointed classifier project')
