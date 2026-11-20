@@ -1,0 +1,34 @@
+[
+  {
+    "id": "policy-refund",
+    "text": "Refunds may be requested within 30 days of delivery. Items must be unused and proof of purchase is required. Exceptions require manager approval."
+  },
+  {
+    "id": "policy-shipping",
+    "text": "Standard shipping takes 3 to 5 business days. Express shipping takes 1 to 2 business days. Tracking becomes available after dispatch."
+  },
+  {
+    "id": "policy-warranty",
+    "text": "Electronic products include a one year limited warranty for manufacturing defects. Accidental damage and unauthorized repairs are excluded."
+  },
+  {
+    "id": "policy-privacy",
+    "text": "Account holders may request a copy of personal data and ask support to correct inaccurate profile information. Data export requests are verified."
+  },
+  {
+    "id": "policy-security",
+    "text": "Use multi-factor authentication, rotate compromised credentials and report suspicious sign-in activity to the security team."
+  },
+  {
+    "id": "policy-onboarding",
+    "text": "New learners complete profile setup, choose a learning path and finish the foundation assessment before advanced modules unlock."
+  },
+  {
+    "id": "policy-retention",
+    "text": "Uploaded learning documents are retained according to the workspace retention policy. Deletion requests remove active indexes and scheduled backups expire under the backup lifecycle."
+  },
+  {
+    "id": "policy-access",
+    "text": "Document access is limited by tenant membership, owner permissions and explicit document grants. Tenant administrators can audit access events."
+  }
+]
