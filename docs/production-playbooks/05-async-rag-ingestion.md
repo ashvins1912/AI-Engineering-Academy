@@ -59,3 +59,12 @@ Documents default to `private`. Tenant-wide visibility is an administrator-only 
 ## Deployment boundary
 
 This repository change adds code and local Compose wiring only. It does not create cloud buckets, KMS keys, ClamAV hosts, databases, worker services, DNS, credentials or paid infrastructure. Before deployment, configure secrets outside source control, test object-store IAM and KMS policy, validate backup/restore, run load/security testing and complete the identity-provider integration.
+
+
+## Embeddings and grounded answer provider
+
+The backend supports a local SentenceTransformers adapter and an opt-in OpenAI-compatible remote `/embeddings` adapter. Remote mode validates vector count, order, dimension and finite values. Use a dedicated private endpoint and review provider data-retention terms before sending customer text. It is disabled by default.
+
+The `POST /v1/answer` route is disabled unless `ACADEMY_GENERATION_ENABLED=true` and the model endpoint, API key and model name are configured. The adapter sends only ACL-filtered, bounded evidence, treats retrieved text as untrusted data, requests structured JSON and verifies each citation source ID and exact quote span. Invalid citations and model abstention return an empty abstained answer. This is a syntactic citation gate, not proof of semantic entailment; evaluate answer faithfulness, contradictions, prompt injection and no-answer behavior before enabling the endpoint for users.
+
+Keep all provider keys in a secret manager or deployment environment. Never commit provider keys or log raw prompts, evidence, answers or authorization tokens. Start with synthetic data and a non-production provider account.
