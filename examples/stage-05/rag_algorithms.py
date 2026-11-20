@@ -37,32 +37,49 @@ def chunk_text(
         raise ValueError("strategy must be fixed or sentence")
     parent = parent_id or source_id
     spans: list[tuple[int, int]] = []
-    start = 0
-    while start < len(text):
-        end = min(start + max_chars, len(text))
-        if strategy == "sentence" and end < len(text):
-            boundary = max(text.rfind(". ", start, end), text.rfind("? ", start, end),
-                           text.rfind("! ", start, end), text.rfind("\n", start, end))
-            if boundary > start:
-                end = boundary + 1
-        left = start
-        right = end
-        while left < right and text[left].isspace():
-            left += 1
-        while right > left and text[right - 1].isspace():
-            right -= 1
-        if right > left:
-            spans.append((left, right))
-        if end >= len(text):
-            break
-        next_start = max(start + 1, end - overlap_chars)
-        if strategy == "sentence":
-            boundary = min((p for p in (text.find(". ", next_start), text.find("? ", next_start),
-                                         text.find("! ", next_start), text.find("\n", next_start)) if p >= 0),
-                           default=-1)
-            if boundary >= 0 and boundary + 1 < end:
-                next_start = boundary + 2
-        start = next_start
+    if strategy == "fixed":
+        start = 0
+        while start < len(text):
+            end = min(start + max_chars, len(text))
+            left, right = start, end
+            while left < right and text[left].isspace():
+                left += 1
+            while right > left and text[right - 1].isspace():
+                right -= 1
+            if right > left:
+                spans.append((left, right))
+            if end >= len(text):
+                break
+            start = max(start + 1, end - overlap_chars)
+    else:
+        sentence_spans = [(match.start(), match.end()) for match in
+                          re.finditer(r"[^.!?\\n]+[.!?]?(?:\\s+|$)", text) if match.group().strip()]
+        current_start: int | None = None
+        current_end: int | None = None
+        for sentence_start, sentence_end in sentence_spans:
+            if sentence_end - sentence_start > max_chars:
+                if current_start is not None and current_end is not None:
+                    spans.append((current_start, current_end))
+                    current_start = current_end = None
+                cursor = sentence_start
+                while cursor < sentence_end:
+                    chunk_end = min(cursor + max_chars, sentence_end)
+                    spans.append((cursor, chunk_end))
+                    if chunk_end >= sentence_end:
+                        break
+                    cursor = max(cursor + 1, chunk_end - overlap_chars)
+                continue
+            if current_start is None:
+                current_start, current_end = sentence_start, sentence_end
+            elif sentence_end - current_start <= max_chars:
+                current_end = sentence_end
+            else:
+                spans.append((current_start, current_end))
+                current_start = max(current_start, current_end - overlap_chars)
+                current_end = sentence_end
+        if current_start is not None and current_end is not None:
+            spans.append((current_start, current_end))
+        spans = [(left, right) for left, right in spans if text[left:right].strip()]
     records = []
     for index, (left, right) in enumerate(spans):
         records.append(ChunkRecord(
