@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Activity, AlertTriangle, ArrowRight, CheckCircle2, Cloud, Database, GitBranch, Play, RotateCcw, ShieldCheck, Workflow } from 'lucide-react'
 
 type LabKey = 'rag' | 'agents' | 'finetune' | 'aws'
@@ -44,7 +44,8 @@ export default function ProductionLabs() {
  const [activeId,setActiveId]=useState<LabKey>('rag')
  const [scenarioId,setScenarioId]=useState('happy')
  const [ran,setRan]=useState(false)
- const [completed,setCompleted]=useState<string[]>([])
+ const [completed,setCompleted]=useState<string[]>(()=>{try{const value=localStorage.getItem('ai-academy.production-labs.v1');return value?JSON.parse(value) as string[]:[]}catch{return []}})
+ useEffect(()=>{localStorage.setItem('ai-academy.production-labs.v1',JSON.stringify(completed))},[completed])
  const [configValue,setConfigValue]=useState(8)
  const [selectedAnswer,setSelectedAnswer]=useState<number|null>(null)
  const [answerChecked,setAnswerChecked]=useState(false)
