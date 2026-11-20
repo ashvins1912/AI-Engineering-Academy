@@ -4,127 +4,127 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## vectors — Vectors, matrices and tensor shapes
 
-**Implementation task:** Implement dot product and 2×2 matrix multiplication, then compare with NumPy.
+**Implementation task:** Vectors, matrices and tensor shapes
 
-**Worked fixture:** A=[[1,2],[3,4]], x=[2,1].
+**Worked fixture:** Implement dot product and 2×2 matrix multiplication, then compare with NumPy.
 
-**Expected result:** A·x=[4,10]; A·A=[[7,10],[15,22]].
+**Expected result:** A=[[1,2],[3,4]], x=[2,1].
 
-**Verification tests:** Assert output shapes and reject incompatible dimensions.
+**Verification tests:** A·x=[4,10]; A·A=[[7,10],[15,22]].
 
 **Debugging checklist:** Why does (m×n)(n×b) produce (m×b)? What does broadcasting align?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Assert output shapes and reject incompatible dimensions.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
 ## probability — Probability and statistics
 
-**Implementation task:** Estimate a conditional probability from a reproducible simulation and compare with Bayes' rule.
+**Implementation task:** Probability and statistics
 
-**Worked fixture:** P(A)=0.2, P(B|A)=0.8, P(B|not A)=0.1.
+**Worked fixture:** Estimate a conditional probability from a reproducible simulation and compare with Bayes' rule.
 
-**Expected result:** P(A|B)=0.16/(0.16+0.08)=2/3≈0.667.
+**Expected result:** P(A)=0.2, P(B|A)=0.8, P(B|not A)=0.1.
 
-**Verification tests:** Run seeds 7 and 21; check estimates converge as trials grow.
+**Verification tests:** P(A|B)=0.16/(0.16+0.08)=2/3≈0.667.
 
 **Debugging checklist:** Explain base-rate effects and sampling error.
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Run seeds 7 and 21; check estimates converge as trials grow.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
 ## calculus — Derivatives and gradients
 
-**Implementation task:** Compare analytic, forward-difference and central-difference gradients.
+**Implementation task:** Derivatives and gradients
 
-**Worked fixture:** f(w)=(w−3)^2 at w=1; ε=1e−5.
+**Worked fixture:** Compare analytic, forward-difference and central-difference gradients.
 
-**Expected result:** f'(1)=−4; central difference should be approximately −4.
+**Expected result:** f(w)=(w−3)^2 at w=1; ε=1e−5.
 
-**Verification tests:** Test several ε values and detect a deliberately reversed sign.
+**Verification tests:** f'(1)=−4; central difference should be approximately −4.
 
 **Debugging checklist:** Why is central difference usually more accurate than forward difference?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Test several ε values and detect a deliberately reversed sign.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
 ## optimization — Optimization foundations
 
-**Implementation task:** Train a one-weight linear model with gradient descent and log each update.
+**Implementation task:** Optimization foundations
 
-**Worked fixture:** x=[1,2,3], y=[2,4,6], w0=0, η=0.1; use MSE.
+**Worked fixture:** Train a one-weight linear model with gradient descent and log each update.
 
-**Expected result:** Loss decreases and w approaches 2; η=10 should diverge/oscillate.
+**Expected result:** x=[1,2,3], y=[2,4,6], w0=0, η=0.1; use MSE.
 
-**Verification tests:** Assert finite loss, stopping at tolerance or max steps, and compare η values.
+**Verification tests:** Loss decreases and w approaches 2; η=10 should diverge/oscillate.
 
 **Debugging checklist:** How do learning rate and feature scaling affect convergence?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Assert finite loss, stopping at tolerance or max steps, and compare η values.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
 ## python-core — Python for data work
 
-**Implementation task:** Write a CSV ingestion CLI that validates schema and reports invalid rows without crashing.
+**Implementation task:** Python for data work
 
-**Worked fixture:** Rows: valid id/value; missing id; value='oops'; duplicate id.
+**Worked fixture:** Write a CSV ingestion CLI that validates schema and reports invalid rows without crashing.
 
-**Expected result:** Two invalid rows plus one duplicate are reported with row numbers; valid rows remain.
+**Expected result:** Rows: valid id/value; missing id; value='oops'; duplicate id.
 
-**Verification tests:** Test missing file, empty file, malformed CSV and Unicode.
+**Verification tests:** Two invalid rows plus one duplicate are reported with row numbers; valid rows remain.
 
 **Debugging checklist:** Why separate pure validation from filesystem I/O?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Test missing file, empty file, malformed CSV and Unicode.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
 ## numpy-pandas — NumPy and Pandas
 
-**Implementation task:** Replace a row loop with vectorized filtering and grouped aggregation.
+**Implementation task:** NumPy and Pandas
 
-**Worked fixture:** DataFrame: team=[A,A,B], score=[10,20,5], active=[1,0,1].
+**Worked fixture:** Replace a row loop with vectorized filtering and grouped aggregation.
 
-**Expected result:** Active rows grouped by team: A=10, B=5.
+**Expected result:** DataFrame: team=[A,A,B], score=[10,20,5], active=[1,0,1].
 
-**Verification tests:** Test null score, duplicate index and join key duplication.
+**Verification tests:** Active rows grouped by team: A=10, B=5.
 
 **Debugging checklist:** When can Pandas index alignment silently change results?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Test null score, duplicate index and join key duplication.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
 ## data-quality — Data quality and leakage
 
-**Implementation task:** Demonstrate leakage by fitting a scaler before splitting, then fix the pipeline.
+**Implementation task:** Data quality and leakage
 
-**Worked fixture:** Train values [0,2,4], validation value [1000]; fit scaler globally vs train-only.
+**Worked fixture:** Demonstrate leakage by fitting a scaler before splitting, then fix the pipeline.
 
-**Expected result:** Train-only scaler uses mean 2; global scaler mean 251.5.
+**Expected result:** Train values [0,2,4], validation value [1000]; fit scaler globally vs train-only.
 
-**Verification tests:** Assert validation data never enters fit; test future timestamp and duplicate entity split.
+**Verification tests:** Train-only scaler uses mean 2; global scaler mean 251.5.
 
 **Debugging checklist:** Describe target leakage vs temporal leakage.
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Assert validation data never enters fit; test future timestamp and duplicate entity split.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
