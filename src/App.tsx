@@ -4,6 +4,7 @@ import { curriculum, type Lesson } from './data/curriculum'
 import MathLabs from './components/MathLabs'
 import Stage1MasteryLabs from './components/Stage1MasteryLabs'
 import MLLabs from './components/MLLabs'
+import Stage3MasteryLabs from './components/Stage3MasteryLabs'
 import Stage2MasteryLabs from './components/Stage2MasteryLabs'
 import TransformerLabs from './components/TransformerLabs'
 import RAGLabs from './components/RAGLabs'
@@ -61,8 +62,8 @@ export default function App() {
         {active.id==='stage-1'&&showLabs&&<><Stage1MasteryLabs/><MathLabs/></>}
         {active.id==='stage-2'&&<div className="phase-lab-launch"><div><strong>Interactive machine learning workbench</strong><p>Seven classical ML topics with editable numerical experiments, failure analysis and practical mastery evidence.</p></div><button className="lab-primary" onClick={()=>setShowMLLabs(v=>!v)}>{showMLLabs?'Hide workbench':'Open 7 mastery gates + workbench'} <ChevronRight size={15}/></button></div>}
         {active.id==='stage-2'&&showMLLabs&&<><Stage2MasteryLabs/><MLLabs/></>}
-        {active.id==='stage-3'&&<div className="phase-lab-launch"><div><strong>Interactive neural network lab</strong><p>Explore neural-network gradients, CNN feature maps, recurrent sequence state, regularization and model evaluation.</p></div><button className="lab-primary" onClick={()=>setShowDeepLabs(v=>!v)}>{showDeepLabs?'Hide neural lab':'Open neural network lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-3'&&showDeepLabs&&<MLLabs initialTab="network"/>}
+        {active.id==='stage-3'&&<div className="phase-lab-launch"><div><strong>Interactive neural network lab</strong><p>Seven deep-learning topics with interactive forward/backward traces, optimizer experiments, CNN/RNN walkthroughs and generalization evidence.</p></div><button className="lab-primary" onClick={()=>setShowDeepLabs(v=>!v)}>{showDeepLabs?'Hide neural lab':'Open 7 mastery gates + neural lab'} <ChevronRight size={15}/></button></div>}
+        {active.id==='stage-3'&&showDeepLabs&&<><Stage3MasteryLabs/><MLLabs initialTab="network"/></>}
         {active.id==='stage-4'&&<div className="phase-lab-launch"><div><strong>Interactive transformer and LLM workbench</strong><p>Trace token IDs, embeddings, Q/K/V attention, multi-head projections, transformer blocks and next-token decoding.</p></div><button className="lab-primary" onClick={()=>setShowTransformerLabs(v=>!v)}>{showTransformerLabs?'Hide transformer labs':'Open 6 transformer labs'} <ChevronRight size={15}/></button></div>}
         {active.id==='stage-4'&&showTransformerLabs&&<TransformerLabs/>}
         {active.id==='stage-5'&&<div className="phase-lab-launch"><div><strong>Interactive RAG engineering workbench</strong><p>Experiment with ingestion, chunking, dense and sparse retrieval, reranking, GraphRAG, Visual RAG and evaluation metrics.</p></div><button className="lab-primary" onClick={()=>setShowRAGLabs(v=>!v)}>{showRAGLabs?'Hide RAG labs':'Open 7 RAG labs'} <ChevronRight size={15}/></button></div>}
