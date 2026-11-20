@@ -15,6 +15,8 @@
     "validate:phase6": "node scripts/validate-phase6.mjs",
     "validate:documents": "node scripts/validate-document-ingestion.mjs",
     "validate:production-rag": "node scripts/validate-production-rag.mjs",
+    "validate:topic-contract": "node scripts/validate-topic-contract.mjs",
+    "audit:topic-migration": "node scripts/audit-topic-migration.mjs",
     "validate:stage1": "node scripts/validate-stage1.mjs"
   },
   "dependencies": {
