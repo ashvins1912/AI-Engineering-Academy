@@ -41,7 +41,6 @@ export default function Stage2MasteryLabs(){
  const clusterAssignments=clusterStep===0?[0,0,0,1,1,1]:[0,0,0,1,1,1]
  const angle=pcaAngle*Math.PI/180
  const precision=tp+fp?tp/(tp+fp):0,recall=tp+fn?tp/(tp+fn):0,f1=precision+recall?2*precision*recall/(precision+recall):0
- const choose=(value:number)=>{setAnswers(a=>({...a,[active]:value}));setChecked(c=>({...c,[active]:false}))}
  const verify=()=>setChecked(c=>({...c,[active]:true}))
  return <section className="stage2-mastery" aria-label="Stage 2 classical machine learning mastery labs">
   <header className="stage2-head"><div><span className="eyebrow">STAGE 2 · CLASSICAL MACHINE LEARNING</span><h2>Seven algorithm mastery gates</h2><p>Derive objectives, change parameters, inspect decision behavior and collect implementation evidence before advancing.</p></div><div className="stage2-progress"><strong>{gateCount}/7</strong><span>gates passed</span></div></header>
