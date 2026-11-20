@@ -16,6 +16,10 @@ class AsyncIngestionAPIContractTests(unittest.TestCase):
         schema = DocumentOut.model_json_schema()
         self.assertIn("visibility", schema["properties"])
 
+    def test_grounded_answer_route_is_registered(self):
+        routes = {(route.path, tuple(sorted(route.methods or []))): route for route in app.routes}
+        self.assertIn(("/v1/answer", ("POST",)), routes)
+
     def test_job_schema_exposes_retry_and_terminal_state(self):
         schema = IngestionJobOut.model_json_schema()
         for field in ("status", "attempts", "document_id", "error_code"):
