@@ -139,6 +139,9 @@ async def replay_dead_job(session: AsyncSession, tenant_id: UUID, job_id: UUID) 
     if job.status != "dead":
         await session.rollback()
         raise ValueError("only dead-letter jobs can be replayed")
+    if job.raw_object_deleted_at is not None:
+        await session.rollback()
+        raise ValueError("source object has expired and cannot be replayed")
     job.status = "queued"
     job.attempts = 0
     job.next_attempt_at = datetime.now(timezone.utc)
@@ -189,3 +192,76 @@ async def renew_job_lease(session: AsyncSession, tenant_id: UUID, job_id: UUID, 
     )
     await session.commit()
     return bool(result.rowcount)
+
+
+
+def retention_cutoff(retention_days: int, now: datetime | None = None) -> datetime:
+    if retention_days < 1:
+        raise ValueError("retention_days must be at least one")
+    current = now or datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        raise ValueError("now must be timezone-aware")
+    return current - timedelta(days=retention_days)
+
+
+async def claim_expired_raw_objects(
+    session: AsyncSession,
+    tenant_id: UUID,
+    retention_days: int = 30,
+    batch_size: int = 100,
+    lease_seconds: int = 300,
+) -> list[dict]:
+    """Lease terminal-job source objects whose retention window has elapsed."""
+    if batch_size < 1 or lease_seconds < 30:
+        raise ValueError("batch_size must be positive and lease_seconds at least 30")
+    await set_tenant_context(session, str(tenant_id))
+    now = datetime.now(timezone.utc)
+    cutoff = retention_cutoff(retention_days, now)
+    rows = (await session.scalars(
+        select(IngestionJob)
+        .where(
+            IngestionJob.tenant_id == tenant_id,
+            IngestionJob.status.in_(("succeeded", "dead", "cancelled")),
+            IngestionJob.raw_object_deleted_at.is_(None),
+            func.coalesce(IngestionJob.completed_at, IngestionJob.updated_at, IngestionJob.created_at) <= cutoff,
+            or_(
+                IngestionJob.raw_object_delete_lease_until.is_(None),
+                IngestionJob.raw_object_delete_lease_until < now,
+            ),
+        )
+        .order_by(IngestionJob.created_at.asc())
+        .with_for_update(skip_locked=True)
+        .limit(batch_size)
+    )).all()
+    claimed = []
+    for job in rows:
+        job.raw_object_delete_lease_until = now + timedelta(seconds=lease_seconds)
+        claimed.append({"id": job.id, "object_key": job.object_key})
+    await session.commit()
+    return claimed
+
+
+async def mark_raw_object_deleted(session: AsyncSession, tenant_id: UUID, job_id: UUID) -> None:
+    await set_tenant_context(session, str(tenant_id))
+    result = await session.execute(
+        update(IngestionJob)
+        .where(IngestionJob.id == job_id, IngestionJob.tenant_id == tenant_id)
+        .values(
+            raw_object_deleted_at=datetime.now(timezone.utc),
+            raw_object_delete_lease_until=None,
+        )
+    )
+    if not result.rowcount:
+        await session.rollback()
+        raise LookupError("ingestion job not found")
+    await session.commit()
+
+
+async def release_raw_object_delete_lease(session: AsyncSession, tenant_id: UUID, job_id: UUID) -> None:
+    await set_tenant_context(session, str(tenant_id))
+    await session.execute(
+        update(IngestionJob)
+        .where(IngestionJob.id == job_id, IngestionJob.tenant_id == tenant_id)
+        .values(raw_object_delete_lease_until=None)
+    )
+    await session.commit()
