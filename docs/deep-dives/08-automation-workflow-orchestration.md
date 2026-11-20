@@ -45,3 +45,8 @@ flowchart TD
   I -- yes --> J[Compensate or dead-letter]
   G --> K[Complete and audit]
 ```
+
+
+## Interview preparation integration
+
+Use the [Agentic AI Interview Preparation track](../interview-prep/README.md) to practice this stage in timed interview conditions. The track includes a scenario prompt, answer outline, interviewer follow-ups, failure injection and a scored self-review rubric.
