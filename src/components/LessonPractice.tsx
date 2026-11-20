@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowDown, ArrowRight, Check, ChevronLeft, ChevronRight, Clipboard, Code2, Play, Terminal, Wrench } from 'lucide-react'
+import { ArrowRight, Check, ChevronLeft, ChevronRight, Clipboard, Code2, Play, Terminal, Wrench } from 'lucide-react'
 import type { Lesson } from '../data/curriculum'
 
 type PracticeSpec = {
