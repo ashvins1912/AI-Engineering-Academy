@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     ocr_dpi: int = 160
     cors_origins: str = "http://localhost:5173"
     rate_limit_per_minute: int = 20
+    trusted_proxy_ips: str = ""
     storage_backend: str = "local"
     storage_root: str = "./var/private-uploads"
     s3_bucket: str = ""
