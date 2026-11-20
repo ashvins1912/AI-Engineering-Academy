@@ -54,3 +54,23 @@ Every claim must be supported by accessible evidence; citations resolve to sourc
 - pgvector: https://github.com/pgvector/pgvector
 - LlamaIndex: https://docs.llamaindex.ai/
 - OWASP LLM Top 10: https://genai.owasp.org/llm-top-10/
+
+
+## Stage workflow diagram
+
+Use this flow as the implementation order. The decision branches are the points where tests, policy checks or operational controls must stop unsafe progress.
+
+```mermaid
+flowchart TD
+  A[Source upload] --> B[Validate and parse/OCR]
+  B --> C[Normalize with provenance]
+  C --> D[Chunk and retain page offsets]
+  D --> E[Embed and index]
+  F[User query] --> G[Authenticate and authorize]
+  G --> H[Hybrid retrieve]
+  E --> H
+  H --> I[Rerank and assemble evidence]
+  I --> J[Generate grounded answer]
+  J --> K[Validate citations and abstention]
+  K --> L[Answer plus trace]
+```
