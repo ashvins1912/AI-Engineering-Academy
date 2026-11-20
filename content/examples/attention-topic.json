@@ -110,15 +110,15 @@
       {
         "operation": "Dot products",
         "reasoning": "Compare the query with each key.",
-        "result": "scores=[1,0]"
+        "result": "scaled scores≈[0.7071,0]"
       },
       {
         "operation": "Softmax",
         "reasoning": "Normalize the scores into weights.",
-        "result": "weights≈[0.731,0.269]"
+        "result": "weights≈[0.6698,0.3302]"
       }
     ],
-    "expectedOutput": "weighted value≈[1.462,1.076]"
+    "expectedOutput": "weighted value≈[1.3395,1.3210]"
   },
   "implementations": [
     {
