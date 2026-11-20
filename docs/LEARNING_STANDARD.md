@@ -22,3 +22,24 @@ A lesson is not complete if it is only prose, a list of definitions, a copied di
 
 ## Mastery evidence
 Track separate evidence for conceptual explanation, calculation/reasoning, implementation, debugging and applied design. Completion is not equivalent to mastery.
+
+## Interactive implementation workbench requirement
+
+Every lesson detail view must expose a guided practice workbench in addition to its conceptual notes. The workbench must include:
+
+1. An interactive, step-selectable workflow based on the lesson's own workflow sequence.
+2. Local environment setup commands that create an isolated Python environment and install only the lesson-track packages required by the example.
+3. A copyable starter implementation with a clear run command and expected observation.
+4. Debugging prompts that deliberately target likely shape, data, protocol, security or operational failures for the topic.
+5. A production checklist appropriate to the stage, including validation, authorization, reliability, observability, resource limits and cost where relevant.
+6. Official primary documentation links for the relevant technical ecosystem.
+7. An independent practice submission and explicit completion criteria.
+
+The Academy website itself must not execute arbitrary learner code. Code is copied into a learner-controlled local environment or notebook. Interactive visualizations may remain deterministic browser-side teaching simulations and must label simplifications honestly.
+
+A starter snippet is a launch point, not a substitute for the full assignment. Topic-specific lessons should progressively add implementation-from-scratch, framework-assisted implementation, tests, failure injection and production design.
+
+
+## Stage deep-dive guides
+
+The stage-level guides in [docs/deep-dives](deep-dives/README.md) provide topic-specific coverage for all 84 lesson topics across the 11 stages. Each guide includes concept and derivation goals, implementation labs, tests and failure cases, production considerations, an end-to-end project, required artifacts and a mastery gate. Lesson workbenches link to the matching stage guide. Every one of the 84 lessons now has an individual lab specification in `docs/deep-dives/labs/` with a task, worked fixture, expected result, verification tests, debugging checklist, interview checks and submission evidence. These specifications define what a learner must implement and how to verify it. They are not a claim that every lesson has a complete reference solution or a separate production-sized application; expanding executable reference solutions and automated grading remains a distinct future milestone.
