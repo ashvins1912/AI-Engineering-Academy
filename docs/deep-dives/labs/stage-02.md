@@ -4,127 +4,127 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## linear-regression — Linear regression from scratch
 
-**Implementation task:** Implement closed-form least squares and gradient descent, compare predictions.
+**Implementation task:** Linear regression from scratch
 
-**Worked fixture:** X=[[1],[2],[3]], y=[3,5,7] with intercept.
+**Worked fixture:** Implement closed-form least squares and gradient descent, compare predictions.
 
-**Expected result:** Slope≈2, intercept≈1; predictions [3,5,7].
+**Expected result:** X=[[1],[2],[3]], y=[3,5,7] with intercept.
 
-**Verification tests:** Test singular/collinear X, outlier and constant target.
+**Verification tests:** Slope≈2, intercept≈1; predictions [3,5,7].
 
 **Debugging checklist:** When would QR/SVD be safer than explicitly inverting XᵀX?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Test singular/collinear X, outlier and constant target.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
 ## logistic-regression — Logistic regression
 
-**Implementation task:** Compute sigmoid, binary cross-entropy and thresholded predictions.
+**Implementation task:** Logistic regression
 
-**Worked fixture:** Logits=[−2,0,2], labels=[0,1,1].
+**Worked fixture:** Compute sigmoid, binary cross-entropy and thresholded predictions.
 
-**Expected result:** Probabilities≈[0.119,0.5,0.881]; threshold 0.5 predicts [0,1,1].
+**Expected result:** Logits=[−2,0,2], labels=[0,1,1].
 
-**Verification tests:** Test extreme logits, class imbalance and thresholds 0.2/0.8.
+**Verification tests:** Probabilities≈[0.119,0.5,0.881]; threshold 0.5 predicts [0,1,1].
 
 **Debugging checklist:** Why is a probability threshold a decision policy rather than a learned parameter?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Test extreme logits, class imbalance and thresholds 0.2/0.8.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
 ## trees — Decision trees and ensembles
 
-**Implementation task:** Calculate Gini impurity and choose a split for a tiny classification tree.
+**Implementation task:** Decision trees and ensembles
 
-**Worked fixture:** Parent labels [0,0,1,1]; split into pure left [0,0], right [1,1].
+**Worked fixture:** Calculate Gini impurity and choose a split for a tiny classification tree.
 
-**Expected result:** Parent Gini=0.5; weighted child Gini=0; gain=0.5.
+**Expected result:** Parent labels [0,0,1,1]; split into pure left [0,0], right [1,1].
 
-**Verification tests:** Test empty child prevention, max depth and a noisy split.
+**Verification tests:** Parent Gini=0.5; weighted child Gini=0; gain=0.5.
 
 **Debugging checklist:** How do bagging and boosting differ in how models are combined?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Test empty child prevention, max depth and a noisy split.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
 ## svm-knn — KNN and support vector machines
 
-**Implementation task:** Implement KNN distances and inspect a linear SVM margin after scaling.
+**Implementation task:** KNN and support vector machines
 
-**Worked fixture:** Points (0,0):A, (0,2):A, (3,3):B; query (1,1), k=3.
+**Worked fixture:** Implement KNN distances and inspect a linear SVM margin after scaling.
 
-**Expected result:** Nearest-neighbor vote is A (2 of 3); report sorted distances.
+**Expected result:** Points (0,0):A, (0,2):A, (3,3):B; query (1,1), k=3.
 
-**Verification tests:** Test ties, feature scale disparity and k larger than sample count.
+**Verification tests:** Nearest-neighbor vote is A (2 of 3); report sorted distances.
 
 **Debugging checklist:** Why do distance-based methods need scaling?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Test ties, feature scale disparity and k larger than sample count.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
 ## clustering — Clustering
 
-**Implementation task:** Run one K-means assignment/update iteration by hand.
+**Implementation task:** Clustering
 
-**Worked fixture:** Points [1,1],[1,2],[8,8],[9,8], centers [1,1],[8,8].
+**Worked fixture:** Run one K-means assignment/update iteration by hand.
 
-**Expected result:** Assignments [0,0,1,1], new centers [1,1.5] and [8.5,8].
+**Expected result:** Points [1,1],[1,2],[8,8],[9,8], centers [1,1],[8,8].
 
-**Verification tests:** Test empty cluster, seed sensitivity and outlier.
+**Verification tests:** Assignments [0,0,1,1], new centers [1,1.5] and [8.5,8].
 
 **Debugging checklist:** Why can K-means fail on non-spherical clusters?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Test empty cluster, seed sensitivity and outlier.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
 ## pca — Dimensionality reduction
 
-**Implementation task:** Center a 2-D dataset, compute covariance and project onto principal axis.
+**Implementation task:** Dimensionality reduction
 
-**Worked fixture:** Points (2,0),(0,2),(3,1),(1,3).
+**Worked fixture:** Center a 2-D dataset, compute covariance and project onto principal axis.
 
-**Expected result:** Mean=(1.5,1.5); first component follows the anti-diagonal symmetry direction.
+**Expected result:** Points (2,0),(0,2),(3,1),(1,3).
 
-**Verification tests:** Assert centered mean≈0; fit PCA on training split only.
+**Verification tests:** Mean=(1.5,1.5); first component follows the anti-diagonal symmetry direction.
 
 **Debugging checklist:** What does explained variance ratio not tell you?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Assert centered mean≈0; fit PCA on training split only.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
 ## metrics — Model evaluation
 
-**Implementation task:** Build a confusion matrix and calculate precision/recall/F1 by hand.
+**Implementation task:** Model evaluation
 
-**Worked fixture:** TP=8, FP=2, FN=4, TN=16.
+**Worked fixture:** Build a confusion matrix and calculate precision/recall/F1 by hand.
 
-**Expected result:** Precision=0.8, recall=2/3≈0.667, F1≈0.727.
+**Expected result:** TP=8, FP=2, FN=4, TN=16.
 
-**Verification tests:** Test no predicted positives and macro vs weighted averages.
+**Verification tests:** Precision=0.8, recall=2/3≈0.667, F1≈0.727.
 
 **Debugging checklist:** When is PR-AUC more informative than ROC-AUC?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Test no predicted positives and macro vs weighted averages.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
