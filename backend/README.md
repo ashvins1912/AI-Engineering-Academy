@@ -14,7 +14,7 @@ FastAPI service for PDF/DOCX parsing, scanned-PDF OCR, sentence-transformer embe
 
 1. Create a restricted application DB role. The local Docker Compose stack creates `academy_app` with a disposable password; never reuse it in production.
 2. Configure a trusted HTTPS JWKS endpoint (preferred) or RS256 PEM public key, issuer and audience. See [auth_claims.md](app/auth_claims.md).
-3. Apply `migrations/000_local_role.sql`, `migrations/001_initial.sql` and `migrations/002_document_acl_ingestion_jobs.sql` as a database administrator.
+3. Apply `migrations/000_local_role.sql`, `migrations/001_initial.sql` and `migrations/002_document_acl_ingestion_jobs.sql` and `migrations/003_raw_object_retention.sql` as a database administrator.
 4. From this directory run `docker compose up --build`, or install `requirements.txt` in a Python 3.11 virtual environment and run `uvicorn app.main:app --host 0.0.0.0 --port 8000`.
 
 The API listens on port 8000.
@@ -43,7 +43,9 @@ python -m app.worker --tenant-id <trusted-tenant-uuid> --once
 
 The tenant ID is an operator-supplied trusted worker scope, never a browser parameter. The worker claims jobs with `FOR UPDATE SKIP LOCKED`, leases and renews active work, retries with bounded exponential backoff and moves exhausted/expired jobs to `dead`. A PostgreSQL transaction-scoped advisory lock serializes each tenant's claim-and-quota check across worker processes; `ACADEMY_INGESTION_MAX_CONCURRENT_JOBS_PER_TENANT` defaults to 1. The quota counts unexpired processing leases, so expired work can be reclaimed. Run workers only with a trusted tenant scheduler; do not let browser input select worker tenant IDs.
 
-Queued jobs can be cancelled with `DELETE /v1/ingestion-jobs/{id}` by the owner or a tenant admin. Cancellation is deliberately limited to queued jobs: a parser already executing in a worker is not forcibly interrupted, avoiding partial document commits. Cancelled raw objects are deleted immediately where possible; failed cleanup is logged for reconciliation. Tenant administrators can inspect the most recent 100 dead-letter jobs at `GET /v1/admin/ingestion-jobs/dead` and replay an inspected job with `POST /v1/admin/ingestion-jobs/{id}/replay`. Replay resets attempts and backoff but retains the original private source object.
+Queued jobs can be cancelled with `DELETE /v1/ingestion-jobs/{id}` by the owner or a tenant admin. Cancellation is deliberately limited to queued jobs: a parser already executing in a worker is not forcibly interrupted, avoiding partial document commits. Tenant administrators can inspect the most recent 100 dead-letter jobs at `GET /v1/admin/ingestion-jobs/dead` and replay an inspected job with `POST /v1/admin/ingestion-jobs/{id}/replay`. Replay resets attempts and backoff; replay is rejected after the source object has passed retention and been deleted.
+
+Terminal-job source objects are retained for `ACADEMY_INGESTION_RAW_OBJECT_RETENTION_DAYS` (default 30 days), then removed by a separate tenant-scoped cleanup worker. The cleanup worker uses database row leases so multiple cleanup processes do not delete the same job object concurrently. Run one sweep with `python -m app.cleanup --tenant-id <trusted-tenant-uuid> --once`, or keep it running with the default 60-second poll. Configure `ACADEMY_INGESTION_CLEANUP_BATCH_SIZE` and `ACADEMY_INGESTION_CLEANUP_LEASE_SECONDS` to bound each sweep. Successful ingestion and queued cancellation still attempt immediate deletion; the retention worker reconciles failures and terminal objects that remain past the retention window. For bucket-level objects that have no corresponding database job row (for example, process death between object upload and job insert), use the object-store lifecycle policy or inventory-based reconciliation; this database worker cannot discover untracked keys.
 
 `ACADEMY_STORAGE_BACKEND=local` is for local development only. Production should use `ACADEMY_STORAGE_BACKEND=s3`, a private bucket, KMS key, bucket policy blocking public access, lifecycle/retention and deletion controls. The S3 adapter uses SSE-KMS. Configure `ACADEMY_MALWARE_SCAN_REQUIRED=true` and a reachable ClamAV daemon for public uploads; the API fails closed if scanning is required but unavailable. Local storage is not durable or shared across ephemeral instances.
 
@@ -74,7 +76,7 @@ Run `python -m pytest tests -q` from this directory. Unit tests cover RS256 toke
 ## Remaining production gates
 
 - Integrate the actual Academy identity provider and validate tenant membership before enabling public ACL grant/revoke operations.
-- Add per-tenant worker concurrency quotas, cancellation, dead-letter review/replay and orphan-object cleanup/retention reconciliation.
+- Add bucket inventory reconciliation for objects without job rows and encrypted backup/restore verification.
 - Add raw-object retention/deletion workflows and encrypted backup/restore verification.
 - Replace the in-memory single-process rate limiter with a distributed limiter and add audit events, metrics and trace correlation.
 - Store OCR confidence and layout/region metadata; add sandboxed parser isolation and multilingual OCR evaluation.
