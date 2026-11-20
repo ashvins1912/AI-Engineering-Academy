@@ -38,3 +38,21 @@ Prove tenant isolation, enforce server-side authorization, show traceability wit
 - NIST AI RMF: https://www.nist.gov/itl/ai-risk-management-framework
 - OpenTelemetry: https://opentelemetry.io/docs/
 - SRE workbook: https://sre.google/workbook/table-of-contents/
+
+
+## Stage workflow diagram
+
+Use this flow as the implementation order. The decision branches are the points where tests, policy checks or operational controls must stop unsafe progress.
+
+```mermaid
+flowchart TD
+  A[Request] --> B[Authenticate principal]
+  B --> C[Authorize tenant/action/resource]
+  C --> D[Validate input and quotas]
+  D --> E[Execute retrieval/model/tool]
+  E --> F[Trace spans and redact telemetry]
+  F --> G[Evaluate SLO and cost budgets]
+  G --> H{Policy or reliability violation?}
+  H -- yes --> I[Block, degrade or alert]
+  H -- no --> J[Return response and audit]
+```
