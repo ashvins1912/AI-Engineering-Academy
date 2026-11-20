@@ -15,6 +15,9 @@ def split_dataset(rows):
     return train,validation,test
 def initial_state():
     return {"epoch":0,"w1":[[.15,-.2],[.1,.2]],"b1":[0.0,0.0],"w2":[.1,-.1],"b2":0.0,
+            "optimizer_state":{"velocity_w1":[[0.0,0.0],[0.0,0.0]],"velocity_b1":[0.0,0.0],"velocity_w2":[0.0,0.0],"velocity_b2":0.0},
+            "scheduler_state":{"kind":"constant","learning_rate":0.1,"last_epoch":0},
+            "rng_state":{"seed":7,"deterministic":True},"data_position":0,
             "best_validation_loss":1e30,"best_epoch":0,"best_model":None,"patience_count":0}
 def forward(state,x):
     hidden=[math.tanh(sum(state["w1"][j][k]*x[k] for k in range(2))+state["b1"][j]) for j in range(2)]
@@ -43,12 +46,22 @@ def train_epoch(state,rows,learning_rate=.1):
             for k in range(2):gw1[j][k]+=delta1*x[k]
         gb2+=delta2
     n=len(rows)
+    optimizer=state.setdefault("optimizer_state",{"velocity_w1":[[0.0,0.0],[0.0,0.0]],"velocity_b1":[0.0,0.0],"velocity_w2":[0.0,0.0],"velocity_b2":0.0})
     for j in range(2):
-        state["w2"][j]-=learning_rate*gw2[j]/n
-        state["b1"][j]-=learning_rate*gb1[j]/n
-        for k in range(2):state["w1"][j][k]-=learning_rate*gw1[j][k]/n
-    state["b2"]-=learning_rate*gb2/n
+        optimizer["velocity_w2"][j]=.9*optimizer["velocity_w2"][j]+gw2[j]/n
+        optimizer["velocity_b1"][j]=.9*optimizer["velocity_b1"][j]+gb1[j]/n
+        state["w2"][j]-=learning_rate*optimizer["velocity_w2"][j]
+        state["b1"][j]-=learning_rate*optimizer["velocity_b1"][j]
+        for k in range(2):
+            optimizer["velocity_w1"][j][k]=.9*optimizer["velocity_w1"][j][k]+gw1[j][k]/n
+            state["w1"][j][k]-=learning_rate*optimizer["velocity_w1"][j][k]
+    optimizer["velocity_b2"]=.9*optimizer["velocity_b2"]+gb2/n
+    state["b2"]-=learning_rate*optimizer["velocity_b2"]
+    scheduler=state.setdefault("scheduler_state",{"kind":"constant","learning_rate":learning_rate,"last_epoch":0})
+    scheduler["learning_rate"]=learning_rate
     state["epoch"]+=1
+    scheduler["last_epoch"]=state["epoch"]
+    state["data_position"]=0
     return binary_loss(state,rows)
 def evaluate(state,rows):
     tp=fp=fn=tn=0
@@ -66,7 +79,7 @@ def save_checkpoint(path:Path,state):
     path.write_text(json.dumps(state,sort_keys=True,allow_nan=False,indent=2)+"\n",encoding="utf-8")
 def load_checkpoint(path:Path):
     state=json.loads(path.read_text(encoding="utf-8"))
-    required={"epoch","w1","b1","w2","b2","best_validation_loss","best_epoch","best_model","patience_count"}
+    required={"epoch","w1","b1","w2","b2","optimizer_state","scheduler_state","rng_state","data_position","best_validation_loss","best_epoch","best_model","patience_count"}
     if not required.issubset(state):raise ValueError("checkpoint is missing required training state")
     return state
 def train_project(checkpoint:Path,epochs=250,learning_rate=.1,patience=25,resume=False):

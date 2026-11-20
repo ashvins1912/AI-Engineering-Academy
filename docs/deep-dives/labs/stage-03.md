@@ -25,21 +25,21 @@ Use Python 3.11+. Run reference and project tests with `python -m unittest disco
 **Submission evidence:** shape table and every intermediate activation.
 
 ## backprop — Loss and backpropagation
-**Implementation task:** Derive a sigmoid neuron's gradient and compare with finite differences.
+**Implementation task:** Derive a sigmoid neuron's gradient, implement full two-hidden-unit MLP backpropagation and compare every parameter group with finite differences.
 **Worked fixture:** x=.8,w=.4,b=.1,y=1.
 **Expected result:** finite analytic and numerical gradients agree within tolerance.
-**Verification tests:** epsilon bounds, sign error and bias gradient.
+**Verification tests:** epsilon bounds, sign error, bias gradient, all MLP weight/bias gradients and invalid shapes.
 **Debugging checklist:** trace the smallest failing input, inspect every intermediate tensor/value, verify shapes and numeric ranges, reproduce the defect with a focused test, and retain the regression test after fixing it.
 **Interview checks:** explain the underlying equation, the main trade-off, and one failure mode without reading the guide.
-**Submission evidence:** provide the runnable implementation, command/output, passing positive and negative tests, a numerical walkthrough and a concise failure analysis.
+**Submission evidence:** provide the runnable implementation, command/output, passing positive and negative tests, a numerical walkthrough and a concise failure analysis. Include a parameter-by-parameter analytic-versus-numeric gradient table.
 **Failure lab:** remove activation derivative or input multiplier and inspect mismatch.
 **Submission evidence:** chain-rule derivation, gradient trace and regression test.
 
 ## optimizers — Optimizers and regularization
-**Implementation task:** Compare SGD, momentum and Adam on one quadratic; test dropout and batch normalization.
+**Implementation task:** Compare SGD, momentum and Adam on one quadratic; calculate L1/L2 penalties; test dropout and batch normalization.
 **Worked fixture:** θ=1,g=.5,η=.1.
 **Expected result:** SGD gives θ=.95; other methods retain distinct optimizer state.
-**Verification tests:** optimizer state persistence, invalid learning rate, dropout train/eval and constant batch.
+**Verification tests:** optimizer state persistence, invalid learning rate, L1/L2 penalty values, dropout train/eval and constant batch.
 **Debugging checklist:** trace the smallest failing input, inspect every intermediate tensor/value, verify shapes and numeric ranges, reproduce the defect with a focused test, and retain the regression test after fixing it.
 **Interview checks:** explain the underlying equation, the main trade-off, and one failure mode without reading the guide.
 **Submission evidence:** provide the runnable implementation, command/output, passing positive and negative tests, a numerical walkthrough and a concise failure analysis.
@@ -58,10 +58,10 @@ Use Python 3.11+. Run reference and project tests with `python -m unittest disco
 **Submission evidence:** per-cell multiply-accumulate trace and feature-map shape.
 
 ## sequence — RNNs, LSTMs and sequence models
-**Implementation task:** Trace a scalar RNN and one LSTM gate update.
+**Implementation task:** Trace a scalar RNN and one LSTM gate update; implement BPTT for recurrent and input weights.
 **Worked fixture:** x=[1,0,−1], h₀=0, hₜ=tanh(xₜ+.5hₜ₋₁).
 **Expected result:** three hidden states in original sequence order.
-**Verification tests:** reversed order, state reset and gate bounds.
+**Verification tests:** reversed order, state reset, gate bounds and finite-difference BPTT gradient parity.
 **Debugging checklist:** trace the smallest failing input, inspect every intermediate tensor/value, verify shapes and numeric ranges, reproduce the defect with a focused test, and retain the regression test after fixing it.
 **Interview checks:** explain the underlying equation, the main trade-off, and one failure mode without reading the guide.
 **Submission evidence:** provide the runnable implementation, command/output, passing positive and negative tests, a numerical walkthrough and a concise failure analysis.
@@ -71,7 +71,7 @@ Use Python 3.11+. Run reference and project tests with `python -m unittest disco
 ## training — Generalization and training systems
 **Implementation task:** Train, validate, checkpoint, resume and restore the best epoch.
 **Worked fixture:** validation losses=[.9,.7,.5,.55,.6], patience=2.
-**Expected result:** best epoch 3; stop at epoch 5.
+**Expected result:** best epoch 3; stop at epoch 5. The checkpoint must also retain optimizer velocities, scheduler epoch, deterministic RNG metadata and data-loader position.
 **Verification tests:** missing checkpoint, corrupt state, early-stop patience and resume epoch.
 **Debugging checklist:** trace the smallest failing input, inspect every intermediate tensor/value, verify shapes and numeric ranges, reproduce the defect with a focused test, and retain the regression test after fixing it.
 **Interview checks:** explain the underlying equation, the main trade-off, and one failure mode without reading the guide.

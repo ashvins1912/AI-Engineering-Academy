@@ -18,6 +18,7 @@ jobs:
       - run: npm run audit:topic-migration
       - run: npm run validate:stage1
       - run: npm run validate:stage2
+      - run: npm run validate:stage3
       - run: npm run validate:phase3
       - run: npm run validate:phase4
       - run: npm run validate:phase5
