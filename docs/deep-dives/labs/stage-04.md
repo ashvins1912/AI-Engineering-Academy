@@ -4,145 +4,145 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## tokenization — Tokenization and vocabulary
 
-**Implementation task:** Inspect subword token IDs, special tokens, truncation and round-trip behavior.
+**Implementation task:** Tokenization and vocabulary
 
-**Worked fixture:** Text: 'AI systems learn quickly.' plus a long repeated prompt.
+**Worked fixture:** Inspect subword token IDs, special tokens, truncation and round-trip behavior.
 
-**Expected result:** Record token IDs/count; truncation never exceeds configured max length.
+**Expected result:** Text: 'AI systems learn quickly.' plus a long repeated prompt.
 
-**Verification tests:** Test Unicode, empty text and special-token insertion.
+**Verification tests:** Record token IDs/count; truncation never exceeds configured max length.
 
 **Debugging checklist:** Why does token count differ from whitespace word count?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Test Unicode, empty text and special-token insertion.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
 ## embeddings — Embeddings and positional information
 
-**Implementation task:** Inspect embedding lookup and positional contribution for a short token sequence.
+**Implementation task:** Embeddings and positional information
 
-**Worked fixture:** Token IDs [5,8,5], embedding dim=4, positions 0,1,2.
+**Worked fixture:** Inspect embedding lookup and positional contribution for a short token sequence.
 
-**Expected result:** Repeated token 5 has same token embedding before position contribution.
+**Expected result:** Token IDs [5,8,5], embedding dim=4, positions 0,1,2.
 
-**Verification tests:** Test padding index and position offset.
+**Verification tests:** Repeated token 5 has same token embedding before position contribution.
 
 **Debugging checklist:** What failure occurs if tokenizer and embedding vocabulary versions differ?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Test padding index and position offset.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
 ## attention — Self-attention Q, K and V
 
-**Implementation task:** Calculate scaled dot-product attention by hand for two query/key/value rows.
+**Implementation task:** Self-attention Q, K and V
 
-**Worked fixture:** Q=K=I₂, V=[[1,0],[0,2]].
+**Worked fixture:** Calculate scaled dot-product attention by hand for two query/key/value rows.
 
-**Expected result:** For first query, weights≈[0.67,0.33], output≈[0.67,0.66].
+**Expected result:** Q=K=I₂, V=[[1,0],[0,2]].
 
-**Verification tests:** Test causal mask and stable softmax; masked future weight must be zero.
+**Verification tests:** For first query, weights≈[0.67,0.33], output≈[0.67,0.66].
 
 **Debugging checklist:** Why divide scores by sqrt(d_k)?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Test causal mask and stable softmax; masked future weight must be zero.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
 ## multihead — Multi-head attention and transformer blocks
 
-**Implementation task:** Split hidden vectors into heads, attend independently and concatenate.
+**Implementation task:** Multi-head attention and transformer blocks
 
-**Worked fixture:** Hidden size=4, heads=2; input shape (batch=1,seq=3,hidden=4).
+**Worked fixture:** Split hidden vectors into heads, attend independently and concatenate.
 
-**Expected result:** Each head has width 2; concatenation restores hidden width 4.
+**Expected result:** Hidden size=4, heads=2; input shape (batch=1,seq=3,hidden=4).
 
-**Verification tests:** Test hidden size not divisible by head count and residual shape mismatch.
+**Verification tests:** Each head has width 2; concatenation restores hidden width 4.
 
 **Debugging checklist:** What can multiple heads represent that one head may not?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Test hidden size not divisible by head count and residual shape mismatch.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
 ## decoder — Decoder-only LLMs
 
-**Implementation task:** Build next-token shifted labels and prove causal masking blocks future positions.
+**Implementation task:** Decoder-only LLMs
 
-**Worked fixture:** Tokens [10,11,12,13], labels shifted one position.
+**Worked fixture:** Build next-token shifted labels and prove causal masking blocks future positions.
 
-**Expected result:** Inputs [10,11,12], targets [11,12,13]; no position attends to later tokens.
+**Expected result:** Tokens [10,11,12,13], labels shifted one position.
 
-**Verification tests:** Test mask upper triangle, padding and KV cache equivalence.
+**Verification tests:** Inputs [10,11,12], targets [11,12,13]; no position attends to later tokens.
 
 **Debugging checklist:** Explain prefill vs autoregressive decode.
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Test mask upper triangle, padding and KV cache equivalence.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
 ## sampling — Generation and decoding
 
-**Implementation task:** Sample from logits using greedy, temperature and top-p policies.
+**Implementation task:** Generation and decoding
 
-**Worked fixture:** Logits [2,1,0], fixed RNG seed.
+**Worked fixture:** Sample from logits using greedy, temperature and top-p policies.
 
-**Expected result:** Greedy chooses token 0; temperature changes distribution; top-p truncates tail.
+**Expected result:** Logits [2,1,0], fixed RNG seed.
 
-**Verification tests:** Test temperature near zero, invalid p and stop token.
+**Verification tests:** Greedy chooses token 0; temperature changes distribution; top-p truncates tail.
 
 **Debugging checklist:** Why can temperature not improve factual knowledge?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Test temperature near zero, invalid p and stop token.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
 ## finetuning — Fine-tuning and adaptation
 
-**Implementation task:** Prepare instruction pairs and compare frozen baseline with a tiny adapter experiment.
+**Implementation task:** Fine-tuning and adaptation
 
-**Worked fixture:** Three train examples and two held-out examples; deduplicate exact prompts.
+**Worked fixture:** Prepare instruction pairs and compare frozen baseline with a tiny adapter experiment.
 
-**Expected result:** Train/eval IDs disjoint; report baseline and adapted metric without claiming significance.
+**Expected result:** Three train examples and two held-out examples; deduplicate exact prompts.
 
-**Verification tests:** Test duplicate leakage, prompt-format mismatch and adapter load failure.
+**Verification tests:** Train/eval IDs disjoint; report baseline and adapted metric without claiming significance.
 
 **Debugging checklist:** What does LoRA reduce, and what does it not eliminate?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Test duplicate leakage, prompt-format mismatch and adapter load failure.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
 ## inference — Inference engineering
 
-**Implementation task:** Measure prefill/decode latency and estimate KV cache growth by sequence length.
+**Implementation task:** Inference engineering
 
-**Worked fixture:** Benchmark 128 vs 512 input tokens, fixed output length and concurrency=1.
+**Worked fixture:** Measure prefill/decode latency and estimate KV cache growth by sequence length.
 
-**Expected result:** Longer context increases prefill work and cache memory; record p50/p95 and peak memory.
+**Expected result:** Benchmark 128 vs 512 input tokens, fixed output length and concurrency=1.
 
-**Verification tests:** Test cancellation, max-token enforcement and overload response.
+**Verification tests:** Longer context increases prefill work and cache memory; record p50/p95 and peak memory.
 
 **Debugging checklist:** Which dimensions dominate KV cache memory?
 
-**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Interview checks:** Test cancellation, max-token enforcement and overload response.
 
-**Submission evidence:** undefined
+**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
 ---
 
