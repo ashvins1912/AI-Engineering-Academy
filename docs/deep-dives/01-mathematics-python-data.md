@@ -37,3 +37,20 @@ Calculate a matrix product and gradient by hand; explain a probability estimate;
 - NumPy: https://numpy.org/doc/stable/user/quickstart.html
 - pandas: https://pandas.pydata.org/docs/getting_started/index.html
 - SciPy optimization: https://docs.scipy.org/doc/scipy/tutorial/optimize.html
+
+
+## Stage workflow diagram
+
+Use this flow as the implementation order. The decision branches are the points where tests, policy checks or operational controls must stop unsafe progress.
+
+```mermaid
+flowchart TD
+  A[Raw data] --> B[Schema and quality checks]
+  B --> C[NumPy/Pandas transformations]
+  C --> D[Train/validation split]
+  D --> E[Fit preprocessing on train only]
+  E --> F[Derive loss and gradients]
+  F --> G[Optimize parameters]
+  G --> H[Validate metrics and leakage]
+  H --> I[Version dataset and report]
+```
