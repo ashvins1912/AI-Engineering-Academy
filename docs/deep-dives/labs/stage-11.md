@@ -4,17 +4,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## capstone-design — Architecture and threat model
 
-**Implementation task:** Create context/container/data-flow diagrams and threat model for multi-tenant assistant.
+**Implementation task:** Architecture and threat model
 
-**Worked fixture:** Roles admin/member, PDF corpus, vector store, model API, scoped tools.
+**Worked fixture:** Create context/container/data-flow diagrams and threat model for multi-tenant assistant.
 
-**Expected result:** Trust boundaries, tenant data paths and key abuse cases are explicit.
+**Expected result:** Roles admin/member, PDF corpus, vector store, model API, scoped tools.
 
-**Verification tests:** Review every external boundary and privileged action.
+**Verification tests:** Trust boundaries, tenant data paths and key abuse cases are explicit.
 
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Which architecture decisions need ADRs and why?
+**Interview checks:** Review every external boundary and privileged action.
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
@@ -22,17 +22,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## capstone-build — Build RAG and agent services
 
-**Implementation task:** Build vertical slice upload→parse→index→retrieve→cite with bounded agent tool.
+**Implementation task:** Build RAG and agent services
 
-**Worked fixture:** One policy PDF, two tenants, one no-answer query and one malicious document.
+**Worked fixture:** Build vertical slice upload→parse→index→retrieve→cite with bounded agent tool.
 
-**Expected result:** Citations resolve to page/chunk; tenant isolation holds; malicious content cannot authorize tools.
+**Expected result:** One policy PDF, two tenants, one no-answer query and one malicious document.
 
-**Verification tests:** Run integration, ACL, citation and injection tests.
+**Verification tests:** Citations resolve to page/chunk; tenant isolation holds; malicious content cannot authorize tools.
 
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** How do you prove evidence lineage end-to-end?
+**Interview checks:** Run integration, ACL, citation and injection tests.
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
@@ -40,17 +40,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## capstone-delivery — Deploy and operate
 
-**Implementation task:** Release through CI gate, staged rollout, SLO monitoring and rollback drill.
+**Implementation task:** Deploy and operate
 
-**Worked fixture:** Candidate release with evaluation report and known-good previous version.
+**Worked fixture:** Release through CI gate, staged rollout, SLO monitoring and rollback drill.
 
-**Expected result:** Promotion occurs only after gates; rollback restores compatible model/prompt/index bundle.
+**Expected result:** Candidate release with evaluation report and known-good previous version.
 
-**Verification tests:** Test failed migration, canary regression and restore from backup.
+**Verification tests:** Promotion occurs only after gates; rollback restores compatible model/prompt/index bundle.
 
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** What must a release manifest contain for reproducible rollback?
+**Interview checks:** Test failed migration, canary regression and restore from backup.
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
