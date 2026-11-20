@@ -80,18 +80,6 @@ assert.ok(Math.abs(precision-.8)<1e-12 && Math.abs(recall-2/3)<1e-12 && f1>.72 &
 console.log('PASS CNN convolution dimensions/value, softmax normalization and precision/recall/F1')
 
 
-// Stage 2's topic-first mastery path must be reachable and evidence-gated.
-const stage2Mastery = readFileSync(new URL('../src/components/Stage2MasteryLabs.tsx', import.meta.url), 'utf8')
-for (const id of ['linear-regression','logistic-regression','trees','svm-knn','clustering','pca','metrics']) {
-  assert.ok(stage2Mastery.includes(`id:'${id}'`), `Missing Stage 2 mastery topic: ${id}`)
-}
-for (const token of ['Information gain','Bagging vote experiment','Nearest neighbors','Variance decomposition','Required evidence','Mastery gate passed']) {
-  assert.ok(stage2Mastery.includes(token), `Missing Stage 2 mastery feature: ${token}`)
-}
-assert.ok(app.includes('<Stage2MasteryLabs/>'), 'Stage 2 mastery labs must be integrated into the learning path')
-console.log('PASS seven evidence-gated Stage 2 classical ML topics')
-
-
 // Stage 2 classical ML mastery and model-comparison project contracts.
 const stage2Mastery = readFileSync(new URL('../src/components/Stage2MasteryLabs.tsx', import.meta.url), 'utf8')
 const stage2Guide = readFileSync(new URL('../docs/deep-dives/02-classical-machine-learning.md', import.meta.url), 'utf8')
