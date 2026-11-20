@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     ingestion_job_max_attempts: int = 5
     ingestion_job_lease_seconds: int = 900
     ingestion_max_concurrent_jobs_per_tenant: int = 1
+    ingestion_raw_object_retention_days: int = 30
+    ingestion_cleanup_batch_size: int = 100
+    ingestion_cleanup_lease_seconds: int = 300
 
 @lru_cache
 def get_settings() -> Settings:

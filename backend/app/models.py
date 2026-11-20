@@ -68,4 +68,6 @@ class IngestionJob(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    raw_object_deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    raw_object_delete_lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     __table_args__ = ()

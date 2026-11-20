@@ -23,7 +23,7 @@ from .storage import StorageError, create_object_store
 from .security import Principal, current_principal, require_admin
 from .middleware import SimpleRateLimitMiddleware
 from .request_limits import RequestBodyLimitMiddleware
-from .jobs import cancel_queued_job, replay_dead_job
+from .jobs import cancel_queued_job, mark_raw_object_deleted, replay_dead_job
 
 cfg = get_settings()
 logger = logging.getLogger('academy.api')
@@ -224,6 +224,7 @@ async def cancel_ingestion_job(
         try:
             store = create_object_store(cfg)
             await run_in_threadpool(store.delete, result["object_key"])
+            await mark_raw_object_deleted(session, principal.tenant_id, job_id)
         except (StorageError, OSError):
             logger.warning("cancelled_ingestion_object_cleanup_pending", extra={
                 "tenant_id": str(principal.tenant_id), "job_id": str(job_id)

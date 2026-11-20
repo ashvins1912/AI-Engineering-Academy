@@ -15,12 +15,21 @@ from .config import get_settings
 from .db import SessionLocal, engine, set_tenant_context
 from .embeddings import encode_texts_async
 from .ingestion import IngestionError, chunk_pages, extract_document
-from .jobs import claim_next_job, mark_job_failed, mark_job_succeeded, renew_job_lease
+from .jobs import claim_next_job, mark_job_failed, mark_job_succeeded, mark_raw_object_deleted, renew_job_lease
 from .malware import ClamAVScanner, MalwareDetected, ScannerUnavailable, scan_upload
 from .models import Chunk, Document, DocumentACL
 from .storage import create_object_store
 
 logger = logging.getLogger("academy.ingestion.worker")
+
+
+async def _delete_raw_object(store, tenant_id: UUID, job_id: UUID, object_key: str, event: str) -> None:
+    try:
+        await run_in_threadpool(store.delete, object_key)
+        async with SessionLocal() as session:
+            await mark_raw_object_deleted(session, tenant_id, job_id)
+    except Exception:
+        logger.warning(event, extra={"tenant_id": str(tenant_id), "job_id": str(job_id)}, exc_info=True)
 
 
 async def _renew_lease(tenant_id: UUID, job_id: UUID, lease_seconds: int) -> None:
@@ -71,7 +80,7 @@ async def process_one(tenant_id: UUID) -> bool:
                     async with SessionLocal() as failed_session:
                         await mark_job_failed(failed_session, tenant_id, job["id"], job["max_attempts"], job["max_attempts"], "duplicate_private_document")
                     try:
-                        await run_in_threadpool(store.delete, job["object_key"])
+                        await _delete_raw_object(store, tenant_id, job["id"], job["object_key"], "ingestion_duplicate_object_cleanup_pending")
                     except Exception:
                         logger.error("ingestion_duplicate_object_cleanup_failed", extra={"tenant_id": str(tenant_id), "job_id": str(job["id"])})
                     return True
@@ -96,7 +105,7 @@ async def process_one(tenant_id: UUID) -> bool:
         async with SessionLocal() as session:
             await mark_job_succeeded(session, tenant_id, job["id"], document_id)
         try:
-            await run_in_threadpool(store.delete, job["object_key"])
+            await _delete_raw_object(store, tenant_id, job["id"], job["object_key"], "ingestion_raw_object_cleanup_pending")
         except Exception:
             logger.warning("ingestion_raw_object_cleanup_pending", extra={"tenant_id": str(tenant_id), "job_id": str(job["id"])})
         logger.info("ingestion_job_succeeded", extra={"tenant_id": str(tenant_id), "job_id": str(job["id"]), "document_id": str(document_id)})
@@ -105,7 +114,7 @@ async def process_one(tenant_id: UUID) -> bool:
             await mark_job_failed(session, tenant_id, job["id"], job["max_attempts"], job["max_attempts"], "malware_detected")
         if store is not None:
             try:
-                await run_in_threadpool(store.delete, job["object_key"])
+                await _delete_raw_object(store, tenant_id, job["id"], job["object_key"], "ingestion_malware_object_cleanup_pending")
             except Exception:
                 logger.error("ingestion_malware_object_cleanup_failed", extra={"tenant_id": str(tenant_id), "job_id": str(job["id"])})
         logger.warning("ingestion_job_rejected", extra={"tenant_id": str(tenant_id), "job_id": str(job["id"]), "reason": "malware_detected"})
