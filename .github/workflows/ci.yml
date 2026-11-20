@@ -14,6 +14,7 @@ jobs:
           node-version: 22
       - run: npm install
       - run: npm run validate:curriculum
+      - run: npm run validate:topic-contract
       - run: npm run validate:phase3
       - run: npm run validate:phase4
       - run: npm run validate:phase5
