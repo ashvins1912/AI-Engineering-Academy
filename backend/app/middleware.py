@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 import ipaddress
 import logging
-import time
 
 from sqlalchemy import text
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -83,7 +81,7 @@ class PostgresRateLimitMiddleware(BaseHTTPMiddleware):
         self.limit = limit if limit is not None else settings.rate_limit_per_minute
         raw_proxies = trusted_proxy_ips if trusted_proxy_ips is not None else settings.trusted_proxy_ips
         self.trusted_proxy_ips = {
-            str(ipaddress.ip_address(value.strip()))
+            value.strip()
             for value in raw_proxies.split(",")
             if value.strip()
         }
