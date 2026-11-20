@@ -9,7 +9,12 @@ const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')\nco
   ['11 learning stages', stageIds.length === 11],
   ['at least 80 lesson blueprints', lessonIds.length >= 80],
   ['stage-namespaced progress identifiers', source.includes('id: `${stage.id}:${item.id}`')],
-  ['required deep-dive topics', missing.length === 0]
+  ['required deep-dive topics', missing.length === 0],
+  ['practice workbench integrated into every lesson detail', app.includes('<LessonPractice lesson={selectedLesson}/>')],
+  ['interactive workflow and step navigation', practice.includes('practice-flow-node') && practice.includes('setStep')],
+  ['environment setup and starter code', practice.includes('ENVIRONMENT SETUP') && practice.includes('STARTER IMPLEMENTATION')],
+  ['debugging and production checklists', practice.includes('Debug deliberately') && practice.includes('Production engineering checklist')],
+  ['official references and practice criteria', practice.includes('Primary references') && practice.includes('YOUR SUBMISSION')]
 ]
 for (const [label, passed] of checks) console.log(`${passed ? 'PASS' : 'FAIL'} ${label}`)
 if (missing.length) console.error(`Missing lesson identifiers: ${missing.join(', ')}`)
