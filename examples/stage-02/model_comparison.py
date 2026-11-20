@@ -82,7 +82,9 @@ def fit_stump(features:list[tuple[float,float]],labels:list[int]):
             gain=impurity(labels)-(len(left)/len(labels))*impurity(left)-(len(right)/len(labels))*impurity(right)
             candidate=(gain,column,threshold,1 if sum(left)>len(left)/2 else 0,1 if sum(right)>len(right)/2 else 0)
             if best is None or candidate[0]>best[0]:best=candidate
-    if best is None:\n        majority=1 if sum(labels)>len(labels)/2 else 0\n        return (0,0.0,majority,majority)
+    if best is None:
+        majority=1 if sum(labels)>len(labels)/2 else 0
+        return (0,0.0,majority,majority)
     return best[1],best[2],best[3],best[4]
 
 def predict_stump(stump,features):
