@@ -38,3 +38,8 @@ Every lesson detail view must expose a guided practice workbench in addition to 
 The Academy website itself must not execute arbitrary learner code. Code is copied into a learner-controlled local environment or notebook. Interactive visualizations may remain deterministic browser-side teaching simulations and must label simplifications honestly.
 
 A starter snippet is a launch point, not a substitute for the full assignment. Topic-specific lessons should progressively add implementation-from-scratch, framework-assisted implementation, tests, failure injection and production design.
+
+
+## Stage deep-dive guides
+
+The stage-level guides in [docs/deep-dives](deep-dives/README.md) provide topic-specific coverage for all 84 lesson topics across the 11 stages. Each guide includes concept and derivation goals, implementation labs, tests and failure cases, production considerations, an end-to-end project, required artifacts and a mastery gate. Lesson workbenches link to the matching stage guide. A guide is supplementary: individual lessons still need their own examples, assessment evidence and topic-specific labs; a stage guide must not be used to imply that every lesson has an independent full project.
