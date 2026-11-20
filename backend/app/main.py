@@ -66,6 +66,10 @@ async def ingest_document(
     try:
         await run_in_threadpool(scan_upload, data, scanner, cfg.malware_scan_required)
         extracted = await run_in_threadpool(extract_document, file.filename, file.content_type or "", data)
+    except MalwareDetected:
+        raise HTTPException(422, "Upload rejected by malware scanning") from None
+    except ScannerUnavailable:
+        raise HTTPException(503, "Required malware scanning is unavailable") from None
     except IngestionError as exc:
         raise HTTPException(422, str(exc)) from exc
     chunks = chunk_pages(extracted.pages)
@@ -92,7 +96,7 @@ async def ingest_document(
         if existing is None:
             raise HTTPException(409, "Document conflicted with another ingestion request") from None
         count = await session.scalar(select(func.count(Chunk.id)).where(Chunk.tenant_id == principal.tenant_id, Chunk.document_id == existing.id))
-        return DocumentOut(id=existing.id,title=existing.title,media_type=existing.media_type,status=existing.status,page_count=existing.page_count,chunks=count or 0)
+        return DocumentOut(id=existing.id,title=existing.title,media_type=existing.media_type,status=existing.status,visibility=existing.visibility,page_count=existing.page_count,chunks=count or 0)
     return DocumentOut(id=document.id,title=document.title,media_type=document.media_type,status=document.status,visibility=document.visibility,page_count=document.page_count,chunks=len(chunks))
 
 
