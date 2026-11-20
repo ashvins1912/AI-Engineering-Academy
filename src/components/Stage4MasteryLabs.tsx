@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 
 type Id='tokenization'|'embeddings'|'attention'|'masking'|'multihead'|'block'|'decoding'|'engineering'
 type Topic={id:Id;label:string;title:string;question:string;options:string[];answer:number;explanation:string;evidence:string[]}
