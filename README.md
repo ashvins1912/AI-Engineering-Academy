@@ -112,4 +112,13 @@ The [Topic Content Authoring Guide](docs/CONTENT_AUTHORING.md) documents the str
 
 
 ## Transformer and LLM internals mastery
-The Stage 4 [Transformer and LLM deep-dive](docs/deep-dives/04-transformers-llms.md) covers tokenization, embeddings, Q/K/V attention, causal masks, multi-head attention, transformer blocks, autoregressive decoding, LoRA and inference engineering. Its eight interactive mastery gates are integrated in the Stage 4 learning view; the fixed-weight reference project is explicitly educational, not a trained LLM.
+The Stage 4 [Transformer and LLM deep-dive](docs/deep-dives/04-transformers-llms-generative-ai.md) covers tokenization, embeddings, Q/K/V attention, causal masks, multi-head attention, transformer blocks, autoregressive decoding, LoRA and inference engineering. Its eight interactive mastery gates are integrated in the Stage 4 learning view; the fixed-weight reference project is explicitly educational, not a trained LLM.
+
+
+## Stage 5 — RAG and knowledge systems
+
+The Stage 5 [RAG deep-dive](docs/deep-dives/05-rag-visual-rag-knowledge-systems.md) contains 12 topics, interactive mastery gates and a versioned 30-query retrieval evaluation fixture. Deterministic algorithms are teaching references, not production benchmarks.
+
+The backend includes a FastAPI/PostgreSQL/pgvector retrieval foundation plus tenant-scoped asynchronous ingestion jobs, private local/S3 storage adapters, ClamAV scanning, document visibility/ACL predicates and a separate worker process. See the [async RAG ingestion runbook](docs/production-playbooks/05-async-rag-ingestion.md). The service is not production-certified or deployed: identity-provider membership integration, public ACL management, configured generation provider/citation validation, distributed quotas, retention cleanup, backup/restore and security/load testing remain release gates.
+
+No cloud resources, external model credentials or paid services were provisioned.

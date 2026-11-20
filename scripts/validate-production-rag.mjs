@@ -8,7 +8,7 @@ const required = [
  ['server-side PDF extraction','backend/app/ingestion.py','PdfReader'],
  ['scanned PDF OCR','backend/app/ingestion.py','pytesseract.image_to_string'],
  ['DOCX parsing','backend/app/ingestion.py','DocxDocument'],
- ['real transformer embeddings','backend/app/main.py','SentenceTransformer'],
+ ['real transformer embeddings','backend/app/embeddings.py','SentenceTransformer'],
  ['pgvector cosine search','backend/app/main.py','embedding <=>'],
  ['Okapi BM25 scoring','backend/app/main.py','bm25_score'],
  ['BM25 inverse document frequency','backend/app/main.py','ln(1 + (corpus.n - ts.df + 0.5) / (ts.df + 0.5))'],
@@ -18,7 +18,16 @@ const required = [
  ['database RLS','backend/migrations/001_initial.sql','CREATE POLICY tenant_documents_isolation'],
  ['rate limiter','backend/app/middleware.py','Rate limit exceeded'],
  ['upload limits','backend/app/config.py','max_upload_bytes'],
- ['OCR and BM25 limitations documented','backend/README.md','not yet production']
+ ['OCR and BM25 limitations documented','backend/README.md','not yet production'],
+ ['asynchronous ingestion API','backend/app/main.py','/v1/ingestion-jobs'],
+ ['tenant-scoped SKIP LOCKED queue','backend/app/jobs.py','skip_locked=True'],
+ ['durable ingestion worker','backend/app/worker.py','process_one'],
+ ['private local and KMS object storage','backend/app/storage.py','ServerSideEncryption="aws:kms"'],
+ ['ClamAV malware scanning','backend/app/malware.py','ClamAVScanner'],
+ ['document-level ACL predicates','backend/app/access.py','document_access_filter'],
+ ['RLS-protected ingestion jobs','backend/migrations/002_document_acl_ingestion_jobs.sql','tenant_ingestion_jobs_isolation'],
+ ['private document default','backend/app/models.py','default="private"'],
+ ['bounded retry backoff','backend/app/jobs.py','retry_delay_seconds']
 ]
 for (const [name,path,token] of required) {
   assert.ok(existsSync(new URL(`../${path}`, import.meta.url)), `${path} missing`)
