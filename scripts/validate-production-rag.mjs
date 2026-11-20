@@ -32,6 +32,8 @@ const required = [
  ['retention leases for cleanup claims','backend/app/jobs.py','claim_expired_raw_objects'],
  ['raw-object deletion marker','backend/app/models.py','raw_object_deleted_at'],
  ['retention migration','backend/migrations/003_raw_object_retention.sql','raw_object_delete_lease_until'],
+ ['cleanup migration in local Compose','backend/docker-compose.yml','003_raw_object_retention.sql:/docker-entrypoint-initdb.d/003_raw_object_retention.sql'],
+ ['optional cleanup Compose worker','backend/docker-compose.yml','app.cleanup'],
  ['tenant worker concurrency quota','backend/app/jobs.py','pg_advisory_xact_lock(hashtextextended'],
  ['configurable tenant worker quota','backend/app/config.py','ingestion_max_concurrent_jobs_per_tenant'],
  ['queued-job cancellation policy','backend/app/jobs.py','cancel_queued_job'],

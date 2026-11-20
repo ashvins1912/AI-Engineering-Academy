@@ -11,6 +11,7 @@ services:
       - ./migrations/000_local_role.sql:/docker-entrypoint-initdb.d/000_local_role.sql:ro
       - ./migrations/001_initial.sql:/docker-entrypoint-initdb.d/001_initial.sql:ro
       - ./migrations/002_document_acl_ingestion_jobs.sql:/docker-entrypoint-initdb.d/002_document_acl_ingestion_jobs.sql:ro
+      - ./migrations/003_raw_object_retention.sql:/docker-entrypoint-initdb.d/003_raw_object_retention.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres_admin -d academy"]
       interval: 5s
@@ -44,6 +45,21 @@ services:
       ACADEMY_STORAGE_ROOT: /app/var/private-uploads
       ACADEMY_INGESTION_JOB_LEASE_SECONDS: "900"
       ACADEMY_MALWARE_SCAN_REQUIRED: "false"
+    volumes: ["academy-private-uploads:/app/var/private-uploads"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+  cleanup:
+    build: .
+    profiles: ["cleanup"]
+    command: ["python", "-m", "app.cleanup", "--tenant-id", "${ACADEMY_WORKER_TENANT_ID:-00000000-0000-0000-0000-000000000000}"]
+    environment:
+      ACADEMY_DATABASE_URL: postgresql+asyncpg://academy_app:academy-app-local-only@postgres:5432/academy
+      ACADEMY_STORAGE_BACKEND: local
+      ACADEMY_STORAGE_ROOT: /app/var/private-uploads
+      ACADEMY_INGESTION_RAW_OBJECT_RETENTION_DAYS: "30"
+      ACADEMY_INGESTION_CLEANUP_BATCH_SIZE: "100"
+      ACADEMY_INGESTION_CLEANUP_LEASE_SECONDS: "300"
     volumes: ["academy-private-uploads:/app/var/private-uploads"]
     depends_on:
       postgres:
