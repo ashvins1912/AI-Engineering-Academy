@@ -5,6 +5,7 @@ import MathLabs from './components/MathLabs'
 import MLLabs from './components/MLLabs'
 import TransformerLabs from './components/TransformerLabs'
 import RAGLabs from './components/RAGLabs'
+import LessonPractice from './components/LessonPractice'
 
 const readList = (key: string): string[] => {
   try { const value = localStorage.getItem(key); return value ? JSON.parse(value) as string[] : [] } catch { return [] }
@@ -72,6 +73,7 @@ export default function App() {
       <section className="detail-section"><h3>01 · Build intuition</h3><p>{selectedLesson.intuition}</p></section>
       <section className="detail-section"><h3>02 · Worked example</h3><p>{selectedLesson.workedExample}</p></section>
       <section className="detail-section"><h3>03 · Step-by-step execution</h3><ol>{selectedLesson.workflow.map(x=><li key={x}>{x}</li>)}</ol></section>
+      <LessonPractice lesson={selectedLesson}/>
       <section className="detail-section"><h3>04 · Practice exercises</h3><ol>{selectedLesson.exercises.map(x=><li key={x}>{x}</li>)}</ol></section>
       <section className="detail-section assessment"><h3>05 · Assessment criteria</h3><p>{selectedLesson.assessment}</p></section>
       <section className="detail-section"><h3>Production engineering note</h3><p>{selectedLesson.productionNote}</p></section></div><footer className="detail-footer"><button className="secondary-action" onClick={()=>toggleBookmark(selectedLesson.id)}><Bookmark size={15} fill={bookmarks.includes(selectedLesson.id)?'currentColor':'none'}/>{bookmarks.includes(selectedLesson.id)?'Bookmarked':'Bookmark'}</button><button className="primary-action" onClick={()=>toggle(selectedLesson.id)}>{completed.includes(selectedLesson.id)?<><Check size={16}/> Completed</>:<><CircleCheck size={16}/> Mark complete</>}</button></footer></section></div>}
