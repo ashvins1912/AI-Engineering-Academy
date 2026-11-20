@@ -73,6 +73,18 @@ Each topic must have:
 
 Avoid copying a vendor tutorial. Explain the underlying concept first, then use official docs as the implementation reference.
 
+## Phase 0 implementation status
+
+**In progress — first contract slice implemented on the architect-review branch.**
+
+- Added `content/topic.schema.json` with strict required fields for learning outcomes, beginner explanation, real use case, architecture/DFD, visual steps, worked example, runnable implementation, failure drills, practice ladder, assessment and primary references.
+- Added a complete scaled dot-product attention example record and linked source, test, visual diagram and deterministic fixture.
+- Added `scripts/validate-topic-contract.mjs`, including artifact-path checks, a 100-point rubric check and a negative test that verifies an incomplete record is rejected.
+- Added `npm run validate:topic-contract` and wired it into GitHub Actions CI.
+- Added `docs/CONTENT_AUTHORING.md` to explain authoring, evidence-based content states, artifact layout, reproducibility and safe execution boundaries.
+
+**Not yet complete:** the schema has not yet been applied to all 84 curriculum topics; the current validator exercises the reference record rather than scanning every topic; full diagram/code fixture parity and all topic-specific code execution are still future Phase 0 work. Do not mark Phase 0 complete until those checks are automated and demonstrated in CI.
+
 ## 4. Delivery roadmap
 
 Plan in quality-gated increments. Each increment is a PR with a small number of topics, runnable checks and screenshots/recordings of the learner experience. Do not generate all 84 lessons in one bulk content change.
