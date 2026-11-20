@@ -57,7 +57,7 @@ def fit_linear_svm(
     return {
         "weights": weights,
         "bias": bias,
-        "support_vector_indices": [i for i, margin in enumerate(margins) if margin <= 1.0 + 1e-9],
+        "support_vector_indices": [i for i, margin in enumerate(margins) if margin <= 1.02],  # small numerical tolerance for fixed-step subgradient training
         "hinge_loss": sum(max(0.0, 1.0 - margin) for margin in margins) / len(X),
         "objective_history": history,
     }
