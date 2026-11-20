@@ -36,7 +36,7 @@ def conv2d_valid(image:Sequence[Sequence[float]],kernel:Sequence[Sequence[float]
     if any(len(row)!=iw for row in image) or any(len(row)!=kw for row in kernel):raise ValueError("ragged matrices are not supported")
     if kh>ih or kw>iw:raise ValueError("kernel cannot exceed input dimensions")
     oh=(ih-kh)//stride+1;ow=(iw-kw)//stride+1
-    return [[sum(image[r+i*stride][c+j*stride]*kernel[i][j] for i in range(kh) for j in range(kw)) for c in range(ow)] for r in range(oh)]
+    return [[sum(image[r*stride+i][c*stride+j]*kernel[i][j] for i in range(kh) for j in range(kw)) for c in range(ow)] for r in range(oh)]
 
 def max_pool2d(matrix:Sequence[Sequence[float]],size:int=2,stride:int=2)->list[list[float]]:
     if not matrix or size<1 or stride<1:raise ValueError("matrix, pool size and stride must be valid")
