@@ -100,3 +100,7 @@ The home page also includes a step-through production AI request flow, covering 
 ## Roadmap to 5/5 learning-product readiness
 
 See the [evidence-based improvement roadmap](docs/ROADMAP_TO_5_OF_5.md) for the quality gates, 84-topic lesson contract, staged delivery plan, learner mastery model, animation standards, CI strategy and recommended primary resources required to reach a verifiable 5/5 learning experience.
+
+## Topic content quality contract
+
+New topic content follows the [machine-readable topic contract](docs/TOPIC_CONTENT_CONTRACT.md), backed by a strict JSON Schema, a runnable scaled-attention example, a negative validation test and CI checks. Existing lessons remain compatible while the 84-topic curriculum is migrated in evidence-backed stages.
