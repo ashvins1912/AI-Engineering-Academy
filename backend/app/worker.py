@@ -13,7 +13,7 @@ from starlette.concurrency import run_in_threadpool
 
 from .config import get_settings
 from .db import SessionLocal, engine, set_tenant_context
-from .embeddings import encode_texts
+from .embeddings import encode_texts_async
 from .ingestion import IngestionError, chunk_pages, extract_document
 from .jobs import claim_next_job, mark_job_failed, mark_job_succeeded, renew_job_lease
 from .malware import ClamAVScanner, MalwareDetected, ScannerUnavailable, scan_upload
@@ -52,7 +52,7 @@ async def process_one(tenant_id: UUID) -> bool:
         chunks = chunk_pages(extracted.pages)
         if not chunks:
             raise IngestionError("No indexable chunks were produced")
-        vectors = await run_in_threadpool(encode_texts, [content for _, content in chunks])
+        vectors = await encode_texts_async([content for _, content in chunks])
         async with SessionLocal() as session:
             await set_tenant_context(session, str(tenant_id))
             existing = await session.scalar(select(Document).where(
