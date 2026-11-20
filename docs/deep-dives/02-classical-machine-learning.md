@@ -128,7 +128,7 @@ flowchart TD
 Reveal bootstrap samples with replacement, train separate shallow trees and tally votes. Then contrast boosting: add one learner, inspect remaining errors, add the next learner and show shrinkage of each learner's contribution.
 
 ### Implementation
-Use majority_vote in the dependency-free reference; build bootstrap samples with a fixed seed. Compare a single tree, random forest and gradient boosting with identical folds and a fixed metric set.
+Use majority_vote and fit_adaboost_stumps/predict_adaboost_stumps in examples/stage-02/advanced_algorithms.py. Compare seeded bagged stumps and AdaBoost with a random-forest implementation from scikit-learn on identical folds. Inspect weighted error, learner alpha and validation variance.
 
 ### Failure lab
 Use identical base learners, a noisy target, excessive boosting depth and a learning rate that is too large. Explain correlation between base learners, out-of-bag estimates and why feature importance is not causal evidence.
@@ -157,7 +157,7 @@ flowchart LR
 Move the query point and watch distances reorder. Change k and show the vote. A separate margin view moves the SVM hyperplane and highlights support vectors and the margin band.
 
 ### Implementation
-Implement KNN distance ranking and test ties/k bounds. Fit linear and RBF SVM after training-only scaling; record support-vector count and margin behavior.
+Implement KNN distance ranking and fit_linear_svm/predict_linear_svm in examples/stage-02/advanced_algorithms.py. Compare the linear hinge-loss model with linear and RBF SVC after training-only scaling; record support-vector count and margin behavior.
 
 ### Failure lab
 Compare unscaled and standardized features, test k larger than the sample count, tied distances, high-dimensional concentration and outliers. Compare KNN's inference cost with a fitted linear model.
@@ -189,7 +189,7 @@ flowchart TD
 Animate point-to-centroid assignments, then move each centroid to the mean of its assigned points. For PCA, rotate the projection axis and show projected variance; highlight the first principal direction.
 
 ### Implementation
-Use kmeans_step and pca_2d references. Compare K-means with DBSCAN and a trusted PCA implementation; fit all preprocessing and PCA only on each training fold.
+Use kmeans_step, pca_2d and dbscan in examples/stage-02/advanced_algorithms.py. Compare K-means with DBSCAN and a trusted PCA implementation; fit all preprocessing and PCA only on each training fold.
 
 ### Failure lab
 Test empty clusters, poor initialization, non-spherical clusters, density variation, outliers, constant columns and unscaled features. Explain why PCA preserves variance, not necessarily class separation.
@@ -221,7 +221,7 @@ flowchart TD
 Change TP/FP/FN/TN sliders and update precision, recall, F1 and accuracy. Move the classification threshold and display the trade-off curve. Highlight why one scalar metric cannot encode business costs or fairness constraints.
 
 ### Implementation
-Use confusion_metrics and roc_auc reference functions. Add threshold sweeps, per-class metrics and subgroup slices; compare results with scikit-learn.
+Use confusion_metrics and roc_auc plus precision_recall_curve, average_precision and brier_score in examples/stage-02/advanced_algorithms.py. Add threshold sweeps, per-class metrics and subgroup slices; compare results with scikit-learn.
 
 ### Failure lab
 Test no predicted positives, no actual positives, rare positives, a subgroup with poor recall and a model with good AUC but poor calibration. Never tune on the final test set.
@@ -241,7 +241,7 @@ The reference compares logistic regression, KNN and a bagged decision-stump ense
 
 ## Stage 2 mastery gate
 
-Pass all seven topic assessments, reproduce the numerical fixtures, implement and test the central algorithm for each family, diagnose at least one failure per family, and complete the model-comparison report. Stage 3 begins only after the seven gates and integrated project are validated.
+Pass all seven topic assessments, reproduce the numerical fixtures, implement and test the central algorithm for each family, diagnose at least one failure per family, and complete the model-comparison report. Stage 3 begins only after the seven gates and integrated project are validated by scripts/validate-stage2.mjs and CI.
 
 ## Primary references
 - scikit-learn user guide: https://scikit-learn.org/stable/user_guide.html
