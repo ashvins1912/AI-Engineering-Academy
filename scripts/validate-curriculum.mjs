@@ -41,7 +41,28 @@ const missingGuides = deepDiveFiles.filter(file => {
 
 const stagesText = Array.from({ length: 11 }, (_, i) => { try { return readFileSync(new URL(`../docs/deep-dives/labs/stage-${String(i+1).padStart(2, '0')}.md`, import.meta.url), 'utf8') } catch { return '' } }).join('\n')
 
+const productionPlaybooks = [
+  'README.md',
+  '01-production-rag-qdrant-langsmith.md',
+  '02-multi-agent-langgraph.md',
+  '03-fine-tuning-lora-qlora.md',
+  '04-aws-deployment.md'
+]
+const missingProductionPlaybooks = productionPlaybooks.filter(file => {
+  const path = file === 'README.md' ? 'docs/production-playbooks/README.md' : `docs/production-playbooks/${file}`
+  try { readFileSync(new URL(`../${path}`, import.meta.url)); return false }
+  catch { return true }
+})
+const playbookLinks = [
+  '01-production-rag-qdrant-langsmith.md',
+  '02-multi-agent-langgraph.md',
+  '03-fine-tuning-lora-qlora.md',
+  '04-aws-deployment.md'
+]
+
 const checks = [
+  ['production playbooks exist', missingProductionPlaybooks.length === 0],
+  ['lesson workbench links production playbooks', playbookLinks.every(file => practice.includes(file))],
   ['11 learning stages', stageIds.length === 11],
   ['at least 80 lesson blueprints', lessonIds.length >= 80],
   ['stage-namespaced progress identifiers', source.includes('id: `${stage.id}:${item.id}`')],
@@ -58,6 +79,7 @@ const checks = [
   ['lab packs include worked fixtures and verification evidence', ['Worked fixture:', 'Expected result:', 'Verification tests:', 'Interview checks:', 'Submission evidence:'].every(section => stagesText.includes(section))]
 ]
 for (const [label, passed] of checks) console.log(`${passed ? 'PASS' : 'FAIL'} ${label}`)
+if (missingProductionPlaybooks.length) console.error(`Missing production playbooks: ${missingProductionPlaybooks.join(', ')}`)
 if (missing.length) console.error(`Missing lesson identifiers: ${missing.join(', ')}`)
 if (missingGuides.length) console.error(`Missing deep-dive guides: ${missingGuides.join(', ')}`)
 if (missingLessonLabs.length) console.error(`Missing individual lesson labs: ${missingLessonLabs.map(({ id }) => id).join(', ')}`)
