@@ -77,4 +77,4 @@ The current UI is a curriculum explorer and lesson-detail engine backed by typed
 
 ## Deep-dive curriculum
 
-The complete topic-first guides for all 11 stages and 84 lesson topics are indexed in [docs/deep-dives](docs/deep-dives/README.md). Each stage guide includes implementation labs, tests, production considerations, a stage project and mastery gate. The lesson workbench links directly to its stage guide.
+The complete topic-first guides for all 11 stages and 84 lesson topics are indexed in [docs/deep-dives](docs/deep-dives/README.md). Every lesson also has an individual lab specification in the companion stage lab packs: implementation task, worked fixture, expected result, verification tests, debugging checklist, interview checks and submission evidence. The lesson workbench links to both its stage theory guide and lab pack. These are practical specifications and acceptance criteria; some topics still need expanded fully worked reference solutions and automated code runners are intentionally not part of the Academy.
