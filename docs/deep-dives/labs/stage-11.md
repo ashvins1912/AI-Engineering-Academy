@@ -2,64 +2,62 @@
 
 This workbook turns each lesson into a verifiable practical task. Run exercises in an isolated local environment; no learner code is executed by the Academy service. Record your code, test output and short explanation in your learning notes.
 
-## capstone-design — Architecture and threat model
+## capstone-design — Create context, container and data-flow diagrams plus a threat model for a multi-tenant assistant.
 
-**Implementation task:** Architecture and threat model
+**Implementation task:** Roles admin/member; PDF corpus; vector store; model API; scoped read-only and mutating tools.
 
-**Worked fixture:** Create context/container/data-flow diagrams and threat model for multi-tenant assistant.
+**Worked fixture:** Trust boundaries, tenant data paths, privileged actions and abuse cases are explicit.
 
-**Expected result:** Roles admin/member, PDF corpus, vector store, model API, scoped tools.
+**Expected result:** Review every external boundary, identity propagation path and data retention assumption.
 
-**Verification tests:** Trust boundaries, tenant data paths and key abuse cases are explicit.
+**Verification tests:** Which architecture decisions need ADRs, and how do you record alternatives?
 
-**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect identity, permissions, data flow and intermediate state; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Review every external boundary and privileged action.
+**Interview checks:** undefined
 
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
-
----
-
-## capstone-build — Build RAG and agent services
-
-**Implementation task:** Build RAG and agent services
-
-**Worked fixture:** Build vertical slice upload→parse→index→retrieve→cite with bounded agent tool.
-
-**Expected result:** One policy PDF, two tenants, one no-answer query and one malicious document.
-
-**Verification tests:** Citations resolve to page/chunk; tenant isolation holds; malicious content cannot authorize tools.
-
-**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
-
-**Interview checks:** Run integration, ACL, citation and injection tests.
-
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
+**Submission evidence:** Include implementation and architecture artifacts, a successful run, passing positive and negative tests, a short failure analysis, and a 3–5 sentence explanation of the operational trade-off.
 
 ---
 
-## capstone-delivery — Deploy and operate
+## capstone-build — Build a vertical slice from upload through parsing, indexing, retrieval and cited answer, with a bounded agent tool.
 
-**Implementation task:** Deploy and operate
+**Implementation task:** One policy PDF, two tenants, one no-answer query and one malicious document.
 
-**Worked fixture:** Release through CI gate, staged rollout, SLO monitoring and rollback drill.
+**Worked fixture:** Citations resolve to source page/chunk; tenant isolation holds; malicious content cannot authorize tools.
 
-**Expected result:** Candidate release with evaluation report and known-good previous version.
+**Expected result:** Run integration, ACL, citation verification, injection and idempotency tests.
 
-**Verification tests:** Promotion occurs only after gates; rollback restores compatible model/prompt/index bundle.
+**Verification tests:** How do you prove evidence lineage and tenant isolation end to end?
 
-**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect identity, permissions, data flow and intermediate state; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Test failed migration, canary regression and restore from backup.
+**Interview checks:** undefined
 
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
+**Submission evidence:** Include implementation and architecture artifacts, a successful run, passing positive and negative tests, a short failure analysis, and a 3–5 sentence explanation of the operational trade-off.
 
 ---
+
+## capstone-delivery — Release through CI gates, staged rollout, SLO monitoring and a rollback exercise.
+
+**Implementation task:** Candidate release has evaluation report; previous release is known-good and artifacts are versioned.
+
+**Worked fixture:** Promotion occurs only after gates; rollback restores compatible model, prompt and index versions.
+
+**Expected result:** Test failed migration, canary regression, backup restore and rollback compatibility.
+
+**Verification tests:** What must a release manifest contain to make rollback reproducible?
+
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect identity, permissions, data flow and intermediate state; reproduce the failure with a test; change one variable at a time and retain a regression test.
+
+**Interview checks:** undefined
+
+**Submission evidence:** Include implementation and architecture artifacts, a successful run, passing positive and negative tests, a short failure analysis, and a 3–5 sentence explanation of the operational trade-off.
 
 ## Stage completion evidence
 
 - [ ] Every lesson implementation runs from a clean environment.
-- [ ] Expected values are reproduced and negative tests fail safely.
+- [ ] Expected behavior is reproduced and negative tests fail safely.
 - [ ] Debugging notes explain at least one failure and its fix.
 - [ ] Interview checks are answered without reading the guide.
 - [ ] The stage project in the main guide integrates these lesson skills.
