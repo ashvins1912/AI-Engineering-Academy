@@ -38,7 +38,7 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ---
 
-## embeddings — Embedding models and vector spaces
+## rag-embeddings — Embedding models and vector spaces
 
 **Implementation task:** Encode two documents and a query; rank using normalized cosine similarity.
 
