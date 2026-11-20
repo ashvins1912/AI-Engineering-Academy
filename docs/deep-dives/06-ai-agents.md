@@ -66,3 +66,8 @@ flowchart TD
 ## Production implementation extension
 
 Continue with [Multi-agent systems with LangGraph and FastMCP](../production-playbooks/02-multi-agent-langgraph.md). It compares single-agent, router, supervisor, parallel-worker and handoff patterns; starts with deterministic typed state; then adds LangGraph persistence, checkpoint recovery, approval interrupts, a scoped FastMCP tool server and LangSmith trace-based evaluation. The guide explicitly tests loops, duplicate side effects, worker disagreement and approval replay.
+
+
+## Interview preparation integration
+
+Use the [Agentic AI Interview Preparation track](../interview-prep/README.md) to practice this stage in timed interview conditions. The track includes a scenario prompt, answer outline, interviewer follow-ups, failure injection and a scored self-review rubric.
