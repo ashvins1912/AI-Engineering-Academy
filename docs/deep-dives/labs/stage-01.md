@@ -1,137 +1,97 @@
-# Stage 01 — Individual lesson lab pack: Mathematics, Python & Data Foundations
+# Stage 01 — Verified implementation and failure-lab workbook
 
-This workbook turns each lesson into a verifiable practical task. Run exercises in an isolated local environment; no learner code is executed by the Academy service. Record your code, test output and short explanation in your learning notes.
+This pack is an executable companion to [the Stage 01 theory guide](../01-mathematics-python-data.md). Run from the repository root with Python 3.11+. Core examples use the standard library; NumPy/Pandas comparisons activate when those optional packages are installed.
 
-## vectors — Vectors, matrices and tensor shapes
+## Shared commands
 
-**Implementation task:** Implement dot product and 2×2 matrix multiplication, then compare with NumPy.
+```bash
+python examples/stage-01/foundations.py vectors
+python examples/stage-01/foundations.py probability --trials 100000 --seed 7
+python examples/stage-01/foundations.py calculus
+python examples/stage-01/foundations.py optimization --learning-rate 0.1
+python examples/stage-01/foundations.py python-core --input examples/stage-01/fixtures/people.csv
+python examples/stage-01/foundations.py numpy-pandas
+python examples/stage-01/foundations.py data-quality
+python -m unittest discover -s examples/stage-01 -p 'test_*.py' -v
+```
 
-**Worked fixture:** A=[[1,2],[3,4]], x=[2,1].
+## Topic 1 — vectors
 
-**Expected result:** A·x=[4,10]; A·A=[[7,10],[15,22]].
+**Reference implementation:** checked dot product and matrix multiplication; NumPy parity when available.
 
-**Verification tests:** Assert output shapes and reject incompatible dimensions.
+**Worked fixture:** A=[[1,2],[3,4]], x=[2,1]. Expected Ax=[4,10] and A²=[[7,10],[15,22]].
 
-**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
+**Failure injection:** incompatible inner dimensions, ragged matrix and empty vector. Each must raise a descriptive ValueError rather than truncate or broadcast accidentally.
 
-**Interview checks:** Why does (m×n)(n×b) produce (m×b)? What does broadcasting align?
+**Assessment evidence:** handwritten derivation, shape table, passing parity tests and a short explanation of batch/sequence/image axes.
 
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
+## Topic 2 — probability
 
----
+**Reference implementation:** seeded Bernoulli simulation, conditional-frequency estimate, Bayes posterior and population/sample statistics.
 
-## probability — Probability and statistics
+**Worked fixture:** P(A)=0.2, P(B|A)=0.8, P(B|¬A)=0.1. Expected P(A|B)=2/3.
 
-**Implementation task:** Estimate a conditional probability from a reproducible simulation and compare with Bayes' rule.
+**Failure injection:** reverse the conditional probability, use zero observations in the conditioning event, and compare a tiny sample with a large sample. The API must reject undefined conditional estimates.
 
-**Worked fixture:** P(A)=0.2, P(B|A)=0.8, P(B|not A)=0.1.
+**Assessment evidence:** prior/likelihood/evidence/posterior labels, seed/trial count, empirical-theoretical comparison and uncertainty note.
 
-**Expected result:** P(A|B)=0.16/(0.16+0.08)=2/3≈0.667.
+## Topic 3 — calculus
 
-**Verification tests:** Run seeds 7 and 21; check estimates converge as trials grow.
+**Reference implementation:** analytic derivative, forward difference and central difference.
 
-**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
+**Worked fixture:** f(w)=(w−3)² at w=1. Expected derivative −4.
 
-**Interview checks:** Explain base-rate effects and sampling error.
+**Failure injection:** reversed subtraction, unstable epsilon and non-finite input. Tolerances must be explicit; tests should not demand bitwise equality from floating-point arithmetic.
 
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
+**Assessment evidence:** gradient table at three points, epsilon comparison and chain-rule explanation.
 
----
+## Topic 4 — optimization
 
-## calculus — Derivatives and gradients
+**Reference implementation:** full-batch gradient descent for one-feature linear regression, per-step loss and gradient norm, explicit stop reason.
 
-**Implementation task:** Compare analytic, forward-difference and central-difference gradients.
+**Worked fixture:** x=[1,2,3], y=[2,4,6], w₀=0, η=0.1. Loss should decrease and w approach 2.
 
-**Worked fixture:** f(w)=(w−3)^2 at w=1; ε=1e−5.
+**Failure injection:** η=10, negative learning rate, NaN input and iteration budget exhaustion. Divergence must be reported, not labelled convergence.
 
-**Expected result:** f'(1)=−4; central difference should be approximately −4.
+**Assessment evidence:** compare small/stable/large rates and explain conditioning and batch-size trade-offs.
 
-**Verification tests:** Test several ε values and detect a deliberately reversed sign.
+## Topic 5 — Python data engineering
 
-**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
+**Reference implementation:** CSV ingestion with schema checks, row-level errors, duplicate detection and valid-row retention.
 
-**Interview checks:** Why is central difference usually more accurate than forward difference?
+**Fixture:** valid record, missing ID, non-numeric value and duplicate ID.
 
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
+**Failure injection:** missing file, empty file, malformed CSV, Unicode and missing required header.
 
----
+**Assessment evidence:** CLI output, exit code, tests and separation of pure validation from I/O.
 
-## optimization — Optimization foundations
+## Topic 6 — NumPy/Pandas
 
-**Implementation task:** Train a one-weight linear model with gradient descent and log each update.
+**Reference implementation:** standard-library reference plus optional vectorized NumPy and Pandas implementation.
 
-**Worked fixture:** x=[1,2,3], y=[2,4,6], w0=0, η=0.1; use MSE.
+**Fixture:** team=[A,A,B], score=[10,20,5], active=[1,0,1]. Expected active group sums A=10, B=5.
 
-**Expected result:** Loss decreases and w approaches 2; η=10 should diverge/oscillate.
+**Failure injection:** duplicate join keys, null propagation, index alignment and timezone conversion.
 
-**Verification tests:** Assert finite loss, stopping at tolerance or max steps, and compare η values.
+**Assessment evidence:** parity result, join cardinality assertions, row counts and memory note.
 
-**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
+## Topic 7 — data quality and leakage
 
-**Interview checks:** How do learning rate and feature scaling affect convergence?
+**Reference implementation:** schema/range/uniqueness validation, entity-aware split and train-only fit/transform boundary.
 
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
+**Fixture:** train [0,2,4], validation [1000]. Train mean must be 2; a global mean of 251.5 is the deliberate leakage case.
 
----
+**Failure injection:** entity overlap, future timestamps, target-derived feature and global preprocessing fit. Each test must name the violated invariant.
 
-## python-core — Python for data work
+**Assessment evidence:** data-quality report, split audit, data card and a red/green leakage test.
 
-**Implementation task:** Write a CSV ingestion CLI that validates schema and reports invalid rows without crashing.
+## Required submission checklist
 
-**Worked fixture:** Rows: valid id/value; missing id; value='oops'; duplicate id.
-
-**Expected result:** Two invalid rows plus one duplicate are reported with row numbers; valid rows remain.
-
-**Verification tests:** Test missing file, empty file, malformed CSV and Unicode.
-
-**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
-
-**Interview checks:** Why separate pure validation from filesystem I/O?
-
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
-
----
-
-## numpy-pandas — NumPy and Pandas
-
-**Implementation task:** Replace a row loop with vectorized filtering and grouped aggregation.
-
-**Worked fixture:** DataFrame: team=[A,A,B], score=[10,20,5], active=[1,0,1].
-
-**Expected result:** Active rows grouped by team: A=10, B=5.
-
-**Verification tests:** Test null score, duplicate index and join key duplication.
-
-**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
-
-**Interview checks:** When can Pandas index alignment silently change results?
-
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
-
----
-
-## data-quality — Data quality and leakage
-
-**Implementation task:** Demonstrate leakage by fitting a scaler before splitting, then fix the pipeline.
-
-**Worked fixture:** Train values [0,2,4], validation value [1000]; fit scaler globally vs train-only.
-
-**Expected result:** Train-only scaler uses mean 2; global scaler mean 251.5.
-
-**Verification tests:** Assert validation data never enters fit; test future timestamp and duplicate entity split.
-
-**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
-
-**Interview checks:** Describe target leakage vs temporal leakage.
-
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
-
----
-
-## Stage completion evidence
-
-- [ ] Every lesson implementation runs from a clean environment.
-- [ ] Expected values are reproduced and negative tests fail safely.
-- [ ] Debugging notes explain at least one failure and its fix.
-- [ ] Interview checks are answered without reading the guide.
-- [ ] The stage project in the main guide integrates these lesson skills.
+- [ ] Seven commands run from a clean Python environment.
+- [ ] All automated tests pass, including negative tests.
+- [ ] Expected numerical values match within stated tolerances.
+- [ ] Each math topic has an inspectable numerical trace or animation storyboard.
+- [ ] CSV pipeline handles invalid rows without silently losing evidence.
+- [ ] NumPy/Pandas parity is recorded when those optional packages are available.
+- [ ] Integrated project contains at least 10 tests and a data card.
+- [ ] Learner can explain one injected failure, its root cause and regression test.
