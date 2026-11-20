@@ -25,3 +25,23 @@ Demonstrate recovery after worker crash, duplicate event safety and a tested com
 - Temporal documentation: https://docs.temporal.io/
 - CloudEvents: https://cloudevents.io/
 - AWS outbox pattern guidance: https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html
+
+
+## Stage workflow diagram
+
+Use this flow as the implementation order. The decision branches are the points where tests, policy checks or operational controls must stop unsafe progress.
+
+```mermaid
+flowchart TD
+  A[Trigger/event] --> B[Validate schema and signature]
+  B --> C[Deduplicate by event/idempotency key]
+  C --> D[Persist workflow state]
+  D --> E[Run activity]
+  E --> F{Success?}
+  F -- yes --> G[Publish next event]
+  F -- no --> H[Retry with bounded backoff]
+  H --> I{Retry exhausted?}
+  I -- no --> E
+  I -- yes --> J[Compensate or dead-letter]
+  G --> K[Complete and audit]
+```
