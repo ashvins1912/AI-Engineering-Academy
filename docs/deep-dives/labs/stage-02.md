@@ -24,30 +24,30 @@ Run with Python 3.11+. Core reference algorithms are dependency-free; compare wi
 
 ## trees — Decision trees and ensembles
 
-**Implementation task:** Calculate Gini/entropy gain, implement a greedy split and build a seeded bagged-stump vote.
+**Implementation task:** Calculate Gini/entropy gain, implement a greedy split, a seeded bagged-stump vote and AdaBoost decision stumps using weighted errors.
 **Worked fixture:** parent labels=[0,0,1,1], children=[0,0] and [1,1].
 **Expected result:** parent Gini=0.5, weighted child Gini=0, gain=0.5; five votes [1,1,0,1,0] produce class 1.
-**Verification tests:** empty child, noisy split, bootstrap reproducibility, tied votes and max-depth limit.
+**Verification tests:** empty child, noisy split, bootstrap reproducibility, AdaBoost weighted-error boundary, tied votes and max-depth limit.
 **Debugging checklist:** verify weighted child sizes, guard empty nodes, compare train/validation performance and inspect correlated base learners.
 **Interview checks:** How do bagging and boosting differ? Why can impurity importance be biased?
 **Submission evidence:** split trace, ensemble vote, deterministic seed and variance/overfit explanation.
 
 ## svm-knn — KNN and support vector machines
 
-**Implementation task:** Implement sorted KNN distances; fit linear/RBF SVM after training-only scaling.
+**Implementation task:** Implement sorted KNN distances and a primal linear SVM with hinge-loss subgradients; compare linear/RBF SVC after training-only scaling.
 **Worked fixture:** points=(0,0):A,(0,2):A,(3,3):B; query=(1,1), k=3.
 **Expected result:** distances=[√2,√2,√8], prediction=A.
-**Verification tests:** ties, invalid k, mismatched dimensions, feature scale disparity and outliers.
+**Verification tests:** ties, invalid k, mismatched dimensions, feature scale disparity, outliers, single-class SVM labels and non-finite inputs.
 **Debugging checklist:** standardize using train-only statistics, sort ties deterministically and inspect margin/support vectors.
 **Interview checks:** Why does distance concentration affect high-dimensional KNN? What is hinge loss?
 **Submission evidence:** distance trace, scaled/unscaled comparison and SVM margin explanation.
 
 ## clustering — Clustering
 
-**Implementation task:** Implement one K-means assignment/update iteration and compare with DBSCAN.
+**Implementation task:** Implement one K-means assignment/update iteration and DBSCAN region expansion, including explicit noise labels.
 **Worked fixture:** points=[(1,1),(1,2),(8,8),(9,8)], centers=[(1,1),(8,8)].
 **Expected result:** assignments=[0,0,1,1], new centers=[(1,1.5),(8.5,8)].
-**Verification tests:** empty cluster, seed sensitivity, outlier and non-spherical fixture.
+**Verification tests:** empty cluster, DBSCAN noise/border points, invalid eps/min_samples, seed sensitivity, outlier and non-spherical fixture.
 **Debugging checklist:** inspect assignment distances, centroid means, feature scaling and stopping criteria.
 **Interview checks:** When is DBSCAN preferable? Why is a cluster not a target label?
 **Submission evidence:** assignment table, centroid trace, limitation and stability observation.
@@ -64,10 +64,10 @@ Run with Python 3.11+. Core reference algorithms are dependency-free; compare wi
 
 ## metrics — Model evaluation
 
-**Implementation task:** Implement confusion metrics, ROC-AUC and a threshold sweep.
+**Implementation task:** Implement confusion metrics, ROC-AUC, precision-recall curve, average precision and Brier score.
 **Worked fixture:** TP=8, FP=2, FN=4, TN=16.
 **Expected result:** precision=0.8, recall≈0.667, F1≈0.727, accuracy=0.8.
-**Verification tests:** zero denominators, one-class ROC-AUC input, rare positives and macro/weighted aggregation.
+**Verification tests:** zero denominators, one-class ROC-AUC input, rare positives, invalid probabilities, calibration and macro/weighted aggregation.
 **Debugging checklist:** label positive class, inspect confusion counts, separate ranking/calibration and slice errors by subgroup.
 **Interview checks:** When is PR-AUC more informative than ROC-AUC? What is calibration?
 **Submission evidence:** hand calculation, metrics report, threshold decision and subgroup-error analysis.
