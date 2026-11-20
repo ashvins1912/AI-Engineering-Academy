@@ -6,6 +6,8 @@ const implementation = readFileSync('examples/stage-01/foundations.py', 'utf8')
 const tests = readFileSync('examples/stage-01/test_foundations.py', 'utf8')
 const interactive = readFileSync('src/components/Stage1MasteryLabs.tsx', 'utf8')
 const app = readFileSync('src/App.tsx', 'utf8')
+const project = readFileSync('examples/stage-01/project_pipeline.py', 'utf8')
+const projectTests = readFileSync('examples/stage-01/test_project_pipeline.py', 'utf8')
 const topics = ['Vectors, matrices and tensor shapes','Probability and statistics','Derivatives and gradients','Optimization foundations','Python for data work','NumPy and Pandas','Data quality and leakage']
 const required = ['Worked calculation','Numerical animation storyboard','Failure lab','Assessment gate']
 for (const topic of topics) {
@@ -34,4 +36,10 @@ for (const feature of ['Play animation','Step','Check answer','Finite-difference
   if (!interactive.includes(feature)) throw new Error(`Missing interactive Stage 1 feature: ${feature}`)
 }
 if (!app.includes('<Stage1MasteryLabs/>')) throw new Error('Seven Stage 1 mastery labs are not integrated into the Stage 1 UI')
+const projectFiles = ['examples/stage-01/project_pipeline.py','examples/stage-01/test_project_pipeline.py','examples/stage-01/fixtures/tabular_project.csv','examples/stage-01/PROJECT_DATA_CARD.md','examples/stage-01/PROJECT_DFD.md','examples/stage-01/incident-report.md']
+for (const file of projectFiles) if (!existsSync(file)) throw new Error(`Missing integrated project artifact: ${file}`)
+const projectTestCount = (projectTests.match(/    def test_/g) || []).length
+if (projectTestCount < 10) throw new Error(`Integrated project needs at least 10 tests; found ${projectTestCount}`)
+for (const invariant of ['split_by_time_and_entity','fit_scaler','validation_used_for_fit','entity leakage','target leakage']) if (!project.includes(invariant)) throw new Error(`Missing integrated pipeline invariant: ${invariant}`)
+console.log(`PASS Stage 1 integrated project: ${projectTestCount} regression tests, time/entity split, train-only scaling and data card`)
 console.log('PASS Stage 1: seven topics, interactive numerical labs, mastery questions, failure labs, assessments and executable references')

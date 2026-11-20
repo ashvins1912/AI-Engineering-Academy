@@ -126,7 +126,7 @@ This workbook turns every Stage 1 lesson into a verifiable implementation. Run f
 
 **Submission evidence:** Include a data-quality report, split audit, red/green leakage tests, data-flow diagram and data card describing provenance, intended use and limitations.
 
-## Stage completion evidence
+## Integrated project execution\n\nRun `python examples/stage-01/project_pipeline.py --input examples/stage-01/fixtures/tabular_project.csv --output build/stage-01/tabular-pipeline.json --cutoff 2025-01-01`. Then run `python -m unittest discover -s examples/stage-01 -p 'test_*.py' -v`. Inspect the generated artifact invariants and the project data card, DFD and incident report.\n\n## Stage completion evidence
 
 - [ ] Every lesson implementation runs from a clean environment.
 - [ ] Expected values are reproduced and negative tests fail safely.
