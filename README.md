@@ -78,3 +78,8 @@ The current UI is a curriculum explorer and lesson-detail engine backed by typed
 ## Deep-dive curriculum
 
 The complete topic-first guides for all 11 stages and 84 lesson topics are indexed in [docs/deep-dives](docs/deep-dives/README.md). Every lesson also has an individual lab specification in the companion stage lab packs: implementation task, worked fixture, expected result, verification tests, debugging checklist, interview checks and submission evidence. The lesson workbench links to both its stage theory guide and lab pack. These are practical specifications and acceptance criteria; some topics still need expanded fully worked reference solutions and automated code runners are intentionally not part of the Academy.
+
+
+## Production engineering playbooks
+
+The next layer turns the curriculum into tool-based implementation practice: [Production AI Engineering Playbooks](docs/production-playbooks/README.md). It includes end-to-end RAG with Qdrant, LangSmith and Guardrails AI; multi-agent workflows with LangGraph and FastMCP; PEFT fine-tuning with LoRA/QLoRA; and an AWS ECR/ECS Fargate deployment path. Each playbook includes architecture diagrams, when-to-use decisions, implementation tasks, test fixtures, failure diagnosis, recovery paths, evaluation criteria and improvement plans. These are learning guides; AWS resources are not provisioned and model training is not claimed unless a learner runs it.
