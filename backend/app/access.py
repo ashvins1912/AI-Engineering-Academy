@@ -1,12 +1,13 @@
-from sqlalchemy import exists, or_, select, true
+from sqlalchemy import and_, exists, or_, select
 
 from .models import Document, DocumentACL
 
 
 def document_access_filter(principal):
     """Return the SQL predicate for tenant-visible, owned or explicitly granted documents."""
+    tenant_scope = Document.tenant_id == principal.tenant_id
     if {"tenant_admin", "platform_admin"} & set(principal.roles):
-        return true()
+        return tenant_scope
     user_grant = exists(
         select(DocumentACL.id).where(
             DocumentACL.tenant_id == Document.tenant_id,
@@ -16,10 +17,13 @@ def document_access_filter(principal):
             DocumentACL.permission.in_(("read", "write", "admin")),
         )
     )
-    return or_(
-        Document.visibility == "tenant",
-        Document.owner_id == principal.user_id,
-        user_grant,
+    return and_(
+        tenant_scope,
+        or_(
+            Document.visibility == "tenant",
+            Document.owner_id == principal.user_id,
+            user_grant,
+        ),
     )
 
 
