@@ -7,6 +7,7 @@ import MLLabs from './components/MLLabs'
 import Stage3MasteryLabs from './components/Stage3MasteryLabs'
 import Stage2MasteryLabs from './components/Stage2MasteryLabs'
 import TransformerLabs from './components/TransformerLabs'
+import Stage4MasteryLabs from './components/Stage4MasteryLabs'
 import RAGLabs from './components/RAGLabs'
 import LessonPractice from './components/LessonPractice'
 import ProductionLabs from './components/ProductionLabs'
@@ -64,8 +65,8 @@ export default function App() {
         {active.id==='stage-2'&&showMLLabs&&<><Stage2MasteryLabs/><MLLabs/></>}
         {active.id==='stage-3'&&<div className="phase-lab-launch"><div><strong>Interactive neural network lab</strong><p>Seven deep-learning topics with interactive forward/backward traces, optimizer experiments, CNN/RNN walkthroughs and generalization evidence.</p></div><button className="lab-primary" onClick={()=>setShowDeepLabs(v=>!v)}>{showDeepLabs?'Hide neural lab':'Open 7 mastery gates + neural lab'} <ChevronRight size={15}/></button></div>}
         {active.id==='stage-3'&&showDeepLabs&&<><Stage3MasteryLabs/><MLLabs initialTab="network"/></>}
-        {active.id==='stage-4'&&<div className="phase-lab-launch"><div><strong>Interactive transformer and LLM workbench</strong><p>Trace token IDs, embeddings, Q/K/V attention, multi-head projections, transformer blocks and next-token decoding.</p></div><button className="lab-primary" onClick={()=>setShowTransformerLabs(v=>!v)}>{showTransformerLabs?'Hide transformer labs':'Open 6 transformer labs'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-4'&&showTransformerLabs&&<TransformerLabs/>}
+        {active.id==='stage-4'&&<div className="phase-lab-launch"><div><strong>Interactive transformer and LLM workbench</strong><p>Eight topic-first mastery gates for tokenization, embeddings, Q/K/V, causal masking, multi-head attention, transformer blocks, decoding and LLM engineering.</p></div><button className="lab-primary" onClick={()=>setShowTransformerLabs(v=>!v)}>{showTransformerLabs?'Hide transformer labs':'Open 8 mastery gates + transformer labs'} <ChevronRight size={15}/></button></div>}
+        {active.id==='stage-4'&&showTransformerLabs&&<><Stage4MasteryLabs/><TransformerLabs/></>}
         {active.id==='stage-5'&&<div className="phase-lab-launch"><div><strong>Interactive RAG engineering workbench</strong><p>Experiment with ingestion, chunking, dense and sparse retrieval, reranking, GraphRAG, Visual RAG and evaluation metrics.</p></div><button className="lab-primary" onClick={()=>setShowRAGLabs(v=>!v)}>{showRAGLabs?'Hide RAG labs':'Open 7 RAG labs'} <ChevronRight size={15}/></button></div>}
         {active.id==='stage-5'&&showRAGLabs&&<RAGLabs/>}
         {active.modules.map((m,mi)=><article className="module" key={m.id}><button className="module-head" onClick={()=>setExpanded(v=>v.includes(m.id)?v.filter(x=>x!==m.id):[...v,m.id])}><div className="module-index">{String(mi+1).padStart(2,'0')}</div><div className="module-title"><h3>{m.title}</h3><p>{m.description}</p><span>{m.lessons.length} lessons · {m.lessons.filter(l=>completed.includes(l.id)).length} completed</span></div><ChevronRight className={expanded.includes(m.id)?'rotate':''} size={18}/></button>
