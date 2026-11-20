@@ -6,7 +6,7 @@
     "stage": 4,
     "estimatedMinutes": 35
   },
-  "state": "runnable",
+  "state": "tested",
   "learning": {
     "outcomes": [
       "Calculate a dot-product attention score for a tiny query and key",
@@ -110,23 +110,23 @@
       {
         "operation": "Dot products",
         "reasoning": "Compare the query with each key.",
-        "result": "scaled scores≈[0.7071,0]"
+        "result": "scaled scores≈[0.70710678,0]"
       },
       {
         "operation": "Softmax",
         "reasoning": "Normalize the scores into weights.",
-        "result": "weights≈[0.6698,0.3302]"
+        "result": "weights≈[0.66976155,0.33023845]"
       }
     ],
-    "expectedOutput": "weighted value≈[1.3395,1.3210]"
+    "expectedOutput": "weighted value≈[1.33952310,1.32095380]"
   },
   "implementations": [
     {
       "language": "python",
       "path": "content/examples/attention.py",
-      "runCommand": "python examples/attention.py",
+      "runCommand": "python content/examples/attention.py",
       "testsPath": "content/examples/tests/test_attention.py",
-      "expectedResult": "weighted value≈[1.462,1.076]"
+      "expectedResult": "weights≈[0.6697615493,0.3302384507]; output≈[1.3395230986,1.3209538028]"
     }
   ],
   "failures": [
