@@ -31,9 +31,16 @@ _DELETE_EXPIRED = text("DELETE FROM api_rate_limit_buckets WHERE expires_at < :n
 
 def _trusted_proxy(remote_ip: str, trusted_proxy_ips: set[str]) -> bool:
     try:
-        return str(ipaddress.ip_address(remote_ip)) in trusted_proxy_ips
+        address = ipaddress.ip_address(remote_ip)
     except ValueError:
         return False
+    for configured in trusted_proxy_ips:
+        try:
+            if address in ipaddress.ip_network(configured, strict=False):
+                return True
+        except ValueError:
+            continue
+    return False
 
 
 def resolve_client_ip(request: Request, trusted_proxy_ips: set[str] | None = None) -> str:
@@ -44,7 +51,7 @@ def resolve_client_ip(request: Request, trusted_proxy_ips: set[str] | None = Non
         normalized_remote = str(ipaddress.ip_address(remote))
     except ValueError:
         normalized_remote = remote
-    if normalized_remote not in trusted:
+    if not _trusted_proxy(normalized_remote, trusted):
         return normalized_remote
     forwarded = request.headers.get("x-forwarded-for", "")
     candidate = forwarded.split(",", 1)[0].strip()
