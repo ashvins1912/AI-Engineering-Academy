@@ -9,10 +9,10 @@ const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
 const practice = readFileSync(new URL('../src/components/LessonPractice.tsx', import.meta.url), 'utf8')
 const lessonStage = new Map()
 let activeStage = 0
-for (const line of source.split('\\n')) {
-  const stageMatch = line.match(/id:\\s*'(?:stage-)(\\d+)'/)
+for (const line of source.split('\n')) {
+  const stageMatch = line.match(/id:\s*'(?:stage-)(\d+)'/)
   if (stageMatch) activeStage = Number(stageMatch[1])
-  const lessonMatch = line.match(/lesson\\('([^']+)'/)
+  const lessonMatch = line.match(/lesson\('([^']+)'/)
   if (lessonMatch) lessonStage.set(lessonMatch[1], activeStage)
 }
 const missingLessonLabs = [...lessonStage.entries()].filter(([id, stage]) => {
@@ -33,7 +33,7 @@ const missingGuides = deepDiveFiles.filter(file => {
   catch { return true }
 })
 
-const stagesText = Array.from({ length: 11 }, (_, i) => { try { return readFileSync(new URL(`../docs/deep-dives/labs/stage-${String(i+1).padStart(2, '0')}.md`, import.meta.url), 'utf8') } catch { return '' } }).join('\\n')
+const stagesText = Array.from({ length: 11 }, (_, i) => { try { return readFileSync(new URL(`../docs/deep-dives/labs/stage-${String(i+1).padStart(2, '0')}.md`, import.meta.url), 'utf8') } catch { return '' } }).join('\n')
 
 const checks = [
   ['11 learning stages', stageIds.length === 11],
