@@ -138,7 +138,7 @@ async def enqueue_ingestion(
     except ScannerUnavailable:
         raise HTTPException(503, "Required malware scanning is unavailable") from None
 
-    filename = file.filename.replace("\\\\", "/").rsplit("/", 1)[-1][:255]
+    filename = file.filename.replace("\\", "/").rsplit("/", 1)[-1][:255]
     media_type = file.content_type or "application/octet-stream"
     digest = sha256(data).hexdigest()
     job_id = uuid4()
