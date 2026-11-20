@@ -28,8 +28,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: python -m compileall -q backend/app backend/tests examples/stage-01 content/examples
-      - run: python -m unittest discover -s examples/stage-01 -p 'test_*.py' -v
+      - run: python -m compileall -q backend/app backend/tests examples/stage-01 examples/stage-02 content/examples
+      - run: python -m unittest discover -s examples/stage-01 -p 'test_*.py' -v\n      - run: python -m unittest discover -s examples/stage-02 -p 'test_*.py' -v
       - run: python -m unittest discover -s content/examples/tests -v
       - run: python -m pip install pytest fastapi==0.115.12 starlette==0.46.2 httpx==0.28.1 pydantic-settings==2.9.1 "PyJWT[crypto]" "SQLAlchemy[asyncio]==2.0.41" asyncpg==0.30.0 pgvector==0.4.1 pypdf==5.6.1 python-docx==1.1.2 pytesseract==0.3.13 pdf2image==1.17.0 Pillow==11.2.1
       - run: cd backend && python -m pytest tests -q
