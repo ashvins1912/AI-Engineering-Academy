@@ -4,17 +4,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## agent-loop — Agent loop and control flow
 
-**Implementation task:** Agent loop and control flow
+**Implementation task:** Implement observe→decide→validate→execute with a hard step budget.
 
-**Worked fixture:** Implement observe→decide→validate→execute with a hard step budget.
+**Worked fixture:** Tool add(2,3), max_steps=3; second scenario repeats same call.
 
-**Expected result:** Tool add(2,3), max_steps=3; second scenario repeats same call.
+**Expected result:** Returns 5 and terminates; repeated action hits budget and stops safely.
 
-**Verification tests:** Returns 5 and terminates; repeated action hits budget and stops safely.
+**Verification tests:** Test unknown tool, invalid schema and timeout.
 
-**Debugging checklist:** Why must model decisions pass server-side validation?
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Test unknown tool, invalid schema and timeout.
+**Interview checks:** Why must model decisions pass server-side validation?
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
@@ -22,17 +22,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## planning — Planning and task decomposition
 
-**Implementation task:** Planning and task decomposition
+**Implementation task:** Convert a user task into a typed dependency DAG and topologically order it.
 
-**Worked fixture:** Convert a user task into a typed dependency DAG and topologically order it.
+**Worked fixture:** Tasks: fetch→summarize→review; review depends on summarize.
 
-**Expected result:** Tasks: fetch→summarize→review; review depends on summarize.
+**Expected result:** Valid order respects dependencies; cycle is rejected.
 
-**Verification tests:** Valid order respects dependencies; cycle is rejected.
+**Verification tests:** Test missing dependency, cycle and impossible task.
 
-**Debugging checklist:** When should planner re-plan rather than retry?
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Test missing dependency, cycle and impossible task.
+**Interview checks:** When should planner re-plan rather than retry?
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
@@ -40,17 +40,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## memory — Agent memory and context engineering
 
-**Implementation task:** Agent memory and context engineering
+**Implementation task:** Implement memory records with source, timestamp, expiry and sensitivity labels.
 
-**Worked fixture:** Implement memory records with source, timestamp, expiry and sensitivity labels.
+**Worked fixture:** Fact A valid until date X; newer fact B contradicts A.
 
-**Expected result:** Fact A valid until date X; newer fact B contradicts A.
+**Expected result:** Retrieval prefers current supported fact and reports conflict when unresolved.
 
-**Verification tests:** Retrieval prefers current supported fact and reports conflict when unresolved.
+**Verification tests:** Test stale memory, sensitive field exclusion and injected memory text.
 
-**Debugging checklist:** How should memory deletion/retention be enforced?
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Test stale memory, sensitive field exclusion and injected memory text.
+**Interview checks:** How should memory deletion/retention be enforced?
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
@@ -58,17 +58,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## state — State, checkpoints and durable execution
 
-**Implementation task:** State, checkpoints and durable execution
+**Implementation task:** Persist state before/after a side effect and resume after simulated crash.
 
-**Worked fixture:** Persist state before/after a side effect and resume after simulated crash.
+**Worked fixture:** Payment-like mock side effect with idempotency key order-123.
 
-**Expected result:** Payment-like mock side effect with idempotency key order-123.
+**Expected result:** Retry returns same result without duplicate side effect.
 
-**Verification tests:** Retry returns same result without duplicate side effect.
+**Verification tests:** Crash before write, after write and duplicate event.
 
-**Debugging checklist:** What is the exactly-once illusion and how is idempotency used?
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Crash before write, after write and duplicate event.
+**Interview checks:** What is the exactly-once illusion and how is idempotency used?
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
@@ -76,17 +76,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## human-loop — Human-in-the-loop controls
 
-**Implementation task:** Human-in-the-loop controls
+**Implementation task:** Require approval for an irreversible tool and bind approval to exact arguments.
 
-**Worked fixture:** Require approval for an irreversible tool and bind approval to exact arguments.
+**Worked fixture:** Transfer amount=100 to account A; change amount to 1000 after approval.
 
-**Expected result:** Transfer amount=100 to account A; change amount to 1000 after approval.
+**Expected result:** Original approved action allowed; modified arguments rejected.
 
-**Verification tests:** Original approved action allowed; modified arguments rejected.
+**Verification tests:** Test expired, denied and replayed approval.
 
-**Debugging checklist:** What should an approval record bind to?
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Test expired, denied and replayed approval.
+**Interview checks:** What should an approval record bind to?
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
@@ -94,17 +94,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## patterns — Agent design patterns
 
-**Implementation task:** Agent design patterns
+**Implementation task:** Compare router and supervisor/worker for a three-task read-only workflow.
 
-**Worked fixture:** Compare router and supervisor/worker for a three-task read-only workflow.
+**Worked fixture:** Tasks: search docs, calculate total, summarize evidence.
 
-**Expected result:** Tasks: search docs, calculate total, summarize evidence.
+**Expected result:** Router selects correct specialist; supervisor aggregates with provenance.
 
-**Verification tests:** Router selects correct specialist; supervisor aggregates with provenance.
+**Verification tests:** Test worker failure and contradictory outputs.
 
-**Debugging checklist:** When is a deterministic pipeline better than multi-agent delegation?
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Test worker failure and contradictory outputs.
+**Interview checks:** When is a deterministic pipeline better than multi-agent delegation?
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
@@ -112,17 +112,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## langgraph — Graph-based agent orchestration
 
-**Implementation task:** Graph-based agent orchestration
+**Implementation task:** Model a conditional graph with checkpoint and approval interrupt.
 
-**Worked fixture:** Model a conditional graph with checkpoint and approval interrupt.
+**Worked fixture:** Nodes classify→retrieve→draft; mutation node requires approval.
 
-**Expected result:** Nodes classify→retrieve→draft; mutation node requires approval.
+**Expected result:** Checkpoint resumes at correct node; unauthorized edge never runs.
 
-**Verification tests:** Checkpoint resumes at correct node; unauthorized edge never runs.
+**Verification tests:** Test cyclic edge, state schema change and resume.
 
-**Debugging checklist:** What does checkpointing persist in a graph workflow?
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Test cyclic edge, state schema change and resume.
+**Interview checks:** What does checkpointing persist in a graph workflow?
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
@@ -130,17 +130,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## frameworks — Framework comparison
 
-**Implementation task:** Framework comparison
+**Implementation task:** Implement same two-tool workflow with raw functions and one orchestration framework.
 
-**Worked fixture:** Implement same two-tool workflow with raw functions and one orchestration framework.
+**Worked fixture:** Tools lookup_policy and add_numbers; same fixtures and max steps.
 
-**Expected result:** Tools lookup_policy and add_numbers; same fixtures and max steps.
+**Expected result:** Compare trace, retries, code size and latency; outputs match.
 
-**Verification tests:** Compare trace, retries, code size and latency; outputs match.
+**Verification tests:** Test framework upgrade and adapter boundary.
 
-**Debugging checklist:** Which requirements justify a framework dependency?
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Test framework upgrade and adapter boundary.
+**Interview checks:** Which requirements justify a framework dependency?
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
@@ -148,17 +148,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## agent-eval — Agent evaluation
 
-**Implementation task:** Agent evaluation
+**Implementation task:** Evaluate agent traces against task success and tool-call expectations.
 
-**Worked fixture:** Evaluate agent traces against task success and tool-call expectations.
+**Worked fixture:** 10 deterministic tasks; 2 include tool failure.
 
-**Expected result:** 10 deterministic tasks; 2 include tool failure.
+**Expected result:** Report completion, correct tool-call rate, policy violations, latency.
 
-**Verification tests:** Report completion, correct tool-call rate, policy violations, latency.
+**Verification tests:** Test flaky tool, extra calls and adversarial instruction.
 
-**Debugging checklist:** Why is final-answer evaluation insufficient for agents?
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Test flaky tool, extra calls and adversarial instruction.
+**Interview checks:** Why is final-answer evaluation insufficient for agents?
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
