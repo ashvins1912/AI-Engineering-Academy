@@ -2,165 +2,165 @@
 
 This workbook turns each lesson into a verifiable practical task. Run exercises in an isolated local environment; no learner code is executed by the Academy service. Record your code, test output and short explanation in your learning notes.
 
-## mcp-architecture — Trace initialize→capability negotiation→list tools→call tool→shutdown.
+## mcp-architecture — MCP architecture and lifecycle
 
-**Implementation task:** Local add tool and status resource.
+**Implementation task:** Trace initialize→capability negotiation→list tools→call tool→shutdown.
 
-**Worked fixture:** Client discovers exactly one tool/resource and handles JSON-RPC response.
+**Worked fixture:** Local add tool and status resource.
 
-**Expected result:** Test unsupported version and malformed request.
+**Expected result:** Client discovers exactly one tool/resource and handles JSON-RPC response.
 
-**Verification tests:** What belongs to MCP host vs client vs server?
+**Verification tests:** Test unsupported version and malformed request.
 
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Debugging checklist:** What belongs to MCP host vs client vs server?
 
-**Interview checks:** undefined
+**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
 
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
-
----
-
-## mcp-primitives — Expose typed add tool, read-only status resource and prompt template.
-
-**Implementation task:** add(a=2,b=3), resource academy://status.
-
-**Worked fixture:** Tool returns 5; resource returns demo-ready; invalid types rejected.
-
-**Expected result:** Test extra fields and large tool result.
-
-**Verification tests:** How do tools differ from resources and prompts?
-
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
-
-**Interview checks:** undefined
-
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
+**Submission evidence:** undefined
 
 ---
 
-## mcp-advanced — Add progress and cancellation to a deliberately slow read-only operation.
+## mcp-primitives — Tools, resources and prompts
 
-**Implementation task:** Operation has 5 steps; cancel after step 2.
+**Implementation task:** Expose typed add tool, read-only status resource and prompt template.
 
-**Worked fixture:** Progress emitted; cancellation stops remaining work.
+**Worked fixture:** add(a=2,b=3), resource academy://status.
 
-**Expected result:** Test disconnect and unsupported capability.
+**Expected result:** Tool returns 5; resource returns demo-ready; invalid types rejected.
 
-**Verification tests:** Why must capability support be negotiated?
+**Verification tests:** Test extra fields and large tool result.
 
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Debugging checklist:** How do tools differ from resources and prompts?
 
-**Interview checks:** undefined
+**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
 
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
-
----
-
-## mcp-transport — Run a local stdio server and verify protocol stdout is clean.
-
-**Implementation task:** Server emits one tool response; diagnostic logs go to stderr.
-
-**Worked fixture:** Client parses frames without log noise.
-
-**Expected result:** Test malformed frame, restart and secret in logs.
-
-**Verification tests:** When would remote HTTP transport be preferable to stdio?
-
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
-
-**Interview checks:** undefined
-
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
+**Submission evidence:** undefined
 
 ---
 
-## mcp-security — Authorize tool calls by authenticated principal and resource scope.
+## mcp-advanced — MCP advanced capabilities
 
-**Implementation task:** User A can read doc A, not doc B; malicious tool metadata asks for secrets.
+**Implementation task:** Add progress and cancellation to a deliberately slow read-only operation.
 
-**Worked fixture:** A allowed, B denied; tool metadata cannot elevate permission.
+**Worked fixture:** Operation has 5 steps; cancel after step 2.
 
-**Expected result:** Test confused deputy, path traversal, SSRF and scope escalation.
+**Expected result:** Progress emitted; cancellation stops remaining work.
 
-**Verification tests:** Why is tool description not an authorization policy?
+**Verification tests:** Test disconnect and unsupported capability.
 
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Debugging checklist:** Why must capability support be negotiated?
 
-**Interview checks:** undefined
+**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
 
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
-
----
-
-## a2a — Implement agent-card discovery and asynchronous task lifecycle.
-
-**Implementation task:** Agent card advertises summarize capability; submit task then poll status.
-
-**Worked fixture:** Task transitions submitted→working→completed with artifact reference.
-
-**Expected result:** Test duplicate task, expired task and untrusted callback URL.
-
-**Verification tests:** How does A2A differ from a tool invocation?
-
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
-
-**Interview checks:** undefined
-
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
+**Submission evidence:** undefined
 
 ---
 
-## ibm-acp — Build a protocol adapter mapping external message/task schema to internal typed message.
+## mcp-transport — Transport and deployment
 
-**Implementation task:** Mock incoming task, success and failure message variants.
+**Implementation task:** Run a local stdio server and verify protocol stdout is clean.
 
-**Worked fixture:** Known messages map; unknown version/type returns controlled error.
+**Worked fixture:** Server emits one tool response; diagnostic logs go to stderr.
 
-**Expected result:** Test version mismatch and unknown message type.
+**Expected result:** Client parses frames without log noise.
 
-**Verification tests:** Why isolate protocol schemas behind an adapter?
+**Verification tests:** Test malformed frame, restart and secret in logs.
 
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Debugging checklist:** When would remote HTTP transport be preferable to stdio?
 
-**Interview checks:** undefined
+**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
 
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
-
----
-
-## client-acp — Mock an editor client session with streaming updates and approval request.
-
-**Implementation task:** Session sends update, asks permission, then completes.
-
-**Worked fixture:** Client displays update; tool action waits for approval.
-
-**Expected result:** Test cancellation, resume and denied permission.
-
-**Verification tests:** How does editor-agent session protocol differ from MCP?
-
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
-
-**Interview checks:** undefined
-
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
+**Submission evidence:** undefined
 
 ---
 
-## tooling — Wrap an external API with timeout, retries, idempotency and redacted logs.
+## mcp-security — MCP security engineering
 
-**Implementation task:** Mock 429 then 200; same idempotency key on retry.
+**Implementation task:** Authorize tool calls by authenticated principal and resource scope.
 
-**Worked fixture:** Backoff occurs and side effect is not duplicated.
+**Worked fixture:** User A can read doc A, not doc B; malicious tool metadata asks for secrets.
 
-**Expected result:** Test 5xx, malformed response, expired token and secret redaction.
+**Expected result:** A allowed, B denied; tool metadata cannot elevate permission.
 
-**Verification tests:** Which failures are safe to retry?
+**Verification tests:** Test confused deputy, path traversal, SSRF and scope escalation.
 
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Debugging checklist:** Why is tool description not an authorization policy?
 
-**Interview checks:** undefined
+**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
 
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
+**Submission evidence:** undefined
+
+---
+
+## a2a — Agent2Agent protocol
+
+**Implementation task:** Implement agent-card discovery and asynchronous task lifecycle.
+
+**Worked fixture:** Agent card advertises summarize capability; submit task then poll status.
+
+**Expected result:** Task transitions submitted→working→completed with artifact reference.
+
+**Verification tests:** Test duplicate task, expired task and untrusted callback URL.
+
+**Debugging checklist:** How does A2A differ from a tool invocation?
+
+**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+
+**Submission evidence:** undefined
+
+---
+
+## ibm-acp — IBM/BeeAI Agent Communication Protocol
+
+**Implementation task:** Build a protocol adapter mapping external message/task schema to internal typed message.
+
+**Worked fixture:** Mock incoming task, success and failure message variants.
+
+**Expected result:** Known messages map; unknown version/type returns controlled error.
+
+**Verification tests:** Test version mismatch and unknown message type.
+
+**Debugging checklist:** Why isolate protocol schemas behind an adapter?
+
+**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+
+**Submission evidence:** undefined
+
+---
+
+## client-acp — Agent Client Protocol
+
+**Implementation task:** Mock an editor client session with streaming updates and approval request.
+
+**Worked fixture:** Session sends update, asks permission, then completes.
+
+**Expected result:** Client displays update; tool action waits for approval.
+
+**Verification tests:** Test cancellation, resume and denied permission.
+
+**Debugging checklist:** How does editor-agent session protocol differ from MCP?
+
+**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+
+**Submission evidence:** undefined
+
+---
+
+## tooling — Tool integration engineering
+
+**Implementation task:** Wrap an external API with timeout, retries, idempotency and redacted logs.
+
+**Worked fixture:** Mock 429 then 200; same idempotency key on retry.
+
+**Expected result:** Backoff occurs and side effect is not duplicated.
+
+**Verification tests:** Test 5xx, malformed response, expired token and secret redaction.
+
+**Debugging checklist:** Which failures are safe to retry?
+
+**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+
+**Submission evidence:** undefined
 
 ---
 
