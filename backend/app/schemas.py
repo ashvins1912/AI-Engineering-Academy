@@ -34,3 +34,27 @@ class IngestionJobOut(BaseModel):
     error_code: str | None = None
     created_at: str | None = None
     completed_at: str | None = None
+
+
+class AnswerRequest(BaseModel):
+    query: str = Field(min_length=2, max_length=1000)
+    top_k: int = Field(default=5, ge=1, le=20)
+    max_tokens: int = Field(default=512, ge=1, le=2000)
+
+
+class AnswerCitationOut(BaseModel):
+    source_id: str
+    document_id: UUID | None = None
+    page_number: int | None = None
+    quote: str
+    start_char: int
+    end_char: int
+
+
+class AnswerOut(BaseModel):
+    answer: str
+    citations: list[AnswerCitationOut]
+    abstained: bool
+    reason: str | None = None
+    retrieval_count: int
+    model: str | None = None

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
-from typing import Protocol, Sequence
+from typing import Protocol
 
 import httpx
+
+from .citations import validate_citations
 
 
 class GenerationUnavailable(RuntimeError):
@@ -58,7 +60,7 @@ class OpenAICompatibleProvider:
 
 async def generate_grounded_answer(
     query: str,
-    evidence: Sequence[dict[str, object]],
+    evidence: list[dict[str, object]],
     provider: ChatCompletionProvider,
     max_tokens: int = 512,
 ) -> dict[str, object]:
@@ -75,7 +77,7 @@ async def generate_grounded_answer(
         "from its cited evidence item. If evidence is insufficient, conflicting or irrelevant, set abstain=true "
         "and answer to an empty string. Never invent source IDs or quotes."
     )
-    user = json.dumps({"question": query, "evidence": list(evidence)}, ensure_ascii=False)
+    user = json.dumps({"question": query, "evidence": evidence}, ensure_ascii=False)
     raw = await provider.complete(
         [{"role": "system", "content": system}, {"role": "user", "content": user}],
         max_tokens,
@@ -99,7 +101,3 @@ async def generate_grounded_answer(
                 "invalid_citations": validation["invalid"]}
     return {"answer": payload["answer"].strip(), "citations": validation["valid"],
             "abstained": False, "reason": None, "model": provider.model}
-
-
-# Local import avoids a second implementation of citation verification.
-from .citations import validate_citations

@@ -12,6 +12,17 @@ class Settings(BaseSettings):
     jwt_audience: str = "ai-engineering-academy"
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     embedding_dimension: int = 384
+    embedding_provider: str = "local"
+    embedding_api_url: str = ""
+    embedding_api_key: str = ""
+    embedding_timeout_seconds: int = 20
+    generation_enabled: bool = False
+    generation_api_url: str = ""
+    generation_api_key: str = ""
+    generation_model: str = ""
+    generation_timeout_seconds: int = 30
+    generation_max_tokens: int = 1000
+    generation_context_chars: int = 16000
     embedding_device: str = "cpu"
     max_upload_bytes: int = 10 * 1024 * 1024
     max_pdf_pages: int = 50

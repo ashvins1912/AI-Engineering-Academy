@@ -27,7 +27,13 @@ const required = [
  ['document-level ACL predicates','backend/app/access.py','document_access_filter'],
  ['RLS-protected ingestion jobs','backend/migrations/002_document_acl_ingestion_jobs.sql','tenant_ingestion_jobs_isolation'],
  ['private document default','backend/app/models.py','default="private"'],
- ['bounded retry backoff','backend/app/jobs.py','retry_delay_seconds']
+ ['bounded retry backoff','backend/app/jobs.py','retry_delay_seconds'],
+ ['remote embedding adapter','backend/app/embeddings.py','encode_texts_async'],
+ ['grounded generation adapter','backend/app/generation.py','OpenAICompatibleProvider'],
+ ['exact-span citation validator','backend/app/citations.py','validate_citations'],
+ ['grounded answer endpoint','backend/app/main.py','/v1/answer'],
+ ['generation disabled by default','backend/app/config.py','generation_enabled: bool = False'],
+ ['generation and citation tests','backend/tests/test_generation.py','test_fabricated_source_forces_abstention']
 ]
 for (const [name,path,token] of required) {
   assert.ok(existsSync(new URL(`../${path}`, import.meta.url)), `${path} missing`)
