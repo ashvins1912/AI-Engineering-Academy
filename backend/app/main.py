@@ -159,7 +159,10 @@ async def enqueue_ingestion(
         await session.commit()
     except Exception:
         await session.rollback()
-        await run_in_threadpool(store.delete, object_key)
+        try:
+            await run_in_threadpool(store.delete, object_key)
+        except Exception:
+            logger.exception("ingestion_enqueue_orphan_cleanup_failed", extra={"tenant_id": str(principal.tenant_id), "job_id": str(job_id)})
         raise HTTPException(503, "Could not enqueue ingestion job") from None
     return IngestionJobOut(
         id=job.id, filename=job.filename, status=job.status, attempts=job.attempts,
