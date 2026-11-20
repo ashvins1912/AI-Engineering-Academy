@@ -254,7 +254,7 @@ const curriculumSeed: Stage[] = [
   {id:'rag-core',title:'RAG foundations',description:'Trace ingestion, indexing, retrieval, context construction and generation.',lessons:[
    lesson('ingestion','Document ingestion and parsing','PDF, DOCX, HTML, CSV, OCR, metadata, deduplication and versioning.','Build a document ingestion pipeline'),
    lesson('chunking','Chunking strategies','Fixed, recursive, semantic, parent-child and contextual chunking.','Compare chunk boundaries'),
-   lesson('embeddings','Embedding models and vector spaces','Dimensions, cosine similarity, dot product, normalization and migration.','Explore nearest neighbors'),
+   lesson('rag-embeddings','Embedding models and vector spaces','Dimensions, cosine similarity, dot product, normalization and migration.','Explore nearest neighbors'),
    lesson('vector-db','Vector indexes and databases','ANN, HNSW, IVF, filters, namespaces, payloads and pgvector.','Benchmark vector search'),
    lesson('retrieval','Retrieval strategies','Dense, sparse, hybrid, query expansion, multi-query and routing.','Compare Recall@K'),
    lesson('generation','Grounded answer generation','Context assembly, citations, abstention, prompt injection and evidence.','Test citation grounding')

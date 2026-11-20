@@ -16,7 +16,8 @@
     "validate:documents": "node scripts/validate-document-ingestion.mjs",
     "validate:production-rag": "node scripts/validate-production-rag.mjs",
     "validate:topic-contract": "node scripts/validate-topic-contract.mjs",
-    "audit:topic-migration": "node scripts/audit-topic-migration.mjs"
+    "audit:topic-migration": "node scripts/audit-topic-migration.mjs",
+    "validate:stage1": "node scripts/validate-stage1.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
