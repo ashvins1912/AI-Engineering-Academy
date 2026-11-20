@@ -20,7 +20,7 @@ type ReflectionRecord = {
 const KEY = 'ai-academy.reflections.v1'
 const blank: ReflectionRecord = {
   readability: 3, ease: 3, concept: 0, implementation: 0, visual: 3, difficulty: 3, proficiency: 0,
-  runEvidence: '', notes: '', challenges: '', nextAction: 'revisit'
+  runEvidence: '', notes: '', challenges: '', nextAction: 'revisit', updatedAt: ''
 }
 
 function readRecord(id: string): ReflectionRecord {
