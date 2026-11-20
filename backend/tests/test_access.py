@@ -38,6 +38,9 @@ class DocumentAccessTests(unittest.TestCase):
     def test_other_tenant_cannot_access_even_with_matching_user_id(self):
         self.assertFalse(can_access_document(self.doc, self.principal(self.owner, tenant="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")))
 
+    def test_admin_role_does_not_bypass_tenant_boundary(self):
+        self.assertFalse(can_access_document(self.doc, self.principal(self.reader, ["tenant_admin"], tenant="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")))
+
 
 if __name__ == "__main__":
     unittest.main()
