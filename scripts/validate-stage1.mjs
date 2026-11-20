@@ -16,7 +16,7 @@ for (const section of required) {
   console.log(`PASS seven ${section} sections`)
 }
 for (const topic of ['vectors','probability','calculus','optimization','python-core','numpy-pandas','data-quality']) {
-  if (!labs.includes(topic) || !implementation.includes(`topic == '${topic}'`)) throw new Error(`Missing executable lab for ${topic}`)
+  if (!labs.includes(topic) || !implementation.includes(`topic == '${topic}'`) && !implementation.includes(`topic == \"${topic}\"`)) throw new Error(`Missing executable lab for ${topic}`)
   console.log(`PASS executable topic lab: ${topic}`)
 }
 for (const file of ['examples/stage-01/foundations.py','examples/stage-01/test_foundations.py','examples/stage-01/fixtures/people.csv']) {
