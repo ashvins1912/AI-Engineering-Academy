@@ -4,17 +4,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## experiment — Experiment tracking
 
-**Implementation task:** Experiment tracking
+**Implementation task:** Record dataset/version, code SHA, seed, config, metrics and artifact hash.
 
-**Worked fixture:** Record dataset/version, code SHA, seed, config, metrics and artifact hash.
+**Worked fixture:** Two runs differ only in learning rate.
 
-**Expected result:** Two runs differ only in learning rate.
+**Expected result:** Run comparison is reproducible and lineage complete.
 
-**Verification tests:** Run comparison is reproducible and lineage complete.
+**Verification tests:** Test missing metadata and overwritten artifact.
 
-**Debugging checklist:** What metadata is required to reproduce an experiment?
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Test missing metadata and overwritten artifact.
+**Interview checks:** What metadata is required to reproduce an experiment?
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
@@ -22,17 +22,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## registry — Model and prompt registry
 
-**Implementation task:** Model and prompt registry
+**Implementation task:** Promote compatible model+tokenizer+prompt bundle through stages.
 
-**Worked fixture:** Promote compatible model+tokenizer+prompt bundle through stages.
+**Worked fixture:** Candidate model v2 paired with tokenizer v1 mismatch.
 
-**Expected result:** Candidate model v2 paired with tokenizer v1 mismatch.
+**Expected result:** Promotion blocked until compatibility check passes.
 
-**Verification tests:** Promotion blocked until compatibility check passes.
+**Verification tests:** Test rollback and artifact hash mismatch.
 
-**Debugging checklist:** Why version prompt and tokenizer with model weights?
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Test rollback and artifact hash mismatch.
+**Interview checks:** Why version prompt and tokenizer with model weights?
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
@@ -40,17 +40,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## eval-ci — Evaluation in CI
 
-**Implementation task:** Evaluation in CI
+**Implementation task:** Add evaluation gate that blocks a release below threshold.
 
-**Worked fixture:** Add evaluation gate that blocks a release below threshold.
+**Worked fixture:** Baseline accuracy .90; candidate .82; minimum .88.
 
-**Expected result:** Baseline accuracy .90; candidate .82; minimum .88.
+**Expected result:** Candidate fails gate and report identifies regression.
 
-**Verification tests:** Candidate fails gate and report identifies regression.
+**Verification tests:** Test flaky metric and boundary value .88.
 
-**Debugging checklist:** How do you avoid noisy evaluation gates?
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Test flaky metric and boundary value .88.
+**Interview checks:** How do you avoid noisy evaluation gates?
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
@@ -58,17 +58,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## data-pipeline — Data and feature pipelines
 
-**Implementation task:** Data and feature pipelines
+**Implementation task:** Build point-in-time feature join and validate freshness.
 
-**Worked fixture:** Build point-in-time feature join and validate freshness.
+**Worked fixture:** Prediction at Jan 10; source record Jan 11 and Jan 9.
 
-**Expected result:** Prediction at Jan 10; source record Jan 11 and Jan 9.
+**Expected result:** Jan 11 row excluded; Jan 9 row included.
 
-**Verification tests:** Jan 11 row excluded; Jan 9 row included.
+**Verification tests:** Test late-arriving data, duplicate key and schema drift.
 
-**Debugging checklist:** What is a point-in-time correct feature join?
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Test late-arriving data, duplicate key and schema drift.
+**Interview checks:** What is a point-in-time correct feature join?
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
@@ -76,17 +76,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## containers — Containers and images
 
-**Implementation task:** Containers and images
+**Implementation task:** Build non-root minimal image with health check and pinned runtime.
 
-**Worked fixture:** Build non-root minimal image with health check and pinned runtime.
+**Worked fixture:** Small FastAPI app, requirements pinned, no embedded secret.
 
-**Expected result:** Small FastAPI app, requirements pinned, no embedded secret.
+**Expected result:** Container starts as non-root and health endpoint returns 200.
 
-**Verification tests:** Container starts as non-root and health endpoint returns 200.
+**Verification tests:** Test missing env, graceful shutdown and read-only FS.
 
-**Debugging checklist:** Why pin dependencies and avoid secrets in image layers?
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Test missing env, graceful shutdown and read-only FS.
+**Interview checks:** Why pin dependencies and avoid secrets in image layers?
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
@@ -94,17 +94,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## cicd — CI/CD pipelines
 
-**Implementation task:** CI/CD pipelines
+**Implementation task:** Separate test/build/scan/evaluate/deploy and promote same immutable artifact.
 
-**Worked fixture:** Separate test/build/scan/evaluate/deploy and promote same immutable artifact.
+**Worked fixture:** Build SHA abc; deploy staging then production.
 
-**Expected result:** Build SHA abc; deploy staging then production.
+**Expected result:** Artifact digest identical across environments.
 
-**Verification tests:** Artifact digest identical across environments.
+**Verification tests:** Test failed test, failed deploy and rollback.
 
-**Debugging checklist:** Why should production deploy not rebuild from source?
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Test failed test, failed deploy and rollback.
+**Interview checks:** Why should production deploy not rebuild from source?
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
@@ -112,17 +112,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## infra — Infrastructure as Code
 
-**Implementation task:** Infrastructure as Code
+**Implementation task:** Represent service, storage and identity as reviewed IaC plan.
 
-**Worked fixture:** Represent service, storage and identity as reviewed IaC plan.
+**Worked fixture:** One service and one private database resource.
 
-**Expected result:** One service and one private database resource.
+**Expected result:** Plan shows intended create/update; no apply until approved.
 
-**Verification tests:** Plan shows intended create/update; no apply until approved.
+**Verification tests:** Test drift, least privilege and destroy protection.
 
-**Debugging checklist:** How do you manage Terraform state and secrets?
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Test drift, least privilege and destroy protection.
+**Interview checks:** How do you manage Terraform state and secrets?
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
@@ -130,17 +130,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## kubernetes — Kubernetes for AI services
 
-**Implementation task:** Kubernetes for AI services
+**Implementation task:** Deploy stateless inference API with requests/limits and probes.
 
-**Worked fixture:** Deploy stateless inference API with requests/limits and probes.
+**Worked fixture:** One replica, memory request/limit, readiness endpoint.
 
-**Expected result:** One replica, memory request/limit, readiness endpoint.
+**Expected result:** Pod becomes ready only after readiness check passes.
 
-**Verification tests:** Pod becomes ready only after readiness check passes.
+**Verification tests:** Test OOMKilled, failed liveness and rolling update.
 
-**Debugging checklist:** Difference between readiness and liveness probes?
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Test OOMKilled, failed liveness and rolling update.
+**Interview checks:** Difference between readiness and liveness probes?
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
@@ -148,17 +148,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## serving — Model serving and inference optimization
 
-**Implementation task:** Model serving and inference optimization
+**Implementation task:** Benchmark batch sizes and apply admission control under overload.
 
-**Worked fixture:** Benchmark batch sizes and apply admission control under overload.
+**Worked fixture:** Requests of 128/512 tokens; concurrency 1/4/8.
 
-**Expected result:** Requests of 128/512 tokens; concurrency 1/4/8.
+**Expected result:** Report p50/p95, throughput and memory; overload returns bounded response.
 
-**Verification tests:** Report p50/p95, throughput and memory; overload returns bounded response.
+**Verification tests:** Test cancellation, queue cap and long prompt.
 
-**Debugging checklist:** Why can larger batch improve throughput but worsen latency?
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Test cancellation, queue cap and long prompt.
+**Interview checks:** Why can larger batch improve throughput but worsen latency?
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
@@ -166,17 +166,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## rollouts — Deployment strategies
 
-**Implementation task:** Deployment strategies
+**Implementation task:** Run canary and automatically roll back on quality/latency regression.
 
-**Worked fixture:** Run canary and automatically roll back on quality/latency regression.
+**Worked fixture:** 10% traffic canary; p95 threshold 2s, quality drop threshold 5%.
 
-**Expected result:** 10% traffic canary; p95 threshold 2s, quality drop threshold 5%.
+**Expected result:** Canary promoted only when both guardrails pass.
 
-**Verification tests:** Canary promoted only when both guardrails pass.
+**Verification tests:** Test partial rollout and rollback artifact compatibility.
 
-**Debugging checklist:** How is canary different from blue-green and shadow?
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Test partial rollout and rollback artifact compatibility.
+**Interview checks:** How is canary different from blue-green and shadow?
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
