@@ -1,137 +1,66 @@
 # Stage 03 — Individual lesson lab pack: Deep Learning
 
-This workbook turns each lesson into a verifiable practical task. Run exercises in an isolated local environment; no learner code is executed by the Academy service. Record your code, test output and short explanation in your learning notes.
+Use Python 3.11+. Run reference and project tests with `python -m unittest discover -s examples/stage-03 -p 'test_*.py' -v`.
 
 ## perceptron — Perceptrons and multilayer networks
-
-**Implementation task:** Show a single linear classifier cannot solve XOR; add a hidden nonlinear layer.
-
-**Worked fixture:** XOR inputs (0,0),(0,1),(1,0),(1,1), labels 0,1,1,0.
-
-**Expected result:** A linear boundary cannot separate XOR; a small MLP can.
-
-**Verification tests:** Test all four points and inspect activation outputs.
-
-**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
-
-**Interview checks:** Why do stacked linear layers collapse to one linear transform?
-
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
-
----
+**Implementation task:** Calculate affine output and compare sigmoid, tanh and ReLU; demonstrate XOR's non-linear requirement.
+**Worked fixture:** x=[1,0], w=[2,−1], b=−0.5 gives z=1.5.
+**Expected result:** sigmoid≈0.818; ReLU=1.5.
+**Verification tests:** activation ranges, saturation, XOR and invalid input width.
+**Failure lab:** remove hidden activation and prove the stack remains affine.
+**Submission evidence:** hand derivation, output trace, XOR explanation and negative test.
 
 ## forward — Forward propagation
-
-**Implementation task:** Trace a two-layer forward pass and assert every intermediate tensor shape.
-
-**Worked fixture:** X shape (2,3), W1 (3,4), b1 (4), W2 (4,2).
-
-**Expected result:** Hidden shape (2,4), logits shape (2,2).
-
-**Verification tests:** Test batch=1, wrong feature width and dtype mismatch.
-
-**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
-
-**Interview checks:** Why should batch and feature axes be explicit?
-
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
-
----
+**Implementation task:** Trace a 2→2→1 network and assert batch/feature dimensions.
+**Worked fixture:** X=(2×3), W1=(3×4), W2=(4×2).
+**Expected result:** hidden=(2×4), logits=(2×2).
+**Verification tests:** batch size one, wrong feature width and non-finite inputs.
+**Failure lab:** transpose a weight matrix and identify the first invalid multiplication.
+**Submission evidence:** shape table and every intermediate activation.
 
 ## backprop — Loss and backpropagation
-
-**Implementation task:** Backpropagate through a single linear layer and compare autograd.
-
-**Worked fixture:** X=[[1],[2]], y=[2,4], w=1; MSE over batch.
-
-**Expected result:** Predictions [1,2], MSE=2.5, dL/dw=−5.
-
-**Verification tests:** Compare analytic, finite difference and PyTorch gradients within tolerance.
-
-**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
-
-**Interview checks:** Where does the batch averaging factor enter the gradient?
-
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
-
----
+**Implementation task:** Derive a sigmoid neuron's gradient and compare with finite differences.
+**Worked fixture:** x=.8,w=.4,b=.1,y=1.
+**Expected result:** finite analytic and numerical gradients agree within tolerance.
+**Verification tests:** epsilon bounds, sign error and bias gradient.
+**Failure lab:** remove activation derivative or input multiplier and inspect mismatch.
+**Submission evidence:** chain-rule derivation, gradient trace and regression test.
 
 ## optimizers — Optimizers and regularization
-
-**Implementation task:** Compare SGD and Adam on the same small regression task.
-
-**Worked fixture:** Same initialization, fixed seed, 100 updates, η=0.05.
-
-**Expected result:** Both should reduce loss; log update/loss curves, not assume identical convergence.
-
-**Verification tests:** Test excessive η, dropout train/eval mode and reproducibility.
-
-**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
-
-**Interview checks:** How does Adam's moment estimate differ from momentum SGD?
-
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
-
----
+**Implementation task:** Compare SGD, momentum and Adam on one quadratic; test dropout and batch normalization.
+**Worked fixture:** θ=1,g=.5,η=.1.
+**Expected result:** SGD gives θ=.95; other methods retain distinct optimizer state.
+**Verification tests:** optimizer state persistence, invalid learning rate, dropout train/eval and constant batch.
+**Failure lab:** resume without moment state and compare trajectory.
+**Submission evidence:** loss/parameter traces and regularization trade-off.
 
 ## cnn — Convolutional neural networks
-
-**Implementation task:** Calculate convolution output dimensions and perform one 2×2 valid convolution.
-
-**Worked fixture:** Input 3×3 [[1,2,3],[4,5,6],[7,8,9]], kernel all ones.
-
-**Expected result:** Output 2×2 [[12,16],[24,28]].
-
-**Verification tests:** Test stride 2, padding and channels-first vs channels-last.
-
-**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
-
-**Interview checks:** How do stride and padding change receptive field/output size?
-
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
-
----
+**Implementation task:** Implement valid convolution and max pooling.
+**Worked fixture:** 3×3 input with 2×2 all-ones kernel.
+**Expected result:** [[12,16],[24,28]].
+**Verification tests:** stride, kernel-too-large, ragged matrix and pooling dimensions.
+**Failure lab:** swap channel order or use the wrong output-size formula.
+**Submission evidence:** per-cell multiply-accumulate trace and feature-map shape.
 
 ## sequence — RNNs, LSTMs and sequence models
+**Implementation task:** Trace a scalar RNN and one LSTM gate update.
+**Worked fixture:** x=[1,0,−1], h₀=0, hₜ=tanh(xₜ+.5hₜ₋₁).
+**Expected result:** three hidden states in original sequence order.
+**Verification tests:** reversed order, state reset and gate bounds.
+**Failure lab:** carry hidden state from one independent sample into another.
+**Submission evidence:** state table, gate values and BPTT explanation.
 
-**Implementation task:** Run a recurrent hidden-state update over a three-token sequence.
-
-**Worked fixture:** Scalar h_t=tanh(x_t+0.5h_(t−1)); x=[1,0,−1], h0=0.
-
-**Expected result:** h1≈0.762, h2≈0.364, h3≈−0.558.
-
-**Verification tests:** Test order reversal, padding mask and state reset between samples.
-
-**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
-
-**Interview checks:** Why can long unrolled sequences cause vanishing gradients?
-
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
-
----
-
-## training — Training at scale
-
-**Implementation task:** Implement checkpoint/resume and compare with uninterrupted training.
-
-**Worked fixture:** Fixed seed, deterministic toy dataset, checkpoint at step 50 of 100.
-
-**Expected result:** Resumed run reaches the same final state within deterministic tolerance.
-
-**Verification tests:** Test missing checkpoint, changed config and interrupted data loader.
-
-**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
-
-**Interview checks:** Which states must be saved to resume optimizer training correctly?
-
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
-
----
+## training — Generalization and training systems
+**Implementation task:** Train, validate, checkpoint, resume and restore the best epoch.
+**Worked fixture:** validation losses=[.9,.7,.5,.55,.6], patience=2.
+**Expected result:** best epoch 3; stop at epoch 5.
+**Verification tests:** missing checkpoint, corrupt state, early-stop patience and resume epoch.
+**Failure lab:** fit preprocessing on validation or tune repeatedly on test.
+**Submission evidence:** run commands, checkpoint, best epoch, test metrics and model card.
 
 ## Stage completion evidence
-
-- [ ] Every lesson implementation runs from a clean environment.
-- [ ] Expected values are reproduced and negative tests fail safely.
-- [ ] Debugging notes explain at least one failure and its fix.
-- [ ] Interview checks are answered without reading the guide.
-- [ ] The stage project in the main guide integrates these lesson skills.
+- [ ] All seven topic implementations and numerical examples run.
+- [ ] Analytic gradients match finite differences.
+- [ ] CNN and recurrent calculations match reference outputs.
+- [ ] Optimizer state and checkpoint resume are verified.
+- [ ] Validation/test boundaries are respected and the model card states limitations.
