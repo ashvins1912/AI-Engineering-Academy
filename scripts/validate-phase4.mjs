@@ -101,4 +101,9 @@ for (const fn of ['linear_regression','sigmoid','binary_cross_entropy','informat
 assert.ok((stage2Tests.match(/    def test_/g)||[]).length>=15, 'Stage 2 algorithm suite needs at least 15 tests')
 assert.ok((modelTests.match(/    def test_/g)||[]).length>=5, 'Stage 2 project suite needs at least five tests')
 for (const token of ['stratified_folds','fit_scaler','fit_logistic','fit_bagged_stumps','validation_used_for_fit']) assert.ok(modelProject.includes(token), `Missing model comparison invariant: ${token}`)
+
+const modelCard = readFileSync(new URL('../examples/stage-02/MODEL_CARD.md', import.meta.url), 'utf8')
+for (const token of ['Intended use','Prohibited use','Limitations','rollback']) assert.ok(modelCard.includes(token), `Missing model-card section: ${token}`)
+for (const token of ['Information gain','Bagging vote experiment','Nearest neighbors','Variance decomposition','Required evidence','Mastery gate passed']) assert.ok(stage2Mastery.includes(token), `Missing Stage 2 workbench feature: ${token}`)
+assert.ok(app.includes('<Stage2MasteryLabs/>'), 'Stage 2 mastery labs must be integrated into the learning path')
 console.log('PASS seven Stage 2 mastery topics, ten reference algorithms and cross-validated model-comparison project')
