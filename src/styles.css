@@ -579,3 +579,51 @@
 .stage3-assessment p.correct{color:#83dfb9}
 .stage3-assessment p.incorrect{color:#f2b47c}
 @media(max-width:760px){.stage3-head{flex-direction:column}.stage3-grid{grid-template-columns:1fr}.stage3-progress{align-self:flex-start}}
+
+/* Stage 4: transformer and LLM mastery workbench */
+.stage4-mastery{margin:22px 0;padding:20px;border:1px solid #354765;border-radius:16px;background:linear-gradient(145deg,#101d31,#0b1423);color:#e6edfc}
+.stage4-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
+.stage4-head h2{font:600 22px 'Space Grotesk';margin:8px 0;color:#eef3ff}
+.stage4-head p{font-size:11px;line-height:1.7;color:#9eacc3;max-width:760px}
+.stage4-progress{min-width:88px;padding:12px;border:1px solid #354765;border-radius:10px;text-align:center;background:#14233a}
+.stage4-progress strong{display:block;font:700 23px 'DM Mono';color:#8ee2c6}
+.stage4-progress span{font-size:9px;color:#9eacc3}
+.stage4-tabs{display:flex;gap:7px;overflow-x:auto;padding:12px 0}
+.stage4-tabs button{flex:0 0 auto;border:1px solid #354765;border-radius:8px;background:#14233a;color:#bdc9dc;padding:9px 11px;font:600 10px 'DM Sans';cursor:pointer}
+.stage4-tabs button.active{border-color:#9aa8ff;background:#29395c;color:#fff}
+.stage4-card{border:1px solid #344969;border-radius:12px;background:#101b2e;padding:16px}
+.stage4-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.stage4-panel{min-width:0;padding:14px;border:1px solid #2e405d;border-radius:10px;background:#132139}
+.stage4-panel h3{font:600 12px 'DM Sans';color:#e5edff;margin:0 0 12px}
+.stage4-panel p{font-size:10px;line-height:1.65;color:#aab9d0}
+.stage4-value{padding:10px;margin:9px 0;border:1px solid #354765;border-radius:8px;background:#172742;font:700 12px 'DM Mono';color:#8fe1c6;overflow-wrap:anywhere}
+.stage4-slider{display:block;margin:12px 0}
+.stage4-slider span{display:flex;justify-content:space-between;font-size:10px;color:#b9c7dd;margin-bottom:6px}
+.stage4-slider strong{font:11px 'DM Mono';color:#aebaff}
+.stage4-slider input{width:100%;accent-color:#91a0ff}
+.stage4-token-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.stage4-token-row span{display:flex;flex-direction:column;gap:4px;padding:8px;border:1px solid #405575;border-radius:7px;background:#172742;font-size:10px;color:#e2eaff}
+.stage4-token-row small{font:9px 'DM Mono';color:#9eacc3}
+.stage4-text{display:grid;gap:6px;font-size:10px;color:#bdc9dc}
+.stage4-text textarea{min-height:74px;resize:vertical;border:1px solid #34445f;border-radius:7px;background:#0b1423;color:#e2eafa;padding:9px;font:10px 'DM Sans'}
+.stage4-mask{display:grid;gap:4px;justify-content:start;margin:12px 0}
+.stage4-mask>div{display:flex;gap:4px}
+.stage4-mask span{display:grid;place-items:center;width:32px;height:30px;border-radius:5px;font-size:11px}
+.stage4-mask .allowed{background:#1d584f;color:#9ce9d2}
+.stage4-mask .blocked{background:#542e39;color:#f2b3bd}
+.stage4-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px 0;border-bottom:1px solid #2b3d58;font-size:9px;color:#bdc9dc}
+.stage4-row strong{text-align:right;color:#8fe1c6}
+.stage4-check{display:flex;gap:8px;align-items:center;font-size:10px;color:#c1cee1}
+.stage4-check input{accent-color:#91a0ff}
+.stage4-assessment{margin-top:14px;padding:14px;border:1px solid #3b4f70;border-radius:10px;background:#14233a}
+.stage4-assessment h3{font:600 12px/1.6 'DM Sans';color:#eff3ff;margin:7px 0 10px}
+.stage4-options,.stage4-evidence{display:grid;gap:8px;margin:10px 0}
+.stage4-options label,.stage4-evidence label{display:flex;gap:8px;align-items:flex-start;font-size:10px;line-height:1.5;color:#c4d0e3}
+.stage4-options input,.stage4-evidence input{accent-color:#91a0ff;margin-top:2px}
+.stage4-evidence{padding:12px;border:1px solid #354765;border-radius:8px;background:#101c30}
+.stage4-evidence>strong{font-size:10px;color:#aebaff}
+.stage4-assessment>button{border:1px solid #91a0ff;border-radius:7px;background:#8796f5;color:#10192c;padding:8px 11px;font:600 10px 'DM Sans';cursor:pointer;margin:5px 6px 5px 0}
+.stage4-assessment p{font-size:10px;line-height:1.6}
+.stage4-assessment p.correct{color:#83dfb9}
+.stage4-assessment p.incorrect{color:#f2b47c}
+@media(max-width:760px){.stage4-head{flex-direction:column}.stage4-grid{grid-template-columns:1fr}.stage4-progress{align-self:flex-start}}
