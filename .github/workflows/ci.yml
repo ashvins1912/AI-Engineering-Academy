@@ -7,6 +7,22 @@ on:
 jobs:
   web:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: academy
+          POSTGRES_USER: postgres_admin
+          POSTGRES_PASSWORD: postgres-admin-local-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres_admin -d academy"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      ACADEMY_TEST_DATABASE_URL: postgresql+asyncpg://academy_app:academy-app-local-only@127.0.0.1:5432/academy
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -40,4 +56,25 @@ jobs:
       - run: python -m unittest discover -s examples/stage-05 -p 'test_*.py' -v
       - run: python -m unittest discover -s content/examples/tests -v
       - run: python -m pip install pytest fastapi==0.115.12 python-multipart==0.0.20 starlette==0.46.2 httpx==0.28.1 pydantic-settings==2.9.1 "PyJWT[crypto]" "SQLAlchemy[asyncio]==2.0.41" asyncpg==0.30.0 pgvector==0.4.1 pypdf==5.6.1 python-docx==1.1.2 pytesseract==0.3.13 pdf2image==1.17.0 Pillow==11.2.1
-      - run: cd backend && python -m pytest tests -q
+      - name: Apply isolated test database migrations
+        run: |
+          python - <<'PY'
+          import asyncio
+          from pathlib import Path
+          import asyncpg
+
+          async def main():
+              conn = await asyncpg.connect(
+                  "postgresql://postgres_admin:postgres-admin-local-only@127.0.0.1:5432/academy"
+              )
+              try:
+                  for path in sorted(Path("backend/migrations").glob("00[0-4]_*.sql")):
+                      await conn.execute(path.read_text())
+                      print(f"Applied {path}")
+              finally:
+                  await conn.close()
+
+          asyncio.run(main())
+          PY
+      - name: Run backend tests including real PostgreSQL RLS integration
+        run: cd backend && python -m pytest tests -q
