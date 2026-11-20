@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     clamav_host: str = ""
     clamav_port: int = 3310
     ingestion_job_max_attempts: int = 5
-    ingestion_job_lease_seconds: int = 300
+    ingestion_job_lease_seconds: int = 900
 
 @lru_cache
 def get_settings() -> Settings:
