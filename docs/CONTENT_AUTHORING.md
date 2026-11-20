@@ -74,6 +74,7 @@ A state is an evidence claim, not a percentage-complete label.
 
 ```bash
 npm run validate:topic-contract
+npm run audit:topic-migration
 npm run validate:curriculum
 npm run typecheck
 npm run build
