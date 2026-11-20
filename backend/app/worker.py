@@ -17,7 +17,7 @@ from .embeddings import encode_texts
 from .ingestion import IngestionError, chunk_pages, extract_document
 from .jobs import claim_next_job, mark_job_failed, mark_job_succeeded, renew_job_lease
 from .malware import ClamAVScanner, MalwareDetected, ScannerUnavailable, scan_upload
-from .models import Chunk, Document
+from .models import Chunk, Document, DocumentACL
 from .storage import create_object_store
 
 logger = logging.getLogger("academy.ingestion.worker")
@@ -58,6 +58,23 @@ async def process_one(tenant_id: UUID) -> bool:
             existing = await session.scalar(select(Document).where(
                 Document.tenant_id == tenant_id, Document.sha256 == extracted.sha256
             ))
+            if existing is not None:
+                grant = await session.scalar(select(DocumentACL.id).where(
+                    DocumentACL.tenant_id == tenant_id,
+                    DocumentACL.document_id == existing.id,
+                    DocumentACL.subject_type == "user",
+                    DocumentACL.subject_id == job["owner_id"],
+                    DocumentACL.permission.in_(("read", "write", "admin")),
+                ))
+                if existing.visibility != "tenant" and existing.owner_id != job["owner_id"] and grant is None:
+                    await session.rollback()
+                    async with SessionLocal() as failed_session:
+                        await mark_job_failed(failed_session, tenant_id, job["id"], job["max_attempts"], job["max_attempts"], "duplicate_private_document")
+                    try:
+                        await run_in_threadpool(store.delete, job["object_key"])
+                    except Exception:
+                        logger.error("ingestion_duplicate_object_cleanup_failed", extra={"tenant_id": str(tenant_id), "job_id": str(job["id"])})
+                    return True
             if existing is None:
                 document = Document(
                     tenant_id=tenant_id, owner_id=job["owner_id"], title=extracted.title,
