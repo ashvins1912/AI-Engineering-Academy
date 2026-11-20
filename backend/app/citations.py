@@ -34,10 +34,11 @@ def validate_citations(
     for citation in citations:
         source_id = str(citation.get("source_id", ""))
         quote = str(citation.get("quote", "")).strip()
-        if source_id in seen:
+        citation_key = (source_id, quote)
+        if citation_key in seen:
             invalid.append({"source_id": source_id, "reason": "duplicate_citation"})
             continue
-        seen.add(source_id)
+        seen.add(citation_key)
         source = by_id.get(source_id)
         if source is None:
             invalid.append({"source_id": source_id, "reason": "source_not_retrieved"})
