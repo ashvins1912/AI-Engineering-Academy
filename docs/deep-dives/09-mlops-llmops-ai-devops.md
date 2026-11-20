@@ -44,3 +44,22 @@ Reproduce an experiment from metadata, explain artifact lineage, demonstrate a f
 - Docker: https://docs.docker.com/
 - GitHub Actions: https://docs.github.com/actions
 - Kubernetes: https://kubernetes.io/docs/
+
+
+## Stage workflow diagram
+
+Use this flow as the implementation order. The decision branches are the points where tests, policy checks or operational controls must stop unsafe progress.
+
+```mermaid
+flowchart TD
+  A[Version data code config] --> B[Train or package model]
+  B --> C[Register immutable artifacts]
+  C --> D[Run tests and AI evaluation]
+  D --> E{Quality/security gates pass?}
+  E -- no --> F[Reject and diagnose]
+  E -- yes --> G[Deploy staging]
+  G --> H[Smoke test and canary]
+  H --> I{SLO and quality stable?}
+  I -- no --> J[Rollback known-good bundle]
+  I -- yes --> K[Promote and monitor]
+```
