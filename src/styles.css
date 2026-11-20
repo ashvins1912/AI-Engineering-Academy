@@ -244,3 +244,7 @@
 .practice-assignment p{font-size:10px;line-height:1.65;color:#b5c5dc;margin:8px 0 0}
 .practice-assignment b{color:#e1eaff}
 @media(max-width:720px){.practice-flow{grid-template-columns:1fr}.practice-title{flex-direction:column}.practice-stage{align-self:flex-start}.practice-engine{padding:13px}.practice-setup-meta{display:grid}.practice-code{font-size:9px}.practice-step-actions button{font-size:9px}}
+
+.practice-references{display:flex;flex-wrap:wrap;gap:8px;list-style:none;margin:0;padding:0}
+.practice-references a{display:inline-flex;padding:8px 10px;border:1px solid #405777;border-radius:7px;background:#14243a;color:#c5d5f2;text-decoration:none;font-size:10px}
+.practice-references a:hover{border-color:#91a5ff;color:#edf2ff}
