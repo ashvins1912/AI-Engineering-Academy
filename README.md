@@ -73,3 +73,8 @@ The current UI is a curriculum explorer and lesson-detail engine backed by typed
 - This is a backend implementation foundation, **not yet production-certified or deployed**. Remaining gates include actual identity-provider/JWKS integration, cross-tenant integration tests with the restricted DB role, asynchronous OCR/embedding workers, private object storage, malware scanning, distributed rate limits/quotas, observability, backups and load/security testing.
 - The existing browser uploader remains a local teaching path; it is not connected to the authenticated API because the Academy frontend has no configured identity integration. Do not send real documents to this API until identity, privacy and retention controls are integrated.
 
+
+
+## Deep-dive curriculum
+
+The complete topic-first guides for all 11 stages and 84 lesson topics are indexed in [docs/deep-dives](docs/deep-dives/README.md). Each stage guide includes implementation labs, tests, production considerations, a stage project and mastery gate. The lesson workbench links directly to its stage guide.
