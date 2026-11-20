@@ -88,3 +88,10 @@ The next layer turns the curriculum into tool-based implementation practice: [Pr
 ## Agentic AI interview preparation
 
 The [Agentic AI Interview Studio](docs/interview-prep/README.md) connects Stages 6–11 to a structured five-round interview path: agent fundamentals, system design, multi-agent coordination, evaluation/debugging and production architecture. It includes scenario prompts, expected answer structure, interviewer follow-ups, scoring rubrics, failure drills and a capstone mock interview. The in-app studio is a self-practice aid; rubric selections and draft answers are saved in browser storage, not account-level mastery.
+
+
+## Senior architect curriculum review
+
+The detailed [Senior Architect Review](docs/CURRICULUM_ARCHITECT_REVIEW.md) scores all 84 topics individually, documents the current content gaps, and defines the target Academy architecture, end-to-end AI request DFD, visual animation contract, student self-rating rubric and prioritized improvement plan. The lesson detail view now includes a student reflection panel for readability, learning ease, understanding, implementation confidence, visual usefulness, difficulty, proficiency level, implementation evidence and challenges. Reflections are currently saved in browser storage; account-level sync is not yet connected.
+
+The home page also includes a step-through production AI request flow, covering identity, authorization, orchestration, retrieval, model inference, approval, tool execution, durable state and observability.
