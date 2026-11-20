@@ -4,6 +4,8 @@ const guide = readFileSync('docs/deep-dives/01-mathematics-python-data.md', 'utf
 const labs = readFileSync('docs/deep-dives/labs/stage-01.md', 'utf8')
 const implementation = readFileSync('examples/stage-01/foundations.py', 'utf8')
 const tests = readFileSync('examples/stage-01/test_foundations.py', 'utf8')
+const interactive = readFileSync('src/components/Stage1MasteryLabs.tsx', 'utf8')
+const app = readFileSync('src/App.tsx', 'utf8')
 const topics = ['Vectors, matrices and tensor shapes','Probability and statistics','Derivatives and gradients','Optimization foundations','Python for data work','NumPy and Pandas','Data quality and leakage']
 const required = ['Worked calculation','Numerical animation storyboard','Failure lab','Assessment gate']
 for (const topic of topics) {
@@ -25,4 +27,11 @@ for (const file of ['examples/stage-01/foundations.py','examples/stage-01/test_f
 for (const invariant of ['test_dot_and_matrix_multiplication','test_bayes_posterior','test_derivatives_match','test_gradient_descent_converges','test_csv_ingestion_keeps_good_rows_and_reports_bad_rows','test_leakage_demo_exposes_global_fit']) {
   if (!tests.includes(invariant)) throw new Error(`Missing verification test: ${invariant}`)
 }
-console.log('PASS Stage 1: seven topics, numerical walkthroughs, diagrams, animation storyboards, failure labs, assessments and executable references')
+for (const topic of ['vectors','probability','calculus','optimization','python','pandas','leakage']) {
+  if (!interactive.includes(`id:'${topic}'`)) throw new Error(`Missing interactive mastery lab: ${topic}`)
+}
+for (const feature of ['Play animation','Step','Check answer','Finite-difference explorer','Join-cardinality failure lab','Train-only preprocessing']) {
+  if (!interactive.includes(feature)) throw new Error(`Missing interactive Stage 1 feature: ${feature}`)
+}
+if (!app.includes('<Stage1MasteryLabs/>')) throw new Error('Seven Stage 1 mastery labs are not integrated into the Stage 1 UI')
+console.log('PASS Stage 1: seven topics, interactive numerical labs, mastery questions, failure labs, assessments and executable references')
