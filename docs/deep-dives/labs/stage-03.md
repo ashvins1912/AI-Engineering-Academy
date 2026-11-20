@@ -2,129 +2,129 @@
 
 This workbook turns each lesson into a verifiable practical task. Run exercises in an isolated local environment; no learner code is executed by the Academy service. Record your code, test output and short explanation in your learning notes.
 
-## perceptron — Show a single linear classifier cannot solve XOR; add a hidden nonlinear layer.
+## perceptron — Perceptrons and multilayer networks
 
-**Implementation task:** XOR inputs (0,0),(0,1),(1,0),(1,1), labels 0,1,1,0.
+**Implementation task:** Show a single linear classifier cannot solve XOR; add a hidden nonlinear layer.
 
-**Worked fixture:** A linear boundary cannot separate XOR; a small MLP can.
+**Worked fixture:** XOR inputs (0,0),(0,1),(1,0),(1,1), labels 0,1,1,0.
 
-**Expected result:** Test all four points and inspect activation outputs.
+**Expected result:** A linear boundary cannot separate XOR; a small MLP can.
 
-**Verification tests:** Why do stacked linear layers collapse to one linear transform?
+**Verification tests:** Test all four points and inspect activation outputs.
 
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Debugging checklist:** Why do stacked linear layers collapse to one linear transform?
 
-**Interview checks:** undefined
+**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
 
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
-
----
-
-## forward — Trace a two-layer forward pass and assert every intermediate tensor shape.
-
-**Implementation task:** X shape (2,3), W1 (3,4), b1 (4), W2 (4,2).
-
-**Worked fixture:** Hidden shape (2,4), logits shape (2,2).
-
-**Expected result:** Test batch=1, wrong feature width and dtype mismatch.
-
-**Verification tests:** Why should batch and feature axes be explicit?
-
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
-
-**Interview checks:** undefined
-
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
+**Submission evidence:** undefined
 
 ---
 
-## backprop — Backpropagate through a single linear layer and compare autograd.
+## forward — Forward propagation
 
-**Implementation task:** X=[[1],[2]], y=[2,4], w=1; MSE over batch.
+**Implementation task:** Trace a two-layer forward pass and assert every intermediate tensor shape.
 
-**Worked fixture:** Predictions [1,2], MSE=2.5, dL/dw=−5.
+**Worked fixture:** X shape (2,3), W1 (3,4), b1 (4), W2 (4,2).
 
-**Expected result:** Compare analytic, finite difference and PyTorch gradients within tolerance.
+**Expected result:** Hidden shape (2,4), logits shape (2,2).
 
-**Verification tests:** Where does the batch averaging factor enter the gradient?
+**Verification tests:** Test batch=1, wrong feature width and dtype mismatch.
 
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Debugging checklist:** Why should batch and feature axes be explicit?
 
-**Interview checks:** undefined
+**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
 
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
-
----
-
-## optimizers — Compare SGD and Adam on the same small regression task.
-
-**Implementation task:** Same initialization, fixed seed, 100 updates, η=0.05.
-
-**Worked fixture:** Both should reduce loss; log update/loss curves, not assume identical convergence.
-
-**Expected result:** Test excessive η, dropout train/eval mode and reproducibility.
-
-**Verification tests:** How does Adam's moment estimate differ from momentum SGD?
-
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
-
-**Interview checks:** undefined
-
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
+**Submission evidence:** undefined
 
 ---
 
-## cnn — Calculate convolution output dimensions and perform one 2×2 valid convolution.
+## backprop — Loss and backpropagation
 
-**Implementation task:** Input 3×3 [[1,2,3],[4,5,6],[7,8,9]], kernel all ones.
+**Implementation task:** Backpropagate through a single linear layer and compare autograd.
 
-**Worked fixture:** Output 2×2 [[12,16],[24,28]].
+**Worked fixture:** X=[[1],[2]], y=[2,4], w=1; MSE over batch.
 
-**Expected result:** Test stride 2, padding and channels-first vs channels-last.
+**Expected result:** Predictions [1,2], MSE=2.5, dL/dw=−5.
 
-**Verification tests:** How do stride and padding change receptive field/output size?
+**Verification tests:** Compare analytic, finite difference and PyTorch gradients within tolerance.
 
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Debugging checklist:** Where does the batch averaging factor enter the gradient?
 
-**Interview checks:** undefined
+**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
 
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
-
----
-
-## sequence — Run a recurrent hidden-state update over a three-token sequence.
-
-**Implementation task:** Scalar h_t=tanh(x_t+0.5h_(t−1)); x=[1,0,−1], h0=0.
-
-**Worked fixture:** h1≈0.762, h2≈0.364, h3≈−0.558.
-
-**Expected result:** Test order reversal, padding mask and state reset between samples.
-
-**Verification tests:** Why can long unrolled sequences cause vanishing gradients?
-
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
-
-**Interview checks:** undefined
-
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
+**Submission evidence:** undefined
 
 ---
 
-## training — Implement checkpoint/resume and compare with uninterrupted training.
+## optimizers — Optimizers and regularization
 
-**Implementation task:** Fixed seed, deterministic toy dataset, checkpoint at step 50 of 100.
+**Implementation task:** Compare SGD and Adam on the same small regression task.
 
-**Worked fixture:** Resumed run reaches the same final state within deterministic tolerance.
+**Worked fixture:** Same initialization, fixed seed, 100 updates, η=0.05.
 
-**Expected result:** Test missing checkpoint, changed config and interrupted data loader.
+**Expected result:** Both should reduce loss; log update/loss curves, not assume identical convergence.
 
-**Verification tests:** Which states must be saved to resume optimizer training correctly?
+**Verification tests:** Test excessive η, dropout train/eval mode and reproducibility.
 
-**Debugging checklist:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+**Debugging checklist:** How does Adam's moment estimate differ from momentum SGD?
 
-**Interview checks:** undefined
+**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
 
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
+**Submission evidence:** undefined
+
+---
+
+## cnn — Convolutional neural networks
+
+**Implementation task:** Calculate convolution output dimensions and perform one 2×2 valid convolution.
+
+**Worked fixture:** Input 3×3 [[1,2,3],[4,5,6],[7,8,9]], kernel all ones.
+
+**Expected result:** Output 2×2 [[12,16],[24,28]].
+
+**Verification tests:** Test stride 2, padding and channels-first vs channels-last.
+
+**Debugging checklist:** How do stride and padding change receptive field/output size?
+
+**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+
+**Submission evidence:** undefined
+
+---
+
+## sequence — RNNs, LSTMs and sequence models
+
+**Implementation task:** Run a recurrent hidden-state update over a three-token sequence.
+
+**Worked fixture:** Scalar h_t=tanh(x_t+0.5h_(t−1)); x=[1,0,−1], h0=0.
+
+**Expected result:** h1≈0.762, h2≈0.364, h3≈−0.558.
+
+**Verification tests:** Test order reversal, padding mask and state reset between samples.
+
+**Debugging checklist:** Why can long unrolled sequences cause vanishing gradients?
+
+**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+
+**Submission evidence:** undefined
+
+---
+
+## training — Training at scale
+
+**Implementation task:** Implement checkpoint/resume and compare with uninterrupted training.
+
+**Worked fixture:** Fixed seed, deterministic toy dataset, checkpoint at step 50 of 100.
+
+**Expected result:** Resumed run reaches the same final state within deterministic tolerance.
+
+**Verification tests:** Test missing checkpoint, changed config and interrupted data loader.
+
+**Debugging checklist:** Which states must be saved to resume optimizer training correctly?
+
+**Interview checks:** Check input shape/schema first; print intermediate values; verify units, ordering and version assumptions; reduce to the smallest failing fixture; add a regression test before changing the implementation.
+
+**Submission evidence:** undefined
 
 ---
 
