@@ -8,6 +8,7 @@ const failures = []
 function validate(value, shape, path = '$') {
   if (shape.const !== undefined && value !== shape.const) failures.push(`${path}: expected constant ${shape.const}`)
   if (shape.enum && !shape.enum.includes(value)) failures.push(`${path}: expected one of ${shape.enum.join(', ')}`)
+  if (shape.pattern && typeof value === 'string' && !(new RegExp(shape.pattern).test(value))) failures.push(`${path}: does not match required pattern ${shape.pattern}`)
   if (shape.type === 'object') {
     if (!value || typeof value !== 'object' || Array.isArray(value)) { failures.push(`${path}: expected object`); return }
     for (const key of shape.required ?? []) if (!(key in value)) failures.push(`${path}.${key}: required field missing`)
@@ -16,6 +17,7 @@ function validate(value, shape, path = '$') {
   } else if (shape.type === 'array') {
     if (!Array.isArray(value)) { failures.push(`${path}: expected array`); return }
     if (shape.minItems !== undefined && value.length < shape.minItems) failures.push(`${path}: expected at least ${shape.minItems} items`)
+    if (shape.maxItems !== undefined && value.length > shape.maxItems) failures.push(`${path}: expected at most ${shape.maxItems} items`)
     value.forEach((item, index) => validate(item, shape.items, `${path}[${index}]`))
   } else if (shape.type === 'string') {
     if (typeof value !== 'string') failures.push(`${path}: expected string`)
