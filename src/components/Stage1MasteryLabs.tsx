@@ -28,7 +28,7 @@ export default function Stage1MasteryLabs(){
  const [duplicateJoin,setDuplicateJoin]=useState(false)
  const [validationValue,setValidationValue]=useState(1000)
  const [showLeak,setShowLeak]=useState(true)
- const optimization=useMemo(()=>{let w=0;const path=[{w,loss:(w-3)**2}];for(let i=0;i<30;i++){w-=rate*2*(w-3);path.push({w,loss:(w-3)**2});if(!Number.isFinite(w)||Math.abs(w)>100)break,evidence:["Run the integrated reproducible tabular pipeline","Prove train and validation entities are disjoint","Verify scaler fit_rows equals the training row count","Inspect exported artifact, data card and leakage incident report"]}return path},[rate])
+ const optimization=useMemo(()=>{let w=0;const path=[{w,loss:(w-3)**2}];for(let i=0;i<30;i++){w-=rate*2*(w-3);path.push({w,loss:(w-3)**2});if(!Number.isFinite(w)||Math.abs(w)>100)break}return path},[rate])
  useEffect(()=>{if(!playing)return;const timer=window.setInterval(()=>setOptStep(s=>{if(s>=optimization.length-1){setPlaying(false);return s}return s+1}),450);return()=>window.clearInterval(timer)},[playing,optimization.length])
  const posteriorDenominator=sensitivity*prior+falsePositive*(1-prior)
  const posterior=posteriorDenominator===0?0:sensitivity*prior/posteriorDenominator
