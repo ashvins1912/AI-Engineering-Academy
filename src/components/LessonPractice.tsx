@@ -62,6 +62,21 @@ export default function LessonPractice({ lesson }: { lesson: Lesson }) {
   const flow = lesson.workflow
   const debug = specs[slug]?.debug ?? base.debug
   const production = specs[slug]?.production ?? base.production
+  const references = stage === 7
+    ? [{ label: 'MCP specification', url: 'https://modelcontextprotocol.io/specification/' }, { label: 'MCP Python SDK', url: 'https://github.com/modelcontextprotocol/python-sdk' }]
+    : stage === 5
+      ? [{ label: 'Sentence Transformers', url: 'https://sbert.net/' }, { label: 'pgvector', url: 'https://github.com/pgvector/pgvector' }]
+      : stage === 4
+        ? [{ label: 'Hugging Face Transformers', url: 'https://huggingface.co/docs/transformers/index' }, { label: 'PEFT', url: 'https://huggingface.co/docs/peft/index' }]
+        : stage === 3
+          ? [{ label: 'PyTorch tutorials', url: 'https://pytorch.org/tutorials/' }]
+          : stage === 2
+            ? [{ label: 'scikit-learn user guide', url: 'https://scikit-learn.org/stable/user_guide.html' }]
+            : stage === 9
+              ? [{ label: 'Docker docs', url: 'https://docs.docker.com/' }, { label: 'GitHub Actions', url: 'https://docs.github.com/actions' }]
+              : stage === 10
+                ? [{ label: 'OWASP LLM Top 10', url: 'https://genai.owasp.org/llm-top-10/' }, { label: 'OpenTelemetry', url: 'https://opentelemetry.io/docs/' }]
+                : [{ label: 'Python tutorial', url: 'https://docs.python.org/3/tutorial/' }, { label: 'NumPy quickstart', url: 'https://numpy.org/doc/stable/user/quickstart.html' }]
 
   return <section className="practice-engine">
     <div className="practice-title"><div><span className="eyebrow">IMPLEMENTATION WORKBENCH</span><h3>Practice this lesson like an engineer</h3><p>Follow the workflow, configure a local environment, implement a minimal version, verify the result and debug failures.</p></div><span className="practice-stage">STAGE {String(stage).padStart(2, '0')}</span></div>
@@ -89,6 +104,8 @@ export default function LessonPractice({ lesson }: { lesson: Lesson }) {
     <div className="practice-subhead"><ShieldCheckIcon/><div><strong>4. Production engineering checklist</strong><span>Do not stop at a local happy-path demo.</span></div></div>
     <ul className="practice-checks production-checks">{production.map((item, i) => <li key={i}>{item}</li>)}</ul>
 
+    <div className="practice-subhead"><Code2 size={17}/><div><strong>5. Primary references</strong><span>Prefer official, maintained documentation and verify the installed version.</span></div></div>
+    <ul className="practice-references">{references.map(ref => <li key={ref.url}><a href={ref.url} target="_blank" rel="noreferrer">{ref.label} ↗</a></li>)}</ul>
     <div className="practice-assignment"><span>YOUR SUBMISSION</span><strong>Independent practice</strong><p>{lesson.exercises.join(' · ')}</p><p><b>Done when:</b> {lesson.assessment}</p></div>
   </section>
 }
