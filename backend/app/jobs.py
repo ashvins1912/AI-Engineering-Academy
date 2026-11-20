@@ -28,6 +28,8 @@ async def claim_next_job(session: AsyncSession, tenant_id: UUID, lease_seconds: 
                IngestionJob.lease_until < now, IngestionJob.attempts >= IngestionJob.max_attempts)
         .values(status="dead", lease_until=None, error_code="lease_expired_max_attempts")
     )
+    await session.commit()
+    await set_tenant_context(session, str(tenant_id))
     statement = (
         select(IngestionJob)
         .where(
