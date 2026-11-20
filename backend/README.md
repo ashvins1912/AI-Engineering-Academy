@@ -14,7 +14,7 @@ FastAPI service for PDF/DOCX parsing, scanned-PDF OCR, sentence-transformer embe
 
 1. Create a restricted application DB role. The local Docker Compose stack creates `academy_app` with a disposable password; never reuse it in production.
 2. Configure a trusted HTTPS JWKS endpoint (preferred) or RS256 PEM public key, issuer and audience. See [auth_claims.md](app/auth_claims.md).
-3. Apply `migrations/000_local_role.sql`, `migrations/001_initial.sql` and `migrations/002_document_acl_ingestion_jobs.sql` and `migrations/003_raw_object_retention.sql` as a database administrator.
+3. Apply `migrations/000_local_role.sql`, `migrations/001_initial.sql` and `migrations/002_document_acl_ingestion_jobs.sql`, and `migrations/003_raw_object_retention.sql` as a database administrator.
 4. From this directory run `docker compose up --build`, or install `requirements.txt` in a Python 3.11 virtual environment and run `uvicorn app.main:app --host 0.0.0.0 --port 8000`.
 
 The API listens on port 8000.
@@ -77,7 +77,6 @@ Run `python -m pytest tests -q` from this directory. Unit tests cover RS256 toke
 
 - Integrate the actual Academy identity provider and validate tenant membership before enabling public ACL grant/revoke operations.
 - Add bucket inventory reconciliation for objects without job rows and encrypted backup/restore verification.
-- Add raw-object retention/deletion workflows and encrypted backup/restore verification.
 - Replace the in-memory single-process rate limiter with a distributed limiter and add audit events, metrics and trace correlation.
 - Store OCR confidence and layout/region metadata; add sandboxed parser isolation and multilingual OCR evaluation.
 - Configure and security-review the chosen generation/embedding provider; evaluate semantic entailment, citation completeness, prompt-injection resistance, abstention quality, privacy and provider data-retention terms before enabling answer generation.
