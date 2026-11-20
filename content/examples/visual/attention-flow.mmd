@@ -1,0 +1,7 @@
+flowchart TD
+    A[Token embeddings] --> B[Project Q, K and V]
+    B --> C[Compute scaled QK transpose]
+    C --> D[Apply causal mask if decoder]
+    D --> E[Softmax attention weights]
+    E --> F[Weighted sum of V]
+    F --> G[Context-aware token output]

@@ -8,6 +8,8 @@ import RAGLabs from './components/RAGLabs'
 import LessonPractice from './components/LessonPractice'
 import ProductionLabs from './components/ProductionLabs'
 import AgenticInterviewStudio from './components/AgenticInterviewStudio'
+import ArchitectureFlow from './components/ArchitectureFlow'
+import StudentReflection from './components/StudentReflection'
 
 const readList = (key: string): string[] => {
   try { const value = localStorage.getItem(key); return value ? JSON.parse(value) as string[] : [] } catch { return [] }
@@ -48,6 +50,7 @@ export default function App() {
     <main>
       <section className="hero"><div className="eyebrow"><Sparkles size={14}/> INDEPENDENT LEARNING PLATFORM</div><h1>Become an <em>AI Systems Engineer.</em></h1><p>From mathematical intuition to autonomous agents, advanced RAG, MCP, A2A, LLMOps and production-grade AI platforms.</p><div className="hero-stats"><div><strong>{curriculum.length}</strong><span>Learning stages</span></div><div><strong>{moduleCount}</strong><span>Modules</span></div><div><strong>{total}</strong><span>Lesson blueprints</span></div><div><strong>{progress}%</strong><span>Browser-saved progress</span></div></div></section>
       <section className="progress-card"><div className="progress-copy"><div><span className="eyebrow">YOUR LEARNING JOURNEY</span><h2>Mastery overview</h2></div><strong>{completed.length} / {total} lessons</strong></div><div className="progress-track"><span style={{width:`${progress}%`}}/></div><p>Progress and bookmarks are saved in this browser. Account-level synchronization will be added with the authentication and database milestone.</p></section>
+      <ArchitectureFlow/>
       <ProductionLabs/>
       <AgenticInterviewStudio/>
       <div className="content-grid"><aside className="sidebar"><div className="side-heading">CURRICULUM <span>{filtered.length} / {curriculum.length} STAGES</span></div><label className="search"><Search size={16}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search topics, tools, labs..."/>{query && <button className="clear-search" onClick={()=>setQuery('')} aria-label="Clear search"><X size={14}/></button>}</label><nav>{filtered.map((s)=><button key={s.id} className={`stage-link ${active.id===s.id?'selected':''}`} onClick={()=>setActiveStage(s.id)}><span className="stage-num">{String(curriculum.findIndex(x=>x.id===s.id)+1).padStart(2,'0')}</span><span>{s.title}</span><ChevronRight size={15}/></button>)}</nav><div className="sidebar-foot"><span><Bookmark size={13}/> {bookmarks.length} bookmarked</span><span><CircleCheck size={13}/> {completed.length} completed</span></div></aside>
@@ -80,6 +83,6 @@ export default function App() {
       <LessonPractice lesson={selectedLesson}/>
       <section className="detail-section"><h3>04 · Practice exercises</h3><ol>{selectedLesson.exercises.map(x=><li key={x}>{x}</li>)}</ol></section>
       <section className="detail-section assessment"><h3>05 · Assessment criteria</h3><p>{selectedLesson.assessment}</p></section>
-      <section className="detail-section"><h3>Production engineering note</h3><p>{selectedLesson.productionNote}</p></section></div><footer className="detail-footer"><button className="secondary-action" onClick={()=>toggleBookmark(selectedLesson.id)}><Bookmark size={15} fill={bookmarks.includes(selectedLesson.id)?'currentColor':'none'}/>{bookmarks.includes(selectedLesson.id)?'Bookmarked':'Bookmark'}</button><button className="primary-action" onClick={()=>toggle(selectedLesson.id)}>{completed.includes(selectedLesson.id)?<><Check size={16}/> Completed</>:<><CircleCheck size={16}/> Mark complete</>}</button></footer></section></div>}
+      <section className="detail-section"><h3>Production engineering note</h3><p>{selectedLesson.productionNote}</p></section><StudentReflection key={selectedLesson.id} lesson={selectedLesson}/></div><footer className="detail-footer"><button className="secondary-action" onClick={()=>toggleBookmark(selectedLesson.id)}><Bookmark size={15} fill={bookmarks.includes(selectedLesson.id)?'currentColor':'none'}/>{bookmarks.includes(selectedLesson.id)?'Bookmarked':'Bookmark'}</button><button className="primary-action" onClick={()=>toggle(selectedLesson.id)}>{completed.includes(selectedLesson.id)?<><Check size={16}/> Completed</>:<><CircleCheck size={16}/> Mark complete</>}</button></footer></section></div>}
   </div>
 }
