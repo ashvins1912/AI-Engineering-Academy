@@ -7,6 +7,7 @@ const required = ['vectors', 'calculus', 'linear-regression', 'attention', 'chun
 const missing = required.filter(id => !lessonIds.includes(id))
 const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
 const practice = readFileSync(new URL('../src/components/LessonPractice.tsx', import.meta.url), 'utf8')
+const productionLabs = readFileSync(new URL('../src/components/ProductionLabs.tsx', import.meta.url), 'utf8')
 const stageMatches = [...source.matchAll(/id:\s*'stage-(\d+)'/g)]
 const lessonStagePairs = [...source.matchAll(/lesson\('([^']+)'/g)].map(lessonMatch => {
   const stageMatch = stageMatches.filter(match => match.index < lessonMatch.index).at(-1)
@@ -61,6 +62,10 @@ const playbookLinks = [
 ]
 
 const checks = [
+  ['interactive production studio integrated into Academy home', app.includes('<ProductionLabs/>') && app.includes("import ProductionLabs from './components/ProductionLabs'" )],
+  ['four interactive production labs with scenarios', ['Production RAG','Multi-agent orchestration','Fine-tuning decision lab','AWS deployment simulator'].every(label => productionLabs.includes(label))],
+  ['visual failure injection and trace diagnosis', productionLabs.includes('Failure reproduced') && productionLabs.includes('Root-cause analysis') && productionLabs.includes('Recommended fix / improvement')],
+  ['editable experiment configuration and mastery checks', productionLabs.includes('type="range"') && productionLabs.includes('Mastery check') && productionLabs.includes('Check answer')],
   ['production playbooks exist', missingProductionPlaybooks.length === 0],
   ['lesson workbench links production playbooks', playbookLinks.every(file => practice.includes(file))],
   ['11 learning stages', stageIds.length === 11],
