@@ -6,6 +6,7 @@ class DocumentOut(BaseModel):
     title: str
     media_type: str
     status: str
+    visibility: str = 'private'
     page_count: int
     chunks: int
 
