@@ -21,7 +21,7 @@ from .embeddings import encode_texts_async, EmbeddingProviderFailed, EmbeddingPr
 from .malware import ClamAVScanner, MalwareDetected, ScannerUnavailable, scan_upload
 from .storage import StorageError, create_object_store
 from .security import Principal, current_principal, require_admin
-from .middleware import SimpleRateLimitMiddleware
+from .middleware import PostgresRateLimitMiddleware
 from .request_limits import RequestBodyLimitMiddleware
 from .jobs import cancel_queued_job, mark_raw_object_deleted, replay_dead_job
 
@@ -35,7 +35,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="AI Engineering Academy Ingestion API", version="0.2.0", lifespan=lifespan)
 origins = [origin.strip() for origin in cfg.cors_origins.split(",") if origin.strip()]
-app.add_middleware(SimpleRateLimitMiddleware)
+app.add_middleware(PostgresRateLimitMiddleware)
 app.add_middleware(RequestBodyLimitMiddleware)
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["GET", "POST", "DELETE"], allow_headers=["Authorization", "Content-Type", "Idempotency-Key"])
 
