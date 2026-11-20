@@ -38,3 +38,21 @@ Explain each transformer tensor, calculate tiny attention, diagnose masking and 
 - Tokenizers: https://huggingface.co/docs/tokenizers/index
 - PEFT: https://huggingface.co/docs/peft/index
 - PyTorch SDPA: https://pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention.html
+
+
+## Stage workflow diagram
+
+Use this flow as the implementation order. The decision branches are the points where tests, policy checks or operational controls must stop unsafe progress.
+
+```mermaid
+flowchart TD
+  A[Prompt text] --> B[Tokenizer and token IDs]
+  B --> C[Token plus position embeddings]
+  C --> D[Transformer blocks]
+  D --> E[Next-token logits]
+  E --> F[Decoding policy]
+  F --> G[Stop token or output budget?]
+  G -- no --> H[Append token and update KV cache]
+  H --> D
+  G -- yes --> I[Post-process and validate output]
+```
