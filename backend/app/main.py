@@ -203,7 +203,7 @@ async def list_documents(principal: Principal = Depends(current_principal), sess
 async def delete_document(document_id: UUID, principal: Principal = Depends(current_principal), session: AsyncSession = Depends(get_session)):
     await set_tenant_context(session, str(principal.tenant_id))
     owner_scope = (Document.owner_id == principal.user_id)
-    if "tenant_admin" in principal.roles:
+    if {"tenant_admin", "platform_admin"} & set(principal.roles):
         owner_scope = (Document.tenant_id == principal.tenant_id)
     doc = await session.scalar(select(Document).where(Document.id == document_id, Document.tenant_id == principal.tenant_id, owner_scope))
     if not doc:
