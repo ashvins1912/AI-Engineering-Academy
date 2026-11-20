@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { BrainCircuit, Bookmark, Check, ChevronRight, CircleCheck, Code2, Cpu, GitBranch, Search, ShieldCheck, Sparkles, Workflow, X, GraduationCap, Target, Layers3 } from 'lucide-react'
 import { curriculum, type Lesson } from './data/curriculum'
-import MathLabs from './components/MathLabs'
+import MathLabs from './components/MathLabs'\nimport Stage1MasteryLabs from './components/Stage1MasteryLabs'
 import MLLabs from './components/MLLabs'
 import TransformerLabs from './components/TransformerLabs'
 import RAGLabs from './components/RAGLabs'
@@ -55,8 +55,8 @@ export default function App() {
       <AgenticInterviewStudio/>
       <div className="content-grid"><aside className="sidebar"><div className="side-heading">CURRICULUM <span>{filtered.length} / {curriculum.length} STAGES</span></div><label className="search"><Search size={16}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search topics, tools, labs..."/>{query && <button className="clear-search" onClick={()=>setQuery('')} aria-label="Clear search"><X size={14}/></button>}</label><nav>{filtered.map((s)=><button key={s.id} className={`stage-link ${active.id===s.id?'selected':''}`} onClick={()=>setActiveStage(s.id)}><span className="stage-num">{String(curriculum.findIndex(x=>x.id===s.id)+1).padStart(2,'0')}</span><span>{s.title}</span><ChevronRight size={15}/></button>)}</nav><div className="sidebar-foot"><span><Bookmark size={13}/> {bookmarks.length} bookmarked</span><span><CircleCheck size={13}/> {completed.length} completed</span></div></aside>
       <section className="main-panel"><div className="stage-heading"><div><div className="eyebrow">STAGE {String(stageNumber).padStart(2,'0')} · LEARNING PATH</div><h2>{active.title}</h2><p>{active.outcome}</p></div><div className="stage-icon"><Cpu size={27}/></div></div>
-        {active.id==='stage-1'&&<div className="phase-lab-launch"><div><strong>Interactive foundations lab</strong><p>Experiment with vectors, probability, optimization and Python data transformations.</p></div><button className="lab-primary" onClick={()=>setShowLabs(v=>!v)}>{showLabs?'Hide labs':'Open 5 interactive labs'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-1'&&showLabs&&<MathLabs/>}
+        {active.id==='stage-1'&&<div className="phase-lab-launch"><div><strong>Interactive foundations lab</strong><p>Seven guided topics with step-by-step numerical animations, failure labs and mastery checks.</p></div><button className="lab-primary" onClick={()=>setShowLabs(v=>!v)}>{showLabs?'Hide labs':'Open 7 mastery gates'} <ChevronRight size={15}/></button></div>}
+        {active.id==='stage-1'&&showLabs&&<><Stage1MasteryLabs/><MathLabs/></>}
         {active.id==='stage-2'&&<div className="phase-lab-launch"><div><strong>Interactive machine learning workbench</strong><p>Train and inspect classical ML models, clustering and neural network learning mechanics.</p></div><button className="lab-primary" onClick={()=>setShowMLLabs(v=>!v)}>{showMLLabs?'Hide workbench':'Open 11 interactive labs'} <ChevronRight size={15}/></button></div>}
         {active.id==='stage-2'&&showMLLabs&&<MLLabs/>}
         {active.id==='stage-3'&&<div className="phase-lab-launch"><div><strong>Interactive neural network lab</strong><p>Explore neural-network gradients, CNN feature maps, recurrent sequence state, regularization and model evaluation.</p></div><button className="lab-primary" onClick={()=>setShowDeepLabs(v=>!v)}>{showDeepLabs?'Hide neural lab':'Open neural network lab'} <ChevronRight size={15}/></button></div>}
