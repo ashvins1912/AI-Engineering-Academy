@@ -16,6 +16,12 @@ class ProductionRAGMigrationTests(unittest.TestCase):
         self.assertIn("raw_object_delete_lease_until", sql)
         self.assertIn("ix_ingestion_jobs_raw_object_cleanup", sql)
 
+    def test_distributed_rate_limit_table_has_expiry_and_grants(self):
+        sql = (Path(__file__).parents[1] / "migrations" / "004_distributed_rate_limits.sql").read_text()
+        self.assertIn("api_rate_limit_buckets", sql)
+        self.assertIn("expires_at", sql)
+        self.assertIn("GRANT SELECT, INSERT, UPDATE, DELETE ON api_rate_limit_buckets TO academy_app", sql)
+
     def test_document_visibility_defaults_to_private(self):
         sql = (Path(__file__).parents[1] / "migrations" / "002_document_acl_ingestion_jobs.sql").read_text()
         self.assertIn("visibility varchar(16) NOT NULL DEFAULT 'private'", sql)

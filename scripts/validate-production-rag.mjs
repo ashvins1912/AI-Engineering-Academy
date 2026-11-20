@@ -16,7 +16,10 @@ const required = [
  ['reciprocal rank fusion','backend/app/main.py','1.0/(60+r.bm25_rank)'],
  ['tenant-scoped SQL','backend/app/main.py','Chunk.tenant_id == principal.tenant_id'],
  ['database RLS','backend/migrations/001_initial.sql','CREATE POLICY tenant_documents_isolation'],
- ['rate limiter','backend/app/middleware.py','Rate limit exceeded'],
+ ['shared PostgreSQL rate limiter','backend/app/middleware.py','PostgresRateLimitMiddleware'],
+ ['hashed rate-limit client identifiers','backend/app/middleware.py','rate_limit_client_key'],
+ ['trusted reverse-proxy allowlist','backend/app/middleware.py','trusted_proxy_ips'],
+ ['distributed rate-limit migration','backend/migrations/004_distributed_rate_limits.sql','api_rate_limit_buckets'],
  ['upload limits','backend/app/config.py','max_upload_bytes'],
  ['OCR and BM25 limitations documented','backend/README.md','not yet production'],
  ['asynchronous ingestion API','backend/app/main.py','/v1/ingestion-jobs'],
@@ -33,6 +36,7 @@ const required = [
  ['raw-object deletion marker','backend/app/models.py','raw_object_deleted_at'],
  ['retention migration','backend/migrations/003_raw_object_retention.sql','raw_object_delete_lease_until'],
  ['cleanup migration in local Compose','backend/docker-compose.yml','003_raw_object_retention.sql:/docker-entrypoint-initdb.d/003_raw_object_retention.sql'],
+ ['rate-limit migration in local Compose','backend/docker-compose.yml','004_distributed_rate_limits.sql:/docker-entrypoint-initdb.d/004_distributed_rate_limits.sql'],
  ['optional cleanup Compose worker','backend/docker-compose.yml','app.cleanup'],
  ['tenant worker concurrency quota','backend/app/jobs.py','pg_advisory_xact_lock(hashtextextended'],
  ['configurable tenant worker quota','backend/app/config.py','ingestion_max_concurrent_jobs_per_tenant'],
@@ -55,6 +59,8 @@ for (const [name,path,token] of required) {
 }
 const pkg = JSON.parse(read('package.json'))
 assert.ok(pkg.scripts['validate:production-rag'], 'validation command missing')
+const rateLimitTests = read('backend/tests/test_rate_limit_middleware.py')
+assert.ok(rateLimitTests.includes('test_postgres_rate_limiter_is_shared_and_enforces_limit'), 'distributed rate limiter tests missing')
 const jobTests = read('backend/tests/test_jobs.py')
 const apiTests = read('backend/tests/test_async_ingestion_api.py')
 assert.ok(jobTests.includes('can_claim_job'), 'tenant quota policy tests missing')

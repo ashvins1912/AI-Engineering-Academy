@@ -14,10 +14,10 @@ FastAPI service for PDF/DOCX parsing, scanned-PDF OCR, sentence-transformer embe
 
 1. Create a restricted application DB role. The local Docker Compose stack creates `academy_app` with a disposable password; never reuse it in production.
 2. Configure a trusted HTTPS JWKS endpoint (preferred) or RS256 PEM public key, issuer and audience. See [auth_claims.md](app/auth_claims.md).
-3. Apply `migrations/000_local_role.sql`, `migrations/001_initial.sql` and `migrations/002_document_acl_ingestion_jobs.sql`, and `migrations/003_raw_object_retention.sql` as a database administrator.
-4. From this directory run `docker compose up --build`, or install `requirements.txt` in a Python 3.11 virtual environment and run `uvicorn app.main:app --host 0.0.0.0 --port 8000`. The local Compose database initialization mounts migrations 000–003; if the PostgreSQL volume already existed before migration 003 was added, apply `migrations/003_raw_object_retention.sql` manually once.
+3. Apply migrations `000_local_role.sql` through `004_distributed_rate_limits.sql` as a database administrator, in numeric order.
+4. From this directory run `docker compose up --build`, or install `requirements.txt` in a Python 3.11 virtual environment and run `uvicorn app.main:app --host 0.0.0.0 --port 8000`. The local Compose database initialization mounts migrations 000–004; if the PostgreSQL volume already existed before migrations 003 or 004 were added, apply those migrations manually once.
 
-The API listens on port 8000.
+The API listens on port 8000. Rate limiting is shared across API instances through PostgreSQL. Set `ACADEMY_RATE_LIMIT_PER_MINUTE` to tune the fixed-window quota. If the service is behind a reverse proxy, set `ACADEMY_TRUSTED_PROXY_IPS` to a comma-separated allowlist of immediate proxy peer IPs or CIDR ranges; forwarded client headers are ignored from untrusted peers. The rate limiter stores only SHA-256 client-key digests and fails closed with 503 if PostgreSQL is unavailable.
 
 ## API
 
@@ -77,7 +77,7 @@ Run `python -m pytest tests -q` from this directory. Unit tests cover RS256 toke
 
 - Integrate the actual Academy identity provider and validate tenant membership before enabling public ACL grant/revoke operations.
 - Add bucket inventory reconciliation for objects without job rows and encrypted backup/restore verification.
-- Replace the in-memory single-process rate limiter with a distributed limiter and add audit events, metrics and trace correlation.
+- Add audit events, metrics and trace correlation.
 - Store OCR confidence and layout/region metadata; add sandboxed parser isolation and multilingual OCR evaluation.
 - Configure and security-review the chosen generation/embedding provider; evaluate semantic entailment, citation completeness, prompt-injection resistance, abstention quality, privacy and provider data-retention terms before enabling answer generation.
 - Run migration verification, load/security tests, backup/restore drills and independent security review.
