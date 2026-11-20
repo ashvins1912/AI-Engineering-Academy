@@ -45,3 +45,22 @@ Present the architecture, defend trade-offs, reproduce the evaluation, demonstra
 - OpenTelemetry: https://opentelemetry.io/docs/
 - Docker: https://docs.docker.com/
 - Kubernetes: https://kubernetes.io/docs/
+
+
+## Stage workflow diagram
+
+Use this flow as the implementation order. The decision branches are the points where tests, policy checks or operational controls must stop unsafe progress.
+
+```mermaid
+flowchart TD
+  A[Requirements and threat model] --> B[Architecture and ADRs]
+  B --> C[Build secure RAG vertical slice]
+  C --> D[Add bounded agent and approvals]
+  D --> E[Integration, ACL and evaluation tests]
+  E --> F{Acceptance gates pass?}
+  F -- no --> G[Fix and repeat]
+  G --> E
+  F -- yes --> H[Stage deployment]
+  H --> I[Observe SLO, quality and cost]
+  I --> J[Canary promote or rollback]
+```
