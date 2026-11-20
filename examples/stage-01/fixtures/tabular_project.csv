@@ -1,0 +1,13 @@
+row_id,entity_id,event_date,feature_value,target
+r-001,customer-01,2024-01-10,10,0
+r-002,customer-02,2024-02-12,12,0
+r-003,customer-03,2024-03-14,14,0
+r-004,customer-04,2024-04-16,16,0
+r-005,customer-05,2024-05-18,18,1
+r-006,customer-06,2024-06-20,20,1
+r-007,customer-07,2024-07-22,22,1
+r-008,customer-08,2024-08-24,24,1
+r-009,customer-09,2025-02-01,100,0
+r-010,customer-10,2025-03-01,110,1
+r-011,customer-11,2025-04-01,120,1
+r-012,customer-12,2025-05-01,130,1
