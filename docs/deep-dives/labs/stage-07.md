@@ -4,17 +4,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## mcp-architecture — MCP architecture and lifecycle
 
-**Implementation task:** MCP architecture and lifecycle
+**Implementation task:** Trace initialize→capability negotiation→list tools→call tool→shutdown.
 
-**Worked fixture:** Trace initialize→capability negotiation→list tools→call tool→shutdown.
+**Worked fixture:** Local add tool and status resource.
 
-**Expected result:** Local add tool and status resource.
+**Expected result:** Client discovers exactly one tool/resource and handles JSON-RPC response.
 
-**Verification tests:** Client discovers exactly one tool/resource and handles JSON-RPC response.
+**Verification tests:** Test unsupported version and malformed request.
 
-**Debugging checklist:** What belongs to MCP host vs client vs server?
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Test unsupported version and malformed request.
+**Interview checks:** What belongs to MCP host vs client vs server?
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
@@ -22,17 +22,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## mcp-primitives — Tools, resources and prompts
 
-**Implementation task:** Tools, resources and prompts
+**Implementation task:** Expose typed add tool, read-only status resource and prompt template.
 
-**Worked fixture:** Expose typed add tool, read-only status resource and prompt template.
+**Worked fixture:** add(a=2,b=3), resource academy://status.
 
-**Expected result:** add(a=2,b=3), resource academy://status.
+**Expected result:** Tool returns 5; resource returns demo-ready; invalid types rejected.
 
-**Verification tests:** Tool returns 5; resource returns demo-ready; invalid types rejected.
+**Verification tests:** Test extra fields and large tool result.
 
-**Debugging checklist:** How do tools differ from resources and prompts?
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Test extra fields and large tool result.
+**Interview checks:** How do tools differ from resources and prompts?
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
@@ -40,17 +40,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## mcp-advanced — MCP advanced capabilities
 
-**Implementation task:** MCP advanced capabilities
+**Implementation task:** Add progress and cancellation to a deliberately slow read-only operation.
 
-**Worked fixture:** Add progress and cancellation to a deliberately slow read-only operation.
+**Worked fixture:** Operation has 5 steps; cancel after step 2.
 
-**Expected result:** Operation has 5 steps; cancel after step 2.
+**Expected result:** Progress emitted; cancellation stops remaining work.
 
-**Verification tests:** Progress emitted; cancellation stops remaining work.
+**Verification tests:** Test disconnect and unsupported capability.
 
-**Debugging checklist:** Why must capability support be negotiated?
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Test disconnect and unsupported capability.
+**Interview checks:** Why must capability support be negotiated?
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
@@ -58,17 +58,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## mcp-transport — Transport and deployment
 
-**Implementation task:** Transport and deployment
+**Implementation task:** Run a local stdio server and verify protocol stdout is clean.
 
-**Worked fixture:** Run a local stdio server and verify protocol stdout is clean.
+**Worked fixture:** Server emits one tool response; diagnostic logs go to stderr.
 
-**Expected result:** Server emits one tool response; diagnostic logs go to stderr.
+**Expected result:** Client parses frames without log noise.
 
-**Verification tests:** Client parses frames without log noise.
+**Verification tests:** Test malformed frame, restart and secret in logs.
 
-**Debugging checklist:** When would remote HTTP transport be preferable to stdio?
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Test malformed frame, restart and secret in logs.
+**Interview checks:** When would remote HTTP transport be preferable to stdio?
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
@@ -76,17 +76,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## mcp-security — MCP security engineering
 
-**Implementation task:** MCP security engineering
+**Implementation task:** Authorize tool calls by authenticated principal and resource scope.
 
-**Worked fixture:** Authorize tool calls by authenticated principal and resource scope.
+**Worked fixture:** User A can read doc A, not doc B; malicious tool metadata asks for secrets.
 
-**Expected result:** User A can read doc A, not doc B; malicious tool metadata asks for secrets.
+**Expected result:** A allowed, B denied; tool metadata cannot elevate permission.
 
-**Verification tests:** A allowed, B denied; tool metadata cannot elevate permission.
+**Verification tests:** Test confused deputy, path traversal, SSRF and scope escalation.
 
-**Debugging checklist:** Why is tool description not an authorization policy?
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Test confused deputy, path traversal, SSRF and scope escalation.
+**Interview checks:** Why is tool description not an authorization policy?
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
@@ -94,17 +94,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## a2a — Agent2Agent protocol
 
-**Implementation task:** Agent2Agent protocol
+**Implementation task:** Implement agent-card discovery and asynchronous task lifecycle.
 
-**Worked fixture:** Implement agent-card discovery and asynchronous task lifecycle.
+**Worked fixture:** Agent card advertises summarize capability; submit task then poll status.
 
-**Expected result:** Agent card advertises summarize capability; submit task then poll status.
+**Expected result:** Task transitions submitted→working→completed with artifact reference.
 
-**Verification tests:** Task transitions submitted→working→completed with artifact reference.
+**Verification tests:** Test duplicate task, expired task and untrusted callback URL.
 
-**Debugging checklist:** How does A2A differ from a tool invocation?
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Test duplicate task, expired task and untrusted callback URL.
+**Interview checks:** How does A2A differ from a tool invocation?
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
@@ -112,17 +112,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## ibm-acp — IBM/BeeAI Agent Communication Protocol
 
-**Implementation task:** IBM/BeeAI Agent Communication Protocol
+**Implementation task:** Build a protocol adapter mapping external message/task schema to internal typed message.
 
-**Worked fixture:** Build a protocol adapter mapping external message/task schema to internal typed message.
+**Worked fixture:** Mock incoming task, success and failure message variants.
 
-**Expected result:** Mock incoming task, success and failure message variants.
+**Expected result:** Known messages map; unknown version/type returns controlled error.
 
-**Verification tests:** Known messages map; unknown version/type returns controlled error.
+**Verification tests:** Test version mismatch and unknown message type.
 
-**Debugging checklist:** Why isolate protocol schemas behind an adapter?
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Test version mismatch and unknown message type.
+**Interview checks:** Why isolate protocol schemas behind an adapter?
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
@@ -130,17 +130,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## client-acp — Agent Client Protocol
 
-**Implementation task:** Agent Client Protocol
+**Implementation task:** Mock an editor client session with streaming updates and approval request.
 
-**Worked fixture:** Mock an editor client session with streaming updates and approval request.
+**Worked fixture:** Session sends update, asks permission, then completes.
 
-**Expected result:** Session sends update, asks permission, then completes.
+**Expected result:** Client displays update; tool action waits for approval.
 
-**Verification tests:** Client displays update; tool action waits for approval.
+**Verification tests:** Test cancellation, resume and denied permission.
 
-**Debugging checklist:** How does editor-agent session protocol differ from MCP?
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Test cancellation, resume and denied permission.
+**Interview checks:** How does editor-agent session protocol differ from MCP?
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
@@ -148,17 +148,17 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## tooling — Tool integration engineering
 
-**Implementation task:** Tool integration engineering
+**Implementation task:** Wrap an external API with timeout, retries, idempotency and redacted logs.
 
-**Worked fixture:** Wrap an external API with timeout, retries, idempotency and redacted logs.
+**Worked fixture:** Mock 429 then 200; same idempotency key on retry.
 
-**Expected result:** Mock 429 then 200; same idempotency key on retry.
+**Expected result:** Backoff occurs and side effect is not duplicated.
 
-**Verification tests:** Backoff occurs and side effect is not duplicated.
+**Verification tests:** Test 5xx, malformed response, expired token and secret redaction.
 
-**Debugging checklist:** Which failures are safe to retry?
+**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
 
-**Interview checks:** Test 5xx, malformed response, expired token and secret redaction.
+**Interview checks:** Which failures are safe to retry?
 
 **Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
 
