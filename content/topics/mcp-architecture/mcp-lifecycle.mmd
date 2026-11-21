@@ -1,0 +1,22 @@
+sequenceDiagram
+ participant U as User
+ participant H as AI Host
+ participant C as MCP Client
+ participant S as MCP Server
+ participant G as Domain Tool Gateway
+ U->>H: Request task
+ H->>C: Start managed session
+ C->>S: initialize(protocolVersion, capabilities, clientInfo)
+ S-->>C: negotiated version + serverInfo + capabilities
+ C->>S: notifications/initialized
+ C->>S: tools/list
+ S-->>C: tool definitions + input schemas
+ H->>H: Check user consent + identity + tenant policy
+ H->>C: Authorized tools/call
+ C->>S: tools/call(name, arguments)
+ S->>G: Validate schema + invoke scoped domain handler
+ G-->>S: Result
+ S-->>C: JSON-RPC result or error
+ C-->>H: Untrusted tool content
+ H->>C: shutdown
+ C->>S: shutdown / close transport
