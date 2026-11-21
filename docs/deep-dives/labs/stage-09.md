@@ -148,19 +148,19 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## serving — Model serving and inference optimization
 
-**Implementation task:** Benchmark batch sizes and apply admission control under overload.
+**Implementation task:** Build a bounded inference-serving simulator that estimates KV cache, admits requests under active/queue budgets, models cancellation and reports synthetic latency/throughput proxies.
 
-**Worked fixture:** Requests of 128/512 tokens; concurrency 1/4/8.
+**Worked fixture:** 32 layers, 8 KV heads, head dimension 128, FP16 cache, 4,096 tokens per sequence. Cache = 128 KiB/token = 512 MiB/sequence; eight sequences need about 4 GiB before model weights and runtime reserve.
 
-**Expected result:** Report p50/p95, throughput and memory; overload returns bounded response.
+**Expected result:** The simulator rejects requests that exceed the memory budget or queue cap, promotes queued work after a slot is released, and labels benchmark values as synthetic proxies rather than GPU measurements.
 
-**Verification tests:** Test cancellation, queue cap and long prompt.
+**Verification tests:** Test KV formula, invalid dimensions, eight-sequence memory calculation, queue cap, duplicate IDs, cancellation, promotion, long-prompt rejection and synthetic-metric labeling.
 
-**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
+**Debugging checklist:** Record model/runtime/hardware and prompt/output distributions; separate queue wait, TTFT and inter-token latency; inspect KV-cache allocation and non-cache reserve; verify cancellation releases resources; compare p50/p95 and tokens/sec; evaluate quality after quantization; never infer GPU performance from the local simulator.
 
-**Interview checks:** Why can larger batch improve throughput but worsen latency?
+**Interview checks:** Explain prefill vs decode, continuous vs static batching, KV-cache scaling, TTFT vs ITL, why quantization may not improve speed, and why bounded admission is required under overload.
 
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
+**Submission evidence:** Include simulator output, passing tests with a negative case, KV-cache calculation, benchmark matrix, one cancellation/overload diagnosis, and an engine-selection rationale.
 
 ---
 
