@@ -55,6 +55,17 @@ class ToolIntegrationTests(unittest.TestCase):
   with self.assertRaises(TimeoutError):gateway.execute("refund",{"order_id":"o1","amount":10,"tenant_id":"tenant-a"},self.auth,"key-1")
   self.assertEqual(next(iter(gateway.operations.values()))["status"],"unknown")
   with self.assertRaises(OperationPending):gateway.execute("refund",{"order_id":"o1","amount":10,"tenant_id":"tenant-a"},self.auth,"key-1")
+ def test_open_breaker_does_not_leave_new_key_pending(self):
+  breaker=CircuitBreaker(clock=self.clock);breaker.failure();breaker.failure();breaker.failure()
+  self.gateway.breakers["refund"]=breaker
+  with self.assertRaises(CircuitOpenError):self.gateway.execute("refund",{"order_id":"o1","amount":10,"tenant_id":"tenant-a"},self.auth,"blocked-key")
+  self.assertNotIn(("tenant-a","refund","blocked-key"),self.gateway.operations)
+ def test_idempotency_replay_bypasses_provider_and_rate_consumption(self):
+  args={"order_id":"o1","amount":10,"tenant_id":"tenant-a"}
+  self.gateway.execute("refund",args,self.auth,"key-1")
+  tokens=self.gateway.buckets["tenant-a"].tokens
+  self.gateway.execute("refund",args,self.auth,"key-1")
+  self.assertEqual(self.gateway.buckets["tenant-a"].tokens,tokens)
  def test_secret_redaction(self):
   result=redact({"Authorization":"Bearer abc","nested":{"api_key":"secret","status":"ok"}})
   self.assertEqual(result["Authorization"],"[REDACTED]");self.assertEqual(result["nested"]["api_key"],"[REDACTED]")
