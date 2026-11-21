@@ -14,7 +14,7 @@ const candidates=[
 const dimensions=['Task success','Tool safety','Grounding','Traceability','Latency','Maintainability']
 export default function FrameworkComparisonVisualizer(){
  const [selected,setSelected]=useState('PydanticAI'),[safetyWeight,setSafetyWeight]=useState(25),[latencyWeight,setLatencyWeight]=useState(10),[candidateCount,setCandidateCount]=useState(6)
- const candidatesShown=candidates.slice(0,candidateCount)
+ const candidatesShown=useMemo(()=>{const visible=candidates.slice(0,candidateCount);if(!visible.some(x=>x.name===selected))visible[visible.length-1]=candidates.find(x=>x.name===selected)??visible[0];return visible},[candidateCount,selected])
  const normalized=useMemo(()=>{const raw=[25,safetyWeight,20,15,latencyWeight,5];const sum=raw.reduce((a,b)=>a+b,0);return raw.map(x=>x/sum)},[safetyWeight,latencyWeight])
  const selectedCandidate=candidates.find(x=>x.name===selected)??candidates[0]
  const score=selectedCandidate.scores.reduce((sum,value,i)=>sum+value*normalized[i],0)

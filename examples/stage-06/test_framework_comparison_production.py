@@ -21,6 +21,10 @@ class BenchmarkLedgerTests(unittest.TestCase):
  def test_duplicate_candidate_record_rejected(self):
   self.ledger.record("run-1","CrewAI","1.2",{}, {},True)
   with self.assertRaises(sqlite3.IntegrityError):self.ledger.record("run-1","CrewAI","1.2",{}, {},True)
+ def test_hard_gate_requires_boolean_not_truthy_string(self):
+  with self.assertRaises(TypeError):self.ledger.record("run-1","Unsafe","1.0",{}, {}, "false")
+ def test_result_and_metrics_must_be_objects(self):
+  with self.assertRaises(TypeError):self.ledger.record("run-1","Unsafe","1.0",[], {}, False)
  def test_persistence_after_reopen(self):
   self.ledger.record("run-1","Haystack","2.0",{"answer":"cited"},{"latency":10},True)
   self.ledger.close();self.ledger=BenchmarkLedger(self.path,clock=lambda:124.0)

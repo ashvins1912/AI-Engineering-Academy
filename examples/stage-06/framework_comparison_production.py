@@ -24,6 +24,8 @@ class BenchmarkLedger:
   return self.db.execute("SELECT fixture_hash FROM benchmark_runs WHERE run_id=?",(run_id,)).fetchone()[0]
  def record(self,run_id,framework,version,result,metrics,hard_gates):
   if not framework or not version:raise ValueError("framework and pinned version are required")
+  if type(hard_gates) is not bool:raise TypeError("hard_gates must be an explicit boolean")
+  if not isinstance(result,dict) or not isinstance(metrics,dict):raise TypeError("result and metrics must be dictionaries")
   row=self.db.execute("SELECT 1 FROM benchmark_runs WHERE run_id=?",(run_id,)).fetchone()
   if row is None:raise KeyError("benchmark run not found")
   body=json.dumps(result,sort_keys=True);metric_body=json.dumps(metrics,sort_keys=True)
