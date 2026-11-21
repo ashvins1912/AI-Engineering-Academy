@@ -89,9 +89,10 @@ def population_stability_index(reference:list[float],current:list[float],bins:in
  return sum((y-x)*math.log(y/x) for x,y in zip(a,b))
 
 def build_manifest(rows,contract,feature_spec,source_version,code_revision,split_seed):
- return {"source_version":source_version,"code_revision":code_revision,"contract_hash":canonical_hash([asdict(f) for f in contract]),
-         "raw_data_hash":canonical_hash(rows),"feature_spec":feature_spec,"split_seed":split_seed,
-         "row_count":len(rows),"manifest_hash":canonical_hash({"rows":rows,"source":source_version,"code":code_revision,"seed":split_seed})}
+ manifest={"source_version":source_version,"code_revision":code_revision,"contract_hash":canonical_hash([asdict(f) for f in contract]),
+           "raw_data_hash":canonical_hash(rows),"feature_spec":feature_spec,"split_seed":split_seed,"row_count":len(rows)}
+ manifest["manifest_hash"]=canonical_hash(manifest)
+ return manifest
 
 def demo():
  rows=[{"id":i,"age":20+i,"spend":100+i*10,"label":i%2} for i in range(20)]
