@@ -375,6 +375,7 @@
     "miniAppIntegration": {
       "projectGoal": "Build a framework scorecard and benchmark runner that compares adapters on the same task contract.",
       "steps": [
+        "Read examples/stage-06/framework-adapters/README.md and implement one optional SDK-specific adapter in an isolated, version-pinned environment.",
         "Load the fixed refund support fixture and shared tool contract.",
         "Register two or more framework adapters behind the same interface.",
         "Run identical cases with the same model, tool schemas and policy configuration.",
@@ -464,7 +465,8 @@
       "Reference adapter and tests pass.",
       "At least two candidate adapters run the same fixture.",
       "Unsafe tool, tenant and approval cases fail closed.",
-      "Decision record includes framework versions and evidence."
+      "Decision record includes framework versions and evidence.",
+      "Cross-tenant and over-budget tool calls are blocked before the domain function runs; adapter-reported calls match gateway-observed executions."
     ]
   },
   "references": [
@@ -511,8 +513,8 @@
       "explanation": "A stable adapter interface keeps application domain contracts independent from framework-specific orchestration APIs."
     },
     {
-      "lines": "if call.name not in ALLOWED_TOOLS: raise PermissionError",
-      "explanation": "Framework tool registries are not the final security boundary; the application validates every proposed call."
+      "lines": "SafeToolGateway validates each invocation before calling the domain function",
+      "explanation": "Post-run inspection is too late for side effects. The application-owned gateway checks tool registration, tenant context and call budget before execution."
     },
     {
       "lines": "if call.arguments['tenant_id'] != request['tenant_id']: reject()",
