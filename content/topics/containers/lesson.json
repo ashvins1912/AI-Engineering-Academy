@@ -1,0 +1,589 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "containers",
+    "title": "Containers and Images — reproducible and hardened AI services",
+    "stage": 9,
+    "estimatedMinutes": 210
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Explain images, layers, registries, containers, namespaces, cgroups and OCI runtime basics.",
+      "Build a multi-stage Docker image with minimal runtime dependencies and deterministic configuration.",
+      "Run services as non-root with read-only filesystems, dropped capabilities and resource limits.",
+      "Separate liveness from readiness and design graceful shutdown for inference workloads.",
+      "Use .dockerignore, pinned base images, SBOMs, vulnerability scanning and image signing.",
+      "Test a containerized inference API and diagnose common build/runtime failures."
+    ],
+    "prerequisites": [
+      "Python HTTP APIs and environment configuration",
+      "Linux process, filesystem, user and networking basics",
+      "Stage 9 Topics 1–4: experiments, model registry, evaluation gates and data provenance"
+    ],
+    "glossary": [
+      {
+        "term": "Container image",
+        "definition": "An immutable, layered filesystem and metadata bundle used to create containers."
+      },
+      {
+        "term": "Container",
+        "definition": "A process or process tree isolated by Linux namespaces and resource controls, sharing the host kernel."
+      },
+      {
+        "term": "Layer",
+        "definition": "A content-addressed filesystem change that can be cached and reused across images."
+      },
+      {
+        "term": "Multi-stage build",
+        "definition": "A Dockerfile pattern that separates build tools and intermediate artifacts from the final runtime image."
+      },
+      {
+        "term": "OCI",
+        "definition": "Open Container Initiative specifications for image formats, runtime bundles and distribution."
+      },
+      {
+        "term": "Namespace",
+        "definition": "A Linux isolation mechanism for views of process IDs, networking, mounts, users and other resources."
+      },
+      {
+        "term": "cgroup",
+        "definition": "A Linux mechanism to account for and limit CPU, memory, I/O and process resources."
+      },
+      {
+        "term": "Liveness probe",
+        "definition": "A check that answers whether the process is alive; failure may trigger restart."
+      },
+      {
+        "term": "Readiness probe",
+        "definition": "A check that answers whether the instance can safely receive traffic."
+      },
+      {
+        "term": "SBOM",
+        "definition": "Software Bill of Materials: machine-readable inventory of packages and components in an artifact."
+      },
+      {
+        "term": "Image digest",
+        "definition": "A cryptographic content identifier for an image manifest; unlike a mutable tag, it pins exact content."
+      },
+      {
+        "term": "Image signing",
+        "definition": "A cryptographic attestation binding an artifact digest to a trusted identity and build provenance."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "A Python API that works on a laptop can fail after deployment because its runtime differs, dependencies drift, model files are missing, it runs as root, or it exceeds the platform's memory and CPU limits. Containers package the runtime consistently, but a container is not automatically secure or production ready.",
+    "plainLanguage": "A container image is a reusable, immutable template. A container is a process started from that template with a configured filesystem, network, environment and resource limits. Images are composed of layers. Docker can reuse unchanged layers, so Dockerfile instruction order affects build speed and cache invalidation. Copy dependency manifests before frequently changing source code when building dependency-heavy applications.\n\nA multi-stage Dockerfile uses a builder stage for compilers, package managers and generated artifacts, then copies only the runtime files into a smaller final stage. The final image should contain only what the process needs. Use a small, maintained base image, pin it by digest for release reproducibility, avoid unnecessary packages, and keep credentials out of build arguments, environment layers and image history. A .dockerignore file prevents local secrets, virtual environments, Git history and caches from entering the build context.\n\nContainers are not virtual machines. They share the host kernel and rely on isolation boundaries such as namespaces, cgroups, capabilities and seccomp. Run as a dedicated non-root UID, drop Linux capabilities, block privilege escalation, use a read-only root filesystem, mount only required writable paths, bound memory/CPU/PIDs and avoid privileged mode. These controls reduce blast radius; they do not replace application authentication, authorization or network policy.\n\nHealth checks need distinct meanings. Liveness should be cheap and report whether the process can continue. Readiness should indicate whether critical startup work is complete, such as loading and verifying the model artifact. A model that has not loaded must not receive predictions. During shutdown, mark the instance unready first, stop accepting new work, drain in-flight requests and then exit within the platform's termination grace period.\n\nAI containers add model-specific concerns. Model weights may dwarf application code, so decide whether to bake immutable model artifacts into an image or fetch a versioned artifact at startup from authenticated storage. Baking improves startup determinism but increases image size and rebuild frequency. Fetching reduces image size but introduces network, authorization, cache, integrity and startup-latency dependencies. In both cases, pin the artifact version and verify its digest before loading.\n\nA secure release pipeline builds once and promotes the same image digest through environments. Generate an SBOM, scan OS and language dependencies, check base-image freshness, sign the digest and attach build provenance. A tag such as latest is a mutable pointer; deployment should reference an immutable digest. A scan is evidence, not proof of safety: review exploitability, runtime exposure, exceptions and patch SLAs.\n\nContainers do not solve capacity planning. Set realistic memory and CPU limits, test cold starts and peak concurrency, and understand that a model process may allocate weights, tokenizer caches, request buffers and framework workspaces. On a 512 MB service tier, a large transformer may not fit at all. Use a smaller quantized model, external inference endpoint, or separate model-serving host when memory measurements require it; do not hide an OOM by merely increasing concurrency.",
+    "mentalModel": "Source + pinned dependencies → multi-stage build → minimal image → scan/SBOM/sign → run as non-root with bounded resources → readiness and graceful shutdown → promote immutable digest.",
+    "limitations": [
+      "Containers share the host kernel; they are not a complete VM or security boundary.",
+      "A smaller image is not automatically safer if its base packages are stale or unsupported.",
+      "Readiness can verify model loading but must not leak secrets or perform expensive inference per probe.",
+      "Model weights and runtime caches often dominate memory, not the HTTP application itself.",
+      "Image scanning has false positives and cannot prove runtime behavior safe.",
+      "Baking weights into an image improves immutability but can make images huge; external artifacts add startup and integrity dependencies."
+    ],
+    "everydayAnalogy": "A shipping container standardizes the package and handling process, but it does not guarantee the cargo is safe, correctly labeled or within the ship's weight limit. You still inspect the cargo, seal it, record its origin, secure the container and respect capacity limits.",
+    "mathMadeSimple": "Suppose the process uses 90 MiB for Python/runtime, 110 MiB for model weights, 35 MiB for tokenizer/cache and 25 MiB for request buffers. Baseline memory is 260 MiB before peak activations and allocator overhead. A 256 MiB cgroup limit is therefore unsafe even if the idle process appears smaller. If each concurrent request adds 18 MiB and you allow four simultaneous requests, peak estimate becomes 260 + 4×18 = 332 MiB. Measure real peaks and leave headroom; do not size from image size.",
+    "productionImpact": "A reproducible image digest prevents environment drift; non-root/read-only execution reduces blast radius; probes protect traffic routing; resource limits prevent noisy-neighbor failures; SBOM, scanning and signing establish a verifiable release chain."
+  },
+  "useCase": {
+    "scenario": "Containerize a small inference API that loads a versioned model artifact at startup, exposes liveness/readiness endpoints, validates prediction requests and runs under a non-root identity with a read-only filesystem and bounded CPU/memory.",
+    "actors": [
+      "Developer",
+      "Docker/BuildKit",
+      "Image registry",
+      "Vulnerability scanner",
+      "SBOM generator",
+      "Signing identity",
+      "Container runtime",
+      "Orchestrator/load balancer"
+    ],
+    "inputs": [
+      "Application source and lockfile",
+      "Pinned base image digest",
+      "Model artifact and expected digest",
+      "Runtime configuration",
+      "CPU/memory/PID limits",
+      "Health and shutdown policy"
+    ],
+    "constraints": [
+      "Final runtime stage must not contain build toolchain or source secrets.",
+      "Process must not run as root.",
+      "Readiness remains false until model load and verification complete.",
+      "Request payload size and shape are bounded.",
+      "Image is promoted by digest, not a mutable tag.",
+      "Runtime resource limits and shutdown grace period are explicit."
+    ],
+    "outputs": [
+      "Minimal immutable image",
+      "SBOM and vulnerability report",
+      "Signed image digest and provenance",
+      "Healthy non-root inference process",
+      "Repeatable local smoke test"
+    ],
+    "successMetric": "The same image digest passes image policy, starts under non-root/read-only constraints, becomes ready only after model load, serves a valid smoke prediction and exits cleanly on SIGTERM."
+  },
+  "architecture": {
+    "diagram": "content/topics/containers/container-release-flow.mmd",
+    "components": [
+      "Source and dependency lock",
+      "Build context and .dockerignore",
+      "Multi-stage BuildKit builder",
+      "Minimal runtime image",
+      "Model artifact verification",
+      "SBOM and vulnerability scan",
+      "Image signature and provenance",
+      "Container runtime and cgroups",
+      "Health probes and graceful shutdown"
+    ],
+    "dataFlow": [
+      {
+        "from": "Source repository",
+        "to": "Build context",
+        "payload": "source + lockfile + pinned base digest",
+        "purpose": "Exclude secrets, caches and unrelated files."
+      },
+      {
+        "from": "Build context",
+        "to": "Builder stage",
+        "payload": "dependencies and source",
+        "purpose": "Compile/test and produce runtime artifacts."
+      },
+      {
+        "from": "Builder stage",
+        "to": "Runtime stage",
+        "payload": "minimal app + required artifacts",
+        "purpose": "Keep compilers and build dependencies out of production."
+      },
+      {
+        "from": "Runtime image",
+        "to": "Supply-chain checks",
+        "payload": "image digest",
+        "purpose": "Generate SBOM, scan packages and attach provenance."
+      },
+      {
+        "from": "Supply-chain checks",
+        "to": "Registry",
+        "payload": "approved signed digest",
+        "purpose": "Publish one immutable artifact for all environments."
+      },
+      {
+        "from": "Registry",
+        "to": "Container runtime",
+        "payload": "digest + runtime policy",
+        "purpose": "Start non-root process with resource and filesystem restrictions."
+      },
+      {
+        "from": "Container runtime",
+        "to": "Readiness router",
+        "payload": "health state",
+        "purpose": "Route traffic only after model load and validation."
+      }
+    ],
+    "trustBoundaries": [
+      "Build context is a data-exfiltration boundary; exclude credentials and local secrets.",
+      "Base images and dependencies are third-party supply-chain inputs.",
+      "Model artifact must be pinned and integrity-verified before deserialization/loading.",
+      "Runtime secrets are injected by deployment secret manager and never baked into image.",
+      "Container isolation is defense in depth, not a substitute for least-privilege application policy."
+    ],
+    "failurePaths": [
+      "Missing model artifact: startup fails and readiness remains false.",
+      "Invalid model digest: refuse to load untrusted artifact.",
+      "Container OOM: inspect cgroup memory events and reduce model/concurrency or move inference.",
+      "Read-only filesystem write: redirect temporary data to explicit tmpfs or remove runtime writes.",
+      "Liveness/readiness conflation: avoid restarting healthy but not-yet-ready startup.",
+      "Mutable image tag: pin release and rollback to immutable digest.",
+      "Critical CVE in base image: rebuild, rescan and promote a patched digest."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-09/container-demo/README.md",
+    "steps": [
+      {
+        "label": "Build context",
+        "explanation": "Use .dockerignore and pinned dependencies to define a reproducible build input.",
+        "expectedState": "secrets_excluded=true; source_hash=stable"
+      },
+      {
+        "label": "Multi-stage build",
+        "explanation": "Compile in builder and copy only runtime artifacts into the final image.",
+        "expectedState": "builder_tools_absent=true"
+      },
+      {
+        "label": "Supply-chain checks",
+        "explanation": "Generate SBOM, scan dependencies and bind evidence to image digest.",
+        "expectedState": "sbom=attached; scan=reviewed"
+      },
+      {
+        "label": "Harden runtime",
+        "explanation": "Run as UID 10001 with read-only root, dropped capabilities and bounded resources.",
+        "expectedState": "uid=10001; read_only=true"
+      },
+      {
+        "label": "Health and shutdown",
+        "explanation": "Load and verify model, become ready, serve smoke prediction and drain on SIGTERM.",
+        "expectedState": "ready=true; graceful_exit=0"
+      }
+    ],
+    "accessibility": [
+      "Each build and runtime stage has a textual description.",
+      "Runtime identity, resource limits and readiness are shown as explicit values.",
+      "All lab controls are keyboard accessible."
+    ],
+    "animation": {
+      "objective": "Trace a model-serving container from source build to hardened runtime and inject common failures.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Prepare build context",
+          "narration": "Exclude secrets, virtual environments and caches; pin the base image and dependencies.",
+          "input": "source + lockfile + base digest",
+          "transformation": "apply .dockerignore and deterministic build inputs",
+          "output": "context=clean; dependencies=pinned",
+          "visualState": "Reproducible build context"
+        },
+        {
+          "step": 2,
+          "title": "Build minimal runtime",
+          "narration": "Builder stage compiles the application; runtime stage copies only required files.",
+          "input": "builder stage + app.py + model artifact",
+          "transformation": "multi-stage copy and non-root UID/GID",
+          "output": "runtime_uid=10001; toolchain=absent",
+          "visualState": "Minimal image created"
+        },
+        {
+          "step": 3,
+          "title": "Scan and attest",
+          "narration": "Create SBOM, scan dependencies and sign the immutable image digest.",
+          "input": "image_digest=sha256:...",
+          "transformation": "SBOM + vulnerability policy + provenance",
+          "output": "sbom=attached; digest=signed",
+          "visualState": "Release evidence attached"
+        },
+        {
+          "step": 4,
+          "title": "Run with restrictions",
+          "narration": "Drop capabilities, use a read-only root filesystem and bound resources.",
+          "input": "mem=256MiB; cpu=0.5; pids=64",
+          "transformation": "namespaces + cgroups + seccomp policy",
+          "output": "non_root=true; read_only=true",
+          "visualState": "Hardened runtime"
+        },
+        {
+          "step": 5,
+          "title": "Become ready and drain",
+          "narration": "Load the model before readiness; on SIGTERM stop accepting traffic and drain requests.",
+          "input": "model loaded + health probes",
+          "transformation": "ready=true → serve → SIGTERM → ready=false → shutdown",
+          "output": "smoke_test=200; shutdown=graceful",
+          "visualState": "Safe service lifecycle"
+        }
+      ],
+      "controls": [
+        {
+          "name": "memory_limit_mib",
+          "min": 128,
+          "max": 1024,
+          "defaultValue": 256,
+          "effect": "Compare measured baseline and concurrency estimate against a cgroup memory limit."
+        },
+        {
+          "name": "concurrency",
+          "min": 1,
+          "max": 16,
+          "defaultValue": 2,
+          "effect": "Increase per-request memory and inspect estimated peak usage."
+        },
+        {
+          "name": "runtime_uid",
+          "min": 0,
+          "max": 10001,
+          "defaultValue": 10001,
+          "effect": "UID 0 demonstrates the prohibited root runtime; UID 10001 is the intended service identity."
+        },
+        {
+          "name": "model_verified",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "0 blocks readiness; 1 permits readiness after successful model load."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "The visualizer displays build stage, image digest status, UID, memory estimate, readiness and shutdown state as text."
+    }
+  },
+  "workedExample": {
+    "problem": "Estimate a safe memory limit and trace a hardened inference container lifecycle.",
+    "input": "Runtime=90 MiB, model=110 MiB, cache=35 MiB, request buffers=25 MiB, each concurrent request adds 18 MiB, concurrency=4.",
+    "steps": [
+      {
+        "operation": "Calculate baseline",
+        "reasoning": "Sum runtime, model, cache and request buffers.",
+        "result": "90 + 110 + 35 + 25 = 260 MiB"
+      },
+      {
+        "operation": "Estimate peak concurrency",
+        "reasoning": "Add four concurrent request allocations.",
+        "result": "260 + 4×18 = 332 MiB"
+      },
+      {
+        "operation": "Choose memory headroom",
+        "reasoning": "A 256 MiB limit is already below the estimate; choose a measured limit above expected peak plus safety margin.",
+        "result": "256 MiB → OOM risk; benchmark and set a larger limit or reduce concurrency/model size"
+      },
+      {
+        "operation": "Harden process",
+        "reasoning": "Run with UID 10001, read-only root, dropped capabilities and no-new-privileges.",
+        "result": "uid=10001; read_only=true; cap_drop=ALL"
+      },
+      {
+        "operation": "Verify lifecycle",
+        "reasoning": "Readiness becomes true only after model verification; SIGTERM marks unready and drains.",
+        "result": "ready=true → SIGTERM → ready=false → exit"
+      }
+    ],
+    "expectedOutput": "A measured resource budget rejects the 256 MiB limit for this example, and the service runs with a least-privilege identity and explicit health lifecycle."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-09/container-demo/app.py",
+      "runCommand": "cd examples/stage-09/container-demo && python -m app",
+      "testsPath": "examples/stage-09/test_container_demo.py",
+      "expectedResult": "A minimal inference API with model validation, bounded request body, liveness/readiness and SIGTERM shutdown."
+    },
+    {
+      "language": "docker",
+      "role": "production",
+      "path": "examples/stage-09/container-demo/Dockerfile",
+      "runCommand": "cd examples/stage-09/container-demo && docker build -t academy-inference:local . && docker compose up",
+      "testsPath": "examples/stage-09/test_container_demo.py",
+      "expectedResult": "Multi-stage non-root image with healthcheck and Compose resource/filesystem restrictions."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Build context contains secrets",
+      "symptom": "Credentials or local environment files appear in an image layer or build logs.",
+      "rootCause": "Missing .dockerignore or secrets passed through ARG/ENV.",
+      "recovery": "Exclude local secrets, use BuildKit secret mounts for build-time needs and runtime secret manager for runtime credentials.",
+      "regressionTest": "Assert .dockerignore excludes .env and inspect build context in CI."
+    },
+    {
+      "name": "Image works locally but fails in runtime",
+      "symptom": "Missing shared library, model file or package at container start.",
+      "rootCause": "Builder/runtime dependency mismatch or file omitted from final stage.",
+      "recovery": "Copy only verified runtime artifacts and run smoke tests against the final image.",
+      "regressionTest": "Build final image and invoke readiness and prediction endpoints."
+    },
+    {
+      "name": "Container runs as root",
+      "symptom": "A process compromise gains unnecessary container-level privileges.",
+      "rootCause": "No USER directive or runtime overrides the configured UID.",
+      "recovery": "Use dedicated non-root UID/GID and verify effective identity at runtime.",
+      "regressionTest": "Inspect container process UID and fail if UID is 0."
+    },
+    {
+      "name": "Out-of-memory kill",
+      "symptom": "Container exits with OOMKilled during model load or concurrent inference.",
+      "rootCause": "Memory sizing ignores weights, caches, activations and concurrent requests.",
+      "recovery": "Profile cgroup peak memory, quantize/smaller model, reduce concurrency or use a separate inference service.",
+      "regressionTest": "Load test under realistic memory cap and record peak/RSS/cgroup events."
+    },
+    {
+      "name": "Readiness reports too early",
+      "symptom": "Traffic reaches an instance before the model is available.",
+      "rootCause": "Liveness and readiness are conflated or readiness always returns 200.",
+      "recovery": "Keep readiness false until artifact verification and model initialization finish.",
+      "regressionTest": "Assert readiness is 503 before initialization and 200 afterward."
+    },
+    {
+      "name": "Mutable image promotion",
+      "symptom": "Staging and production resolve the same tag to different bytes.",
+      "rootCause": "Deployment references mutable tags such as latest.",
+      "recovery": "Promote and deploy immutable image digests with signed provenance.",
+      "regressionTest": "Assert deployment manifest references sha256 digest, not only tag."
+    }
+  ],
+  "practice": {
+    "guided": "Read the Dockerfile and identify which stage contains build tools, which UID runs the service, and which endpoints are used for liveness and readiness.",
+    "independent": "Build a multi-stage image, scan it, run non-root with a read-only filesystem and verify health and shutdown.",
+    "realWorld": "Containerize a small model API with pinned model artifact, resource profile, SBOM, image signature, readiness and deployment digest.",
+    "expertExtension": "Add BuildKit cache and secret mounts, distroless runtime, cosign keyless signing, SLSA provenance, Trivy/Grype scans, Kubernetes probes, seccomp/AppArmor, model artifact signature and GPU runtime policy.",
+    "guidedExercise": {
+      "title": "Estimate container memory before choosing limits",
+      "instructions": "Calculate baseline and peak memory for a model-serving container and explain why image size is not memory usage.",
+      "starterCode": "def peak_memory(runtime, model, cache, buffers, per_request, concurrency):\n    # Return baseline and estimated peak MiB\n    raise NotImplementedError",
+      "solutionCode": "def peak_memory(runtime, model, cache, buffers, per_request, concurrency):\n    baseline = runtime + model + cache + buffers\n    return {'baseline_mib': baseline, 'peak_mib': baseline + per_request * concurrency}",
+      "unitTests": "estimate = peak_memory(90, 110, 35, 25, 18, 4)\nassert estimate['baseline_mib'] == 260\nassert estimate['peak_mib'] == 332"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Create a container release inspector for an inference API.",
+      "steps": [
+        "Build the sample image and inspect its layers and digest.",
+        "Compare builder and runtime stages; verify no compiler toolchain remains.",
+        "Inspect .dockerignore and confirm credentials/caches are excluded.",
+        "Run the container and verify effective UID is non-root.",
+        "Enable read-only filesystem, dropped capabilities and resource limits.",
+        "Check liveness and readiness before and after model load.",
+        "Send valid, invalid and oversized prediction payloads.",
+        "Send SIGTERM and verify readiness drops before shutdown completes.",
+        "Generate SBOM, scan dependencies and record image digest for promotion."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "What does a multi-stage build primarily achieve?",
+        "options": [
+          "It makes the container a virtual machine",
+          "It separates build tools from the minimal runtime image",
+          "It removes the host kernel",
+          "It automatically encrypts all secrets"
+        ],
+        "correctIndex": 1,
+        "explanation": "The runtime stage receives only the files needed to run the service."
+      },
+      {
+        "question": "When should readiness become healthy?",
+        "options": [
+          "Immediately when process starts",
+          "After critical initialization and model verification complete",
+          "Only after the first user request",
+          "Whenever liveness succeeds"
+        ],
+        "correctIndex": 1,
+        "explanation": "Readiness protects traffic routing until the service can safely handle requests."
+      },
+      {
+        "question": "Why deploy by image digest?",
+        "options": [
+          "Digest is a mutable friendly label",
+          "It pins exact image content and avoids tag drift",
+          "It reduces model memory automatically",
+          "It bypasses vulnerability scanning"
+        ],
+        "correctIndex": 1,
+        "explanation": "A digest is content-addressed and immutable for a given manifest."
+      },
+      {
+        "question": "A model container OOMs at 256 MiB. What is the correct first step?",
+        "options": [
+          "Increase concurrency",
+          "Measure process and cgroup peak memory, then adjust model/concurrency/limits",
+          "Remove readiness checks",
+          "Use latest tag"
+        ],
+        "correctIndex": 1,
+        "explanation": "Capacity decisions must use measured memory for weights, caches, activations and concurrent requests."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Reproducible image build",
+        "weight": 20,
+        "evidence": "Multi-stage Dockerfile, clean context, pinned inputs and smoke test."
+      },
+      {
+        "criterion": "Runtime hardening",
+        "weight": 25,
+        "evidence": "Non-root identity, read-only filesystem, dropped capabilities and resource bounds."
+      },
+      {
+        "criterion": "Service lifecycle",
+        "weight": 20,
+        "evidence": "Separate liveness/readiness, model verification and graceful shutdown."
+      },
+      {
+        "criterion": "Supply-chain evidence",
+        "weight": 20,
+        "evidence": "SBOM, scan result, immutable digest and signature/provenance process."
+      },
+      {
+        "criterion": "Capacity and failure diagnosis",
+        "weight": 15,
+        "evidence": "Memory estimate, OOM analysis and regression tests."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Container sample tests pass.",
+      "Final image runs non-root and healthcheck passes.",
+      "Read-only and resource limits are demonstrated.",
+      "Model artifact is validated before readiness.",
+      "Release digest and supply-chain checks are documented."
+    ]
+  },
+  "references": [
+    {
+      "title": "Docker documentation: build best practices",
+      "url": "https://docs.docker.com/build/building/best-practices/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "Docker documentation: multi-stage builds",
+      "url": "https://docs.docker.com/build/building/multi-stage/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "Docker documentation: build secrets",
+      "url": "https://docs.docker.com/build/building/secrets/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "Open Container Initiative specifications",
+      "url": "https://opencontainers.org/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "NIST SP 800-190: Application Container Security Guide",
+      "url": "https://csrc.nist.gov/pubs/sp/800/190/final",
+      "sourceType": "standard",
+      "checkedOn": "2026-11-21"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "FROM python:3.11-slim AS builder",
+      "explanation": "The builder stage may contain compilers and tools; they are not copied wholesale into the runtime image."
+    },
+    {
+      "lines": "COPY --from=builder ... /app/app.py",
+      "explanation": "Copy only the required artifact into the final stage. Avoid copying virtual environments built against a different runtime."
+    },
+    {
+      "lines": "USER 10001:10001",
+      "explanation": "A dedicated unprivileged identity limits damage from an application compromise."
+    },
+    {
+      "lines": "HEALTHCHECK ... /health/ready",
+      "explanation": "Readiness verifies critical initialization. Keep liveness separate so slow model loading does not trigger restart loops."
+    },
+    {
+      "lines": "read_only: true; cap_drop: [ALL]",
+      "explanation": "Read-only root and dropped capabilities reduce runtime write surface and kernel privilege. Mount only explicitly required writable paths."
+    },
+    {
+      "lines": "docker build ... && scan && sign digest",
+      "explanation": "Build once, generate SBOM, scan and sign the immutable digest; promote that same digest between environments."
+    }
+  ]
+}
