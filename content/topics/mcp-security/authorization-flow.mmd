@@ -1,0 +1,25 @@
+sequenceDiagram
+ participant C as MCP Host/Client
+ participant P as MCP Resource Server
+ participant M as PRM Metadata
+ participant A as Authorization Server
+ participant V as Token Verifier
+ participant G as Tool/Domain Gateway
+ C->>P: tools/call (no bearer)
+ P-->>C: 401 + WWW-Authenticate resource_metadata
+ C->>M: GET RFC 9728 PRM
+ M-->>C: resource + authorization_servers + scopes
+ C->>A: OAuth code + PKCE + resource indicator
+ A-->>C: resource-bound access token
+ C->>P: stateless MCP request + Bearer token
+ P->>V: Verify signature + iss + aud + exp + nbf
+ V-->>P: Verified claims + scopes
+ P->>P: Required method/tool scope?
+ alt Missing scope
+  P-->>C: 403 insufficient_scope + step-up
+ else Scope valid
+  P->>G: subject + tenant + requested object
+  G->>G: Object/tenant authorization + policy
+  G-->>P: Result or denial
+  P-->>C: MCP result + redacted audit
+ end
