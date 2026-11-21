@@ -20,6 +20,6 @@
   "expected": {
     "providerCharges": 1,
     "finalState": "COMPLETED",
-    "finalVersion": 4
+    "finalVersion": 5
   }
 }
