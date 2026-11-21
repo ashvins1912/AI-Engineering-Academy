@@ -45,6 +45,8 @@ import MCPObservabilityVisualizer from './components/MCPObservabilityVisualizer'
 import MCPObservabilityLessonDetails from './components/MCPObservabilityLessonDetails'
 import A2AVisualizer from './components/A2AVisualizer'
 import A2ALessonDetails from './components/A2ALessonDetails'
+import IBMACPMigrationVisualizer from './components/IBMACPMigrationVisualizer'
+import IBMACPLessonDetails from './components/IBMACPLessonDetails'
 import ArchitectureFlow from './components/ArchitectureFlow'
 import StudentReflection from './components/StudentReflection'
 
@@ -80,6 +82,7 @@ export default function App() {
   const [showMCPTransports, setShowMCPTransports] = useState(false)
   const [showMCPObservability, setShowMCPObservability] = useState(false)
   const [showA2A, setShowA2A] = useState(false)
+  const [showIBMAMigration, setShowIBMAMigration] = useState(false)
 
   useEffect(() => { localStorage.setItem('ai-academy.completed.v1', JSON.stringify(completed)) }, [completed])
   useEffect(() => { localStorage.setItem('ai-academy.bookmarks.v1', JSON.stringify(bookmarks)) }, [bookmarks])
@@ -150,6 +153,8 @@ export default function App() {
         {active.id==='stage-7'&&showMCPObservability&&<><MCPObservabilityVisualizer/><MCPObservabilityLessonDetails/></>}
         {active.id==='stage-7'&&<div className="phase-lab-launch"><div><strong>Stage 7 · Topic 6 — Agent2Agent (A2A) protocol</strong><p>Discover independent agents, validate Agent Cards, negotiate interfaces, delegate tasks, stream progress and validate artifacts across trust boundaries.</p></div><button className="lab-primary" onClick={()=>setShowA2A(v=>!v)}>{showA2A?'Hide A2A lab':'Open A2A interoperability mastery lab'} <ChevronRight size={15}/></button></div>}
         {active.id==='stage-7'&&showA2A&&<><A2AVisualizer/><A2ALessonDetails/></>}
+        {active.id==='stage-7'&&<div className="phase-lab-launch"><div><strong>Stage 7 · Topic 7 — IBM/BeeAI ACP history and A2A migration</strong><p>Understand the legacy HTTP/SSE protocol, current A2A direction, semantic mapping, compatibility adapters, parity testing and safe cutover.</p></div><button className="lab-primary" onClick={()=>setShowIBMAMigration(v=>!v)}>{showIBMAMigration?'Hide migration lab':'Open ACP migration mastery lab'} <ChevronRight size={15}/></button></div>}
+        {active.id==='stage-7'&&showIBMAMigration&&<><IBMACPMigrationVisualizer/><IBMACPLessonDetails/></>}
         {active.modules.map((m,mi)=><article className="module" key={m.id}><button className="module-head" onClick={()=>setExpanded(v=>v.includes(m.id)?v.filter(x=>x!==m.id):[...v,m.id])}><div className="module-index">{String(mi+1).padStart(2,'0')}</div><div className="module-title"><h3>{m.title}</h3><p>{m.description}</p><span>{m.lessons.length} lessons · {m.lessons.filter(l=>completed.includes(l.id)).length} completed</span></div><ChevronRight className={expanded.includes(m.id)?'rotate':''} size={18}/></button>
           {expanded.includes(m.id)&&<div className="lesson-list">{m.lessons.map(l=><div className={`lesson ${completed.includes(l.id)?'lesson-complete':''}`} key={l.id}><button className={`check ${completed.includes(l.id)?'done':''}`} onClick={()=>toggle(l.id)} aria-label={completed.includes(l.id)?'Mark lesson incomplete':'Mark lesson complete'}>{completed.includes(l.id)?<CircleCheck size={18}/>:<span/>}</button><button className="lesson-open" onClick={()=>setSelectedLesson(l)}><div className="lesson-body"><strong>{l.title}</strong><p>{l.depth}</p><div className="lab"><Code2 size={13}/><span>LAB</span>{l.lab}</div></div></button><button className={`bookmark-btn ${bookmarks.includes(l.id)?'saved':''}`} onClick={()=>toggleBookmark(l.id)} aria-label={bookmarks.includes(l.id)?'Remove bookmark':'Bookmark lesson'}><Bookmark size={16} fill={bookmarks.includes(l.id)?'currentColor':'none'}/></button></div>)}</div>}
         </article>)}
