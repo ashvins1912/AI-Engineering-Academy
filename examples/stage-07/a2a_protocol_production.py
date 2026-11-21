@@ -93,13 +93,13 @@ class A2ATaskStore:
             if message is not None:
                 history.append(message)
             new_version = row["version"] + 1
-            self.db.execute(
+            cursor = self.db.execute(
                 "UPDATE a2a_tasks SET status=?,version=?,history_json=?,updated_at=? "
                 "WHERE task_id=? AND tenant_id=? AND version=?",
                 (target, new_version, json.dumps(history, sort_keys=True), self.clock(),
                  task_id, tenant_id, expected_version),
             )
-            if self.db.total_changes == 0:
+            if cursor.rowcount != 1:
                 raise RuntimeError("task version conflict")
             self._append_event(task_id, "status", {"status": target, "version": new_version})
             self.db.execute("COMMIT")
