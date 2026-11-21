@@ -1,0 +1,15 @@
+flowchart TD
+ W[Signed webhook / schedule trigger] --> V[Verify signature + deduplicate]
+ V --> N[n8n workflow trigger]
+ N --> A{Supported API exists?}
+ A -->|Yes| C[Typed API connector + scoped OAuth]
+ A -->|No| B[Isolated browser worker]
+ B --> O[HTTPS origin allowlist + accessible locators]
+ C --> R[Validate connector result]
+ O --> R
+ R --> P[Prepare exact high-impact action preview]
+ P --> H[Authenticated human approval]
+ H -->|Reject / expire| X[Stop + audit]
+ H -->|Approve exact payload hash| I[Revalidate policy + idempotency]
+ I --> E[Execute once via connector]
+ E --> L[Persist result + redacted audit]
