@@ -21,5 +21,5 @@ class SQLiteCheckpointTests(unittest.TestCase):
   path=self.store.db.execute("PRAGMA database_list").fetchone()[2]
   self.store.save("tenant-a","t",0,{"v":1},"a",{});self.store.close()
   self.store=SQLiteGraphCheckpoints(path,clock=lambda:101.0)
-  self.assertEqual(self.store.load("tenant-a","t")["state"]["values"],{"v":1})
+  self.assertEqual(self.store.load("tenant-a","t")["state"],{"v":1})
 if __name__=="__main__":unittest.main()
