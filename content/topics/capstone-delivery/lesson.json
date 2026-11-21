@@ -1,0 +1,632 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "capstone-delivery",
+    "title": "Deploy and Operate the Enterprise AI Platform",
+    "stage": 11,
+    "estimatedMinutes": 480
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Create an immutable release manifest that binds code, container, model, prompt, index, schema, evaluation and supply-chain evidence.",
+      "Design CI/CD quality gates for tests, security, RLS, evaluation, load, cost, SLO, SBOM, signatures and provenance.",
+      "Use expand/contract database migrations and compatibility checks to support rolling deployments and safe rollback.",
+      "Plan staged rollout strategies with canary metrics, automated promotion thresholds and verified rollback bundles.",
+      "Operate the platform with SLO dashboards, trace/log correlation, alert runbooks, backup/restore and incident exercises.",
+      "Demonstrate deployment readiness through a deterministic release gate, canary evaluator, migration checker and restore validation."
+    ],
+    "prerequisites": [
+      "Stage 11 Topics 1–2 architecture and vertical-slice implementation",
+      "Stage 9 deployment strategies and model serving",
+      "Stage 10 supply chain, tracing, SLOs, cost and incident response",
+      "Basic Docker, CI/CD, database migration and monitoring concepts"
+    ],
+    "glossary": [
+      {
+        "term": "Release manifest",
+        "definition": "An immutable record binding exact code, image, model, prompt, index, schema and verification artifacts for one release."
+      },
+      {
+        "term": "Artifact digest",
+        "definition": "A cryptographic hash identifying exact artifact bytes, used instead of mutable tags for promotion and rollback."
+      },
+      {
+        "term": "Expand/contract migration",
+        "definition": "A database change sequence that first adds backward-compatible structures, migrates usage/data, then removes old structures after old versions are drained."
+      },
+      {
+        "term": "Canary rollout",
+        "definition": "A staged deployment that sends a small traffic share to a candidate and compares safety, quality, reliability and cost signals before promotion."
+      },
+      {
+        "term": "Rollback bundle",
+        "definition": "A verified compatible prior release and its required model, prompt, index and schema artifacts."
+      },
+      {
+        "term": "Readiness probe",
+        "definition": "A check that determines whether an instance can safely receive traffic."
+      },
+      {
+        "term": "Recovery point objective",
+        "definition": "The maximum acceptable data loss measured in time; it guides backup frequency and replication."
+      },
+      {
+        "term": "Recovery time objective",
+        "definition": "The target time to restore service after a disruptive event."
+      },
+      {
+        "term": "Operational runbook",
+        "definition": "A tested procedure describing alert meaning, diagnosis, mitigation, escalation and recovery verification."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "A correct capstone can still fail in production if its release is not reproducible, model and index versions are mismatched, migrations break rolling deployments, canary metrics ignore quality or cost, or rollback restores code without compatible data and prompts. Deployment is a controlled state transition, not simply building a container and pressing deploy.",
+    "plainLanguage": "Treat a release as a bundle, not a single application image. Record the source commit, container digest, model digest, prompt/template version, embedding model, index snapshot, database schema, API/event contract versions, evaluation report, SBOM, provenance attestation, signature and rollback target. Promote the same immutable bundle through environments. Never rebuild from a mutable tag between staging and production because the bytes may change.\n\nMake CI a sequence of evidence gates. Run formatting, type checks, unit/integration/contract tests, tenant/RLS tests, security scans, model/retrieval/safety evaluations, load tests, cost checks, migration compatibility, SBOM/license/vulnerability checks and signature/provenance verification. A green compile is necessary but not enough. The release manifest should point to the exact evidence that passed, including test dataset and evaluation version.\n\nDatabase changes need backward compatibility. In an expand/contract rollout, first add nullable columns, new tables or compatible indexes; deploy code that can read old and new forms; backfill and verify data; switch writes/reads; drain old instances; only then contract by removing obsolete structures. If a migration is irreversible or incompatible with the previous release, define a forward-fix or restore plan before deployment. Do not assume rolling back the image reverses the schema.\n\nUse staged promotion. Deploy to a test environment, run smoke and acceptance checks, then route a small canary percentage. Compare candidate and baseline error rate, p95 latency, quality/safety scores, cost per successful task, queue depth and saturation. Define thresholds before rollout. Automatically halt or roll back when a critical signal breaches its threshold; avoid promoting based on low traffic or a single noisy metric. Preserve enough sample size and evaluation coverage for meaningful decisions.\n\nRollback must restore a compatible set: code/image, model, prompt, embedding model, index snapshot, schema compatibility and feature flags. Keep the previous release manifest and artifacts available. A rollback that restores an old binary against a new incompatible schema or index is not a rollback. Practice both rollback and data restore, and record RPO/RTO objectives.\n\nOperate the service with clear signals. Dashboards should show user-centered availability and latency SLOs, retrieval and model errors, time-to-first-token, queue wait, tool outcomes, quality evaluation, safety events, cost per successful task and tenant-level budget consumption. Traces explain request paths; structured logs explain decisions; metrics show aggregate behavior. Alerts need severity, owner, runbook and a clear action. Health endpoints should distinguish process liveness from dependency readiness and should not leak credentials or customer data.\n\nFinally, rehearse failure. Test provider outage, vector index unavailability, failed migration, bad model evaluation, canary regression, queue replay, expired credentials, backup restore and rollback. Verify the system returns to a known-good state, not merely a healthy process. Deployment and operations are part of the product's security and quality model.",
+    "mentalModel": "Immutable release bundle → CI evidence gates → compatible expand/migrate/contract → staged environment promotion → canary with reliability/quality/cost guardrails → promote or rollback compatible bundle → monitor SLOs → backup/restore and incident drills.",
+    "limitations": [
+      "A release manifest can bind artifacts and evidence but does not prove each test or attestation is trustworthy unless signatures and provenance identities are verified.",
+      "Canary thresholds require representative traffic, sufficient sample size and stable evaluation datasets; noisy low-volume metrics can mislead.",
+      "Database rollback is not always safe; destructive migrations may require forward fixes or point-in-time restore.",
+      "A green SLO does not prove answer quality, safety or tenant isolation; keep these as separate release gates.",
+      "Backup success is not restore success; regularly test data integrity, tenant boundaries, RPO and RTO.",
+      "The simulator validates release policy logic but does not deploy containers, provision infrastructure or test a real cluster/provider."
+    ],
+    "everydayAnalogy": "An airline does not put a new aircraft into full service after checking that the engine starts. It verifies parts, maintenance records, crew procedures, safety tests, controlled flights and emergency plans. An AI release needs the same evidence and staged confidence.",
+    "mathMadeSimple": "Suppose a canary receives 2,000 requests, 20 fail, p95 latency is 1.7 seconds, quality score is 0.92 and cost per successful task is $0.018. Error rate is 20/2,000 = 1%. If the release threshold is 0.5%, the canary fails and rolls back even if latency and quality pass. A single failed critical gate blocks promotion.",
+    "productionImpact": "Ship a signed immutable release bundle, enforce CI evidence gates, use compatible schema migrations, promote through canaries with explicit quality/reliability/cost thresholds, keep a verified rollback bundle, and rehearse backup/restore and incident runbooks."
+  },
+  "useCase": {
+    "scenario": "Release a new RAG-agent platform version that changes API schema, adds a document metadata column, upgrades the embedding model and changes the prompt template. The candidate passes unit tests but the canary has elevated error rate. The team must halt promotion, preserve the current release, roll back compatibly and verify data restore readiness.",
+    "actors": [
+      "Developer and CI pipeline",
+      "Artifact builder and signing identity",
+      "SBOM/provenance/evaluation services",
+      "Release manager and deployment controller",
+      "Database migration owner",
+      "Canary analysis and observability backend",
+      "On-call incident commander",
+      "Backup/restore operator"
+    ],
+    "inputs": [
+      "Code commit and container/model/prompt/index digests",
+      "API/event and database schema versions",
+      "Unit/integration/security/evaluation/load/cost evidence",
+      "SBOM, license scan, provenance and signature",
+      "Canary traffic and baseline comparison metrics",
+      "Previous known-good release manifest and backup snapshot"
+    ],
+    "constraints": [
+      "Every artifact is pinned by immutable digest or version.",
+      "Candidate promotion requires all mandatory CI/security/evaluation gates.",
+      "Migrations remain compatible with old and new application versions during rollout.",
+      "Canary failure on a critical threshold stops promotion and restores the compatible bundle.",
+      "Rollback target includes matching model, prompt, index and schema compatibility.",
+      "Backups are verified by restore tests and tenant-integrity checks.",
+      "No production deployment or paid infrastructure is provisioned by the lab."
+    ],
+    "outputs": [
+      "Signed release manifest and evidence references",
+      "Migration plan with expand/backfill/contract phases",
+      "Canary promotion/rollback decision",
+      "Verified rollback bundle and backup/restore report",
+      "Operational dashboard, alert and runbook pack"
+    ],
+    "successMetric": "The release is reproducible and auditable; a failed canary halts promotion; rollback restores a compatible known-good bundle; backup restore passes integrity and tenant-boundary checks."
+  },
+  "architecture": {
+    "diagram": "content/topics/capstone-delivery/release-and-operations-pipeline.mmd",
+    "components": [
+      "Source repository and reviewed commit",
+      "CI validation and test/evaluation gates",
+      "Isolated build and SBOM/provenance generator",
+      "Artifact signing and immutable registry",
+      "Release manifest and compatibility checker",
+      "Database migration orchestrator",
+      "Staging and canary deployment controller",
+      "SLO/quality/cost canary evaluator",
+      "Rollback bundle and backup/restore system",
+      "Operations dashboard, alert router and runbooks"
+    ],
+    "dataFlow": [
+      {
+        "from": "Source repository",
+        "to": "CI gates",
+        "payload": "Reviewed source commit and versioned contracts",
+        "purpose": "Run static, unit, integration, security and compatibility tests."
+      },
+      {
+        "from": "CI gates",
+        "to": "Build and evidence generator",
+        "payload": "Validated source, dependency lockfiles and evaluation data",
+        "purpose": "Build immutable image and generate SBOM/provenance evidence."
+      },
+      {
+        "from": "Build and evidence generator",
+        "to": "Artifact signer/registry",
+        "payload": "Image/model/prompt/index digests and attestations",
+        "purpose": "Sign and store immutable artifacts and their evidence."
+      },
+      {
+        "from": "Artifact registry",
+        "to": "Release manifest",
+        "payload": "Verified artifact digests and compatibility metadata",
+        "purpose": "Bind code, model, prompt, index, schema and rollback target."
+      },
+      {
+        "from": "Release manifest",
+        "to": "Migration orchestrator",
+        "payload": "Expand/backfill/contract plan",
+        "purpose": "Apply backward-compatible schema changes and verify data state."
+      },
+      {
+        "from": "Migration orchestrator",
+        "to": "Staging/canary controller",
+        "payload": "Candidate bundle and migration status",
+        "purpose": "Deploy a controlled traffic share after smoke checks."
+      },
+      {
+        "from": "Canary controller",
+        "to": "Canary evaluator",
+        "payload": "Error rate, p95, quality, safety, cost and saturation",
+        "purpose": "Promote only when all critical thresholds and sample-size gates pass."
+      },
+      {
+        "from": "Canary evaluator",
+        "to": "Promotion or rollback",
+        "payload": "Decision and evidence",
+        "purpose": "Promote candidate or restore compatible known-good release."
+      },
+      {
+        "from": "Operations telemetry",
+        "to": "Alert/runbook system",
+        "payload": "SLO burn, errors, quality, cost and backup status",
+        "purpose": "Support on-call response and continuous operational readiness."
+      }
+    ],
+    "trustBoundaries": [
+      "Source code and pull-request content are untrusted until CI policy and review pass.",
+      "Build runners receive short-lived scoped credentials; untrusted jobs cannot access release signing keys.",
+      "Artifact registry accepts only signed immutable digests with provenance and SBOM evidence.",
+      "Deployment controller verifies manifest and compatibility before applying changes.",
+      "Canary evaluator uses trusted telemetry and representative evaluation datasets; missing telemetry blocks promotion.",
+      "Rollback and backup artifacts are protected, tested and access-controlled.",
+      "Operational dashboards and incident channels expose only redacted, authorized telemetry."
+    ],
+    "failurePaths": [
+      "CI gate failure: block artifact publication and attach failing evidence.",
+      "Signature/provenance mismatch: quarantine the artifact and stop release.",
+      "Migration incompatibility: halt rollout; use backward-compatible migration or forward-fix plan.",
+      "Canary error/quality/cost threshold breach: stop traffic shift and restore previous compatible bundle.",
+      "Rollback model/index mismatch: reject rollback until a compatible manifest is assembled.",
+      "Backup restore test fails: mark recovery not ready and repair before a destructive change.",
+      "Telemetry unavailable: pause promotion rather than interpreting missing metrics as healthy."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-11/capstone-delivery/release-scenarios.json",
+    "steps": [
+      {
+        "label": "Build immutable bundle",
+        "explanation": "Bind code, image, model, prompt, index, schema and evidence to exact versions/digests.",
+        "expectedState": "Reproducible signed release manifest."
+      },
+      {
+        "label": "Run CI evidence gates",
+        "explanation": "Validate tests, security, evaluation, cost, SLO, SBOM, provenance and signatures.",
+        "expectedState": "Candidate has complete passing evidence."
+      },
+      {
+        "label": "Apply compatible migration",
+        "explanation": "Expand, backfill and verify before contracting after old instances are drained.",
+        "expectedState": "Old and new versions remain compatible during rollout."
+      },
+      {
+        "label": "Deploy canary",
+        "explanation": "Send a small traffic share to the candidate and compare it against baseline thresholds.",
+        "expectedState": "Canary metrics have adequate sample size."
+      },
+      {
+        "label": "Promote or rollback",
+        "explanation": "Promote only when all critical thresholds pass; otherwise restore the known-good compatible bundle.",
+        "expectedState": "Safe promotion or verified rollback."
+      },
+      {
+        "label": "Operate and rehearse recovery",
+        "explanation": "Monitor SLO/quality/cost and test backup restore, incident runbooks and RPO/RTO.",
+        "expectedState": "Operational readiness evidence."
+      }
+    ],
+    "accessibility": [
+      "Each stage includes text for artifacts, gates and decisions; promotion and rollback are labeled without relying on color.",
+      "The release lifecycle is available as a static diagram and the simulation can be stepped stage by stage."
+    ],
+    "animation": {
+      "objective": "Move an immutable RAG-agent release through CI evidence, schema compatibility, canary analysis and either promotion or compatible rollback.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Assemble release bundle",
+          "narration": "Bind code, image, model, prompt, embedding, index and schema versions with SBOM, provenance and signature.",
+          "input": "Reviewed commit and immutable artifacts",
+          "transformation": "Create and sign the release manifest.",
+          "output": "Verified candidate bundle",
+          "visualState": "bundle"
+        },
+        {
+          "step": 2,
+          "title": "Pass CI gates",
+          "narration": "Run tests, RLS, security, model quality, safety, load, cost and compatibility checks.",
+          "input": "Candidate manifest and evidence",
+          "transformation": "Evaluate every required gate; missing evidence blocks release.",
+          "output": "Gate decision",
+          "visualState": "gates"
+        },
+        {
+          "step": 3,
+          "title": "Migrate compatibly",
+          "narration": "Expand schema, backfill, verify, switch usage and contract only after old instances drain.",
+          "input": "Migration plan and current schema",
+          "transformation": "Apply backward-compatible steps and verify rollback/forward-fix plan.",
+          "output": "Compatible data state",
+          "visualState": "migration"
+        },
+        {
+          "step": 4,
+          "title": "Canary traffic",
+          "narration": "Route a small percentage of traffic to the candidate and compare reliability, quality and cost.",
+          "input": "Canary metrics and thresholds",
+          "transformation": "Check error rate, p95, quality, safety, cost and sample size.",
+          "output": "Canary evaluation",
+          "visualState": "canary"
+        },
+        {
+          "step": 5,
+          "title": "Promote or rollback",
+          "narration": "A failed critical threshold halts promotion and restores the previous compatible bundle.",
+          "input": "Canary decision and rollback manifest",
+          "transformation": "Promote candidate or restore known-good image/model/prompt/index/schema set.",
+          "output": "Safe release state",
+          "visualState": "rollout"
+        },
+        {
+          "step": 6,
+          "title": "Operate and recover",
+          "narration": "Monitor SLOs and quality, alert on burn, and rehearse backup restore and incident response.",
+          "input": "Production telemetry and recovery evidence",
+          "transformation": "Execute runbooks and verify RPO/RTO and tenant data integrity.",
+          "output": "Operational readiness",
+          "visualState": "operations"
+        }
+      ],
+      "controls": [
+        {
+          "name": "canary_error_rate",
+          "min": 0,
+          "max": 100,
+          "defaultValue": 10,
+          "effect": "Set canary error rate in per-mille units; values above the configured threshold stop promotion."
+        },
+        {
+          "name": "quality_score",
+          "min": 0,
+          "max": 100,
+          "defaultValue": 92,
+          "effect": "Set evaluation quality score in percentage points; values below the release floor trigger rollback."
+        },
+        {
+          "name": "migration_compatibility",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "Toggle whether old and new application versions can safely use the schema during rolling deployment."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Six narrated states describe bundle, gates, migration, canary and rollback decisions. Threshold values and outcomes are written in text and can be inspected step by step."
+    }
+  },
+  "workedExample": {
+    "problem": "A new RAG-agent release changes the embedding model, prompt template and document metadata schema. CI gates pass and a canary receives 2,000 requests. Twenty fail, p95 latency is 1.7 seconds, quality is 0.92 and cost per successful task is $0.018. The error-rate threshold is 0.5%.",
+    "input": "Candidate manifest includes code/image/model/prompt/index/schema versions, SBOM, provenance, signature, evaluation report and previous release bundle. Canary error rate=20/2000=1%; threshold=0.5%.",
+    "steps": [
+      {
+        "operation": "Verify release manifest",
+        "reasoning": "Check immutable image/model digests, source commit, prompt/index/schema versions, SBOM, provenance, signature and rollback bundle.",
+        "result": "Candidate is reproducible and its evidence is bound to exact artifacts."
+      },
+      {
+        "operation": "Check migration compatibility",
+        "reasoning": "Add the new metadata column with an expand migration, keep old code compatible, backfill, verify and delay contract until old instances are drained.",
+        "result": "Rolling deployment can run old and new application versions safely."
+      },
+      {
+        "operation": "Evaluate canary",
+        "reasoning": "Error rate is 20/2000=1%, which exceeds the 0.5% threshold even though p95, quality and cost are within their targets.",
+        "result": "Canary fails; promotion is halted."
+      },
+      {
+        "operation": "Restore compatible release",
+        "reasoning": "Use the previous signed manifest with matching image, model, prompt, index and schema compatibility. Do not roll back only the container.",
+        "result": "Traffic returns to the known-good release bundle."
+      },
+      {
+        "operation": "Verify recovery",
+        "reasoning": "Run smoke tests, RLS/tenant tests, quality evaluation, SLO checks, queue drain and data-integrity checks.",
+        "result": "Rollback is confirmed by evidence, not just process health."
+      },
+      {
+        "operation": "Record operations evidence",
+        "reasoning": "Capture decision metrics, release digests, migration state, rollback result and incident timeline; update runbook if needed.",
+        "result": "Auditable canary failure and recovery record."
+      }
+    ],
+    "expectedOutput": "The release is not promoted because its 1% canary error rate breaches the 0.5% limit. The platform restores the prior compatible bundle, verifies security/data/quality/SLO gates and records the evidence."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-11/capstone-delivery/release_gate.py",
+      "runCommand": "python examples/stage-11/capstone-delivery/release_gate.py",
+      "testsPath": "examples/stage-11/test_capstone_delivery.py",
+      "expectedResult": "Offline release gate validates immutable manifests and evidence, checks migration compatibility, evaluates canary thresholds, chooses promotion/rollback and verifies backup restore evidence."
+    },
+    {
+      "language": "other",
+      "role": "production",
+      "path": "examples/stage-11/capstone-delivery/README.md",
+      "runCommand": "python -m unittest discover -s examples/stage-11 -p 'test_*.py' -v",
+      "testsPath": "examples/stage-11/test_capstone_delivery.py",
+      "expectedResult": "Production guide defines CI gates, release manifests, expand/contract migrations, canary thresholds, compatible rollback, SLO dashboards, runbooks and backup/restore."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Mutable tag changes after validation",
+      "symptom": "Staging and production run different bytes even though the release name is the same.",
+      "rootCause": "The pipeline promotes mutable image/model tags rather than immutable digests.",
+      "recovery": "Bind and sign exact artifact digests in the release manifest and deploy by digest.",
+      "regressionTest": "A manifest with a tag but no immutable digest is rejected."
+    },
+    {
+      "name": "Model, prompt and index versions mismatch",
+      "symptom": "A rollback restores the API but answers use incompatible embeddings, prompt templates or vector index.",
+      "rootCause": "Release manifest versions only the application image.",
+      "recovery": "Version the complete AI release bundle and verify compatibility before promotion/rollback.",
+      "regressionTest": "A candidate with incompatible model/index/prompt versions is blocked."
+    },
+    {
+      "name": "Destructive migration breaks rollback",
+      "symptom": "Old application instances fail after schema changes or rollback cannot read the new schema.",
+      "rootCause": "Contract migration runs before old instances are drained and compatibility is proven.",
+      "recovery": "Use expand/backfill/verify/switch/drain/contract sequence and define forward-fix or restore plan.",
+      "regressionTest": "Contract phase is blocked while old instances remain active."
+    },
+    {
+      "name": "Canary promotes on incomplete telemetry",
+      "symptom": "A candidate is promoted despite missing error, quality or cost signals.",
+      "rootCause": "Missing metrics are treated as zero or only infrastructure health is checked.",
+      "recovery": "Require sufficient sample size and complete trusted telemetry for every critical threshold.",
+      "regressionTest": "Missing canary metric evidence blocks promotion."
+    },
+    {
+      "name": "Quality regression hidden by latency success",
+      "symptom": "The new model is faster but produces worse citations or unsafe answers.",
+      "rootCause": "Canary decision uses only availability/latency and ignores evaluation/safety gates.",
+      "recovery": "Evaluate quality, grounding and safety independently and roll back on a critical regression.",
+      "regressionTest": "A canary with quality below floor is rolled back even when latency passes."
+    },
+    {
+      "name": "Rollback bundle incomplete",
+      "symptom": "Image rollback succeeds but model, prompt, index or schema remains incompatible.",
+      "rootCause": "Previous release artifacts were deleted or not recorded as one compatible bundle.",
+      "recovery": "Retain and verify previous signed release manifest and required artifacts before rollout.",
+      "regressionTest": "Rollback is rejected when any required bundle component is missing."
+    },
+    {
+      "name": "Backup exists but restore fails",
+      "symptom": "Backup job is green but restored tenant data is incomplete or cross-tenant.",
+      "rootCause": "No restore test, tenant-integrity check or RPO/RTO measurement exists.",
+      "recovery": "Run scheduled restore drills and validate row counts, checksums, ACLs and tenant boundaries.",
+      "regressionTest": "Restore gate fails when tenant integrity or restore verification is false."
+    }
+  ],
+  "practice": {
+    "guided": "Create a candidate release manifest with code, image, model, prompt, index, schema, SBOM, provenance, signature and rollback bundle. Run the gate, simulate an incompatible migration and a 1% canary error rate, then verify rollback.",
+    "independent": "Add a second canary window and sample-size requirement. Implement a migration state machine with expand, backfill, switch, drain and contract phases; block contract while old instances remain. Add a backup restore report with tenant-level integrity checks.",
+    "realWorld": "Design the CI/CD and operations pack for the enterprise capstone: immutable release manifest, evidence gates, environment promotion, canary analysis, rollback compatibility, SLO dashboard, alert runbooks, backup/restore and incident exercise.",
+    "expertExtension": "Add progressive delivery policy-as-code, signed provenance verification, automated model/index compatibility tests, shadow evaluation, feature-flag rollback, multi-region failover, chaos experiments and cost-aware canary analysis.",
+    "guidedExercise": {
+      "title": "Build a canary promotion and rollback gate",
+      "instructions": "Validate all release artifacts/evidence, verify migration compatibility, then compare canary error, latency, quality and cost to thresholds. Promote only when all critical gates pass.",
+      "starterCode": "def rollout(candidate, current, canary_metrics, thresholds):\n    raise NotImplementedError",
+      "solutionCode": "def rollout(candidate, current, metrics, thresholds):\n    findings = validate_release(candidate)\n    if findings:\n        return Decision('REJECT', current.release_id, findings)\n    failures = evaluate_canary(metrics, thresholds)\n    if failures:\n        return Decision('ROLLBACK', current.release_id, failures)\n    return Decision('PROMOTE', candidate.release_id, ())",
+      "unitTests": "assert rollout(valid_candidate, current, healthy_canary, thresholds).action == 'PROMOTE'\nassert rollout(valid_candidate, current, bad_error_rate, thresholds).action == 'ROLLBACK'\nassert validate_migration(contract_migration, old_instances_active=True).allowed is False"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build a release-operations workbench that verifies immutable release bundles, migration compatibility, canary health, rollback readiness and backup/restore evidence.",
+      "steps": [
+        "Create current and candidate manifests with code/image/model/prompt/index/schema versions.",
+        "Validate SBOM, provenance, signature, evaluation and security evidence.",
+        "Run expand/backfill/switch/drain/contract migration checks.",
+        "Simulate canary traffic and calculate error rate, p95, quality and cost thresholds.",
+        "Promote only when all gates pass; otherwise restore the previous compatible bundle.",
+        "Verify backup restore, tenant integrity, RPO and RTO evidence.",
+        "Generate an operations report with dashboards, alerts, runbooks and incident actions."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "What should an immutable release manifest bind?",
+        "options": [
+          "Code, image, model, prompt, index and schema",
+          "Only a mutable image tag",
+          "Only the source branch",
+          "Only the model name"
+        ],
+        "correctIndex": 0,
+        "explanation": "A reproducible AI release includes all coupled artifacts and versions plus the evidence and rollback target needed to operate it safely."
+      },
+      {
+        "question": "When should a contract database migration run?",
+        "options": [
+          "After old instances are drained",
+          "Before compatibility testing",
+          "During the first canary request",
+          "Whenever a container restarts"
+        ],
+        "correctIndex": 0,
+        "explanation": "Contract removes old structures only after old application versions are no longer using them and data migration is verified."
+      },
+      {
+        "question": "What should happen when canary error rate breaches a critical threshold?",
+        "options": [
+          "Halt promotion and roll back",
+          "Promote if latency is good",
+          "Ignore it if quality is high",
+          "Disable the alert"
+        ],
+        "correctIndex": 0,
+        "explanation": "A critical threshold breach blocks promotion; rollback restores the previous compatible release bundle."
+      },
+      {
+        "question": "Why is a backup restore drill necessary?",
+        "options": [
+          "A backup file does not prove data can be restored",
+          "It reduces token usage",
+          "It replaces tenant isolation tests",
+          "It proves model quality"
+        ],
+        "correctIndex": 0,
+        "explanation": "Only a restore test verifies data integrity, tenant boundaries and recovery objectives; a successful backup job is insufficient."
+      },
+      {
+        "question": "Which signal should be independent in canary evaluation?",
+        "options": [
+          "Model quality and safety",
+          "Only CPU usage",
+          "Only container health",
+          "Only deployment duration"
+        ],
+        "correctIndex": 0,
+        "explanation": "A fast and healthy process can still produce incorrect or unsafe AI answers, so quality and safety need separate gates."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Immutable release bundle and CI evidence",
+        "weight": 20,
+        "evidence": "Binds all coupled artifacts and verifies tests, security, evaluation, SBOM, provenance and signatures."
+      },
+      {
+        "criterion": "Migration and compatibility plan",
+        "weight": 20,
+        "evidence": "Uses expand/backfill/verify/switch/drain/contract and documents forward-fix/restore strategy."
+      },
+      {
+        "criterion": "Canary and promotion policy",
+        "weight": 20,
+        "evidence": "Uses sample-size-aware error, latency, quality, safety and cost thresholds with automatic stop/rollback."
+      },
+      {
+        "criterion": "Rollback and backup/restore readiness",
+        "weight": 20,
+        "evidence": "Restores a compatible known-good bundle and proves data/tenant integrity and RPO/RTO."
+      },
+      {
+        "criterion": "Operations and incident readiness",
+        "weight": 20,
+        "evidence": "Provides SLO dashboards, actionable alerts, runbooks, on-call ownership and rehearsed recovery drills."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Candidate release manifest pins code/image/model/prompt/index/schema digests.",
+      "CI evidence and signature/provenance checks pass before promotion.",
+      "Contract migration is blocked while old instances are active.",
+      "Canary breach halts promotion and restores compatible release bundle.",
+      "Backup restore and tenant integrity checks pass.",
+      "Operational alerts link to owned runbooks and recovery objectives."
+    ]
+  },
+  "references": [
+    {
+      "title": "Kubernetes Deployments and Rollouts",
+      "url": "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "Google SRE Workbook — Canarying Releases",
+      "url": "https://sre.google/workbook/canarying-releases/",
+      "sourceType": "book",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "GitHub Actions Documentation",
+      "url": "https://docs.github.com/en/actions",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "PostgreSQL — ALTER TABLE and DDL",
+      "url": "https://www.postgresql.org/docs/current/sql-altertable.html",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "SLSA Provenance",
+      "url": "https://slsa.dev/spec/v1.1/provenance",
+      "sourceType": "standard",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "OpenTelemetry Collector Documentation",
+      "url": "https://opentelemetry.io/docs/collector/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "manifest = ReleaseManifest.from_build_outputs(build, model, prompt, index, schema)",
+      "explanation": "Create one immutable release manifest that binds every coupled AI and application artifact."
+    },
+    {
+      "lines": "evidence = verify_ci_security_eval_sbom_provenance_signature(manifest)",
+      "explanation": "Verify test/evaluation results and supply-chain evidence against the exact manifest digests."
+    },
+    {
+      "lines": "migration = plan.expand_backfill_verify_switch_drain_contract(schema)",
+      "explanation": "Keep old and new application versions compatible until traffic is drained and the contract phase is safe."
+    },
+    {
+      "lines": "decision = canary.evaluate(error_rate, p95, quality, safety, cost, sample_size)",
+      "explanation": "Evaluate user-facing reliability, AI quality/safety and cost together; missing or insufficient telemetry blocks promotion."
+    },
+    {
+      "lines": "if decision.failed: deployment.rollback(previous_compatible_manifest)",
+      "explanation": "Restore the prior signed bundle including model, prompt, index and schema compatibility rather than rolling back only the image."
+    },
+    {
+      "lines": "restore_report = backup.restore_and_verify(tenant_integrity=True, rpo=True, rto=True)",
+      "explanation": "Prove that backup data can be restored and tenant boundaries and recovery objectives are met."
+    },
+    {
+      "lines": "operations.publish_slo_alerts_runbooks_and_ownership()",
+      "explanation": "Connect production signals to actionable alerts, owners and tested recovery procedures."
+    }
+  ]
+}
