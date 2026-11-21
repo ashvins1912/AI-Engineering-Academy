@@ -1,0 +1,16 @@
+flowchart TD
+ I[Initialize thread state] --> C[Compile-validated entry node]
+ C --> N[Execute node with current state]
+ N --> U[Validate partial state update]
+ U --> R[Apply deterministic reducer]
+ R --> E{Conditional or normal edge?}
+ E -->|Route key| Q[Resolve compiled route map]
+ E -->|Static edge| S[Select next node]
+ Q --> S
+ S --> P[Persist state + next node + version]
+ P --> X{Terminal, interrupt or continue?}
+ X -->|Continue| N
+ X -->|Interrupt| H[Wait for authenticated decision]
+ H --> L[Resume same thread from checkpoint]
+ L --> N
+ X -->|Terminal| O[Return final state and trace]
