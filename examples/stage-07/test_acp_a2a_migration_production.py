@@ -11,6 +11,10 @@ class MigrationLedgerTests(unittest.TestCase):
   self.assertFalse(self.store.map_run(*args)["duplicate"])
   self.assertTrue(self.store.map_run(*args)["duplicate"])
   with self.assertRaises(ValueError):self.store.map_run("tenant-a","run-1","session-1","task-2","map-v1",{"order":"ORD-7"})
+ def test_retry_with_different_session_or_mapping_version_rejected(self):
+  self.store.map_run("tenant-a","run-1","session-1","task-1","v1",{"x":1})
+  with self.assertRaises(ValueError):self.store.map_run("tenant-a","run-1","session-2","task-1","v1",{"x":1})
+  with self.assertRaises(ValueError):self.store.map_run("tenant-a","run-1","session-1","task-1","v2",{"x":1})
  def test_mapping_is_tenant_scoped(self):
   self.store.map_run("tenant-a","run-1","session-1","task-a","v1",{})
   self.store.map_run("tenant-b","run-1","session-1","task-b","v1",{})
