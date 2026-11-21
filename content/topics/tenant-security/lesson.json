@@ -345,7 +345,7 @@
       "role": "production",
       "path": "examples/stage-10/tenant-security/rls_reference.sql",
       "runCommand": "Review and apply only in a disposable PostgreSQL database using a non-owner application role.",
-      "testsPath": "examples/stage-10/README-tenant-security.md",
+      "testsPath": "examples/stage-10/tenant-security/README.md",
       "expectedResult": "Reference SQL demonstrates transaction-local tenant context, FORCE ROW LEVEL SECURITY, restrictive grants and tenant-aware read/write policies; it is not automatically applied to shared infrastructure."
     },
     {
