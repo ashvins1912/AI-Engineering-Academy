@@ -1,0 +1,631 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "capstone-design",
+    "title": "Enterprise Architecture and Threat Modeling",
+    "stage": 11,
+    "estimatedMinutes": 480
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Translate business goals into functional requirements, measurable quality attributes, workload assumptions and explicit acceptance criteria.",
+      "Draw system-context, container, component, deployment and data-flow diagrams with trust boundaries and identity propagation.",
+      "Choose storage, retrieval, model, orchestration, tool and deployment patterns using documented Architecture Decision Records (ADRs).",
+      "Threat-model a multi-tenant RAG-agent platform using STRIDE, AI-specific abuse cases, attack trees and risk scoring.",
+      "Map each threat to preventive, detective and recovery controls with negative tests and residual-risk ownership.",
+      "Validate architecture completeness with a deterministic control/flow checker and produce a review-ready architecture package."
+    ],
+    "prerequisites": [
+      "Stages 5–10 RAG, agents, protocols, MLOps, security and reliability",
+      "Basic networking, databases, identity, containers and distributed systems",
+      "Ability to read sequence diagrams and write structured requirements"
+    ],
+    "glossary": [
+      {
+        "term": "Quality attribute",
+        "definition": "A measurable non-functional property such as security, availability, latency, scalability, operability or cost."
+      },
+      {
+        "term": "System context diagram",
+        "definition": "A view of the system, its users and external dependencies that defines scope and relationships."
+      },
+      {
+        "term": "Container diagram",
+        "definition": "A view of deployable applications, services, data stores and their communication paths."
+      },
+      {
+        "term": "Trust boundary",
+        "definition": "A point where identity, permissions, data classification or execution authority changes and must be revalidated."
+      },
+      {
+        "term": "Data-flow diagram",
+        "definition": "A representation of data sources, transformations, stores, flows and trust boundaries."
+      },
+      {
+        "term": "ADR",
+        "definition": "An Architecture Decision Record documenting context, decision, alternatives and consequences."
+      },
+      {
+        "term": "STRIDE",
+        "definition": "A threat-modeling taxonomy covering spoofing, tampering, repudiation, information disclosure, denial of service and elevation of privilege."
+      },
+      {
+        "term": "Residual risk",
+        "definition": "Risk remaining after controls are applied, with an explicit owner and acceptance decision."
+      },
+      {
+        "term": "Abuse case",
+        "definition": "A description of how an attacker or unintended user may misuse a feature, protocol, model or privileged capability."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "An enterprise AI platform combines multi-tenant data, model providers, vector retrieval, agent orchestration, MCP/A2A tools, asynchronous workers and deployment pipelines. If requirements, boundaries and threats are not explicit, implementation teams make incompatible assumptions: a frontend tenant selector becomes authorization, a retrieved instruction becomes a tool permission, or a deployment rollback restores code without its matching index and prompt versions.",
+    "plainLanguage": "Start with the problem and users, not the framework. Write functional requirements such as upload a policy PDF, retrieve authorized passages, cite the source page and execute an approved workflow. Then define quality attributes in measurable terms: p95 response latency, availability SLO, tenant isolation, maximum spend per task, recovery time, freshness and evaluation thresholds. State assumptions about traffic, file sizes, tenants, regions, data residency, retention and external provider dependencies. A requirement that cannot be tested is not yet precise enough.\n\nDraw several views because no single diagram answers every question. A system-context view shows users and external systems. A container view shows gateway, identity service, ingestion, retrieval, model adapter, agent runtime, tool gateway, workers, data stores and observability. Component views explain internal responsibilities. Deployment views show networks, runtime boundaries, secrets, scaling and failure domains. Data-flow diagrams show where sensitive data is read, transformed, stored, cached, sent to a model or passed to a tool. Mark trust boundaries and identity transitions on every relevant view.\n\nModel the tenant and identity path end to end. A user authenticates, the server resolves membership, and a tenant context is carried through APIs, SQL transactions, vector filters, cache keys, object storage and queue messages. Every service boundary validates what it needs. A tenant ID from a prompt, model output or arbitrary request field is data, not authority. For tools, separate model-generated intent from server-side policy: the model can propose an action, but a policy decision point checks principal, tenant, capability, resource scope, risk and approval before execution.\n\nUse Architecture Decision Records for decisions that are expensive to reverse: database and RLS strategy, vector-store isolation, model provider and fallback, agent orchestration, MCP/A2A boundaries, event delivery, deployment topology, secrets and observability. Each ADR records context, options considered, decision, consequences, rejected alternatives and a revisit trigger. Avoid recording only the chosen technology; explain why it fits the requirements and what trade-offs it creates.\n\nThreat-model both conventional and AI-specific attack paths. STRIDE helps find spoofing, tampering, repudiation, information disclosure, denial of service and elevation of privilege. Add AI-specific threats: direct and indirect prompt injection, retrieval poisoning, sensitive-context exfiltration, unsafe model serialization, model supply-chain compromise, tool argument manipulation, agent loop abuse, memory poisoning, cross-tenant retrieval, forged queue context and denial of wallet. Build attack trees around assets such as customer documents, credentials, tool permissions, model artifacts and release pipelines.\n\nScore each threat using likelihood and impact, but do not let a low aggregate score hide a catastrophic boundary failure. Record the affected asset, preconditions, attack path, existing controls, proposed mitigations, detection signals, recovery actions, negative tests and residual risk owner. A threat without a test or operational detection path is not fully addressed. Critical residual risks require explicit escalation or a design change, not a silent checkbox.\n\nFinally, review the architecture against acceptance tests before implementation. Confirm every external flow is authenticated and encrypted, every tenant-sensitive flow carries authorized tenant context, every privileged action has a policy gate, every data store has access and retention controls, and every asynchronous operation has idempotency and replay protection. The architecture package should be executable as a team contract: diagrams, ADRs, threat register, API/event schemas, assumptions, SLOs, cost envelope and verification plan.",
+    "mentalModel": "Business outcomes → testable requirements and workload assumptions → quality attributes → context/container/component/deployment/data-flow views → trust boundaries and identity paths → ADRs → STRIDE + AI abuse cases → mitigations, tests and residual-risk owners → architecture acceptance gates.",
+    "limitations": [
+      "Diagrams are models, not proof; validate them against deployed configuration, network policies, code and runtime traces.",
+      "Risk scores help prioritize but do not replace judgment, legal/privacy review or mandatory security controls.",
+      "STRIDE alone does not cover every LLM, data-poisoning, model-supply-chain or agent-specific threat; add domain abuse cases.",
+      "Architecture decisions depend on workload and organizational constraints; avoid presenting one database, vector store or orchestration framework as universally correct.",
+      "A static control checker verifies declared controls, not their implementation effectiveness; integration tests and security review remain necessary.",
+      "Threat models become stale as models, tools, data sources, providers and deployment topology change; version and revisit them."
+    ],
+    "everydayAnalogy": "An airport architect does not draw only the terminal floor plan. They map passengers, staff, baggage, restricted zones, security checks, emergency exits and airline systems. An AI platform needs the same multiple views because data and authority cross different boundaries.",
+    "mathMadeSimple": "Use a simple risk score = likelihood × impact, each rated 1–5. A threat rated likelihood 4 and impact 5 scores 20 and is critical. A likelihood 2 and impact 2 scores 4 and is low. The score ranks review effort; a confirmed tenant-isolation failure remains a stop-ship condition regardless of the arithmetic.",
+    "productionImpact": "Produce a reviewable architecture package before coding: requirements, workload assumptions, diagrams, ADRs, data classification, trust boundaries, STRIDE/AI abuse cases, controls, negative tests, residual-risk owners and measurable acceptance gates. Revisit it whenever a new tool, data source, model, provider or deployment boundary is added."
+  },
+  "useCase": {
+    "scenario": "Design a multi-tenant enterprise knowledge and operations platform. Users upload policy PDFs; ingestion parses and indexes documents; a RAG service retrieves authorized passages and generates cited answers; an agent may call read-only MCP tools and propose mutations requiring approval; A2A specialist agents handle bounded subtasks; the platform runs on a staged container deployment with observability and cost controls.",
+    "actors": [
+      "Tenant administrator and member",
+      "API gateway and identity/membership service",
+      "Ingestion and document-processing workers",
+      "Object storage, relational database and vector index",
+      "RAG retrieval, reranking and model gateway",
+      "Agent orchestrator and specialist A2A agents",
+      "MCP tool gateway and human approval service",
+      "Queue, observability collector and deployment controller"
+    ],
+    "inputs": [
+      "Functional requirements and user journeys",
+      "Data classification, retention and residency assumptions",
+      "Traffic, file size, token and concurrency estimates",
+      "Identity, tenant membership and role model",
+      "External provider, protocol and tool contracts",
+      "Availability, latency, quality, safety and cost objectives"
+    ],
+    "constraints": [
+      "Tenant identity is server-derived and enforced in every storage/retrieval/cache/job path.",
+      "Model output and retrieved text never grant authorization or alter server policy.",
+      "Mutating tools require scoped authorization, idempotency and explicit approval.",
+      "Every data flow has encryption, classification, retention and audit decisions.",
+      "Asynchronous jobs preserve and revalidate tenant/actor/resource context.",
+      "Releases bind code, model, prompt, schema and index versions with rollback compatibility.",
+      "SLO, evaluation, safety and cost gates block unsafe promotion."
+    ],
+    "outputs": [
+      "System context, container, component, deployment and DFD diagrams",
+      "ADRs for data, retrieval, model, orchestration, tools and deployment",
+      "Threat register with STRIDE and AI-specific abuse cases",
+      "Control matrix, negative tests and residual-risk owners",
+      "Versioned API/event schemas and architecture acceptance criteria"
+    ],
+    "successMetric": "The design exposes every trust boundary and privileged path, assigns a testable control to each high-risk threat and can be implemented as a secure vertical slice without relying on model-generated permissions."
+  },
+  "architecture": {
+    "diagram": "content/topics/capstone-design/enterprise-context-and-trust-boundaries.mmd",
+    "components": [
+      "Client and tenant administration surface",
+      "API gateway and identity/membership resolver",
+      "Ingestion API, parser/OCR and isolated workers",
+      "Object store, relational database and vector index",
+      "RAG query service, reranker and model gateway",
+      "Agent orchestrator and specialist A2A services",
+      "MCP tool gateway, policy engine and approval workflow",
+      "Queue and idempotent background workers",
+      "OpenTelemetry collector, audit store and SLO/FinOps backend",
+      "CI/CD, artifact registry and deployment controller"
+    ],
+    "dataFlow": [
+      {
+        "from": "Tenant user",
+        "to": "API gateway",
+        "payload": "Authenticated request and resource reference",
+        "purpose": "Authenticate, validate request and establish a correlation context."
+      },
+      {
+        "from": "API gateway",
+        "to": "Identity/membership resolver",
+        "payload": "Verified subject and requested tenant context",
+        "purpose": "Resolve authorized tenant membership and role on the server."
+      },
+      {
+        "from": "Gateway",
+        "to": "Ingestion service",
+        "payload": "Tenant-scoped upload reference and metadata",
+        "purpose": "Validate file type/size, classify data and create an ingestion job."
+      },
+      {
+        "from": "Ingestion worker",
+        "to": "Object store and vector index",
+        "payload": "Validated document, chunks, ACL metadata and provenance",
+        "purpose": "Store immutable source evidence and tenant/ACL-filtered embeddings."
+      },
+      {
+        "from": "RAG query service",
+        "to": "Vector index",
+        "payload": "Query embedding plus tenant and document ACL filters",
+        "purpose": "Retrieve only authorized evidence before ranking and top-k."
+      },
+      {
+        "from": "RAG query service",
+        "to": "Model gateway",
+        "payload": "Prompt template, evidence references and bounded token budget",
+        "purpose": "Generate grounded output while treating retrieved content as untrusted data."
+      },
+      {
+        "from": "Agent orchestrator",
+        "to": "MCP tool gateway",
+        "payload": "Typed action proposal and principal/tenant context",
+        "purpose": "Evaluate server-side capability policy, resource scope and approval before execution."
+      },
+      {
+        "from": "Agent orchestrator",
+        "to": "A2A specialist agent",
+        "payload": "Scoped task contract and correlation context",
+        "purpose": "Delegate bounded work without sharing unrestricted credentials or memory."
+      },
+      {
+        "from": "Services and workers",
+        "to": "Audit/observability",
+        "payload": "Redacted events, trace IDs, decisions and artifact versions",
+        "purpose": "Support diagnosis, SLOs and accountability without exporting customer payloads."
+      },
+      {
+        "from": "CI/CD controller",
+        "to": "Deployment controller",
+        "payload": "Signed immutable release bundle and acceptance evidence",
+        "purpose": "Promote compatible code/model/prompt/index versions through staged gates."
+      }
+    ],
+    "trustBoundaries": [
+      "Browser to gateway: authenticate identity, validate payload and rate-limit; never trust client tenant fields.",
+      "Identity service to application: resolve membership and propagate immutable authorized tenant context.",
+      "Application to databases/vector/cache/object store: enforce tenant and ACL scope at each data layer.",
+      "Retrieved content and model output to agent/tool policy: treat both as untrusted; only server policy grants capabilities.",
+      "Agent to MCP/A2A services: typed scoped contracts, authentication, authorization, budget and approval.",
+      "Queue producer to worker: serialized context is untrusted and must be validated for actor, tenant, resource and replay.",
+      "Build pipeline to production: verify provenance, signatures, SBOM, evaluations and immutable digests."
+    ],
+    "failurePaths": [
+      "Tenant context missing or mismatched: deny before retrieval, cache, object or tool access.",
+      "Retrieved prompt injection attempts tool use: model may identify intent, but policy engine denies absent capability/approval.",
+      "Vector or cache filter omitted: negative cross-tenant test blocks release.",
+      "Tool timeout after side effect: idempotency ledger resolves outcome before retry.",
+      "A2A agent returns forged claim: validate typed output and re-authorize all proposed actions server-side.",
+      "Provider outage: breaker and safe fallback; no fabricated citations or unconfirmed tool success.",
+      "Candidate model or index fails evaluation: freeze promotion and restore a compatible known-good bundle."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-11/capstone-design/architecture-threat-scenarios.json",
+    "steps": [
+      {
+        "label": "Define scope and quality",
+        "explanation": "Translate user journeys, data classes, scale assumptions and SLOs into testable requirements.",
+        "expectedState": "Architecture scope and measurable constraints."
+      },
+      {
+        "label": "Draw system views",
+        "explanation": "Create context, container, component, deployment and data-flow views.",
+        "expectedState": "Services, stores, protocols and data movement are explicit."
+      },
+      {
+        "label": "Mark trust boundaries",
+        "explanation": "Trace tenant identity, authorization, data classification and privileged execution paths.",
+        "expectedState": "Every boundary has a control owner."
+      },
+      {
+        "label": "Record ADRs",
+        "explanation": "Compare alternatives for storage, retrieval, model, orchestration, tools and deployment.",
+        "expectedState": "Decisions and trade-offs are reviewable."
+      },
+      {
+        "label": "Threat-model abuse paths",
+        "explanation": "Apply STRIDE and AI-specific abuse cases, score risk and identify controls.",
+        "expectedState": "Threat register includes tests and residual-risk owners."
+      },
+      {
+        "label": "Run architecture gate",
+        "explanation": "Validate required component controls and cross-boundary flow protections before implementation.",
+        "expectedState": "Critical gaps block architecture approval."
+      }
+    ],
+    "accessibility": [
+      "Every stage has written inputs, transformations and expected outputs; trust boundaries and high-risk decisions are labeled explicitly.",
+      "A static diagram and text threat register provide equivalent information without animation."
+    ],
+    "animation": {
+      "objective": "Follow one document-to-answer-and-tool-action path through enterprise architecture views, trust boundaries, ADRs and threat controls.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Requirements and scope",
+          "narration": "Define tenant users, document workflows, tool actions, data classes and measurable quality attributes.",
+          "input": "User journeys, data classes, workload and SLO assumptions",
+          "transformation": "Convert vague goals into testable functional and non-functional requirements.",
+          "output": "Requirements baseline",
+          "visualState": "requirements"
+        },
+        {
+          "step": 2,
+          "title": "Architecture views",
+          "narration": "Map users, services, stores, protocols, deployment zones and data movement.",
+          "input": "Requirements and candidate components",
+          "transformation": "Draw context, container, component, deployment and data-flow diagrams.",
+          "output": "Multi-view architecture",
+          "visualState": "architecture"
+        },
+        {
+          "step": 3,
+          "title": "Trust boundaries",
+          "narration": "Trace identity, tenant context, data classification and execution authority across every flow.",
+          "input": "Data flows and trust transitions",
+          "transformation": "Assign authentication, authorization, encryption, isolation and audit controls.",
+          "output": "Boundary control map",
+          "visualState": "boundaries"
+        },
+        {
+          "step": 4,
+          "title": "Architecture decisions",
+          "narration": "Compare options and record why selected storage, retrieval, model, orchestration and deployment fit.",
+          "input": "Options, constraints and quality attributes",
+          "transformation": "Write ADRs with context, decision, alternatives and consequences.",
+          "output": "Decision records",
+          "visualState": "decisions"
+        },
+        {
+          "step": 5,
+          "title": "Threat model",
+          "narration": "Apply STRIDE and AI-specific abuse cases to documents, models, tools, queues and release pipeline.",
+          "input": "Assets, actors, flows and boundaries",
+          "transformation": "Score likelihood and impact; map mitigations, tests and residual-risk owners.",
+          "output": "Threat register",
+          "visualState": "threats"
+        },
+        {
+          "step": 6,
+          "title": "Architecture acceptance",
+          "narration": "Check that high-risk components and cross-boundary flows have required controls and negative tests.",
+          "input": "Component controls, data flows and threat register",
+          "transformation": "Run deterministic architecture validation and block unresolved critical gaps.",
+          "output": "Review-ready architecture package",
+          "visualState": "acceptance"
+        }
+      ],
+      "controls": [
+        {
+          "name": "tenant_boundary",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "Toggle whether tenant context and ACL checks are present on every sensitive flow; missing controls block approval."
+        },
+        {
+          "name": "tool_policy",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "Toggle whether tool actions pass through a server-side capability and approval policy."
+        },
+        {
+          "name": "threat_mitigation",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 0,
+          "effect": "Toggle whether high-risk threat mitigations have negative-test evidence and an owner."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Six narrated stages provide text for each view and decision. Boundary gaps and approval states are described explicitly and do not rely on color."
+    }
+  },
+  "workedExample": {
+    "problem": "Design the trust boundaries for a two-tenant document assistant. Tenant members upload PDFs, retrieve cited passages and ask an agent to read an order system through MCP; mutations require human approval. Identify the key flows and prioritize a cross-tenant retrieval threat.",
+    "input": "Components: browser, API gateway, identity resolver, ingestion worker, object store, PostgreSQL, vector index, RAG/model gateway, agent orchestrator, MCP tool gateway, queue worker and observability. Data classes: public metadata, tenant-confidential documents, credentials and audit events.",
+    "steps": [
+      {
+        "operation": "Define requirements",
+        "reasoning": "Write the user journeys and measurable constraints: tenant isolation, source-page citations, no-evidence abstention, read-only tool access by default, approval for mutation, latency and cost targets.",
+        "result": "Testable functional and quality requirements."
+      },
+      {
+        "operation": "Map identity and data flows",
+        "reasoning": "Authentication resolves membership on the server; tenant context flows through SQL, vector, cache, object and queue operations. Retrieved text and model output remain untrusted.",
+        "result": "Trust boundaries and data paths are visible."
+      },
+      {
+        "operation": "Record ADR choices",
+        "reasoning": "Compare PostgreSQL RLS with application predicates, shared vector index with mandatory tenant/ACL filters, and dedicated tool gateway with direct model tool access.",
+        "result": "ADRs document selected patterns, alternatives and consequences."
+      },
+      {
+        "operation": "Threat-model cross-tenant retrieval",
+        "reasoning": "STRIDE information disclosure: attacker guesses a document ID or exploits a missing vector/cache tenant filter. Likelihood 4 × impact 5 = 20.",
+        "result": "Critical threat; mitigate with RLS, tenant/ACL filters, canonical cache keys, audit and negative cross-tenant tests."
+      },
+      {
+        "operation": "Threat-model tool escalation",
+        "reasoning": "STRIDE elevation of privilege: malicious retrieved text asks the model to mutate an order. Model output is only a proposal; server policy checks principal, tenant, scope, risk and approval.",
+        "result": "High-risk abuse case mitigated by typed tools, least privilege, idempotency and human approval."
+      },
+      {
+        "operation": "Run architecture gate",
+        "reasoning": "Validate that every sensitive cross-boundary flow is encrypted, tenant-scoped and authorized, and that high-risk threats have test evidence and owners.",
+        "result": "Approval is blocked until all critical controls and negative tests are present."
+      }
+    ],
+    "expectedOutput": "The architecture package contains context/container/data-flow views, ADRs, a threat register with a critical cross-tenant disclosure risk, explicit server-side tool policy and negative acceptance tests. Model-generated content never grants permissions."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-11/capstone-design/architecture_gate.py",
+      "runCommand": "python examples/stage-11/capstone-design/architecture_gate.py",
+      "testsPath": "examples/stage-11/test_capstone_design.py",
+      "expectedResult": "Offline architecture gate scores STRIDE threats, validates component control sets, checks cross-boundary flow protections and verifies ADR/threat evidence completeness."
+    },
+    {
+      "language": "other",
+      "role": "production",
+      "path": "examples/stage-11/capstone-design/README.md",
+      "runCommand": "python -m unittest discover -s examples/stage-11 -p 'test_*.py' -v",
+      "testsPath": "examples/stage-11/test_capstone_design.py",
+      "expectedResult": "Architecture package template includes requirements, system views, ADRs, threat register, control matrix, acceptance tests and residual-risk ownership."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Architecture diagrams omit a trust boundary",
+      "symptom": "A service trusts tenant or authorization metadata passed from an unverified component.",
+      "rootCause": "Diagrams show boxes and arrows but do not label identity, data classification or authority transitions.",
+      "recovery": "Update context/container/DFD views and define authentication, authorization and encryption at each boundary.",
+      "regressionTest": "Architecture gate flags any sensitive cross-boundary flow without tenant context, authorization and encryption."
+    },
+    {
+      "name": "Model output treated as policy",
+      "symptom": "An agent executes a privileged tool because the model generated an instruction or tool call.",
+      "rootCause": "The design merges model planning with server-side authorization.",
+      "recovery": "Separate proposal from policy decision; enforce principal, tenant, capability, resource scope and approval in a trusted gateway.",
+      "regressionTest": "A model-generated action without an authorized capability is denied."
+    },
+    {
+      "name": "ADR records a choice but not trade-offs",
+      "symptom": "Teams repeat debates or discover late that the selected design violates a quality attribute.",
+      "rootCause": "Decision record omits alternatives, consequences, constraints or revisit triggers.",
+      "recovery": "Write context, decision, considered alternatives, consequences and conditions for reconsideration.",
+      "regressionTest": "ADR validator rejects missing decision rationale or alternatives."
+    },
+    {
+      "name": "Threat model is generic and untestable",
+      "symptom": "Threat register lists “prompt injection” but no asset, attack path, control or evidence.",
+      "rootCause": "Threats are recorded as labels rather than concrete abuse cases with preconditions and mitigations.",
+      "recovery": "Map each threat to actor, asset, entry point, impact, preventive/detective controls, test and residual owner.",
+      "regressionTest": "Threat completeness gate rejects missing mitigation or test evidence."
+    },
+    {
+      "name": "Risk score hides a catastrophic boundary failure",
+      "symptom": "A high-impact tenant exposure is accepted because the average score is low.",
+      "rootCause": "Risk scores are averaged or treated as automatic approval rather than prioritization.",
+      "recovery": "Set stop-ship rules for critical isolation/authorization failures and require explicit risk acceptance for residual risk.",
+      "regressionTest": "Critical tenant-isolation threat blocks architecture approval regardless of aggregate score."
+    },
+    {
+      "name": "Architecture lacks operational failure design",
+      "symptom": "Provider outage, queue replay or rollback causes cascading failure or inconsistent artifacts.",
+      "rootCause": "Design focuses on the happy path and omits deadlines, idempotency, SLOs, observability and compatibility.",
+      "recovery": "Add failure flows, bounded retries, breakers, versioned release bundles, backup/restore and recovery gates.",
+      "regressionTest": "Acceptance plan includes provider outage, duplicate event, rollback and data restore scenarios."
+    }
+  ],
+  "practice": {
+    "guided": "Use the enterprise platform fixture. Draw context, container and DFD views; mark every identity and data trust boundary; write ADRs for RLS, vector isolation, model gateway and MCP tools; run the architecture gate and resolve each missing control.",
+    "independent": "Add an A2A specialist-agent boundary and a multimodal document-ingestion path. Update data classification, threat register, queue contracts, retention assumptions and recovery plan. Prove delegated agents cannot expand tenant or tool permissions.",
+    "realWorld": "Produce an architecture review pack for a multi-tenant knowledge and operations platform: requirements, workload model, diagrams, ADRs, STRIDE/AI threat register, control matrix, API/event schemas, SLO/cost objectives and acceptance tests.",
+    "expertExtension": "Add abuse-case attack trees, attack-path graph analysis, privacy impact assessment, data residency constraints, threat-informed test coverage, residual-risk acceptance workflow and automated drift checks against deployed infrastructure.",
+    "guidedExercise": {
+      "title": "Build an architecture acceptance gate",
+      "instructions": "Validate each component against required controls, each cross-boundary flow for encryption/tenant/authorization, and each high-risk threat for mitigation and test evidence.",
+      "starterCode": "def validate_architecture(components, flows, threats):\n    raise NotImplementedError",
+      "solutionCode": "def validate_architecture(components, flows, threats):\n    missing = []\n    for component in components:\n        required = REQUIRED_CONTROLS.get(component.kind, set())\n        missing.extend((component.name, control) for control in required - component.controls)\n    for flow in flows:\n        if flow.crosses_trust_boundary and not (flow.encrypted and flow.authenticated):\n            missing.append((flow.name, 'boundary_protection'))\n    for threat in threats:\n        if threat.risk_score >= 12 and not (threat.mitigations and threat.test_evidence):\n            missing.append((threat.threat_id, 'risk_evidence'))\n    return missing",
+      "unitTests": "assert validate_architecture(secure_components, secure_flows, tested_threats) == []\nassert validate_architecture(incomplete_components, secure_flows, tested_threats)\nassert risk_score(4, 5) == 20"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build an architecture and threat-model workbench that converts requirements into system views, checks trust-boundary controls, scores STRIDE/AI threats and produces a reviewable acceptance report.",
+      "steps": [
+        "Capture users, functional requirements, data classes, workload assumptions and SLO/cost targets.",
+        "Model components, data stores, protocols and deployment boundaries.",
+        "Create data flows with tenant context, authentication, authorization and encryption metadata.",
+        "Record ADRs with alternatives and consequences for storage, retrieval, models, agents and deployment.",
+        "Add STRIDE and AI-specific abuse cases with likelihood, impact and residual-risk owners.",
+        "Run architecture control validation and fail on missing boundary protections.",
+        "Generate negative acceptance tests for tenant escape, prompt injection, tool abuse and supply-chain compromise.",
+        "Export a design review pack with diagrams, ADRs, threat register and test evidence."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "What is the purpose of a system-context diagram?",
+        "options": [
+          "Show users and external systems",
+          "List every source-code line",
+          "Replace threat modeling",
+          "Define token pricing"
+        ],
+        "correctIndex": 0,
+        "explanation": "The context view establishes system scope and shows the people and external systems that interact with it."
+      },
+      {
+        "question": "Which statement about model-generated tool calls is correct?",
+        "options": [
+          "They are proposals, not permissions",
+          "They automatically grant scope",
+          "They replace user authentication",
+          "They bypass approval policies"
+        ],
+        "correctIndex": 0,
+        "explanation": "A trusted server-side policy layer must authorize the principal, tenant, capability, resource and approval before executing a tool."
+      },
+      {
+        "question": "What should an ADR include?",
+        "options": [
+          "Context, decision, alternatives and consequences",
+          "Only the selected library",
+          "Only a diagram",
+          "Only implementation code"
+        ],
+        "correctIndex": 0,
+        "explanation": "An ADR preserves why a decision was made, what alternatives were considered and what consequences or trade-offs follow."
+      },
+      {
+        "question": "How should a critical tenant-isolation threat be handled?",
+        "options": [
+          "Block approval until mitigated",
+          "Average it with low risks",
+          "Ignore it if SLO is met",
+          "Move it to a UI warning"
+        ],
+        "correctIndex": 0,
+        "explanation": "A catastrophic security boundary failure is a stop-ship condition and cannot be hidden by an aggregate risk score."
+      },
+      {
+        "question": "What makes a threat-model entry testable?",
+        "options": [
+          "Attack path, mitigation and evidence",
+          "A generic threat name",
+          "A severity color only",
+          "A vendor product name"
+        ],
+        "correctIndex": 0,
+        "explanation": "A useful threat entry identifies an asset and attack path, assigns controls and includes a negative test or detection evidence."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Requirements and quality attributes",
+        "weight": 15,
+        "evidence": "Defines user journeys, functional requirements, measurable SLO/quality/cost targets and workload assumptions."
+      },
+      {
+        "criterion": "Architecture views and trust boundaries",
+        "weight": 25,
+        "evidence": "Produces context, container, component, deployment and DFD views with identity/data/authority boundaries."
+      },
+      {
+        "criterion": "ADR quality and trade-offs",
+        "weight": 15,
+        "evidence": "Documents alternatives, rationale, consequences and revisit triggers for major architecture decisions."
+      },
+      {
+        "criterion": "Threat model and control mapping",
+        "weight": 30,
+        "evidence": "Uses STRIDE and AI abuse cases with risk scoring, mitigations, negative tests and residual-risk owners."
+      },
+      {
+        "criterion": "Architecture acceptance evidence",
+        "weight": 15,
+        "evidence": "Runs control/flow validation and blocks critical gaps before implementation."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Every sensitive data flow has explicit tenant, authentication, authorization and encryption requirements.",
+      "Model output cannot grant tools or change server-side policy.",
+      "ADRs document alternatives and consequences.",
+      "Critical threats have mitigations, negative tests and residual-risk owners.",
+      "Architecture gate blocks missing controls and unmitigated critical risk.",
+      "Acceptance criteria cover normal, adversarial and failure paths."
+    ]
+  },
+  "references": [
+    {
+      "title": "C4 Model",
+      "url": "https://c4model.com/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "OWASP Threat Modeling Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Threat_Modeling_Cheat_Sheet.html",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "Microsoft STRIDE Threat Modeling",
+      "url": "https://learn.microsoft.com/en-us/azure/security/develop/threat-modeling-tool-threats",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "NIST AI Risk Management Framework",
+      "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+      "sourceType": "standard",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "OWASP Top 10 for LLM Applications",
+      "url": "https://genai.owasp.org/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "Architecture Decision Records",
+      "url": "https://adr.github.io/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "requirements = define_user_journeys_and_quality_attributes(stakeholders)",
+      "explanation": "Translate business goals into testable requirements, workload assumptions and measurable reliability, security, quality and cost objectives."
+    },
+    {
+      "lines": "context = draw_system_context(users, external_providers, boundaries)",
+      "explanation": "Set system scope and identify external actors, data sources, providers and trust boundaries."
+    },
+    {
+      "lines": "flows = map_data_and_identity_paths(components, stores, protocols)",
+      "explanation": "Trace sensitive data, tenant context and authority across services, stores, queues and model/tool interfaces."
+    },
+    {
+      "lines": "adr = record_decision(context, options, decision, consequences)",
+      "explanation": "Capture alternatives and trade-offs so future teams can understand and revisit the decision."
+    },
+    {
+      "lines": "threats = enumerate_stride_and_ai_abuse_cases(assets, flows)",
+      "explanation": "Identify conventional and AI-specific attacks against data, identities, models, tools, queues and release pipelines."
+    },
+    {
+      "lines": "risk = likelihood * impact",
+      "explanation": "Use a consistent likelihood/impact scale to prioritize mitigation while retaining explicit stop-ship rules for catastrophic boundary failures."
+    },
+    {
+      "lines": "gate = validate_architecture(components, flows, threats)",
+      "explanation": "Fail the design review when required component controls, cross-boundary protections or high-risk test evidence are missing."
+    }
+  ]
+}
