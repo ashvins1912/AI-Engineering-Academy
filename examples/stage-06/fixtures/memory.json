@@ -1,0 +1,89 @@
+{
+  "now": 1000,
+  "tenantId": "acme",
+  "userId": "user-17",
+  "tokenBudget": 120,
+  "records": [
+    {
+      "id": "A",
+      "tenant_id": "acme",
+      "user_id": "user-17",
+      "type": "semantic",
+      "text": "Preferred contact channel is email.",
+      "source_id": "event-101",
+      "created_at": 900,
+      "expires_at": 2000,
+      "deleted": false,
+      "relevance": 0.95,
+      "reliability": 1,
+      "recency": 0.9,
+      "token_cost": 25
+    },
+    {
+      "id": "B",
+      "tenant_id": "acme",
+      "user_id": "user-17",
+      "type": "episodic",
+      "text": "A shipment was delayed in a previous case.",
+      "source_id": "case-42",
+      "created_at": 600,
+      "expires_at": 1500,
+      "deleted": false,
+      "relevance": 0.8,
+      "reliability": 0.7,
+      "recency": 0.3,
+      "token_cost": 50
+    },
+    {
+      "id": "C",
+      "tenant_id": "acme",
+      "user_id": "user-17",
+      "type": "semantic",
+      "text": "Current project is order tracking.",
+      "source_id": "event-118",
+      "created_at": 850,
+      "expires_at": 1800,
+      "deleted": false,
+      "relevance": 0.85,
+      "reliability": 0.95,
+      "recency": 0.8,
+      "token_cost": 35
+    },
+    {
+      "id": "X",
+      "tenant_id": "other-co",
+      "user_id": "user-99",
+      "type": "semantic",
+      "text": "Confidential customer contract details.",
+      "source_id": "event-x",
+      "created_at": 990,
+      "expires_at": 3000,
+      "deleted": false,
+      "relevance": 0.99,
+      "reliability": 1,
+      "recency": 1,
+      "token_cost": 20
+    },
+    {
+      "id": "E",
+      "tenant_id": "acme",
+      "user_id": "user-17",
+      "type": "episodic",
+      "text": "Temporary support PIN from an expired session.",
+      "source_id": "case-old",
+      "created_at": 100,
+      "expires_at": 900,
+      "deleted": false,
+      "relevance": 0.99,
+      "reliability": 1,
+      "recency": 0.1,
+      "token_cost": 10
+    }
+  ],
+  "scoreFormula": "0.5*relevance + 0.3*reliability + 0.2*recency",
+  "expectedSelected": [
+    "A",
+    "C"
+  ],
+  "expectedTokens": 60
+}
