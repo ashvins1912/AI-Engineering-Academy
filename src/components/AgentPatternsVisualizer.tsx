@@ -1,4 +1,4 @@
-import {useEffect,useMemo,useState} from 'react'
+import {useEffect,useState} from 'react'
 import {ArrowLeft,ArrowRight,Pause,Play,RotateCcw,Network,Users,Timer,ShieldCheck} from 'lucide-react'
 import lesson from '../../content/topics/patterns/lesson.json'
 import fixture from '../../examples/stage-06/fixtures/agent-patterns.json'
@@ -9,8 +9,8 @@ export default function AgentPatternsVisualizer(){
  const [workers,setWorkers]=useState(3),[pool,setPool]=useState(2),[revisions,setRevisions]=useState(2),[deliveries,setDeliveries]=useState(2),[failTask,setFailTask]=useState(false)
  const waves=Math.ceil(workers/pool),duration=waves*4
  const [eventSeen,setEventSeen]=useState(false)
- const firstEvent=useMemo(()=>{setEventSeen(false);return 'evt-launch-17'},[deliveries])
- useEffect(()=>{if(!playing)return;const timer=window.setTimeout(()=>setStep(v=>{if(v>=stages.length-1){setPlaying(false);return v+1}return v+1}),1900/speed);return()=>window.clearTimeout(timer)},[playing,step,speed,stages.length])
+ useEffect(()=>setEventSeen(false),[deliveries])
+ useEffect(()=>{if(!playing)return;const timer=window.setTimeout(()=>setStep(v=>{if(v>=stages.length-1){setPlaying(false);return v}return v+1}),1900/speed);return()=>window.clearTimeout(timer)},[playing,step,speed,stages.length])
  const reset=()=>{setPlaying(false);setStep(0);setWorkers(3);setPool(2);setRevisions(2);setDeliveries(2);setFailTask(false);setEventSeen(false)}
  const move=(d:number)=>{setPlaying(false);setStep(v=>Math.max(0,Math.min(stages.length-1,v+d)))}
  const current=stages[Math.min(step,stages.length-1)]
