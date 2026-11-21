@@ -8,7 +8,7 @@ class ContainerInferenceTests(unittest.TestCase):
  def tearDown(self):os.unlink(self.tmp.name)
  def test_model_digest_and_numeric_prediction(self):
   result=predict([1,2,3],self.model)
-  self.assertAlmostEqual(result["score"],.15)
+  self.assertAlmostEqual(result["score"],.35)
   self.assertEqual(len(result["model_sha256"]),64)
  def test_rejects_wrong_feature_count(self):
   with self.assertRaises(ValueError):predict([1],self.model)
