@@ -1,0 +1,46 @@
+{
+  "scenario": "Document review automation with API-first integration and manager approval",
+  "runId": "doc-42",
+  "tenantId": "tenant-a",
+  "trigger": {
+    "eventType": "document.uploaded",
+    "eventId": "evt-doc-42",
+    "signatureValid": true
+  },
+  "api": {
+    "action": "document.get",
+    "scope": "documents:read",
+    "credentialRef": "cred-docs-tenant-a"
+  },
+  "browser": {
+    "origin": "https://portal.example",
+    "allowed": true,
+    "locator": {
+      "role": "button",
+      "name": "Review"
+    },
+    "context": "isolated"
+  },
+  "approval": {
+    "approvalId": "approval-1",
+    "payloadHash": "H1",
+    "approver": "manager-1",
+    "expiresInSeconds": 900,
+    "used": false
+  },
+  "notification": {
+    "idempotencyKey": "doc-42:notify",
+    "sentOnce": true
+  },
+  "failureInjection": [
+    "duplicate webhook",
+    "OAuth scope denied",
+    "browser redirect off allowlist",
+    "prompt injection in page",
+    "selector ambiguity",
+    "download traversal",
+    "approval payload changed",
+    "approval expired",
+    "notification timeout after success"
+  ]
+}
