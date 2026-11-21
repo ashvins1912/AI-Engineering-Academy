@@ -1,0 +1,592 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "tooling",
+    "title": "Tool integration engineering — typed contracts and resilience",
+    "stage": 7,
+    "estimatedMinutes": 240
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Design typed, versioned tool contracts with strict input/output validation.",
+      "Enforce authentication, authorization, tenant scope and least privilege before provider calls.",
+      "Implement per-tenant rate limits, concurrency budgets, deadlines and backpressure.",
+      "Use idempotency keys and durable ledgers to handle retries and ambiguous provider outcomes.",
+      "Apply bounded retries, exponential backoff with jitter, Retry-After and circuit breakers only where safe.",
+      "Instrument redacted traces, latency, cost, quota and failure metrics."
+    ],
+    "prerequisites": [
+      "Stage 7 MCP tools and ACP/A2A trust boundaries",
+      "HTTP APIs, JSON Schema/Pydantic, OAuth/JWT, SQL transactions and distributed systems"
+    ],
+    "glossary": [
+      {
+        "term": "Tool contract",
+        "definition": "A versioned schema describing name, arguments, outputs, errors and side-effect semantics."
+      },
+      {
+        "term": "Strict validation",
+        "definition": "Rejects unknown fields, wrong types, invalid ranges and malformed inputs before execution."
+      },
+      {
+        "term": "Idempotency key",
+        "definition": "A stable key that lets a service replay one logical operation without repeating its side effect."
+      },
+      {
+        "term": "Payload fingerprint",
+        "definition": "A canonical hash binding an idempotency key to the exact request payload."
+      },
+      {
+        "term": "Token bucket",
+        "definition": "A rate limiter that replenishes tokens over time and allows bursts up to a configured capacity."
+      },
+      {
+        "term": "Retry budget",
+        "definition": "A hard bound on attempts, elapsed time and aggregate retry traffic."
+      },
+      {
+        "term": "Circuit breaker",
+        "definition": "A CLOSED/OPEN/HALF_OPEN state machine that suppresses calls to an unhealthy dependency and probes recovery."
+      },
+      {
+        "term": "Bulkhead",
+        "definition": "A concurrency isolation limit preventing one dependency or tenant from consuming all capacity."
+      },
+      {
+        "term": "Ambiguous outcome",
+        "definition": "The provider may have completed a side effect but the caller did not receive a definitive response."
+      },
+      {
+        "term": "Reconciliation",
+        "definition": "A read-after-timeout lookup determining whether an uncertain operation already succeeded."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "A tool is not just a function call. It is a privileged boundary between an agent and real systems: payments, email, files, CRM, databases or APIs. Loose schemas, missing tenant checks, unbounded retries and unsafe timeouts turn a helpful agent into a production incident.",
+    "plainLanguage": "Start with a typed contract. Give every tool a stable name, version, description, strict argument schema, result schema, timeout, side-effect classification and error taxonomy. Reject unknown fields and coercions at the boundary. Model-generated JSON is untrusted input; schema validity is only the first check, not proof that the caller is authorized.\n\nSeparate identity from arguments. Derive user, tenant and scopes from authenticated request context—not model output. Apply authorization to the exact action and resource. A tool that can read an order should not automatically be able to refund it. Use least-privilege credentials, tenant-scoped queries and auditable policy decisions.\n\nProtect dependencies with quotas and backpressure. A token bucket controls request rate and burst size. A concurrency semaphore or bulkhead limits in-flight calls. Queue only work that can safely wait. Bound request size, response size, execution deadline and per-tenant budget. When capacity is exhausted, reject predictably rather than accumulating an unbounded queue.\n\nRetries are a correctness decision. Retry transient failures such as selected 429/5xx responses only when the operation is safe to repeat or protected by a provider-supported idempotency key. Use a small maximum attempt count, an overall deadline, exponential backoff with jitter and Retry-After when present. Do not retry validation errors, authorization failures or arbitrary non-idempotent writes.\n\nTimeout does not mean failure. A payment request may have reached the provider and succeeded while the response was lost. Mark the operation pending/unknown, keep the same idempotency key and reconcile by provider operation ID or key before another write. Never create a fresh key merely because the client timed out.\n\nA durable idempotency ledger binds (tenant, tool, key) to a canonical payload fingerprint and operation state. First request reserves the key; a completed request replays the stored result; the same key with a different payload is rejected; a pending request is reconciled rather than re-executed. Commit business state, outbox events and the idempotency record transactionally where possible.\n\nA circuit breaker protects a dependency that is failing repeatedly. CLOSED permits calls and counts failures; OPEN rejects immediately during cool-down; HALF_OPEN allows limited probes. A successful probe closes the breaker; a failed probe opens it again. Circuit breakers are not retries and should be scoped to dependency/operation, not shared blindly across unrelated services.\n\nValidate provider responses as carefully as inputs. Enforce expected content type, schema, maximum bytes, URL and file constraints. Treat tool output as untrusted data before it re-enters model context. Redact credentials, tokens, PII and secrets from logs. Preserve trace IDs and provenance without logging raw sensitive payloads.\n\nMeasure the whole operation: validation rejects, authorization denials, quota rejections, attempts, retries, provider latency, p50/p95, breaker state, idempotency replays, ambiguous outcomes, reconciliations, cost and tenant attribution. A successful HTTP response is not enough; define business success and safety gates.\n\nUse a predictable pipeline: parse → validate schema → authenticate → authorize → rate/concurrency gate → idempotency reserve → circuit breaker → deadline/retry policy → provider call → response validation → persist result → emit audit/outbox → return typed result. Keep policy and side effects outside the LLM prompt.",
+    "mentalModel": "Untrusted tool request → strict schema → trusted identity + authorization → quota/bulkhead → idempotency → breaker/deadline/retry → provider → validate response → persist/audit/reconcile.",
+    "limitations": [
+      "JSON Schema validation does not prove business authorization or resource ownership.",
+      "Retries can duplicate side effects unless provider supports idempotency or reconciliation.",
+      "A circuit breaker protects availability but does not repair bad data or guarantee business correctness.",
+      "An in-memory rate limiter is not globally consistent across multiple instances; distributed deployments need shared quotas or partitioning.",
+      "SQLite examples teach transaction semantics; multi-instance production needs PostgreSQL or a dedicated idempotency service.",
+      "Timeouts do not prove that a remote operation failed; preserve unknown state until reconciliation."
+    ],
+    "everydayAnalogy": "A bank teller checks the form, verifies customer identity and account rights, applies a queue limit, records a unique transaction reference, calls the payment network and reconciles if the receipt is lost. The teller does not repeat a transfer just because the screen timed out.",
+    "mathMadeSimple": "A token bucket has capacity 10 and refills 2 tokens/second. A burst of 7 calls leaves 3 tokens; 2 seconds later it has 7. A retry schedule with base 200 ms and multiplier 2 gives 200, 400 and 800 ms before jitter. If a provider succeeded but the response timed out, the same idempotency key returns the original result instead of charging twice.",
+    "productionImpact": "Production tool adapters require strict schemas, trusted identity, tenant/resource authorization, per-tenant quotas, bounded concurrency, deadline propagation, safe retry classification, durable idempotency, circuit breaker state, response validation, secret redaction, traces, reconciliation and load/failure tests."
+  },
+  "useCase": {
+    "scenario": "An order-support agent can look up an order, quote a refund and—after explicit approval—request a refund from a payment provider. The adapter protects the provider from duplicate writes, bursts and outages.",
+    "actors": [
+      "Agent runtime",
+      "Tool contract registry",
+      "Identity and authorization gateway",
+      "Tenant rate limiter",
+      "Idempotency ledger",
+      "Circuit breaker and retry policy",
+      "Payment provider",
+      "Reconciliation worker",
+      "Audit and metrics"
+    ],
+    "inputs": [
+      "Typed tool name and arguments",
+      "Authenticated user/tenant/scopes",
+      "Stable idempotency key",
+      "Provider response or ambiguous timeout",
+      "Per-tenant quota and dependency health"
+    ],
+    "constraints": [
+      "Unknown fields and invalid amounts fail before provider calls.",
+      "Tenant identity comes from trusted context.",
+      "Refund execution requires authorization and approval.",
+      "A timeout never creates a new idempotency key.",
+      "Retries are bounded and only used for safe/idempotent operations.",
+      "Provider response and logs are validated/redacted."
+    ],
+    "outputs": [
+      "Typed tool result or structured error",
+      "Idempotency record and provider reference",
+      "Retry/breaker trace",
+      "Reconciliation status",
+      "Audit and quota metrics"
+    ],
+    "successMetric": "No duplicate refund, no cross-tenant access, bounded latency/cost and graceful degradation during provider failures."
+  },
+  "architecture": {
+    "diagram": "content/topics/tooling/tool-integration-pipeline.mmd",
+    "components": [
+      "Tool schema registry",
+      "Strict argument validator",
+      "Trusted identity context",
+      "Authorization policy engine",
+      "Token bucket and bulkhead",
+      "Idempotency ledger",
+      "Circuit breaker",
+      "Deadline and retry controller",
+      "Provider adapter",
+      "Response validator",
+      "Audit/outbox and telemetry",
+      "Reconciliation worker"
+    ],
+    "dataFlow": [
+      {
+        "from": "Agent",
+        "to": "Schema registry",
+        "payload": "tool name + arguments + schema version",
+        "purpose": "Resolve a registered contract."
+      },
+      {
+        "from": "Schema registry",
+        "to": "Validator",
+        "payload": "JSON Schema + input",
+        "purpose": "Reject malformed and unknown fields."
+      },
+      {
+        "from": "Validator",
+        "to": "Identity gateway",
+        "payload": "trusted principal + tenant + resource",
+        "purpose": "Authenticate and authorize exact action."
+      },
+      {
+        "from": "Identity gateway",
+        "to": "Quota and bulkhead",
+        "payload": "tenant/tool budget",
+        "purpose": "Apply rate, concurrency and deadline limits."
+      },
+      {
+        "from": "Quota and bulkhead",
+        "to": "Idempotency ledger",
+        "payload": "tenant + tool + key + payload hash",
+        "purpose": "Reserve, replay or reconcile logical operation."
+      },
+      {
+        "from": "Idempotency ledger",
+        "to": "Resilience controller",
+        "payload": "new operation only",
+        "purpose": "Apply breaker, timeout and bounded retry policy."
+      },
+      {
+        "from": "Resilience controller",
+        "to": "Provider",
+        "payload": "validated provider request + idempotency key",
+        "purpose": "Execute external operation."
+      },
+      {
+        "from": "Provider",
+        "to": "Response validator",
+        "payload": "status + headers + body",
+        "purpose": "Validate response and normalize errors."
+      },
+      {
+        "from": "Response validator",
+        "to": "Ledger/audit",
+        "payload": "result + provider ID + trace",
+        "purpose": "Persist result and emit audit/outbox."
+      }
+    ],
+    "trustBoundaries": [
+      "Only registered tool handlers are executable; model output cannot create new tools.",
+      "Tenant/user identity is derived from verified auth context, never tool arguments.",
+      "Provider credentials are server-side and scoped per operation.",
+      "Tool output is untrusted content; validate and redact before returning to model or logs.",
+      "Idempotency keys are scoped by tenant and tool; payload mismatch is rejected."
+    ],
+    "failurePaths": [
+      "Invalid schema: reject before provider invocation.",
+      "Unauthorized resource: deny and audit without leaking existence.",
+      "Quota exhausted: return rate_limited with retry guidance.",
+      "Circuit OPEN: fail fast or safe fallback; do not queue without bound.",
+      "Provider 429/503: bounded retry with jitter/Retry-After only if safe.",
+      "Timeout after possible provider success: mark unknown and reconcile using same key.",
+      "Same key/different payload: reject idempotency conflict.",
+      "Malformed provider response: quarantine and return typed provider error."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-07/fixtures/tool-integration.json",
+    "steps": [
+      {
+        "label": "Validate",
+        "explanation": "Check strict tool schema and trusted caller context.",
+        "expectedState": "valid + authorized"
+      },
+      {
+        "label": "Protect",
+        "explanation": "Apply token bucket, concurrency and deadline budgets.",
+        "expectedState": "quota reserved"
+      },
+      {
+        "label": "Deduplicate",
+        "explanation": "Reserve stable idempotency key and payload fingerprint.",
+        "expectedState": "one logical operation"
+      },
+      {
+        "label": "Execute safely",
+        "explanation": "Use breaker, bounded retry and provider idempotency.",
+        "expectedState": "provider result known"
+      },
+      {
+        "label": "Persist and observe",
+        "explanation": "Validate result, store it, emit audit and reconcile ambiguous outcomes.",
+        "expectedState": "replay-safe result"
+      }
+    ],
+    "accessibility": [
+      "Task state and context IDs are labeled as text.",
+      "Streaming events are listed with event type and sequence.",
+      "Artifact name, MIME type and validation status are explicit."
+    ],
+    "animation": {
+      "objective": "Animate one refund tool request through schema, authorization, quota, idempotency, resilience and provider response handling.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Validate and authorize",
+          "narration": "Reject malformed arguments and derive tenant identity from verified context.",
+          "input": "amount=12500; tenant=trusted-context",
+          "transformation": "schema → identity → resource policy",
+          "output": "valid=true; authorized=true",
+          "visualState": "Tool call admitted"
+        },
+        {
+          "step": 2,
+          "title": "Apply rate and concurrency limits",
+          "narration": "Token bucket and bulkhead protect provider from bursts.",
+          "input": "bucket=10; tokens=7; refill=2/sec",
+          "transformation": "consume one token; acquire concurrency slot",
+          "output": "tokens=6; in_flight=1/4",
+          "visualState": "Capacity reserved"
+        },
+        {
+          "step": 3,
+          "title": "Reserve idempotency key",
+          "narration": "Bind tenant/tool/key to a canonical payload hash before side effects.",
+          "input": "key=refund-ORD-7; payload_hash=abc123",
+          "transformation": "reserve → execute once → cache outcome",
+          "output": "state=pending; same key replays result",
+          "visualState": "Duplicate writes prevented"
+        },
+        {
+          "step": 4,
+          "title": "Resilience policy",
+          "narration": "Circuit breaker and retry policy govern transient provider failures.",
+          "input": "attempt=1; status=503; max_attempts=3",
+          "transformation": "backoff 200ms → 400ms → 800ms + jitter",
+          "output": "bounded retries; breaker OPEN after threshold",
+          "visualState": "Failure contained"
+        },
+        {
+          "step": 5,
+          "title": "Validate, persist and reconcile",
+          "narration": "Validate provider response and persist result; timeout becomes unknown until reconciled.",
+          "input": "provider_result=refund-88 or timeout",
+          "transformation": "validate → commit ledger → audit/outbox → reconcile",
+          "output": "succeeded/replayed or pending_reconciliation",
+          "visualState": "Auditable final outcome"
+        }
+      ],
+      "controls": [
+        {
+          "name": "bucket_tokens",
+          "min": 0,
+          "max": 10,
+          "defaultValue": 7,
+          "effect": "Available rate-limit tokens before this call."
+        },
+        {
+          "name": "provider_status",
+          "min": 200,
+          "max": 599,
+          "defaultValue": 503,
+          "effect": "Simulated provider response status."
+        },
+        {
+          "name": "attempts",
+          "min": 1,
+          "max": 5,
+          "defaultValue": 3,
+          "effect": "Maximum bounded retry attempts."
+        },
+        {
+          "name": "circuit_failures",
+          "min": 0,
+          "max": 5,
+          "defaultValue": 3,
+          "effect": "Consecutive failures before circuit opens."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Each stage exposes schema decision, token count, idempotency state, attempt/backoff, breaker state and final reconciliation status as text."
+    }
+  },
+  "workedExample": {
+    "problem": "Execute a high-value refund safely when provider returns 503 and the client times out after a possible success.",
+    "input": "tenant=tenant-a; order=ORD-7; amount=12500; key=refund-ORD-7; bucket tokens=7; provider attempt1=503; attempt2=timeout.",
+    "steps": [
+      {
+        "operation": "Validate",
+        "reasoning": "Strict schema validates integer amount and trusted auth context authorizes refund on ORD-7.",
+        "result": "valid=true; authorized=true"
+      },
+      {
+        "operation": "Rate limit",
+        "reasoning": "Consume one token and reserve one of four provider concurrency slots.",
+        "result": "tokens=6; in_flight=1"
+      },
+      {
+        "operation": "Reserve key",
+        "reasoning": "Store key and payload hash before provider call.",
+        "result": "state=pending; payload_hash=abc123"
+      },
+      {
+        "operation": "Retry/reconcile",
+        "reasoning": "Retry 503 with bounded jitter; after ambiguous timeout query provider using same key before another write.",
+        "result": "provider operation refund-88 found"
+      },
+      {
+        "operation": "Persist/replay",
+        "reasoning": "Commit provider reference and typed result; future same-key call replays it.",
+        "result": "state=succeeded; duplicate_charges=0"
+      }
+    ],
+    "expectedOutput": "Exactly one refund operation with durable provider reference, bounded retries, audit trace and safe replay after timeout."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-07/tool_integration.py",
+      "runCommand": "python examples/stage-07/tool_integration.py",
+      "testsPath": "examples/stage-07/test_tool_integration.py",
+      "expectedResult": "Typed tool contracts, validation, token bucket, deadline-aware retry policy and CLOSED/OPEN/HALF_OPEN circuit breaker."
+    },
+    {
+      "language": "python",
+      "role": "production",
+      "path": "examples/stage-07/tool_integration_production.py",
+      "runCommand": "python -m unittest discover -s examples/stage-07 -p 'test_tool_integration_production.py' -v",
+      "testsPath": "examples/stage-07/test_tool_integration_production.py",
+      "expectedResult": "SQLite tenant-scoped idempotency ledger with payload fingerprints, pending/succeeded states, cached result replay and conflict detection."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Schema bypass",
+      "symptom": "Unknown or malformed tool arguments reach provider.",
+      "rootCause": "Loose schema or validation after invocation.",
+      "recovery": "Strict schema validation before provider calls.",
+      "regressionTest": "Unknown property and invalid amount never invoke fake provider."
+    },
+    {
+      "name": "Cross-tenant access",
+      "symptom": "Tool accesses another tenant's order using model-supplied tenant ID.",
+      "rootCause": "Tenant is read from arguments instead of authenticated context.",
+      "recovery": "Derive tenant from trusted identity and enforce resource ownership.",
+      "regressionTest": "Spoofed tenant claim is rejected before provider access."
+    },
+    {
+      "name": "Retry storm",
+      "symptom": "Retries amplify provider outage and exhaust quotas.",
+      "rootCause": "Unbounded attempts, no jitter, no global/tenant budget.",
+      "recovery": "Bound retry budget, deadlines, jitter, Retry-After and breaker.",
+      "regressionTest": "Maximum attempts and elapsed deadline are enforced."
+    },
+    {
+      "name": "Duplicate side effect",
+      "symptom": "Payment/refund executes twice after response timeout.",
+      "rootCause": "New idempotency key or blind retry after ambiguous outcome.",
+      "recovery": "Stable tenant/tool/key, payload fingerprint and reconciliation.",
+      "regressionTest": "Same key returns cached result; same key/different payload conflicts."
+    },
+    {
+      "name": "Circuit breaker mis-scope",
+      "symptom": "One failing endpoint blocks unrelated tools or tenants.",
+      "rootCause": "One global breaker shared across unrelated services.",
+      "recovery": "Scope breaker by dependency/operation and configure half-open probes.",
+      "regressionTest": "Open breaker for provider A does not block provider B."
+    },
+    {
+      "name": "Unbounded concurrency",
+      "symptom": "Provider connection pool and memory are exhausted.",
+      "rootCause": "No bulkhead or queue backpressure.",
+      "recovery": "Cap in-flight calls and reject/queue within a fixed bound.",
+      "regressionTest": "Calls above limit are rejected before provider call."
+    },
+    {
+      "name": "Secret leakage",
+      "symptom": "Authorization token or PII appears in traces.",
+      "rootCause": "Raw inputs/headers/results are logged.",
+      "recovery": "Structured allowlisted logging and recursive secret redaction.",
+      "regressionTest": "Token/password fields are absent from exported trace."
+    }
+  ],
+  "practice": {
+    "guided": "Classify each tool operation as read-only, idempotent write or non-idempotent write. Choose timeout, retry, idempotency and approval policy.",
+    "independent": "Implement a typed tool adapter with strict schema validation, trusted tenant context, token bucket, deadline, bounded retry and circuit breaker.",
+    "realWorld": "Build an order/refund API tool with stable idempotency key, SQLite result ledger, provider simulation, reconciliation worker and redacted trace.",
+    "expertExtension": "Add distributed tenant rate limits, Redis token bucket, PostgreSQL idempotency/outbox transaction, adaptive concurrency, retry budgets and provider-specific breaker tuning.",
+    "guidedExercise": {
+      "title": "Choose safe retry policy",
+      "instructions": "Retry transient 503 only when operation is idempotent or a provider idempotency key is present; never retry authorization or validation errors.",
+      "starterCode": "def should_retry(status, attempt, max_attempts, idempotent):\n    # classify transient status\n    # enforce max attempts\n    # reject unsafe writes\n    raise NotImplementedError",
+      "solutionCode": "def should_retry(status, attempt, max_attempts, idempotent, has_key=False):\n    transient = status == 429 or 500 <= status <= 599\n    if not transient or attempt >= max_attempts:\n        return False\n    return idempotent or has_key",
+      "unitTests": "assert should_retry(503, 1, 3, False, True)\nassert not should_retry(403, 1, 3, True)\nassert not should_retry(503, 3, 3, True)"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build a production tool gateway with validation, policy, resilience and idempotency inspection.",
+      "steps": [
+        "Register typed tool definitions and strict input/output schemas.",
+        "Inject trusted tenant identity and test cross-tenant resource access.",
+        "Configure per-tenant token bucket and in-flight concurrency limits.",
+        "Inject 429, 503, timeout and malformed provider responses.",
+        "Inspect retry count, jitter, deadline and circuit breaker state transitions.",
+        "Replay same idempotency key and then change payload to trigger conflict.",
+        "Simulate provider success followed by client timeout; reconcile by provider key.",
+        "Inspect redacted traces, cost metrics and failure taxonomy."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "Provider returns 503 for a refund with no idempotency support. What is safest?",
+        "options": [
+          "Retry five times immediately",
+          "Never retry anything",
+          "Do not blindly retry; reconcile or require idempotency protection",
+          "Generate a new key each attempt"
+        ],
+        "correctIndex": 2,
+        "explanation": "A timeout or 503 does not prove a write did not happen. Reconcile ambiguous outcomes and protect writes with stable idempotency."
+      },
+      {
+        "question": "Where should tenant identity come from?",
+        "options": [
+          "Model-generated tool arguments",
+          "Verified auth context",
+          "Tool description",
+          "Provider response"
+        ],
+        "correctIndex": 1,
+        "explanation": "Identity is trusted context, not untrusted model output."
+      },
+      {
+        "question": "What does OPEN mean in a circuit breaker?",
+        "options": [
+          "All calls allowed",
+          "Calls fail fast until cool-down/probe policy permits",
+          "Retries are unlimited",
+          "Provider is guaranteed recovered"
+        ],
+        "correctIndex": 1,
+        "explanation": "OPEN suppresses calls to an unhealthy dependency and prevents retry amplification."
+      },
+      {
+        "question": "Same idempotency key arrives with a different payload hash. What should happen?",
+        "options": [
+          "Execute new payload",
+          "Replay previous result without warning",
+          "Reject conflict",
+          "Create a new provider key"
+        ],
+        "correctIndex": 2,
+        "explanation": "An idempotency key is bound to one canonical request payload."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Typed contracts and validation",
+        "weight": 20,
+        "evidence": "Unknown fields, wrong types and invalid output fail before side effects."
+      },
+      {
+        "criterion": "Identity, authorization and quotas",
+        "weight": 20,
+        "evidence": "Trusted tenant/resource policy, rate and concurrency limits are enforced."
+      },
+      {
+        "criterion": "Idempotency and reconciliation",
+        "weight": 25,
+        "evidence": "Same key replays result, payload mismatch conflicts and ambiguous writes reconcile."
+      },
+      {
+        "criterion": "Resilience correctness",
+        "weight": 20,
+        "evidence": "Retry classification, deadlines, jitter and circuit breaker transitions are bounded."
+      },
+      {
+        "criterion": "Observability and security",
+        "weight": 15,
+        "evidence": "Traces are redacted and metrics cover attempts, latency, cost and failures."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Both Python suites pass.",
+      "Invalid/unauthorized calls never reach provider.",
+      "Same key does not duplicate a side effect.",
+      "Retry count and breaker behavior are bounded.",
+      "Ambiguous provider outcome remains pending until reconciled."
+    ]
+  },
+  "references": [
+    {
+      "title": "JSON Schema specification",
+      "url": "https://json-schema.org/specification",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "AWS Builders' Library — Timeouts, retries, and backoff with jitter",
+      "url": "https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "Resilience4j CircuitBreaker documentation",
+      "url": "https://resilience4j.readme.io/docs/circuitbreaker",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "OWASP API Security Top 10",
+      "url": "https://owasp.org/API-Security/editions/2023/en/0x00-header/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "validate_schema(arguments) before invoking provider",
+      "explanation": "Model output is untrusted; strict validation precedes every side effect."
+    },
+    {
+      "lines": "tenant_id = authenticated_context.tenant_id",
+      "explanation": "Never accept tenant identity or authorization claims from tool arguments."
+    },
+    {
+      "lines": "reserve(tenant, tool, key, payload_hash)",
+      "explanation": "Reserve before provider call; replay completed results and reject key/payload mismatch."
+    },
+    {
+      "lines": "retry only transient && bounded && idempotent",
+      "explanation": "Use deadlines, exponential backoff, jitter and provider Retry-After; never retry unsafe writes blindly."
+    },
+    {
+      "lines": "CLOSED → OPEN → HALF_OPEN → CLOSED",
+      "explanation": "Circuit breaker is a separate state machine from retries; isolate it by dependency/operation."
+    }
+  ]
+}
