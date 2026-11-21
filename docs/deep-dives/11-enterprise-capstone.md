@@ -20,7 +20,11 @@ Keep agent planning separate from execution. The agent emits typed proposals; th
 Add redacted audit events, trace propagation, cost metering, SLO/deadline controls and bounded retries to the same path. Validate positive and negative integration tests: cross-tenant retrieval, citation lineage, no-evidence abstention, prompt injection, unauthorized tools, approval replay, idempotency, budget rejection and provider outage. The local reference implementation is an offline contract simulator; replace its in-memory stores and lexical retrieval with production adapters only after the same invariants are proven with database/RLS and deployment tests.
 
 ### Deploy and operate
-Create reproducible container and CI pipeline; run unit/integration/security/evaluation suites; deploy to a staging environment; verify health and quality; promote with canary or controlled rollout. Add traces, metrics, logs, SLOs, budgets, alert thresholds, backup/restore and incident runbooks. Demonstrate rollback and data recovery.
+Create an immutable release manifest binding source commit, image/model/prompt/index/schema versions, API/event contracts, evaluation report, SBOM, provenance, signature and previous compatible rollback target. CI gates include type/lint, unit/integration/contract, PostgreSQL RLS, retrieval/citation, prompt/tool security, model quality/safety, load, cost, migration compatibility and supply-chain verification. Missing evidence blocks promotion.
+
+Use expand/backfill/verify/switch/drain/contract migrations so old and new instances remain compatible during rolling deployment. Deploy to staging, run smoke tests, then use a sample-size-aware canary. Compare error rate, p95, model quality/safety, cost per successful task, queue depth and saturation. Any critical threshold breach halts promotion and restores the full compatible bundle (code/image/model/prompt/index/schema), not just the container.
+
+Operate with user-centered SLO dashboards, traces, redacted logs, actionable alerts, named runbooks, on-call ownership, tenant budget guardrails and backup/restore drills. Record RPO/RTO and prove restore integrity and tenant boundaries. Rehearse provider/vector outages, failed migrations, canary regression, artifact compromise and rollback. The local simulator validates policy logic; production deployment and infrastructure provisioning remain separate approved activities.
 
 ## Required deliverables
 1. Architecture diagrams: context, component, deployment, data flow and trust boundaries.
