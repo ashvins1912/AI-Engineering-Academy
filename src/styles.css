@@ -1131,3 +1131,31 @@
 .automation-approval-card b{font:10px 'DM Mono';color:#dce5ff;text-align:right;overflow-wrap:anywhere}
 .automation-approval-card small{font-size:10px;color:#899bb8}
 @media(max-width:760px){.automation-platform-envelope>div:first-child{align-items:flex-start;flex-direction:column}.automation-platform-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.automation-platform-controls{grid-template-columns:1fr}}
+
+/* Stage 9 Topic 1 — experiment tracking workbench */
+.experiment-dataset-card,.experiment-repro-card{display:grid;gap:7px;border:1px solid #293750;border-radius:12px;background:#0e1728;padding:13px;margin:14px 0}
+.experiment-dataset-card>strong,.experiment-repro-card>strong{display:flex;align-items:center;gap:7px;color:#e0e7f7;font-size:12px;padding-bottom:8px;border-bottom:1px solid #27344c}
+.experiment-dataset-card>div,.experiment-repro-card>div{display:flex;justify-content:space-between;gap:10px;padding:6px 2px;border-bottom:1px solid #202c41}
+.experiment-dataset-card span,.experiment-repro-card span{font-size:10px;color:#9aabc7}
+.experiment-dataset-card b,.experiment-repro-card b{font:10px 'DM Mono';color:#dce5ff;text-align:right;overflow-wrap:anywhere}
+.experiment-repro-card small{font-size:10px;color:#899bb8}
+.experiment-run-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:14px 0}
+.experiment-run-grid article{display:grid;gap:6px;min-width:0;border:1px solid #293750;border-radius:11px;background:#101a2b;padding:13px}
+.experiment-run-grid small{font:9px 'DM Mono';color:#8e9fba}
+.experiment-run-grid strong{font:600 25px 'Space Grotesk';color:#e2e9ff}
+.experiment-run-grid span{font-size:10px;color:#94a7c5}
+.experiment-run-grid code{font:10px 'DM Mono';color:#9aabc7;overflow-wrap:anywhere}
+.experiment-metric-curve{display:grid;gap:8px;border:1px solid #293750;border-radius:12px;background:#0e1728;padding:13px;margin:14px 0}
+.experiment-metric-curve>strong{display:flex;align-items:center;gap:7px;color:#e0e7f7;font-size:12px}
+.experiment-metric-curve>div{display:grid;grid-template-columns:25px 1fr 42px;align-items:center;gap:8px}
+.experiment-metric-curve small{font:9px 'DM Mono';color:#899bb8}
+.experiment-metric-curve span{height:8px;border-radius:10px;background:#202c41;overflow:hidden}
+.experiment-metric-curve i{display:block;height:100%;border-radius:10px;background:#91a2ff}
+.experiment-metric-curve b{font:9px 'DM Mono';color:#dce5ff;text-align:right}
+.experiment-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;border:1px solid #293750;border-radius:12px;padding:14px;margin:14px 0}
+.experiment-controls label{display:grid;gap:7px;color:#aab8d0;font-size:11px}
+.experiment-controls label span{display:flex;justify-content:space-between;gap:8px}
+.experiment-controls b{font:10px 'DM Mono';color:#dce5ff}
+.experiment-controls input{width:100%;accent-color:#91a2ff}
+.experiment-controls input[type=checkbox]{width:auto;justify-self:start}
+@media(max-width:760px){.experiment-run-grid{grid-template-columns:1fr}.experiment-controls{grid-template-columns:1fr}}

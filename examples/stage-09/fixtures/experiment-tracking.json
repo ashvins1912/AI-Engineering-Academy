@@ -1,0 +1,47 @@
+{
+  "scenario": "Compare two sentiment classifiers using one immutable dataset snapshot",
+  "experiment": "sentiment-baselines",
+  "dataset": {
+    "name": "reviews",
+    "version": "v3",
+    "rows": 10000,
+    "contentHash": "sha256:ab12",
+    "splitHash": "sha256:ef34",
+    "train": 8000,
+    "validation": 1000,
+    "test": 1000
+  },
+  "runA": {
+    "runId": "run-A",
+    "model": "logistic-regression",
+    "seed": 42,
+    "learningRate": 0.01,
+    "epochs": 8,
+    "validationAccuracy": 0.91,
+    "artifactHash": "sha256:1111"
+  },
+  "runB": {
+    "runId": "run-B",
+    "model": "small-neural-network",
+    "seed": 42,
+    "learningRate": 0.001,
+    "epochs": 12,
+    "validationAccuracy": 0.93,
+    "artifactHash": "sha256:2222"
+  },
+  "comparison": {
+    "metric": "validation_accuracy",
+    "delta": 0.02,
+    "protocol": "accuracy-v1",
+    "sameDataset": true
+  },
+  "failureInjection": [
+    "split overlap",
+    "dataset content changed",
+    "param overwrite",
+    "metric step out of order",
+    "artifact corruption",
+    "secret in tag",
+    "different evaluation protocol"
+  ]
+}
