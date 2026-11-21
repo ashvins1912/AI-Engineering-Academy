@@ -1,5 +1,5 @@
 import {useEffect,useState} from 'react'
-import {ArrowLeft,ArrowRight,Pause,Play,RotateCcw,ChartNoAxesCombined,ShieldAlert,Database,GitCompareArrows,CheckCircle2} from 'lucide-react'
+import {ArrowLeft,ArrowRight,Pause,Play,RotateCcw,ChartLine,ShieldAlert,Database,GitCompareArrows} from 'lucide-react'
 import lesson from '../../content/topics/eval-ci/lesson.json'
 import fixture from '../../examples/stage-09/fixtures/evaluation-ci.json'
 
