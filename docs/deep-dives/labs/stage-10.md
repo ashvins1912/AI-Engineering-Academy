@@ -128,21 +128,23 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ---
 
-## incidents — Incident response and debugging
+## incidents — Incident response and recovery
 
-**Implementation task:** Run a provider-outage drill with mitigation, communication and postmortem evidence.
+**Implementation task:** Build an AI incident workflow that classifies severity, assigns a commander, selects category-specific containment, preserves redacted evidence with custody metadata, validates recovery gates and tracks blameless corrective actions.
 
-**Worked fixture:** Model provider returns 503 for five minutes while indexed documents remain available.
+**Worked fixture:** Suspected cross-tenant access begins at 09:00, detected at 09:12, contained at 09:30 and safely recovered at 10:15. Indexing workers are paused, evidence contains sensitive fields and a known-good immutable release is available.
 
-**Expected result:** Circuit breaker opens; service returns a clear degraded response or safe retrieval-only result; timeline is captured.
+**Expected result:** P0 severity is assigned for confirmed exposure; active access is blocked; evidence is redacted and hashed with custody data; recovery waits for tenant/cache/vector/object/queue, quality and SLO checks; TTD=12 minutes, TTC=18 minutes and recovery after containment=45 minutes.
 
-**Verification tests:** Test recovery, credential rotation, alerting and secret-free logs.
+**Verification tests:** Run `python -m unittest discover -s examples/stage-10 -p 'test_*.py' -v`. Test severity, category-specific containment, lifecycle transitions, evidence custody/redaction, failed recovery gates and postmortem accountability.
 
-**Debugging checklist:** Reduce the example to the smallest failing input; inspect identity, permissions, data flow and intermediate state; reproduce the failure with a test; change one variable at a time and retain a regression test.
+**Debugging checklist:** Establish incident commander and timeline; validate severity against actual impact; confirm active harm is contained; preserve original and redacted evidence with digest/custody; verify rollback digest/provenance; inspect queue replay/idempotency; run security/data/quality/SLO/cost recovery gates; track postmortem action owners.
 
-**Interview checks:** What evidence belongs in a blameless incident postmortem?
+**Interview checks:** What is the difference between containment and eradication? Why should active harm be contained before full root-cause certainty? What evidence metadata establishes custody? Why is rollback not sufficient by itself? What makes a blameless postmortem actionable?
 
-**Submission evidence:** Include implementation and architecture artifacts, a successful run, positive and negative tests, a short failure analysis, and a 3–5 sentence explanation of the operational trade-off.
+**Submission evidence:** Include severity matrix, incident timeline, category-specific containment runbook, evidence manifest, recovery checklist, canary verification and postmortem actions with owners/dates/tests.
+
+---
 
 ## Stage completion evidence
 
