@@ -1,0 +1,563 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "workflow-patterns",
+    "title": "Workflow patterns — deterministic orchestration",
+    "stage": 8,
+    "estimatedMinutes": 210
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Choose sequential, parallel, branching, fan-out/fan-in, map-reduce and saga patterns based on dependency and failure semantics.",
+      "Model a workflow as a validated DAG with explicit task inputs, outputs and dependencies.",
+      "Execute independent tasks with bounded concurrency and deterministic aggregation.",
+      "Use retries, idempotency and compensation without claiming distributed transactions provide automatic rollback.",
+      "Define partial-failure policies, deadlines, human approval boundaries and observability."
+    ],
+    "prerequisites": [
+      "Stage 6 agent orchestration and Stage 7 tool integration engineering",
+      "Python concurrency, queues, SQL transactions, idempotency and API error handling"
+    ],
+    "glossary": [
+      {
+        "term": "Workflow",
+        "definition": "A deterministic process coordinating tasks, dependencies, state transitions and side effects."
+      },
+      {
+        "term": "DAG",
+        "definition": "Directed acyclic graph; a dependency graph with no cycles."
+      },
+      {
+        "term": "Sequential",
+        "definition": "Runs steps in order when later steps depend on earlier results."
+      },
+      {
+        "term": "Fan-out/fan-in",
+        "definition": "Runs independent tasks concurrently and aggregates outcomes."
+      },
+      {
+        "term": "Branch",
+        "definition": "Chooses one path from validated conditions and registered transitions."
+      },
+      {
+        "term": "Saga",
+        "definition": "A sequence of local transactions with compensating actions for completed steps when a later step fails."
+      },
+      {
+        "term": "Compensation",
+        "definition": "A new business action that counteracts an earlier effect; it is not a database rollback."
+      },
+      {
+        "term": "Orchestration",
+        "definition": "A coordinator explicitly schedules and tracks the next workflow step."
+      },
+      {
+        "term": "Choreography",
+        "definition": "Services react to domain events without a central step-by-step coordinator."
+      },
+      {
+        "term": "Partial failure",
+        "definition": "Some branches succeed while others fail; workflow policy decides continue, retry or compensate."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "Business processes combine API calls, database writes, notifications, approvals and long-running waits. A single agent loop or giant script hides dependencies and failure paths. Workflow patterns make execution order, ownership, recovery and side effects explicit.",
+    "plainLanguage": "Use sequential workflows when later steps depend on earlier outputs: validate an order, reserve inventory, charge payment, book shipping. Persist progress before moving to the next step so a restart can identify the last committed boundary.\n\nUse parallel fan-out/fan-in when tasks are independent. A travel quote can request flights, hotels and car rental concurrently, then aggregate results. Limit worker count and queue size. Decide whether one failure fails the whole workflow or partial results are useful. Never label an incomplete aggregate as complete.\n\nUse branching when a deterministic condition selects one registered path. A refund under $50 may follow an automatic policy; a higher amount may require human approval. Conditions should use trusted business data and explicit policy, not unconstrained model-generated route names.\n\nUse map-reduce when the same bounded operation runs over many items: validate catalog rows, compute each result, then aggregate counts and errors. Chunk inputs, cap concurrency, preserve item IDs and make each item idempotent.\n\nUse a saga when a business process spans multiple local transactions: reserve inventory, authorize payment, create shipment. Each successful step has a compensating action, such as release inventory or void authorization. Compensation is a new business operation; it may fail, be delayed or require manual recovery. A saga is not a distributed ACID transaction.\n\nOrchestration uses a coordinator that records which step runs next. It is easier to inspect and enforce global deadlines, but the coordinator is a dependency. Choreography uses domain events so services react independently. It reduces central coordination but makes causal tracing, loops, ordering and end-to-end status harder.\n\nWorkflow correctness relies on idempotency and at-least-once delivery. A worker may complete a provider call and crash before recording success. The task can be delivered again. Use stable operation keys, a transactional outbox where possible, durable step records and reconciliation. Exactly-once across independent systems is not a safe assumption.\n\nRetries and compensation are different. Retry repeats the same logical step after a transient failure; compensation counteracts a step that already succeeded. Retry only when safe/idempotent and within deadline. Compensate in reverse dependency order, record every attempt and escalate if compensation itself fails.\n\nKeep human approval explicit. Pause before a high-impact action, persist the pending decision and resume after an authenticated response. Do not hold a database transaction open while waiting for a person. Bind approval to exact action, amount, resource and workflow version.\n\nMake workflow state observable. Record run ID, tenant, version, step ID, attempt, start/end time, status, input/output references, idempotency key, trace ID, compensation and error class. Avoid logging secrets or sensitive payloads.",
+    "mentalModel": "Validate graph → schedule ready tasks → execute within budgets → persist each result → aggregate/branch → compensate or resume on failure → emit trace.",
+    "limitations": [
+      "Parallelism reduces latency only for independent tasks and can increase provider load and cost.",
+      "Compensation is a business action that can fail; it does not restore an earlier global database snapshot.",
+      "Choreography can create event loops and hard-to-debug causal chains without correlation IDs and bounded event contracts.",
+      "At-least-once delivery is normal; exactly-once side effects require idempotency and reconciliation.",
+      "Workflow engines persist their own state but cannot atomically commit remote APIs unless the provider participates in the same transaction.",
+      "Human approval, tenant authorization and business policy remain server-side controls, not model prompt instructions."
+    ],
+    "everydayAnalogy": "A wedding planner coordinates venue, catering, transport and guest invitations. Some tasks depend on earlier decisions, some can run in parallel, and if the venue cancels the planner must arrange alternatives and notify vendors. The planner records progress and does not assume every vendor transaction can be undone.",
+    "mathMadeSimple": "Four independent tasks each take 5 seconds. Sequential execution takes 20 seconds. With two workers, two waves take about 10 seconds plus overhead. A saga with three successful steps and a fourth failure compensates completed steps in reverse order. If compensation 2 fails, state is compensation_required—not rolled_back.",
+    "productionImpact": "Production workflows need DAG validation, bounded scheduling, typed step contracts, durable run/step state, idempotency, deadlines, retries, compensation, partial-failure policy, human interrupts, event correlation, dead-letter handling and recovery dashboards."
+  },
+  "useCase": {
+    "scenario": "An e-commerce order workflow validates an order, reserves inventory, authorizes payment, books shipping and sends confirmation. If shipping fails after payment authorization, a saga voids payment and releases inventory; independent fraud and address checks run in parallel.",
+    "actors": [
+      "Workflow coordinator",
+      "Order service",
+      "Fraud check",
+      "Address validator",
+      "Inventory service",
+      "Payment provider",
+      "Shipping provider",
+      "Notification service",
+      "Workflow journal"
+    ],
+    "inputs": [
+      "Authenticated order request",
+      "Order lines and customer data",
+      "Inventory/payment/shipping APIs",
+      "Business policy and approval thresholds",
+      "Idempotency keys and workflow deadline"
+    ],
+    "constraints": [
+      "Fraud and address checks may run in parallel.",
+      "Inventory reservation precedes payment authorization.",
+      "Shipping booking follows payment authorization.",
+      "Failure after reservation triggers compensation in reverse order.",
+      "Retries use stable idempotency keys and bounded deadlines.",
+      "High-risk orders pause for human approval."
+    ],
+    "outputs": [
+      "Completed order or explicit failed/compensation-required state",
+      "Step and compensation history",
+      "Provider operation references",
+      "Customer notification",
+      "Trace and business metrics"
+    ],
+    "successMetric": "Order completes once, or every completed side effect has a recorded compensation/recovery outcome without duplicate charges or inventory reservations."
+  },
+  "architecture": {
+    "diagram": "content/topics/workflow-patterns/workflow-patterns.mmd",
+    "components": [
+      "Workflow definition registry",
+      "DAG validator",
+      "Ready-task scheduler",
+      "Bounded worker pool",
+      "Branch policy evaluator",
+      "Saga coordinator",
+      "Step/compensation journal",
+      "Idempotency gateway",
+      "Human approval gate",
+      "Event/outbox publisher",
+      "Trace and recovery dashboard"
+    ],
+    "dataFlow": [
+      {
+        "from": "Order request",
+        "to": "Workflow registry",
+        "payload": "workflow definition + version",
+        "purpose": "Resolve approved workflow graph."
+      },
+      {
+        "from": "Workflow registry",
+        "to": "DAG validator",
+        "payload": "nodes + dependencies + branches",
+        "purpose": "Reject cycles, unknown tasks and invalid paths."
+      },
+      {
+        "from": "DAG validator",
+        "to": "Scheduler",
+        "payload": "validated DAG + budgets",
+        "purpose": "Select ready tasks within concurrency and deadline limits."
+      },
+      {
+        "from": "Scheduler",
+        "to": "Worker pool",
+        "payload": "typed task inputs + trace + idempotency key",
+        "purpose": "Run independent steps safely."
+      },
+      {
+        "from": "Worker pool",
+        "to": "Step journal",
+        "payload": "result/error + provider reference",
+        "purpose": "Persist completed work before scheduling successors."
+      },
+      {
+        "from": "Step journal",
+        "to": "Saga coordinator",
+        "payload": "success/failure + compensation metadata",
+        "purpose": "Continue, retry, pause or compensate."
+      },
+      {
+        "from": "Saga coordinator",
+        "to": "Outbox",
+        "payload": "domain events + trace IDs",
+        "purpose": "Publish state changes after durable commit."
+      }
+    ],
+    "trustBoundaries": [
+      "Only registered workflow definitions and task handlers can execute.",
+      "Tenant and user identity come from verified context, not task payload.",
+      "Each task receives least-privilege credentials and scoped inputs.",
+      "Compensation handlers are registered and separately authorized.",
+      "Events and worker outputs are untrusted until schema and provenance validation."
+    ],
+    "failurePaths": [
+      "Dependency cycle: reject graph before any task starts.",
+      "Worker timeout: preserve unknown outcome and reconcile by idempotency key.",
+      "Parallel branch failure: apply declared all-or-partial policy and expose missing results.",
+      "Saga step failure: compensate completed side effects in reverse order.",
+      "Compensation failure: mark compensation_required and create operator recovery task.",
+      "Duplicate event/task: replay stored step result instead of repeating provider call.",
+      "Deadline exceeded: stop scheduling new tasks and enter timeout/recovery state."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-08/fixtures/workflow-patterns.json",
+    "steps": [
+      {
+        "label": "Validate",
+        "explanation": "Validate dependencies, branch targets and compensation handlers.",
+        "expectedState": "acyclic workflow"
+      },
+      {
+        "label": "Schedule",
+        "explanation": "Select ready tasks and apply bounded parallelism.",
+        "expectedState": "two active workers"
+      },
+      {
+        "label": "Aggregate",
+        "explanation": "Collect task results and apply explicit partial-failure policy.",
+        "expectedState": "fan-in result"
+      },
+      {
+        "label": "Compensate",
+        "explanation": "On saga failure, run reverse-order compensating actions.",
+        "expectedState": "compensated or compensation_required"
+      },
+      {
+        "label": "Persist",
+        "explanation": "Record terminal state, events and trace for recovery.",
+        "expectedState": "auditable workflow run"
+      }
+    ],
+    "accessibility": [
+      "Task state and context IDs are labeled as text.",
+      "Streaming events are listed with event type and sequence.",
+      "Artifact name, MIME type and validation status are explicit."
+    ],
+    "animation": {
+      "objective": "Animate an order workflow with parallel validation, sequential reservation/payment/shipping and reverse-order saga compensation.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Validate workflow DAG",
+          "narration": "Check dependencies and compensation handlers before running side effects.",
+          "input": "nodes=fraud,address,inventory,payment,shipping",
+          "transformation": "topological validation + branch map check",
+          "output": "cycles=0; unknown_edges=0",
+          "visualState": "Workflow definition approved"
+        },
+        {
+          "step": 2,
+          "title": "Fan-out independent checks",
+          "narration": "Fraud and address checks run in parallel with a two-worker limit.",
+          "input": "ready_tasks=2; max_workers=2",
+          "transformation": "bounded scheduler → fan-out",
+          "output": "active=2; results=2",
+          "visualState": "Parallel work complete"
+        },
+        {
+          "step": 3,
+          "title": "Sequential saga steps",
+          "narration": "Reserve inventory, authorize payment and book shipping in dependency order.",
+          "input": "inventory → payment → shipping",
+          "transformation": "persist each step and idempotency key",
+          "output": "inventory=reserved; payment=authorized; shipping=failed",
+          "visualState": "Failure after two side effects"
+        },
+        {
+          "step": 4,
+          "title": "Compensate reverse order",
+          "narration": "Void payment then release inventory; record compensation outcomes.",
+          "input": "completed=[inventory,payment]",
+          "transformation": "compensate(payment) → compensate(inventory)",
+          "output": "payment=voided; inventory=released",
+          "visualState": "Saga compensated"
+        },
+        {
+          "step": 5,
+          "title": "Persist and report",
+          "narration": "Store final workflow state and trace; if compensation failed, escalate.",
+          "input": "compensation results + event history",
+          "transformation": "commit run state + outbox event",
+          "output": "status=compensated; duplicate_effects=0",
+          "visualState": "Recovery auditable"
+        }
+      ],
+      "controls": [
+        {
+          "name": "max_workers",
+          "min": 1,
+          "max": 4,
+          "defaultValue": 2,
+          "effect": "Maximum concurrent independent tasks."
+        },
+        {
+          "name": "shipping_failure",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "Injects failure after inventory and payment steps."
+        },
+        {
+          "name": "compensation_failure",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 0,
+          "effect": "If set, saga enters compensation_required instead of claiming rollback."
+        },
+        {
+          "name": "deadline_seconds",
+          "min": 5,
+          "max": 120,
+          "defaultValue": 30,
+          "effect": "Workflow deadline for scheduling and recovery."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Stages show dependency order, active worker count, completed side effects, compensation order and terminal recovery state as text."
+    }
+  },
+  "workedExample": {
+    "problem": "Run an order workflow where independent checks succeed, inventory and payment succeed, but shipping fails.",
+    "input": "fraud=pass; address=pass; inventory=reserved; payment=authorized; shipping=503; max_workers=2.",
+    "steps": [
+      {
+        "operation": "Validate DAG",
+        "reasoning": "Confirm dependencies, branches and compensations before starting.",
+        "result": "cycles=0; topological order valid"
+      },
+      {
+        "operation": "Parallel checks",
+        "reasoning": "Fraud and address checks are independent and run concurrently.",
+        "result": "active_workers=2; both=pass"
+      },
+      {
+        "operation": "Reserve and authorize",
+        "reasoning": "Inventory reservation precedes payment authorization; each uses stable idempotency key.",
+        "result": "inventory=reserved; payment=authorized"
+      },
+      {
+        "operation": "Shipping failure",
+        "reasoning": "Shipping provider returns a retryable error, then deadline is reached.",
+        "result": "shipping=failed; workflow enters compensation"
+      },
+      {
+        "operation": "Reverse compensation",
+        "reasoning": "Void payment authorization, then release inventory reservation.",
+        "result": "payment=voided; inventory=released; status=compensated"
+      }
+    ],
+    "expectedOutput": "The order is not marked complete; side effects are compensated and every step is traceable."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-08/workflow_patterns.py",
+      "runCommand": "python examples/stage-08/workflow_patterns.py",
+      "testsPath": "examples/stage-08/test_workflow_patterns.py",
+      "expectedResult": "DAG validation, bounded fan-out/fan-in, deterministic branching, map-reduce and saga compensation."
+    },
+    {
+      "language": "python",
+      "role": "production",
+      "path": "examples/stage-08/workflow_patterns_production.py",
+      "runCommand": "python -m unittest discover -s examples/stage-08 -p 'test_workflow_patterns_production.py' -v",
+      "testsPath": "examples/stage-08/test_workflow_patterns_production.py",
+      "expectedResult": "SQLite workflow run journal with tenant scope, step idempotency, ordered events and compensation state."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Dependency cycle",
+      "symptom": "Workflow cannot find a ready task or loops indefinitely.",
+      "rootCause": "DAG definition contains a cycle.",
+      "recovery": "Validate acyclicity and known dependencies before execution.",
+      "regressionTest": "Create A→B→A and assert compile rejects before any handler runs."
+    },
+    {
+      "name": "Unbounded fan-out",
+      "symptom": "Worker pool, provider quota or memory is exhausted.",
+      "rootCause": "Parallel tasks have no concurrency cap or backpressure.",
+      "recovery": "Use bounded scheduler and tenant budgets.",
+      "regressionTest": "Submit more tasks than max_workers and assert active count never exceeds limit."
+    },
+    {
+      "name": "Partial failure hidden",
+      "symptom": "Workflow reports success although one branch failed.",
+      "rootCause": "Aggregator drops failed or missing task results.",
+      "recovery": "Preserve per-task status and apply explicit partial-result policy.",
+      "regressionTest": "Inject one worker failure and assert aggregate reports partial_failure."
+    },
+    {
+      "name": "Duplicate side effect on retry",
+      "symptom": "Inventory or payment operation runs twice after worker crash.",
+      "rootCause": "No stable step idempotency key or durable step journal.",
+      "recovery": "Persist operation key and provider result; reconcile unknown outcomes.",
+      "regressionTest": "Retry same step key and assert one logical provider operation."
+    },
+    {
+      "name": "Compensation failure",
+      "symptom": "Payment void or inventory release fails after shipping failure.",
+      "rootCause": "Compensation is treated as guaranteed rollback.",
+      "recovery": "Mark compensation_required and enqueue operator recovery.",
+      "regressionTest": "Inject compensation failure and assert workflow is not marked compensated."
+    },
+    {
+      "name": "Wrong compensation order",
+      "symptom": "Inventory is released while payment is still captured.",
+      "rootCause": "Compensation ignores dependency order.",
+      "recovery": "Compensate completed steps in reverse dependency order.",
+      "regressionTest": "Assert payment compensation precedes inventory release."
+    }
+  ],
+  "practice": {
+    "guided": "Draw a dependency DAG for order validation, inventory, payment and shipping. Identify independent steps, critical path and compensation actions.",
+    "independent": "Implement a bounded scheduler, typed step results, branch registry, fan-out/fan-in aggregator and saga compensation engine.",
+    "realWorld": "Build an order fulfillment workflow with parallel fraud/address checks, sequential inventory/payment/shipping, human approval for high-value orders and compensation on failure.",
+    "expertExtension": "Add durable event sourcing, transactional outbox, workflow versioning, deadline propagation, pause/resume, tenant quotas and dead-letter recovery.",
+    "guidedExercise": {
+      "title": "Compute compensation order",
+      "instructions": "Given completed side-effect steps, return compensations in reverse order and preserve explicit recovery state when one fails.",
+      "starterCode": "def compensation_plan(completed_steps):\n    # reverse successful side effects\n    # return compensation names\n    raise NotImplementedError",
+      "solutionCode": "def compensation_plan(completed_steps):\n    return [step['compensate'] for step in reversed(completed_steps) if step.get('compensate')]",
+      "unitTests": "assert compensation_plan([{'compensate':'release_inventory'},{'compensate':'void_payment'}]) == ['void_payment','release_inventory']"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build a workflow designer and execution inspector for an e-commerce order saga.",
+      "steps": [
+        "Draw nodes and dependency edges; reject cycles before run.",
+        "Run fraud/address tasks in parallel with a worker cap.",
+        "Inspect fan-in result and inject one partial worker failure.",
+        "Execute inventory, payment and shipping in sequence with idempotency keys.",
+        "Inject shipping failure and view reverse compensation order.",
+        "Inject compensation failure and create an operator recovery task.",
+        "Inspect persisted step events, trace IDs, tenant scope and final status."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "Which pattern fits two independent validation checks?",
+        "options": [
+          "Sequential only",
+          "Bounded fan-out/fan-in",
+          "Compensation loop",
+          "Unbounded recursive agent"
+        ],
+        "correctIndex": 1,
+        "explanation": "Independent work can run in parallel with a bounded worker pool and explicit aggregation."
+      },
+      {
+        "question": "Shipping fails after inventory reservation and payment authorization. What is correct?",
+        "options": [
+          "Mark order completed",
+          "Compensate payment then inventory in reverse order",
+          "Delete the workflow log",
+          "Retry payment with a new key"
+        ],
+        "correctIndex": 1,
+        "explanation": "A saga runs compensating actions in reverse order; compensation is a business action, not database rollback."
+      },
+      {
+        "question": "A compensation action fails. What should workflow status say?",
+        "options": [
+          "compensated",
+          "success",
+          "compensation_required",
+          "deleted"
+        ],
+        "correctIndex": 2,
+        "explanation": "Do not claim rollback. Persist the incomplete recovery and escalate."
+      },
+      {
+        "question": "How do you prevent duplicate side effects after a worker crash?",
+        "options": [
+          "Use a new key on retry",
+          "Stable idempotency key and durable step journal",
+          "Increase concurrency",
+          "Disable events"
+        ],
+        "correctIndex": 1,
+        "explanation": "At-least-once execution needs idempotency and reconciliation."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Pattern selection and DAG modeling",
+        "weight": 20,
+        "evidence": "Choose sequential/parallel/branch/saga based on dependency and failure semantics."
+      },
+      {
+        "criterion": "Bounded execution and aggregation",
+        "weight": 20,
+        "evidence": "Concurrency caps, task identity and partial failure are preserved."
+      },
+      {
+        "criterion": "Saga and compensation",
+        "weight": 25,
+        "evidence": "Reverse-order compensation and compensation_required are correct."
+      },
+      {
+        "criterion": "Idempotency and durability",
+        "weight": 20,
+        "evidence": "Step retries replay or reconcile without duplicate effects."
+      },
+      {
+        "criterion": "Observability and governance",
+        "weight": 15,
+        "evidence": "Run/step IDs, deadlines, tenant scope and trace are recorded."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Both Python suites pass.",
+      "Cycles and unbounded fan-out are rejected.",
+      "Partial failure is explicit.",
+      "Compensation order and compensation failure are tested.",
+      "Retries do not duplicate side effects."
+    ]
+  },
+  "references": [
+    {
+      "title": "AWS Prescriptive Guidance — Saga pattern",
+      "url": "https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/saga.html",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "Temporal documentation — Workflows",
+      "url": "https://docs.temporal.io/workflows",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "Microsoft Azure Architecture Center — Compensating Transaction pattern",
+      "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/compensating-transaction",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "topological_sort(nodes, dependencies)",
+      "explanation": "Validate acyclicity and determine a safe order before executing any side effect."
+    },
+    {
+      "lines": "ThreadPoolExecutor(max_workers=limit)",
+      "explanation": "Bound independent tasks; preserve per-task IDs and collect partial failures."
+    },
+    {
+      "lines": "idempotency_key = workflow_id + step_id",
+      "explanation": "A retry must refer to the same logical step operation."
+    },
+    {
+      "lines": "for step in reversed(completed): compensate(step)",
+      "explanation": "Sagas counteract completed effects in reverse dependency order."
+    },
+    {
+      "lines": "if compensation_failed: state = compensation_required",
+      "explanation": "Compensation is fallible; surface operator recovery instead of claiming rollback."
+    }
+  ]
+}
