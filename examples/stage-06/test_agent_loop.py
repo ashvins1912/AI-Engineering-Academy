@@ -1,13 +1,17 @@
+import json
 import unittest
+from pathlib import Path
 
 from agent_loop import run_agent
+
+FIXTURE = json.loads((Path(__file__).parent / 'fixtures' / 'agent-loop.json').read_text(encoding='utf-8'))
 
 
 class AgentLoopTests(unittest.TestCase):
     def test_agent_observes_then_acts_then_finishes(self):
-        result = run_agent("MUG-1")
+        result = run_agent(FIXTURE["sku"], FIXTURE["discountRate"], FIXTURE["maxSteps"])
         self.assertEqual(result["status"], "completed")
-        self.assertEqual(result["result"]["final_price"], 72.0)
+        self.assertEqual(result["result"]["final_price"], FIXTURE["expectedFinalPrice"])
         self.assertEqual([step["action"] for step in result["trace"]],
                          ["catalog_search", "apply_discount"])
 
