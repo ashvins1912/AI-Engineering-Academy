@@ -1,0 +1,13 @@
+flowchart TD
+ D[Versioned golden dataset] --> R[Agent runner + fixed config]
+ R --> T[Capture full trajectory]
+ T --> Q[Deterministic quality evaluators]
+ T --> S[Safety and policy evaluators]
+ Q --> M[Metric aggregator]
+ S --> H{Hard gates pass?}
+ M --> H
+ H -->|No| X[Reject candidate + failure report]
+ H -->|Yes| B[Compare baseline, p50/p95 and cost]
+ B --> C{Release thresholds pass?}
+ C -->|No| W[Investigate regression]
+ C -->|Yes| K[Canary + monitor + rollback guard]
