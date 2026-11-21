@@ -1,0 +1,539 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "ibm-acp",
+    "title": "IBM/BeeAI Agent Communication Protocol — history and A2A migration",
+    "stage": 7,
+    "estimatedMinutes": 180
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Explain original IBM/BeeAI ACP REST/HTTP, synchronous/asynchronous and SSE design.",
+      "Describe current status: IBM Research says ACP is now part of A2A under the Linux Foundation.",
+      "Distinguish IBM Agent Communication Protocol from IDE Agent Client Protocol.",
+      "Map legacy discovery, run/session IDs, messages, multimodal payloads and streaming events to A2A concepts without assuming one-to-one equivalence.",
+      "Design a staged migration with adapters, parity tests, security parity, telemetry, canary and rollback."
+    ],
+    "prerequisites": [
+      "Stage 7 Topics 1–6: MCP, A2A Agent Cards, tasks, artifacts and trust boundaries",
+      "HTTP/REST, SSE, JSON, OAuth and API migration fundamentals"
+    ],
+    "glossary": [
+      {
+        "term": "IBM Agent Communication Protocol (IBM ACP)",
+        "definition": "An earlier IBM/BeeAI protocol for agent-to-agent communication using HTTP/REST, sync/async interactions, multimodal messages and SSE."
+      },
+      {
+        "term": "Agent Client Protocol (ACP)",
+        "definition": "A different protocol for IDE/client-to-coding-agent communication; not IBM/BeeAI ACP."
+      },
+      {
+        "term": "Compatibility adapter",
+        "definition": "A boundary translating legacy requests and responses into a target protocol while preserving semantics."
+      },
+      {
+        "term": "Run ID",
+        "definition": "A legacy identifier for one ACP execution; may map to A2A task ID after lifecycle review."
+      },
+      {
+        "term": "Session ID",
+        "definition": "A legacy conversation identifier; may map to A2A context ID after ownership and expiry review."
+      },
+      {
+        "term": "Semantic mapping",
+        "definition": "A transformation preserving meaning, authorization, lifecycle and error behavior—not just field names."
+      },
+      {
+        "term": "Strangler migration",
+        "definition": "A staged replacement moving traffic to a target while retaining a temporary rollback path."
+      },
+      {
+        "term": "Parity test",
+        "definition": "A test proving migrated behavior and security match required legacy guarantees."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "Protocol names and project status can become stale. IBM/BeeAI's Agent Communication Protocol was introduced for agent interoperability over HTTP. IBM Research now explicitly states that ACP is part of A2A under the Linux Foundation. Understand the original design for existing systems, but avoid starting a new standalone IBM ACP deployment when the intended direction is A2A.",
+    "plainLanguage": "First disambiguate the acronym. This lesson covers IBM/BeeAI Agent Communication Protocol. It is not the Agent Client Protocol used by IDEs and coding-agent clients.\n\nThe original IBM ACP focused on agent-to-agent communication. IBM described a REST-based HTTP interface, optional SDKs, multimodal messages, synchronous and asynchronous execution, Server-Sent Events (SSE) for streaming, and metadata-based discovery. BeeAI provided an implementation ecosystem. Agents built with different frameworks could interoperate without exposing internal models, prompts or tools.\n\nThe current-status update from IBM Research is decisive: ACP is now part of A2A under the Linux Foundation. Treat IBM ACP as historical protocol knowledge and migration context. For new interoperable agent systems, use the released A2A specification and supported SDKs. Pin the protocol version; this lesson uses A2A 1.0.0 as its released baseline and does not silently mix development-branch changes.\n\nMigration is not a blind endpoint rename. Inventory every legacy endpoint, request/response schema, session/run identifier, event type, content part, authentication method, timeout, retry and error. A legacy synchronous response may map to an immediate A2A Message. A long-running run may map to an A2A Task. A session identifier may map to contextId only if ownership, lifecycle and retention semantics align. Legacy SSE events may map to A2A task status and artifact update events, but event ordering, chunk assembly and reconnect behavior must be tested.\n\nDiscovery also changes. Legacy metadata or registry records do not automatically become valid Agent Cards. Publish a trusted Agent Card with supported interfaces, protocol version, skills, capabilities, modalities and security schemes. Validate origin and supported binding before sharing private task context. A card advertises capabilities; authentication and authorization still happen separately.\n\nMultimodal payloads need deliberate mapping. Text, image, file, embedding or structured data may map to A2A Message Parts or Artifact Parts. Validate MIME type, size, encoding, external URL allow-list, provenance and access control. Never treat a legacy opaque payload as trusted instructions.\n\nA safe migration uses a compatibility adapter. It accepts the old contract at the edge, validates identity and tenant, translates into A2A messages/tasks, records an idempotency key and maps A2A results back only for consumers that still need the legacy response. Keep domain policy, tool authorization, approval and business state outside the adapter. Run parity tests and read-only shadow comparisons before moving traffic. Use canary routing, metrics and rollback. Remove the old endpoint only after clients migrate and audit evidence confirms cutover.\n\nACP and MCP are complementary but distinct. MCP connects an agent to tools, resources and prompts. A2A connects one agent to another. A migrated A2A specialist may still use MCP internally for its own data and tool access.",
+    "mentalModel": "Identify legacy ACP scope → inventory wire and lifecycle semantics → map to A2A 1.0.0 → translate through a secure adapter → prove parity → canary → cut over → retire legacy path.",
+    "limitations": [
+      "IBM Research's current status notice is authoritative for project direction; check current A2A specification and releases before migration.",
+      "A2A and IBM ACP are not field-for-field identical; preserve semantics with explicit mapping and tests.",
+      "Run/session IDs may have different lifecycle, ownership and retention semantics from taskId/contextId.",
+      "Legacy event streams may not map directly to A2A status/artifact events; chunk ordering and resume must be tested.",
+      "A compatibility adapter can become permanent technical debt; define owner and retirement date.",
+      "This is not the IDE Agent Client Protocol; do not reuse its messages or session model."
+    ],
+    "everydayAnalogy": "A company replaces an old ticketing API with a new standard. The adapter translates old ticket requests to new tasks while keeping permissions and status meaning intact. Renaming ticketId to taskId is not enough; preserve ownership, statuses and attachment delivery.",
+    "mathMadeSimple": "Suppose the old service has 10,000 weekly runs: 8,000 synchronous and 2,000 asynchronous. A 5% canary routes 500 runs to the A2A adapter. If 498 return equivalent outcomes, parity is 99.6%. One cross-tenant disclosure is still a hard stop even with 99.6% parity.",
+    "productionImpact": "Production migration needs a protocol-version matrix, semantic mapping document, compatibility adapter, idempotency, dual-run policy, trace correlation, tenant/auth parity, payload limits, event ordering, SSE reconnect strategy, canary thresholds, rollback switch and explicit legacy retirement criteria."
+  },
+  "useCase": {
+    "scenario": "A BeeAI-based service still exposes a legacy IBM ACP-compatible agent endpoint. An organization migrates its orchestrator to A2A 1.0.0 while temporarily preserving the old client contract through an adapter.",
+    "actors": [
+      "Legacy ACP client",
+      "Compatibility adapter",
+      "Identity and tenant gateway",
+      "A2A Agent Card resolver",
+      "A2A client",
+      "A2A specialist agent",
+      "Event/artifact translator",
+      "Audit and metrics"
+    ],
+    "inputs": [
+      "Legacy REST run request and session metadata",
+      "Tenant and authenticated caller identity",
+      "Legacy multimodal payload",
+      "A2A Agent Card and supported interface",
+      "Migration mapping and idempotency key"
+    ],
+    "constraints": [
+      "Never trust tenant identity from payload alone.",
+      "Do not duplicate a side effect during dual-run or retry.",
+      "Translate synchronous and asynchronous outcomes according to explicit policy.",
+      "Preserve artifact provenance and event ordering.",
+      "Legacy endpoint remains available only during approved migration window."
+    ],
+    "outputs": [
+      "A2A message/task request",
+      "Mapped task/context identifiers",
+      "Translated status/artifact events",
+      "Legacy-compatible response for old consumers",
+      "Migration audit and parity metrics"
+    ],
+    "successMetric": "Legacy consumers receive equivalent outcomes while new execution uses A2A, with zero cross-tenant leaks and no duplicate side effects."
+  },
+  "architecture": {
+    "diagram": "content/topics/ibm-acp/acp-to-a2a-migration.mmd",
+    "components": [
+      "Legacy ACP endpoint",
+      "Request/schema inventory",
+      "Compatibility adapter",
+      "Identity and tenant gateway",
+      "A2A Agent Card resolver",
+      "A2A message/task client",
+      "Event/artifact translator",
+      "Idempotency and audit ledger",
+      "Canary router and rollback switch"
+    ],
+    "dataFlow": [
+      {
+        "from": "Legacy client",
+        "to": "Compatibility adapter",
+        "payload": "legacy REST run/session request",
+        "purpose": "Accept old contract during migration window."
+      },
+      {
+        "from": "Compatibility adapter",
+        "to": "Identity gateway",
+        "payload": "authenticated caller + tenant + scopes",
+        "purpose": "Derive trusted identity and enforce policy."
+      },
+      {
+        "from": "Compatibility adapter",
+        "to": "Agent Card resolver",
+        "payload": "trusted agent identifier",
+        "purpose": "Validate A2A 1.0.0 interface and security scheme."
+      },
+      {
+        "from": "Adapter",
+        "to": "A2A client",
+        "payload": "Message + contextId + idempotency metadata",
+        "purpose": "Translate legacy execution into A2A."
+      },
+      {
+        "from": "A2A agent",
+        "to": "Event translator",
+        "payload": "Task status/artifact events",
+        "purpose": "Map progress and outputs to legacy consumers."
+      },
+      {
+        "from": "Event translator",
+        "to": "Audit ledger",
+        "payload": "correlation IDs + mapping version + result",
+        "purpose": "Record parity, retries and migration evidence."
+      }
+    ],
+    "trustBoundaries": [
+      "Legacy request body never supplies trusted tenant or role claims.",
+      "Adapter can call only the A2A client and application-owned gateway.",
+      "Agent Card and remote artifacts are untrusted until origin/schema/provenance validation.",
+      "Dual-run never duplicates write-side effects; shadow mode uses read-only or simulated execution.",
+      "Correlation IDs are opaque and do not grant task access."
+    ],
+    "failurePaths": [
+      "Unknown legacy field: reject or quarantine; do not silently drop security-relevant data.",
+      "No semantic mapping for a status: fail closed and alert migration owner.",
+      "A2A Agent Card version mismatch: route to legacy only if rollback policy explicitly permits it.",
+      "Duplicate legacy request: return prior task mapping using idempotency key.",
+      "A2A task times out: preserve unknown/in-progress state and reconcile before retry.",
+      "Artifact translation loses MIME/provenance: quarantine and block consumer delivery.",
+      "Canary parity or safety threshold fails: stop rollout and revert routing switch."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-07/fixtures/acp-migration.json",
+    "steps": [
+      {
+        "label": "Inventory",
+        "explanation": "Capture legacy endpoint, payloads, IDs, events, auth and error semantics.",
+        "expectedState": "legacy contract versioned"
+      },
+      {
+        "label": "Map",
+        "explanation": "Translate each legacy concept to A2A without assuming field equivalence.",
+        "expectedState": "mapping table reviewed"
+      },
+      {
+        "label": "Adapt",
+        "explanation": "Use a compatibility adapter with trusted identity and idempotency.",
+        "expectedState": "A2A task created once"
+      },
+      {
+        "label": "Prove parity",
+        "explanation": "Compare outputs, events, artifacts and policy behavior.",
+        "expectedState": "parity and security gates pass"
+      },
+      {
+        "label": "Cut over",
+        "explanation": "Canary, monitor, rollback if needed and retire legacy endpoint.",
+        "expectedState": "A2A is primary; legacy retired"
+      }
+    ],
+    "accessibility": [
+      "Task state and context IDs are labeled as text.",
+      "Streaming events are listed with event type and sequence.",
+      "Artifact name, MIME type and validation status are explicit."
+    ],
+    "animation": {
+      "objective": "Translate one legacy ACP run into A2A 1.0.0 while preserving identity, task state, event order and artifact provenance.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Inventory legacy contract",
+          "narration": "Capture the legacy REST endpoint, session/run IDs, payload types, SSE events and auth behavior.",
+          "input": "POST /agents/refund/runs; session=ses-9",
+          "transformation": "record schema, lifecycle, scopes, retries and error codes",
+          "output": "legacy_contract=v1; operations=run/status/events",
+          "visualState": "Migration baseline fixed"
+        },
+        {
+          "step": 2,
+          "title": "Map semantics",
+          "narration": "Map legacy session to context and run to task only after ownership and lifecycle review.",
+          "input": "session=ses-9; run=run-42",
+          "transformation": "semantic map + protocol version negotiation",
+          "output": "contextId=ctx-9; taskId=pending",
+          "visualState": "Mapping reviewed, not renamed blindly"
+        },
+        {
+          "step": 3,
+          "title": "Translate through adapter",
+          "narration": "Adapter validates tenant and idempotency before sending an A2A message.",
+          "input": "tenant=tenant-a; idempotency=refund-review-ORD-7",
+          "transformation": "legacy request → A2A Message → task",
+          "output": "taskId=task-42; status=working",
+          "visualState": "One logical execution"
+        },
+        {
+          "step": 4,
+          "title": "Prove parity",
+          "narration": "Compare final result, event order, artifacts, approval and authorization against legacy expectations.",
+          "input": "old_events=3; new_events=3; critical_security_failures=0",
+          "transformation": "contract parity + safety assertions",
+          "output": "parity=99.6%; safety=pass",
+          "visualState": "Canary candidate eligible"
+        },
+        {
+          "step": 5,
+          "title": "Canary and retire",
+          "narration": "Move a small percentage of traffic, monitor rollback thresholds and retire old route after clients migrate.",
+          "input": "weekly_runs=10000; canary=5%",
+          "transformation": "route → compare → promote or rollback",
+          "output": "A2A primary; legacy=retirement_pending",
+          "visualState": "Controlled cutover"
+        }
+      ],
+      "controls": [
+        {
+          "name": "canary_percent",
+          "min": 0,
+          "max": 100,
+          "defaultValue": 5,
+          "effect": "Percentage of new requests routed through the A2A adapter."
+        },
+        {
+          "name": "parity_rate",
+          "min": 0,
+          "max": 100,
+          "defaultValue": 99.6,
+          "effect": "Behavioral parity rate; low parity blocks promotion."
+        },
+        {
+          "name": "critical_security_failures",
+          "min": 0,
+          "max": 3,
+          "defaultValue": 0,
+          "effect": "Any critical security failure blocks rollout regardless of parity."
+        },
+        {
+          "name": "duplicate_side_effects",
+          "min": 0,
+          "max": 3,
+          "defaultValue": 0,
+          "effect": "Any duplicate write-side effect blocks rollout."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Five stages show Agent Card, interface, task/context IDs, status events, artifact parts, validation and audit as text."
+    }
+  },
+  "workedExample": {
+    "problem": "Migrate a legacy refund-agent run to A2A without duplicating a refund operation or losing event history.",
+    "input": "Legacy session=ses-9; run=run-42; tenant=tenant-a; order=ORD-7; legacy SSE emits accepted, working, result.",
+    "steps": [
+      {
+        "operation": "Inventory",
+        "reasoning": "Record request schema, identity source, session/run semantics, SSE ordering and error behavior.",
+        "result": "legacy contract v1; event types=3"
+      },
+      {
+        "operation": "Map",
+        "reasoning": "Map session to contextId and run to taskId only after verifying ownership and retention behavior.",
+        "result": "contextId=ctx-9; taskId=task-42"
+      },
+      {
+        "operation": "Translate",
+        "reasoning": "Adapter sends A2A message with a stable idempotency key and minimum necessary context.",
+        "result": "one A2A task created"
+      },
+      {
+        "operation": "Compare",
+        "reasoning": "Compare translated task state, artifacts and approval requirement against legacy golden trace.",
+        "result": "parity=99.6%; security_failures=0"
+      },
+      {
+        "operation": "Canary",
+        "reasoning": "Route 5% of traffic, observe errors and rollback on any critical safety or duplicate side effect.",
+        "result": "A2A primary after promotion gate"
+      }
+    ],
+    "expectedOutput": "A traceable migration with equivalent business outcome, one logical execution, preserved artifact provenance and a rollback path."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-07/acp_a2a_migration.py",
+      "runCommand": "python examples/stage-07/acp_a2a_migration.py",
+      "testsPath": "examples/stage-07/test_acp_a2a_migration.py",
+      "expectedResult": "Legacy ACP request/event mapping into A2A message/task/artifact concepts with explicit unmapped-field and security checks."
+    },
+    {
+      "language": "python",
+      "role": "production",
+      "path": "examples/stage-07/acp_a2a_migration_production.py",
+      "runCommand": "python -m unittest discover -s examples/stage-07 -p 'test_acp_a2a_migration_production.py' -v",
+      "testsPath": "examples/stage-07/test_acp_a2a_migration_production.py",
+      "expectedResult": "SQLite migration ledger with immutable mapping versions, idempotency, parity records, canary gates and rollback state."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Acronym collision",
+      "symptom": "An IDE Agent Client Protocol integration is mistakenly migrated as IBM ACP.",
+      "rootCause": "The same acronym is used for different protocol scopes.",
+      "recovery": "Use full protocol names in packages, docs, service names and architecture records.",
+      "regressionTest": "Architecture contract explicitly labels IBM/BeeAI ACP vs Agent Client Protocol."
+    },
+    {
+      "name": "Blind field rename",
+      "symptom": "Old session/run fields are renamed but task ownership or retention semantics change.",
+      "rootCause": "Migration assumes IDs are interchangeable.",
+      "recovery": "Write semantic mapping and validate context/task ownership, TTL and lifecycle.",
+      "regressionTest": "Cross-tenant and wrong-context migration cases fail closed."
+    },
+    {
+      "name": "Event loss or reorder",
+      "symptom": "Legacy SSE consumers miss artifact chunks or see final state before progress.",
+      "rootCause": "No event sequence/cursor mapping and reconnect policy.",
+      "recovery": "Persist event sequence and map status/artifact events with replay protection.",
+      "regressionTest": "Disconnect/reconnect and verify ordered, non-duplicated consumer view."
+    },
+    {
+      "name": "Duplicate side effect during dual-run",
+      "symptom": "Legacy and A2A paths both execute the same refund.",
+      "rootCause": "Shadow comparison runs write-capable paths twice.",
+      "recovery": "Use read-only shadow mode, stable idempotency key and one authoritative writer.",
+      "regressionTest": "Repeated request and dual-run create one logical operation."
+    },
+    {
+      "name": "Security parity regression",
+      "symptom": "Migrated endpoint accepts weaker scopes or leaks another tenant's artifacts.",
+      "rootCause": "Authentication and authorization were treated as transport details.",
+      "recovery": "Preserve identity, scopes, tenant binding and artifact ACLs as hard gates.",
+      "regressionTest": "Cross-tenant access and missing scope block canary."
+    }
+  ],
+  "practice": {
+    "guided": "Create a mapping table for legacy session, run, message, multimodal payload, SSE event, auth and error fields.",
+    "independent": "Implement a compatibility adapter that translates a legacy run request into an A2A message and normalizes task/artifact events.",
+    "realWorld": "Design a staged BeeAI/IBM ACP to A2A migration with a versioned adapter, read-only shadow, 5% canary, parity report and rollback switch.",
+    "expertExtension": "Add signed Agent Cards, protocol-version negotiation, event cursor replay, outbox delivery, consumer deprecation telemetry and a migration retirement dashboard.",
+    "guidedExercise": {
+      "title": "Map legacy run into A2A",
+      "instructions": "Reject unknown protocol versions and missing tenant context; map legacy session and run identifiers into context/task references with a stable idempotency key.",
+      "starterCode": "def translate_legacy_run(request):\n    # validate version and tenant\n    # map session/run to context/task correlation\n    # preserve message parts and idempotency\n    raise NotImplementedError",
+      "solutionCode": "def translate_legacy_run(request):\n    if request.get('protocol') != 'ibm-acp-legacy': raise ValueError('unsupported legacy protocol')\n    if not request.get('tenant_id') or not request.get('session_id') or not request.get('run_id'):\n        raise ValueError('tenant, session and run IDs are required')\n    return {'protocolVersion':'1.0.0','contextId':request['session_id'],'legacyRunId':request['run_id'],'tenantId':request['tenant_id'],'message':request['message'],'idempotencyKey':request['tenant_id']+':'+request['run_id']}",
+      "unitTests": "mapped = translate_legacy_run(valid_request)\nassert mapped['contextId'] == valid_request['session_id']\nassert mapped['idempotencyKey'] == valid_request['tenant_id'] + ':' + valid_request['run_id']"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build a migration workbench that compares legacy ACP contracts with A2A target semantics and gates rollout.",
+      "steps": [
+        "Identify whether the source protocol is IBM/BeeAI ACP or Agent Client Protocol.",
+        "Load legacy endpoint, schema, event and security inventory.",
+        "Map sync response to Message and long-running run to Task where semantics permit.",
+        "Map session/run IDs to contextId/taskId and validate tenant ownership.",
+        "Translate SSE progress/artifact events and test reconnect ordering.",
+        "Run parity and adversarial security cases; reject critical failures.",
+        "Enable read-only shadow and small canary; verify rollback before promotion.",
+        "Track old-client usage and retire the legacy endpoint only after migration evidence is complete."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "What is the current status of IBM/BeeAI Agent Communication Protocol according to IBM Research?",
+        "options": [
+          "It is the same as IDE Agent Client Protocol",
+          "It is now part of A2A under the Linux Foundation",
+          "It replaced MCP",
+          "It is a database protocol"
+        ],
+        "correctIndex": 1,
+        "explanation": "IBM Research explicitly says ACP is now part of A2A under the Linux Foundation."
+      },
+      {
+        "question": "Can a legacy session ID always be renamed to contextId?",
+        "options": [
+          "Yes, fields with similar names are equivalent",
+          "No, validate ownership, lifecycle, retention and conversation semantics",
+          "Only if it is a UUID",
+          "Only for synchronous calls"
+        ],
+        "correctIndex": 1,
+        "explanation": "Migration is semantic; an ID mapping must preserve meaning and authorization."
+      },
+      {
+        "question": "How should dual-run compare old and new implementations?",
+        "options": [
+          "Execute all refunds twice",
+          "Use read-only shadow or one authoritative writer with shared idempotency",
+          "Disable audit",
+          "Ignore task status"
+        ],
+        "correctIndex": 1,
+        "explanation": "Shadow comparisons must not duplicate side effects."
+      },
+      {
+        "question": "What is a valid rollout gate?",
+        "options": [
+          "High average parity even with one tenant leak",
+          "No critical security failures and no duplicate side effects",
+          "Only low latency",
+          "Only successful HTTP status"
+        ],
+        "correctIndex": 1,
+        "explanation": "Critical security and side-effect correctness are non-compensable gates."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Protocol history and naming precision",
+        "weight": 15,
+        "evidence": "Distinguish IBM/BeeAI ACP from Agent Client Protocol and state the current A2A direction."
+      },
+      {
+        "criterion": "Semantic mapping",
+        "weight": 25,
+        "evidence": "Map run/session/message/event/artifact concepts with documented compatibility rules."
+      },
+      {
+        "criterion": "Security parity",
+        "weight": 25,
+        "evidence": "Preserve trusted identity, tenant scope, authorization and artifact ACLs."
+      },
+      {
+        "criterion": "Migration engineering",
+        "weight": 20,
+        "evidence": "Build adapter, parity tests, idempotency, shadow, canary and rollback."
+      },
+      {
+        "criterion": "Operational retirement",
+        "weight": 15,
+        "evidence": "Define consumer telemetry, deprecation notice and legacy shutdown criteria."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Legacy contract and mapping matrix are versioned.",
+      "Unknown fields/protocol versions fail safely.",
+      "No duplicate side effects occur during retries or shadow runs.",
+      "Parity tests include events, artifacts and security cases.",
+      "Canary can be rolled back and retirement is evidence based."
+    ]
+  },
+  "references": [
+    {
+      "title": "IBM Research — Agent Communication Protocol (current project status)",
+      "url": "https://research.ibm.com/projects/agent-communication-protocol",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "IBM Research — The simplest protocol for AI agents to work together",
+      "url": "https://research.ibm.com/blog/agent-communication-protocol-ai",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "A2A Protocol specification 1.0.0",
+      "url": "https://a2a-protocol.org/v1.0.0/specification/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "legacy session_id → contextId only after semantic review",
+      "explanation": "Conversation grouping, retention and ownership must match; a field rename is not enough."
+    },
+    {
+      "lines": "legacy run_id → taskId with idempotency key",
+      "explanation": "One legacy execution should map to one logical target task across retries."
+    },
+    {
+      "lines": "legacy SSE event → statusUpdate or artifactUpdate",
+      "explanation": "Preserve event order, cursor, artifact identity and replay semantics."
+    },
+    {
+      "lines": "hard_gate(parity && security && no_duplicate_side_effects)",
+      "explanation": "A good aggregate parity score cannot compensate for a critical security regression."
+    },
+    {
+      "lines": "canary → promote or rollback",
+      "explanation": "Traffic movement is controlled by evidence and a tested rollback path, not a calendar date."
+    }
+  ]
+}
