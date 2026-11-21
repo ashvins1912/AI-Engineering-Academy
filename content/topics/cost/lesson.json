@@ -1,0 +1,618 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "cost",
+    "title": "AI Cost Engineering — optimize cost per successful task",
+    "stage": 10,
+    "estimatedMinutes": 390
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Model end-to-end AI request cost across input/output tokens, embeddings, reranking, tools, retries, storage and infrastructure.",
+      "Calculate cost per successful task and distinguish unit cost from cost per request or token.",
+      "Estimate daily/monthly spend and capacity from traffic, token distributions, concurrency and provider pricing.",
+      "Design tenant-aware semantic caching, prompt/context budgets, batching and model routing without weakening quality or security.",
+      "Apply admission control, quotas, budget alerts and retry limits to prevent runaway spend and denial-of-wallet behavior.",
+      "Build deterministic cost simulations and compare optimization strategies using quality, latency and successful-task outcomes."
+    ],
+    "prerequisites": [
+      "Stage 5 model evaluation and retrieval quality",
+      "Stage 8 model serving, batching and capacity",
+      "Stage 10 Topic 6 SLOs, retries and reliability",
+      "Basic arithmetic, token counts and API usage accounting"
+    ],
+    "glossary": [
+      {
+        "term": "Unit economics",
+        "definition": "The cost and value of one defined unit of work, such as a successful answer or completed workflow."
+      },
+      {
+        "term": "Cost per successful task",
+        "definition": "Total cost of all attempts and supporting operations divided by the number of tasks that meet the success definition."
+      },
+      {
+        "term": "Token",
+        "definition": "A model-specific unit of text or multimodal input/output that providers use for context limits and billing."
+      },
+      {
+        "term": "Semantic cache",
+        "definition": "A cache that reuses prior results for sufficiently similar requests under strict tenant, model, prompt and corpus-version constraints."
+      },
+      {
+        "term": "Model routing",
+        "definition": "Selecting a model or execution path based on task complexity, quality requirement, latency and remaining budget."
+      },
+      {
+        "term": "Admission control",
+        "definition": "A policy that accepts, defers or rejects work before it consumes more resources than the service can afford or serve."
+      },
+      {
+        "term": "Denial of wallet",
+        "definition": "An attack or accidental workload that drives excessive paid model/API usage and creates disproportionate cost."
+      },
+      {
+        "term": "Cost attribution",
+        "definition": "Assigning measured resource consumption to a tenant, product feature, model, workflow or successful task."
+      },
+      {
+        "term": "Budget envelope",
+        "definition": "A server-enforced maximum spend or token allowance for a request, user, tenant or time window."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "AI cost is not just the model's output-token price. A request can incur prompt tokens, output tokens, embeddings, reranking, tool calls, retries, storage, vector queries, network egress and idle capacity. Optimizing cost per request can be misleading if cheap requests fail more often or require expensive retries.",
+    "plainLanguage": "Start by defining the unit you care about. A user may ask one question, but the system might perform query rewriting, one or more retrieval calls, reranking, two model attempts, a tool call and a final response. The useful business unit is often a successful task, not an HTTP request or a single model call. Add the cost of every attempt—including failed attempts—to the numerator, then divide by the number of tasks that actually meet your success criteria.\n\nTrack the cost components separately. For a text model, input cost is input tokens multiplied by the input price per million and divided by one million. Output cost uses its own rate. Embedding and reranking may have separate rates. Tool calls, storage, database queries, observability and infrastructure should be included when they materially contribute. Prices vary by provider, model, region, batch mode and date, so keep rates in versioned configuration rather than hardcoding them in application logic.\n\nMeasure distributions, not only averages. A few long-context requests can dominate spend. Track p50/p95 input and output tokens, cache hit rate, retries, tool calls, cost per successful task, and cost by tenant and feature. Attribute usage to a request and a successful task with correlation IDs, but never put raw prompts, secrets or customer content into billing labels.\n\nReduce avoidable work before choosing a cheaper model. Remove duplicate context, retrieve only relevant chunks, limit top-k, cap output tokens, batch embedding jobs, cache stable results and avoid unnecessary reranking. A semantic cache must be tenant-aware and version-aware: include tenant, model version, prompt/template version, retrieval corpus/index version and relevant authorization scope. Never reuse an answer across tenants or after the underlying corpus or policy changes. Apply freshness and access checks before serving a cached result.\n\nRoute by task complexity and quality requirement. Simple classification or extraction may use a smaller model; complex reasoning may require a stronger model. The router should use evaluated quality thresholds, latency constraints and budget envelopes, not just a model's advertised price. If the cheaper route fails quality evaluation, the apparent savings may disappear through retries, manual review or incorrect outcomes.\n\nUse admission control and budgets. Enforce maximum input/output tokens, tool-call count, retry count, retrieval fan-out, per-tenant daily spend and request-level cost ceilings. Reject or defer work when the remaining budget cannot cover the expected execution. Protect against prompt stuffing and repeated calls that cause denial of wallet. Retry only transient failures within a bounded retry budget; a retry storm can multiply spend while reducing success.\n\nFinally, close the loop with quality and reliability. Compare cost per successful task alongside answer quality, citation correctness, safety, latency and abandonment. Run controlled experiments, account for failed tasks and human-review costs, and promote an optimization only when it preserves the required quality and user outcome. A lower token bill is not an improvement if it makes the product less useful.",
+    "mentalModel": "Define successful task → meter every component and retry → attribute cost safely → model traffic distributions → reduce waste with budgets/cache/batching/routing → compare cost per success with quality and latency → enforce admission and alerts.",
+    "limitations": [
+      "Provider pricing changes by model, region, batch mode, context tier and time; use versioned current rate cards rather than fixed tutorial prices.",
+      "Token counts can differ between local estimates and provider billing, especially for multimodal inputs, cached tokens and tool protocols.",
+      "A semantic cache can return stale, unauthorized or cross-tenant content unless keys, ACLs, versions and freshness are enforced.",
+      "Cheaper model routing may reduce quality and increase retries, human review or task failure; evaluate total cost per successful task.",
+      "Infrastructure, storage, egress and observability costs may be shared or delayed and need explicit allocation rules.",
+      "The simulator models configured usage rates and deterministic routing; it does not predict provider invoices, dynamic discounts or real traffic distributions."
+    ],
+    "everydayAnalogy": "A delivery company does not measure profitability by the fuel cost of one van trip. It includes failed deliveries, redelivery, packaging, storage and support, then divides total cost by packages successfully delivered. AI services need the same end-to-end accounting.",
+    "mathMadeSimple": "Suppose one successful task uses 2,000 input tokens at $2 per million and 500 output tokens at $8 per million. Model cost is 2,000×2/1,000,000 + 500×8/1,000,000 = $0.008. If embeddings and reranking add $0.002 and a failed first attempt costs another $0.004, the task costs $0.014. If 10% of tasks fail after incurring $0.006 each, cost per successful task must include those failed tasks: total workload cost divided by successful task count.",
+    "productionImpact": "Meter input/output and every supporting component, attribute costs to tenant and successful task, version rate cards, enforce token/spend envelopes, use tenant/version-aware caching, route only against measured quality, and alert on cost per success and unusual usage spikes. Treat denial-of-wallet as an operational security risk."
+  },
+  "useCase": {
+    "scenario": "Operate a multi-tenant RAG-agent product with model generation, embeddings, reranking, tools and background indexing. The team needs reliable unit economics, predictable monthly spend and safe cost controls without leaking cached content or routing complex tasks to an inadequate model.",
+    "actors": [
+      "End user and tenant billing context",
+      "Request cost meter and usage ledger",
+      "Model router and quality evaluator",
+      "Embedding and reranking services",
+      "Tenant-aware semantic cache",
+      "Budget and admission-control service",
+      "Tool and background worker adapters",
+      "FinOps dashboard and product owner"
+    ],
+    "inputs": [
+      "Versioned provider/model rate cards",
+      "Per-request token counts and attempt history",
+      "Embedding tokens, rerank calls, tool calls and storage usage",
+      "Task success and quality outcome",
+      "Tenant/user budget envelopes and rate limits",
+      "Cache keys, model/prompt/index versions and ACL scope"
+    ],
+    "constraints": [
+      "Count failed attempts and supporting operations in the cost numerator.",
+      "Use cost per successful task as the primary unit metric where appropriate.",
+      "Never trust client-supplied budget or tenant attribution.",
+      "Cache keys include tenant, authorization scope, model, prompt and corpus/index version.",
+      "Do not route to a cheaper model unless quality and safety gates pass.",
+      "Enforce input/output token caps, retry limits and request/tenant spend budgets server-side.",
+      "Rate cards are versioned and effective-dated; raw prompt content is not billing telemetry."
+    ],
+    "outputs": [
+      "Per-request and per-successful-task cost breakdown",
+      "Daily/monthly spend forecast and budget utilization",
+      "Model-routing and cache savings comparison",
+      "Tenant-level usage and anomaly signals",
+      "Budget denial/defer decisions with safe reason codes"
+    ],
+    "successMetric": "The service predicts spend within its configured assumptions, lowers cost per successful task without degrading quality, and rejects abusive or over-budget workloads before uncontrolled spend occurs."
+  },
+  "architecture": {
+    "diagram": "content/topics/cost/cost-control-loop.mmd",
+    "components": [
+      "Versioned provider rate-card registry",
+      "Request and attempt usage meter",
+      "Task outcome and success ledger",
+      "Tenant-aware cost attribution",
+      "Model router with quality/latency constraints",
+      "Semantic cache with tenant and version keys",
+      "Budget envelope and admission controller",
+      "FinOps analytics and anomaly alerts"
+    ],
+    "dataFlow": [
+      {
+        "from": "Request gateway",
+        "to": "Budget admission controller",
+        "payload": "Verified tenant, user, task class and remaining budget",
+        "purpose": "Authorize the workload before expensive execution begins."
+      },
+      {
+        "from": "Budget admission controller",
+        "to": "Model router",
+        "payload": "Token ceiling, spend envelope and quality requirement",
+        "purpose": "Select an eligible execution path within cost and quality constraints."
+      },
+      {
+        "from": "Model router",
+        "to": "Semantic cache",
+        "payload": "Tenant, ACL scope, model/prompt/index versions and normalized query",
+        "purpose": "Reuse only fresh authorized results from the same semantic and security context."
+      },
+      {
+        "from": "Model router",
+        "to": "Model and retrieval services",
+        "payload": "Bounded prompt, token budget and call plan",
+        "purpose": "Execute metered generation, embedding, reranking and tool operations."
+      },
+      {
+        "from": "Services",
+        "to": "Usage meter",
+        "payload": "Input/output tokens, attempts, embedding/rerank usage and tool costs",
+        "purpose": "Record every billable component including failed attempts."
+      },
+      {
+        "from": "Usage meter",
+        "to": "Task outcome ledger",
+        "payload": "Cost breakdown and final success/quality result",
+        "purpose": "Calculate cost per successful task rather than per attempt."
+      },
+      {
+        "from": "Task outcome ledger",
+        "to": "FinOps analytics",
+        "payload": "Aggregated cost, success, latency and tenant attribution",
+        "purpose": "Forecast spend, identify outliers and compare optimization experiments."
+      },
+      {
+        "from": "FinOps analytics",
+        "to": "Budget policy",
+        "payload": "Budget utilization and anomaly signals",
+        "purpose": "Adjust quotas, alerts and admission thresholds through reviewed policy."
+      }
+    ],
+    "trustBoundaries": [
+      "Tenant and user attribution come from verified identity and server-side membership.",
+      "Rate cards are versioned, reviewed configuration; clients cannot change prices or budgets.",
+      "Cache entries require tenant, ACL, model, prompt and corpus/index-version match.",
+      "Usage records are append-only or reconciled against provider billing exports.",
+      "Optimization decisions must pass quality, safety and latency gates before rollout.",
+      "Budget overrides and manual credits are scoped, time-bound and audited."
+    ],
+    "failurePaths": [
+      "Missing usage record: reconcile provider billing and mark cost attribution incomplete rather than treating it as zero.",
+      "Cache key omits tenant or prompt/index version: disable hit and invalidate unsafe entries.",
+      "Retry storm: enforce per-request and shared retry budgets and stop on deadline exhaustion.",
+      "Prompt stuffing or oversized output: reject at admission using token ceilings and spend estimates.",
+      "Cheap route fails quality gate: route to qualified model within budget or return an explicit budget/quality limitation.",
+      "Tenant spend spike: rate-limit or suspend expensive operations and alert without exposing other tenants' usage.",
+      "Rate card stale: block precise forecasting or mark estimates with the pricing version and effective date."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-10/cost/cost-scenarios.json",
+    "steps": [
+      {
+        "label": "Define successful task",
+        "explanation": "Choose the task outcome that counts as success and include every attempt and supporting operation.",
+        "expectedState": "Cost denominator is meaningful."
+      },
+      {
+        "label": "Meter all components",
+        "explanation": "Count model input/output, embeddings, reranking, tools, storage and failed retries.",
+        "expectedState": "Complete per-task cost breakdown."
+      },
+      {
+        "label": "Attribute and forecast",
+        "explanation": "Use verified tenant context and versioned rate cards to estimate daily and monthly spend.",
+        "expectedState": "Spend is attributable and reproducible."
+      },
+      {
+        "label": "Reduce waste safely",
+        "explanation": "Apply tenant/version-aware cache, prompt compaction, batching and evaluated model routing.",
+        "expectedState": "Savings do not bypass quality or ACL gates."
+      },
+      {
+        "label": "Enforce budgets",
+        "explanation": "Apply request, user and tenant token/spend envelopes before and during execution.",
+        "expectedState": "Over-budget or abusive work is rejected or deferred."
+      },
+      {
+        "label": "Compare cost per success",
+        "explanation": "Compare total workload cost divided by successful tasks alongside quality and latency.",
+        "expectedState": "Optimization is accepted only when outcomes remain healthy."
+      }
+    ],
+    "accessibility": [
+      "Each stage includes a plain-language explanation and expected result; formulas are written out in text.",
+      "The cost-flow diagram and numerical example are available without animation, and controls can be stepped individually."
+    ],
+    "animation": {
+      "objective": "Trace one RAG-agent task from admission and usage metering through cache/model routing, retries and successful-task cost attribution.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Define the unit",
+          "narration": "One business task may trigger several model, retrieval and tool attempts; define success before calculating unit cost.",
+          "input": "Task ID and success criteria",
+          "transformation": "Group all attempts and supporting operations under one task.",
+          "output": "Successful-task denominator",
+          "visualState": "task"
+        },
+        {
+          "step": 2,
+          "title": "Meter components",
+          "narration": "Record input/output tokens, embedding, reranking, tool and retry costs separately.",
+          "input": "Usage events and versioned rate card",
+          "transformation": "Multiply each usage quantity by its effective-dated rate.",
+          "output": "Cost breakdown",
+          "visualState": "meter"
+        },
+        {
+          "step": 3,
+          "title": "Attribute spend",
+          "narration": "Attach cost to verified tenant and feature without storing prompts or secrets.",
+          "input": "Usage ledger and verified identity",
+          "transformation": "Aggregate by tenant, task class, model and pricing version.",
+          "output": "Attributed cost",
+          "visualState": "attribute"
+        },
+        {
+          "step": 4,
+          "title": "Optimize execution",
+          "narration": "Use authorized version-aware cache hits, batching and quality-gated model routing to reduce waste.",
+          "input": "Cache candidate and task complexity",
+          "transformation": "Check tenant, ACL, model, prompt and corpus versions before reuse or routing.",
+          "output": "Qualified low-cost path",
+          "visualState": "optimize"
+        },
+        {
+          "step": 5,
+          "title": "Enforce budget",
+          "narration": "Reject oversized or over-budget requests before uncontrolled retries and token use.",
+          "input": "Remaining budget and token envelope",
+          "transformation": "Apply admission, output caps and retry budgets.",
+          "output": "Allowed or deferred task",
+          "visualState": "budget"
+        },
+        {
+          "step": 6,
+          "title": "Evaluate unit economics",
+          "narration": "Divide all workload cost, including failed tasks, by successful tasks and compare quality and latency.",
+          "input": "Total spend and successful outcomes",
+          "transformation": "Calculate cost per successful task and evaluate guardrails.",
+          "output": "Safe optimization decision",
+          "visualState": "decision"
+        }
+      ],
+      "controls": [
+        {
+          "name": "cache_hit_rate",
+          "min": 0,
+          "max": 100,
+          "defaultValue": 30,
+          "effect": "Adjust cache hit rate and compare avoided model cost while keeping tenant/version authorization checks mandatory."
+        },
+        {
+          "name": "retry_rate",
+          "min": 0,
+          "max": 50,
+          "defaultValue": 10,
+          "effect": "Adjust failed-attempt share and observe how retries raise cost per successful task."
+        },
+        {
+          "name": "task_complexity",
+          "min": 0,
+          "max": 2,
+          "defaultValue": 1,
+          "effect": "Select simple, standard or complex task and compare quality-gated model routing."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Six narrated stages show formulas and decisions in text. Cache, retry and complexity controls expose their effects with written labels and do not rely on color."
+    }
+  },
+  "workedExample": {
+    "problem": "Calculate the true cost of a successful RAG task when the first model attempt fails, a retry succeeds, and embeddings and reranking add separate charges. Then compare it with a cached execution while preserving tenant and version boundaries.",
+    "input": "Input tokens per attempt=2,000 at $2/M; output tokens=500 at $8/M; embedding tokens=1,000 at $0.10/M; rerank=1 call at $0.001; failed first attempt repeats model tokens; successful retry completes the task.",
+    "steps": [
+      {
+        "operation": "Calculate one model attempt",
+        "reasoning": "Input cost is 2,000×$2/1,000,000=$0.004; output cost is 500×$8/1,000,000=$0.004.",
+        "result": "One model attempt costs $0.008."
+      },
+      {
+        "operation": "Include supporting services",
+        "reasoning": "Embedding cost is 1,000×$0.10/1,000,000=$0.0001 and reranking costs $0.001.",
+        "result": "Supporting services cost $0.0011."
+      },
+      {
+        "operation": "Include failed attempt",
+        "reasoning": "The first failed attempt also consumed $0.008 in model tokens; it cannot be omitted from total workload cost.",
+        "result": "Total task cost is $0.008 + $0.0011 + $0.008 = $0.0171."
+      },
+      {
+        "operation": "Calculate cost per successful task",
+        "reasoning": "One task succeeded after two attempts, so total cost $0.0171 divided by one successful task is $0.0171.",
+        "result": "Cost per successful task is $0.0171."
+      },
+      {
+        "operation": "Compare a qualified cache hit",
+        "reasoning": "A cache hit avoids model generation only if tenant, ACL, model, prompt and corpus versions match and freshness is acceptable.",
+        "result": "The cache path saves model cost but still accounts for retrieval/cache operations and is not reusable across tenants."
+      },
+      {
+        "operation": "Apply quality and budget gate",
+        "reasoning": "Compare savings with answer quality, freshness, safety and latency; enforce token/spend ceilings before retries.",
+        "result": "Promote the optimization only if quality remains within the declared threshold."
+      }
+    ],
+    "expectedOutput": "The true successful-task cost is $0.0171, including the failed first attempt. A qualified cache hit may avoid model cost, but only with matching tenant/ACL and version context; cost savings must be evaluated alongside quality, freshness and latency."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-10/cost/cost_engine.py",
+      "runCommand": "python examples/stage-10/cost/cost_engine.py",
+      "testsPath": "examples/stage-10/test_cost.py",
+      "expectedResult": "Offline simulator calculates component costs, failed-attempt-inclusive cost per successful task, daily spend, cache savings, tenant/version cache keys and budget decisions."
+    },
+    {
+      "language": "other",
+      "role": "production",
+      "path": "examples/stage-10/cost/README.md",
+      "runCommand": "python -m unittest discover -s examples/stage-10 -p 'test_*.py' -v",
+      "testsPath": "examples/stage-10/test_cost.py",
+      "expectedResult": "Production guide covers usage metering, effective-dated pricing, cost attribution, semantic cache safety, model routing, quotas and denial-of-wallet protection."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Cost per request hides failed attempts",
+      "symptom": "Average API cost looks low while successful workflows consume much more.",
+      "rootCause": "The ledger counts only the final successful model call and omits failed retries and supporting services.",
+      "recovery": "Group all usage by task ID and include every attempt, embedding, rerank, tool and infrastructure component.",
+      "regressionTest": "A failed first attempt increases cost per successful task even when the second attempt succeeds."
+    },
+    {
+      "name": "Stale or unsafe semantic cache hit",
+      "symptom": "A tenant receives an outdated answer or content from another tenant.",
+      "rootCause": "Cache key omits tenant, ACL, model, prompt or corpus version, or freshness is not checked.",
+      "recovery": "Use a canonical tenant/version-aware key and verify ACL and freshness before serving a hit.",
+      "regressionTest": "Changing tenant, prompt version or corpus version produces a cache miss."
+    },
+    {
+      "name": "Cheaper model degrades task success",
+      "symptom": "Token cost falls but answer quality, citation correctness or completion rate drops.",
+      "rootCause": "Routing uses price alone rather than task complexity and evaluated quality thresholds.",
+      "recovery": "Gate model routes on quality, safety and latency evaluations and measure cost per successful task.",
+      "regressionTest": "A low-cost route that fails quality requirements is rejected or escalated within budget."
+    },
+    {
+      "name": "Prompt stuffing causes denial of wallet",
+      "symptom": "One user consumes excessive context, output tokens or tool calls.",
+      "rootCause": "No server-side token ceilings, spend envelopes, retrieval fan-out limits or rate limits exist.",
+      "recovery": "Enforce input/output budgets, tool-call caps, tenant quotas and admission control before expensive execution.",
+      "regressionTest": "An oversized request is rejected before model invocation."
+    },
+    {
+      "name": "Retry loop multiplies spend",
+      "symptom": "Provider failures cause repeated expensive calls and rapidly increasing spend.",
+      "rootCause": "Retries are unbounded or independent layers each retry the same operation.",
+      "recovery": "Use one bounded retry policy, idempotency and shared per-request/per-tenant retry budgets.",
+      "regressionTest": "Total attempts and spend remain below configured limits during simulated provider failure."
+    },
+    {
+      "name": "Pricing configuration is stale",
+      "symptom": "Forecasts and customer attribution differ from provider invoices.",
+      "rootCause": "Prices are hardcoded or not versioned by model, region, batch mode and effective date.",
+      "recovery": "Store reviewed effective-dated rate cards and reconcile estimates against provider billing exports.",
+      "regressionTest": "Every cost report records the pricing version used and flags missing rate data."
+    },
+    {
+      "name": "Usage attribution leaks or mislabels tenant",
+      "symptom": "Costs are charged to the wrong customer or sensitive content appears in FinOps dashboards.",
+      "rootCause": "Tenant attribution comes from caller input or dashboards use raw prompt and customer fields.",
+      "recovery": "Derive tenant from verified identity and aggregate only bounded safe dimensions.",
+      "regressionTest": "Forged tenant metadata is ignored and raw prompt/customer content is absent from cost labels."
+    }
+  ],
+  "practice": {
+    "guided": "Run the cost simulator with the worked example. Calculate input/output, embedding, reranking and failed-attempt costs. Compare one successful task with a cache-hit path and inspect the tenant/version cache key.",
+    "independent": "Add image/audio token pricing and a tool-call cost component. Build a daily budget ledger with effective-dated rates, per-tenant quotas and an anomaly alert. Ensure failed tasks and human-review cost are included in unit economics.",
+    "realWorld": "Design a FinOps plan for a multi-tenant RAG-agent service. Track cost per successful task, model/provider/feature attribution, input/output token distributions, embedding and reranking volume, cache savings, retries, quality, latency and tenant budget utilization.",
+    "expertExtension": "Add Monte Carlo traffic forecasting, p95 token distributions, batch discount scenarios, dynamic model routing, quality-adjusted cost, reserved capacity break-even, cost anomaly detection and reconciliation with provider invoices.",
+    "guidedExercise": {
+      "title": "Build a cost-per-successful-task ledger",
+      "instructions": "Meter every attempt and supporting operation, calculate total task cost using a versioned rate card, then divide by successful tasks. Enforce a budget before dispatch.",
+      "starterCode": "def cost_per_successful_task(tasks, pricing):\n    raise NotImplementedError",
+      "solutionCode": "def cost_per_successful_task(tasks, pricing):\n    total_cost = sum(cost_attempt(attempt, pricing) for task in tasks for attempt in task.attempts)\n    successful = sum(1 for task in tasks if task.success)\n    if successful == 0:\n        return None\n    return total_cost / successful",
+      "unitTests": "assert cost_per_successful_task([successful_with_retry], pricing) > cost_attempt(successful_attempt, pricing)\nassert cache_key(tenant_a, query, versions) != cache_key(tenant_b, query, versions)\nassert admit_request(estimated_cost=2.0, remaining_budget=1.0).allowed is False"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build an AI FinOps workbench that meters every component, calculates cost per successful task, compares cache/model-routing strategies and enforces tenant budgets.",
+      "steps": [
+        "Create a versioned synthetic rate card for input/output, embeddings and reranking.",
+        "Record all attempts and supporting service usage under one task ID.",
+        "Calculate per-request breakdown, total workload cost and cost per successful task.",
+        "Add a tenant/version-aware semantic cache key and freshness/ACL checks.",
+        "Route simple and complex tasks through quality-qualified model tiers.",
+        "Apply token, retry, per-request and per-tenant spend budgets at admission.",
+        "Simulate prompt stuffing, retry storms and a cache version mismatch.",
+        "Produce a cost/quality/latency report with pricing version and anomaly evidence."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "Which denominator is most useful for end-to-end AI unit economics?",
+        "options": [
+          "Successful tasks completed",
+          "All model API calls",
+          "Input tokens only",
+          "HTTP requests regardless of outcome"
+        ],
+        "correctIndex": 0,
+        "explanation": "Cost per successful task includes all attempts and supporting operations divided by tasks that actually meet the success definition."
+      },
+      {
+        "question": "What belongs in the cost numerator for a retried task?",
+        "options": [
+          "All failed and successful attempts",
+          "Only the final successful call",
+          "Only output tokens",
+          "Only cache misses"
+        ],
+        "correctIndex": 0,
+        "explanation": "Failed attempts consumed resources and money; omitting them understates the true cost of delivering a successful task."
+      },
+      {
+        "question": "Which fields should a semantic cache key include?",
+        "options": [
+          "Tenant and model/prompt/index versions",
+          "Only the raw query",
+          "Only the user name",
+          "Only the model price"
+        ],
+        "correctIndex": 0,
+        "explanation": "Tenant, ACL scope and relevant model, prompt and corpus versions prevent cross-tenant or stale cache reuse."
+      },
+      {
+        "question": "Why is routing to the cheapest model not always optimal?",
+        "options": [
+          "Quality failures can raise total task cost",
+          "Cheap models always use more tokens",
+          "Price never changes",
+          "Model routing replaces authorization"
+        ],
+        "correctIndex": 0,
+        "explanation": "Lower per-call cost can be offset by retries, poor task success, manual review or quality regressions; evaluate cost per successful task."
+      },
+      {
+        "question": "What is a key defense against denial of wallet?",
+        "options": [
+          "Server-side token and spend budgets",
+          "Unlimited retries",
+          "Client-controlled quotas",
+          "Unbounded context windows"
+        ],
+        "correctIndex": 0,
+        "explanation": "Admission control and server-owned budgets cap expensive work before oversized prompts, retries or tool fan-out can create uncontrolled spend."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "End-to-end cost model",
+        "weight": 20,
+        "evidence": "Includes input/output, embeddings, reranking, tools, retries and relevant infrastructure."
+      },
+      {
+        "criterion": "Cost per successful task and forecasting",
+        "weight": 20,
+        "evidence": "Counts failed attempts and calculates unit economics and daily/monthly spend with versioned rates."
+      },
+      {
+        "criterion": "Cache and model-routing safety",
+        "weight": 20,
+        "evidence": "Uses tenant/version/ACL-aware cache keys and routes only against quality and latency requirements."
+      },
+      {
+        "criterion": "Budget and abuse controls",
+        "weight": 20,
+        "evidence": "Enforces token, retry, request and tenant budgets with admission control and anomaly handling."
+      },
+      {
+        "criterion": "Quality-aware optimization evidence",
+        "weight": 20,
+        "evidence": "Compares cost savings with task success, safety, freshness and latency using reproducible tests."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Failed attempts and supporting service costs appear in task-level totals.",
+      "Cost per successful task matches the synthetic worked example.",
+      "Cache key changes across tenant and relevant model/prompt/index versions.",
+      "Over-budget and oversized requests are rejected before expensive execution.",
+      "Cheaper routing is blocked when quality requirements fail.",
+      "Reports include rate-card version and safe tenant attribution."
+    ]
+  },
+  "references": [
+    {
+      "title": "OpenAI API Pricing",
+      "url": "https://openai.com/api/pricing/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "Anthropic API Pricing",
+      "url": "https://docs.anthropic.com/en/docs/about-claude/pricing",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "Google Gemini API Pricing",
+      "url": "https://ai.google.dev/gemini-api/docs/pricing",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "AWS Well-Architected Framework — Cost Optimization Pillar",
+      "url": "https://docs.aws.amazon.com/wellarchitected/latest/cost-optimization-pillar/welcome.html",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "FinOps Framework",
+      "url": "https://www.finops.org/framework/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "rate = rate_card.for_model(model_id, region, effective_at)",
+      "explanation": "Load a versioned effective-dated rate card so estimates can be reproduced and reconciled after provider price changes."
+    },
+    {
+      "lines": "attempt_cost = input_tokens * input_rate / 1_000_000 + output_tokens * output_rate / 1_000_000",
+      "explanation": "Calculate input and output costs separately because providers and models commonly price them at different rates."
+    },
+    {
+      "lines": "task_total = sum(attempt.cost for attempt in task.attempts) + task.embedding_cost + task.rerank_cost",
+      "explanation": "Include failed attempts and supporting operations under the same logical task rather than counting only the final model call."
+    },
+    {
+      "lines": "unit_cost = total_workload_cost / successful_task_count",
+      "explanation": "Use successful task count as the denominator so quality and retry behavior affect unit economics."
+    },
+    {
+      "lines": "key = cache_key(tenant_id, acl_scope, model_version, prompt_version, index_version, query_hash)",
+      "explanation": "Bind cached answers to tenant authorization and the exact model, prompt and retrieval corpus versions."
+    },
+    {
+      "lines": "decision = budget_policy.admit(estimated_cost, remaining_tenant_budget, token_ceiling)",
+      "explanation": "Reject or defer work before expensive execution when request or tenant budget cannot cover the estimated usage."
+    },
+    {
+      "lines": "route = quality_router.select(task_class, quality_floor, latency_target, budget_remaining)",
+      "explanation": "Choose the lowest-cost route that passes measured quality, safety and latency constraints, not merely the cheapest model."
+    }
+  ]
+}
