@@ -1,0 +1,634 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "capstone-build",
+    "title": "Build the Enterprise RAG and Agent Vertical Slice",
+    "stage": 11,
+    "estimatedMinutes": 480
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Turn architecture contracts into a working end-to-end vertical slice with explicit service boundaries and typed data models.",
+      "Implement tenant membership, document ingestion metadata, ACL-aware retrieval, source citations and no-evidence abstention.",
+      "Separate model/agent action proposals from server-side tool authorization, approval and execution.",
+      "Protect mutating operations with idempotency, durable state transitions, audit evidence and retry-safe contracts.",
+      "Integrate cost budgets, trace correlation, evaluation hooks and failure handling into the request path.",
+      "Validate the vertical slice with positive, negative, cross-tenant, prompt-injection, idempotency and recovery tests."
+    ],
+    "prerequisites": [
+      "Stage 11 Topic 1 architecture and threat model",
+      "Stage 10 tenant security, tool authorization, tracing, SLOs, cost and incident response",
+      "Basic Python, REST/JSON contracts, SQL/RLS and test-driven development"
+    ],
+    "glossary": [
+      {
+        "term": "Vertical slice",
+        "definition": "A small end-to-end implementation that crosses UI/API, application logic, data and operational boundaries for one user journey."
+      },
+      {
+        "term": "Contract",
+        "definition": "A versioned schema and behavioral agreement between services, clients, tools or asynchronous producers/consumers."
+      },
+      {
+        "term": "Evidence lineage",
+        "definition": "The recorded path from source document and page/chunk through retrieval to a user-visible citation."
+      },
+      {
+        "term": "Abstention",
+        "definition": "An explicit no-answer outcome when authorized evidence is absent, insufficient or below a confidence threshold."
+      },
+      {
+        "term": "Policy enforcement point",
+        "definition": "The trusted component that checks authorization and enforces allow/deny decisions before an operation executes."
+      },
+      {
+        "term": "Idempotency key",
+        "definition": "A stable operation identifier that ensures retries return the original result instead of repeating a side effect."
+      },
+      {
+        "term": "Approval token",
+        "definition": "A server-issued, scoped approval record bound to a specific actor, tenant, action and resource."
+      },
+      {
+        "term": "Outbox pattern",
+        "definition": "A transactional approach for recording state changes and events together so asynchronous delivery can be retried safely."
+      },
+      {
+        "term": "Contract test",
+        "definition": "A test that verifies a producer and consumer agree on schema, semantics, versioning and failure behavior."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "A strong architecture diagram is not yet a working system. The capstone must prove that identity, tenant context, data lineage, retrieval ACLs, citations, tool policy, approvals, idempotency and audit remain correct when requests cross real code boundaries. A demo that returns a plausible answer but cannot prove which authorized source supports it is not an enterprise RAG system.",
+    "plainLanguage": "Build one complete user journey before building every feature. A tenant member authenticates, uploads a document, waits for indexing, asks a question, receives a cited answer, and may request a bounded tool action. Implement the contracts and security boundaries around that path first. Keep services modular even if the first implementation runs in one local process; a modular monolith is easier to test than prematurely splitting every component into a network service.\n\nStart with contracts. Define request/response schemas for upload, ingestion status, query, citation, action proposal, approval, tool result and audit event. Version them and define error codes such as TENANT_MEMBERSHIP_REQUIRED, EVIDENCE_NOT_FOUND, TOOL_NOT_ALLOWED, APPROVAL_REQUIRED, IDEMPOTENCY_CONFLICT and BUDGET_EXCEEDED. Validate input size, MIME type, schema version, tenant membership and resource ownership at the boundary.\n\nThe ingestion path should preserve source identity. Store the original document reference, content hash, tenant, uploader, classification, version and page metadata. Parse text and create chunks with stable IDs that map back to source page and offsets. Treat OCR output and embedded text as untrusted. Record parser version, chunker version and embedding model version so an index can be rebuilt reproducibly. The vertical slice can use a deterministic lexical retriever locally, but its interface should support a vector/hybrid adapter later.\n\nRetrieval must filter before ranking. Resolve tenant membership on the server, apply tenant and document ACL filters inside the data query, and only then score/rerank and select top-k. Never fetch a global top-k and filter afterward; unauthorized chunks can influence ranking, leak metadata or crowd out authorized evidence. Citation objects must resolve to the stored document version, page and chunk. If no authorized evidence is found, return an explicit abstention instead of inventing an answer or citation.\n\nKeep agent planning separate from execution. The agent can propose a typed action such as order.read or order.update_status, but it cannot mint permissions or pass arbitrary executable code. The tool gateway checks the authenticated principal, tenant membership, role, capability, resource ownership, argument schema, risk tier, budget and approval. Mutations require a server-issued approval bound to the exact tenant/action/resource/value and an approver with the required role. Tool execution uses an idempotency key and durable operation record so retries do not duplicate side effects.\n\nAdd operational contracts to the same slice. Propagate trace context through API and worker messages; record redacted audit events with trace IDs and decision reason codes; meter tokens and tool usage; enforce request and tenant budgets; define timeouts and bounded retries; and expose health/readiness without leaking secrets. Do not log raw prompts, documents, tokens or tool arguments by default. The local simulator uses synthetic data and no external model; a production adapter can later call a provider behind the same model gateway and evaluation policy.\n\nTest the system as an attacker and as an operator. Prove Tenant A cannot retrieve Tenant B chunks or cache entries; a malicious document cannot authorize a tool; a non-admin cannot approve a mutation; a forged approval cannot cross tenants; duplicate idempotency keys do not repeat writes; stale or missing evidence causes abstention; and an over-budget request is rejected before expensive work. Add contract tests for schema versions, integration tests across the vertical slice and failure tests for queue replay, timeout, provider outage and rollback compatibility.",
+    "mentalModel": "Authenticated request → server-resolved tenant → validated ingestion and lineage → tenant/ACL filter before retrieval ranking → cited grounded answer or abstention → typed action proposal → policy/approval gate → idempotent tool execution → redacted audit, traces, cost and SLO evidence.",
+    "limitations": [
+      "The local lexical retriever demonstrates the contract and security order; production vector/hybrid retrieval requires database-side filters, query-plan review and real isolation tests.",
+      "The deterministic answer simulator is not an LLM and does not establish answer quality; production models require evaluation, safety and citation verification.",
+      "An in-memory idempotency ledger is suitable for a lab only; production needs durable transactional storage and concurrency control.",
+      "A synthetic approval token demonstrates scope binding but production approval needs authenticated approver identity, durable expiry/revocation and tamper-resistant audit.",
+      "The vertical slice is not production-ready until deployed infrastructure, backups, observability, privacy, legal, performance and disaster-recovery controls are validated.",
+      "A modular monolith can prove contracts but does not prove distributed context propagation, network resilience or service isolation; add deployment-level tests before splitting services."
+    ],
+    "everydayAnalogy": "Build one complete checkout path before building a whole shopping mall. The checkout must prove identity, price, stock, payment approval, receipt and retry safety. Once that path works, expand the catalog and scale the surrounding services.",
+    "mathMadeSimple": "If a user asks one question and the system performs 1 retrieval, 1 model call, 2 tool attempts and 1 audit write, define one task ID and attach all five operations to it. If the tool times out after committing, a retry with the same idempotency key returns the original operation result; it does not create a sixth side effect.",
+    "productionImpact": "Implement the smallest end-to-end path with strict contracts and negative tests before scaling. Prove tenant isolation, evidence lineage, abstention, server-side tool policy, approval and idempotency, then add telemetry, budgets, SLOs and staged deployment around the same interfaces."
+  },
+  "useCase": {
+    "scenario": "Implement the enterprise platform's first vertical slice: two tenants, PDF-like policy documents, ingestion metadata, ACL-filtered retrieval, cited answers, no-evidence abstention, read-only order lookup and an approval-gated order status mutation. The first build runs offline with synthetic data but preserves interfaces for production adapters.",
+    "actors": [
+      "Tenant member and administrator",
+      "Membership and authorization service",
+      "Document ingestion and provenance service",
+      "Document store and retrieval adapter",
+      "RAG answer and citation verifier",
+      "Agent planner that emits typed proposals",
+      "MCP-style tool gateway and approval service",
+      "Idempotency ledger, audit log and observability"
+    ],
+    "inputs": [
+      "Verified principal and tenant membership",
+      "Document bytes/hash/page/chunk metadata",
+      "Versioned query and citation schemas",
+      "Tenant and ACL filters",
+      "Typed tool proposal and scoped approval",
+      "Idempotency key, trace context and budget envelope"
+    ],
+    "constraints": [
+      "Resolve tenant membership on the server; do not trust client-supplied tenant roles.",
+      "Filter tenant and document ACL before ranking and top-k.",
+      "Citations must resolve to an immutable document version, page and chunk.",
+      "No authorized evidence means abstain; do not fabricate a citation.",
+      "Model/agent output is an untrusted proposal, never an authorization decision.",
+      "Mutations require server-side capability checks, resource ownership, approval and idempotency.",
+      "Audit and telemetry contain safe metadata, not raw prompts, documents, tokens or secrets."
+    ],
+    "outputs": [
+      "Cited answer or explicit abstention",
+      "Authorized read-only tool result",
+      "Approval-gated mutation result",
+      "Idempotent operation record and audit event",
+      "Trace/cost metadata and test evidence"
+    ],
+    "successMetric": "The vertical slice passes normal and adversarial integration tests for tenant isolation, evidence lineage, abstention, tool policy, approval scope, idempotency, audit privacy and budget enforcement."
+  },
+  "architecture": {
+    "diagram": "content/topics/capstone-build/vertical-slice-data-flow.mmd",
+    "components": [
+      "API boundary and request schema validation",
+      "Membership directory and server-side tenant context",
+      "Document metadata store and immutable source references",
+      "Ingestion/parser/chunker with versioned lineage",
+      "Tenant/ACL-aware retrieval adapter",
+      "RAG answer composer and citation verifier",
+      "Agent planner with typed action proposal",
+      "Tool policy enforcement and approval service",
+      "Idempotency ledger and operation state store",
+      "Audit, trace, cost and SLO instrumentation"
+    ],
+    "dataFlow": [
+      {
+        "from": "Tenant client",
+        "to": "API boundary",
+        "payload": "Authenticated principal, query/upload and versioned schema",
+        "purpose": "Validate identity, input shape, size and request budget."
+      },
+      {
+        "from": "API boundary",
+        "to": "Membership directory",
+        "payload": "Verified subject and requested tenant",
+        "purpose": "Resolve authorized membership and roles server-side."
+      },
+      {
+        "from": "API boundary",
+        "to": "Ingestion service",
+        "payload": "Tenant-scoped file reference and classification",
+        "purpose": "Hash source, parse pages, chunk and record lineage."
+      },
+      {
+        "from": "Ingestion service",
+        "to": "Document store and retrieval index",
+        "payload": "Versioned chunks, tenant ID, ACL and source-page metadata",
+        "purpose": "Index evidence with tenant and authorization metadata."
+      },
+      {
+        "from": "RAG service",
+        "to": "Retrieval adapter",
+        "payload": "Query plus tenant and ACL predicate",
+        "purpose": "Filter unauthorized chunks before ranking and top-k."
+      },
+      {
+        "from": "Retrieval adapter",
+        "to": "Citation verifier",
+        "payload": "Document version, page, chunk and evidence text",
+        "purpose": "Ensure every citation resolves to an authorized source."
+      },
+      {
+        "from": "Agent planner",
+        "to": "Tool policy gateway",
+        "payload": "Typed action proposal and principal context",
+        "purpose": "Authorize capability, resource, role, budget and approval before execution."
+      },
+      {
+        "from": "Tool gateway",
+        "to": "Idempotency ledger",
+        "payload": "Scoped idempotency key and operation state",
+        "purpose": "Prevent duplicate side effects across retries and restarts."
+      },
+      {
+        "from": "Services",
+        "to": "Audit/telemetry",
+        "payload": "Redacted decision, trace ID, cost and status",
+        "purpose": "Provide operational evidence without storing sensitive payloads."
+      }
+    ],
+    "trustBoundaries": [
+      "Client to API: authenticate, validate schema and resolve tenant membership on the server.",
+      "Ingestion to storage/index: preserve immutable source hash, page/chunk lineage and tenant ACL metadata.",
+      "Retrieval to answer composer: only authorized evidence crosses; retrieved text remains untrusted instructions.",
+      "Agent planner to tool gateway: typed proposal is re-authorized by server policy and never treated as permission.",
+      "Approval service to executor: approval is bound to tenant, requester, action, resource and exact value.",
+      "Queue/retry to worker: validate tenant/actor/resource and idempotency before side effects.",
+      "Application to audit/telemetry: redact payloads and enforce access/retention policy."
+    ],
+    "failurePaths": [
+      "Membership missing or revoked: deny before document retrieval or tool access.",
+      "Cross-tenant candidate: filter at query boundary before scoring; emit a safe denial audit event.",
+      "Citation source/version missing: abstain or return a citation verification error.",
+      "Prompt injection in retrieved text: treat as untrusted content; tool gateway still denies unauthorized actions.",
+      "Approval token mismatch/expired/revoked: deny mutation without side effects.",
+      "Tool timeout after commit: query idempotency ledger and return the original result.",
+      "Budget exceeded: reject before model/tool invocation and record safe reason code."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-11/capstone-build/capstone-scenarios.json",
+    "steps": [
+      {
+        "label": "Authenticate and scope",
+        "explanation": "Validate the request and resolve tenant membership and roles on the server.",
+        "expectedState": "Trusted principal and tenant context."
+      },
+      {
+        "label": "Ingest with lineage",
+        "explanation": "Hash the source, parse pages, chunk and store versioned source references with ACL metadata.",
+        "expectedState": "Reproducible authorized evidence."
+      },
+      {
+        "label": "Retrieve and cite",
+        "explanation": "Apply tenant/ACL filtering before ranking and verify each citation resolves to a source page/chunk.",
+        "expectedState": "Grounded cited answer or abstention."
+      },
+      {
+        "label": "Propose a tool action",
+        "explanation": "The agent emits a typed action proposal; no permission is granted by the model.",
+        "expectedState": "Untrusted proposal awaits policy."
+      },
+      {
+        "label": "Authorize and execute",
+        "explanation": "Check capability, role, resource ownership, approval and idempotency before side effects.",
+        "expectedState": "Authorized operation or safe denial."
+      },
+      {
+        "label": "Observe and verify",
+        "explanation": "Write redacted audit, trace and cost metadata, then run positive and adversarial integration tests.",
+        "expectedState": "Evidence-backed vertical slice."
+      }
+    ],
+    "accessibility": [
+      "The flow is available as a static diagram and every stage includes explicit text describing inputs and outputs.",
+      "Security decisions and denial reasons are written in text; animation is optional and step controls are available."
+    ],
+    "animation": {
+      "objective": "Follow one tenant-scoped question from authenticated request through ingestion/retrieval/citation and an approval-gated, idempotent tool action.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Authenticate and resolve tenant",
+          "narration": "Validate the request schema and derive membership and roles from the server-side directory.",
+          "input": "Principal and requested tenant",
+          "transformation": "Verify membership and create trusted request context.",
+          "output": "Authorized tenant context",
+          "visualState": "identity"
+        },
+        {
+          "step": 2,
+          "title": "Ingest source evidence",
+          "narration": "Hash the source, parse pages and create stable chunks with tenant ACL and provenance metadata.",
+          "input": "Document bytes and metadata",
+          "transformation": "Parse, chunk, version and index authorized content.",
+          "output": "Lineage-preserving evidence",
+          "visualState": "ingestion"
+        },
+        {
+          "step": 3,
+          "title": "Retrieve and verify citations",
+          "narration": "Apply tenant and ACL filters before ranking; verify citations against stored source page and chunk.",
+          "input": "Query and authorized retrieval context",
+          "transformation": "Filter, score, select evidence and validate citation references.",
+          "output": "Cited answer or abstention",
+          "visualState": "retrieval"
+        },
+        {
+          "step": 4,
+          "title": "Propose bounded action",
+          "narration": "The agent emits a typed tool proposal, but the proposal has no execution authority.",
+          "input": "User intent and proposed action",
+          "transformation": "Validate action schema and pass proposal to policy gateway.",
+          "output": "Untrusted typed proposal",
+          "visualState": "proposal"
+        },
+        {
+          "step": 5,
+          "title": "Authorize and execute",
+          "narration": "Check role, capability, tenant/resource ownership, approval and idempotency before mutation.",
+          "input": "Proposal, principal, approval and idempotency key",
+          "transformation": "Apply server-side policy and durable operation semantics.",
+          "output": "Executed action or safe denial",
+          "visualState": "execution"
+        },
+        {
+          "step": 6,
+          "title": "Record evidence and test",
+          "narration": "Write redacted audit/trace/cost metadata and run cross-tenant, injection and retry tests.",
+          "input": "Answer, action result and telemetry context",
+          "transformation": "Persist safe evidence and evaluate acceptance tests.",
+          "output": "Verified vertical slice",
+          "visualState": "verification"
+        }
+      ],
+      "controls": [
+        {
+          "name": "tenant_isolation",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "Toggle tenant and ACL filtering before retrieval; disabled isolation must deny the query and fail acceptance."
+        },
+        {
+          "name": "tool_approval",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "Toggle server-issued approval for mutation; absent or mismatched approval must deny without side effects."
+        },
+        {
+          "name": "idempotency",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "Toggle duplicate operation protection; repeated keys must return the original result instead of repeating the mutation."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Six narrated states describe the full request path and explicit security gates. The simulator is also available as a text-driven local test suite."
+    }
+  },
+  "workedExample": {
+    "problem": "Tenant A asks for the retention period in its policy document and then proposes updating order A-17. Tenant B has a document with a higher lexical match. A malicious document says to ignore policy and execute a tool. The first tool attempt times out after committing.",
+    "input": "Tenant A member user-A; Tenant A admin admin-A; Tenant B member user-B; policy docs for both tenants; order A-17 belongs to Tenant A; order B-21 belongs to Tenant B; tool action order.update_status requires admin approval.",
+    "steps": [
+      {
+        "operation": "Resolve tenant membership",
+        "reasoning": "Authenticate user-A and resolve membership/roles from the server-side directory rather than trusting a tenant or role field in the request.",
+        "result": "Request context is bound to Tenant A and member role."
+      },
+      {
+        "operation": "Retrieve authorized evidence",
+        "reasoning": "Filter by Tenant A and document ACL before lexical scoring and top-k. Tenant B's higher-scoring document is excluded before ranking.",
+        "result": "Only Tenant A's policy chunk is eligible and its source page is retained."
+      },
+      {
+        "operation": "Compose answer and citation",
+        "reasoning": "Return the answer from the authorized chunk and verify document version, page and chunk. If no evidence remains, abstain.",
+        "result": "Cited answer resolves to Tenant A's policy page."
+      },
+      {
+        "operation": "Treat malicious content as data",
+        "reasoning": "The document's instruction to execute a tool is untrusted retrieved text; the agent may propose an action but cannot authorize it.",
+        "result": "No tool is executed merely because the document contains an instruction."
+      },
+      {
+        "operation": "Approve the mutation",
+        "reasoning": "Admin-A approves the exact tenant, requester, action, resource and new status. Tool gateway verifies membership, role, capability and resource ownership.",
+        "result": "Scoped approval is valid for order A-17 only; Tenant B resource is denied."
+      },
+      {
+        "operation": "Retry idempotently",
+        "reasoning": "The first execution commits but its response times out. Retry with the same scoped idempotency key returns the original operation record.",
+        "result": "Order state changes once; duplicate side effect is not repeated and audit records the outcome."
+      }
+    ],
+    "expectedOutput": "Tenant A receives only its own cited evidence. The malicious document cannot grant tool authority. A scoped admin approval permits the exact mutation, cross-tenant resource access is denied, and retry after timeout does not duplicate the side effect."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-11/capstone-build/capstone_app.py",
+      "runCommand": "python examples/stage-11/capstone-build/capstone_app.py",
+      "testsPath": "examples/stage-11/test_capstone_build.py",
+      "expectedResult": "Offline vertical slice implements membership, ACL-filtered retrieval, citation verification, abstention, proposal-only agent actions, approval-gated tools, idempotency, budget checks and redacted audit."
+    },
+    {
+      "language": "other",
+      "role": "production",
+      "path": "examples/stage-11/capstone-build/README.md",
+      "runCommand": "python -m unittest discover -s examples/stage-11 -p 'test_*.py' -v",
+      "testsPath": "examples/stage-11/test_capstone_build.py",
+      "expectedResult": "Production guide defines service contracts, ingestion lineage, retrieval adapter, tool policy, approval workflow, durable idempotency, observability and integration-test gates."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Tenant identity taken from request payload",
+      "symptom": "A caller changes tenant_id or role in JSON and retrieves another tenant's content.",
+      "rootCause": "The service treats caller-controlled metadata as authenticated authority.",
+      "recovery": "Resolve subject and membership server-side and propagate an immutable authorized tenant context.",
+      "regressionTest": "Forged tenant and role fields cannot change the resolved principal or retrieval scope."
+    },
+    {
+      "name": "Unauthorized chunks influence ranking",
+      "symptom": "Tenant B documents affect Tenant A's top-k or appear in citations.",
+      "rootCause": "Global vector/lexical top-k is selected before tenant and ACL filtering.",
+      "recovery": "Push tenant and ACL predicates into the retrieval query before scoring/ranking and top-k.",
+      "regressionTest": "A higher-scoring cross-tenant document is excluded before ranking."
+    },
+    {
+      "name": "Citation cannot resolve to source",
+      "symptom": "Answer cites a document/page that was deleted, replaced or never retrieved.",
+      "rootCause": "Citation text is generated from model output without a source-version/chunk lookup.",
+      "recovery": "Generate citation references from retrieved evidence IDs and verify source version/page/chunk before returning.",
+      "regressionTest": "Unknown or stale citation reference causes abstention or verification failure."
+    },
+    {
+      "name": "Prompt injection triggers tool action",
+      "symptom": "A malicious document causes an agent to mutate an order or disclose data.",
+      "rootCause": "Agent planning and tool authorization share the same trust boundary.",
+      "recovery": "Treat retrieved content as untrusted; require typed proposal and independent server-side capability/approval checks.",
+      "regressionTest": "Injected tool instruction without a valid scoped approval is denied."
+    },
+    {
+      "name": "Approval can be replayed across resources",
+      "symptom": "An approval for one action is reused for another tenant, resource or argument.",
+      "rootCause": "Approval token is not bound to exact tenant/action/resource/value or approver role.",
+      "recovery": "Issue a server-side approval record bound to the complete operation fingerprint and verify current membership/expiry.",
+      "regressionTest": "Changing resource, action or tenant invalidates the approval."
+    },
+    {
+      "name": "Retry duplicates a committed side effect",
+      "symptom": "A timed-out tool call updates an order twice or creates duplicate records.",
+      "rootCause": "The client retries without a durable idempotency record or checks only response status.",
+      "recovery": "Use a scoped idempotency key and persist operation state atomically with the side effect.",
+      "regressionTest": "Duplicate request returns the stored outcome and state changes once."
+    },
+    {
+      "name": "Sensitive payloads leak into audit",
+      "symptom": "Raw prompts, documents or credentials appear in audit or telemetry.",
+      "rootCause": "The implementation logs request objects instead of safe decision metadata.",
+      "recovery": "Record query digests, IDs, status and reason codes; redact before persistence and restrict access.",
+      "regressionTest": "Synthetic prompt and token values are absent from audit records."
+    }
+  ],
+  "practice": {
+    "guided": "Run the local capstone app with Tenant A and Tenant B fixtures. Ask a policy question, inspect citation lineage, ask a no-evidence question, attempt a cross-tenant lookup, submit a malicious document and propose an order mutation with and without scoped admin approval.",
+    "independent": "Replace the lexical retrieval adapter with a local vector/hybrid implementation while keeping tenant/ACL predicates in the data query before ranking. Add a durable SQLite/PostgreSQL idempotency ledger and a versioned API schema. Preserve all negative tests.",
+    "realWorld": "Implement a production vertical slice behind the architecture contracts: authenticated API, ingestion worker, object store, PostgreSQL RLS, vector index, model gateway, MCP tool gateway, approval workflow, audit/telemetry and staged CI. Document the gap between the local simulator and production infrastructure.",
+    "expertExtension": "Add an outbox-backed event pipeline, asynchronous ingestion, A2A specialist task contracts, OpenTelemetry trace propagation, evaluation harness, policy-as-code, concurrency-safe approvals, chaos tests and reproducible release manifest.",
+    "guidedExercise": {
+      "title": "Implement tenant-filtered retrieval and approved tools",
+      "instructions": "Filter tenant and ACL before ranking, produce citations only from retrieved source references, and require independent policy/approval/idempotency before tool mutations.",
+      "starterCode": "def answer_query(principal, query):\n    raise NotImplementedError\n\ndef execute_tool(principal, proposal, approval, idempotency_key):\n    raise NotImplementedError",
+      "solutionCode": "def answer_query(principal, query):\n    roles = memberships.roles_for(principal)\n    if not roles:\n        raise PermissionError('TENANT_MEMBERSHIP_REQUIRED')\n    candidates = store.search(principal, query, memberships, top_k=5)  # filters before ranking\n    if not candidates:\n        return RagAnswer('ABSTAIN_NO_EVIDENCE', (), 'No authorized evidence found.')\n    citations = tuple(Citation(d.doc_id, d.version, d.page, d.chunk_id) for d in candidates)\n    return RagAnswer('ANSWERED', citations, candidates[0].text)\n\ndef execute_tool(principal, proposal, approval, idempotency_key):\n    return tool_gateway.execute(principal, proposal, approval, idempotency_key)",
+      "unitTests": "assert app.answer(user_a, 'retention period').citations[0].tenant_id == 'tenant-A'\nassert app.answer(user_a, 'unknown topic').status == 'ABSTAIN_NO_EVIDENCE'\nassert tool_gateway.execute(user_a, update, None, 'op-1').reason == 'APPROVAL_REQUIRED'"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build an offline, testable vertical slice of a multi-tenant RAG-agent application that demonstrates source lineage, ACL-filtered retrieval, citation verification, safe abstention and approval-gated idempotent tools.",
+      "steps": [
+        "Create two tenant memberships, documents, ACLs and resource ownership fixtures.",
+        "Implement source metadata and stable document/page/chunk identifiers.",
+        "Filter tenant and ACL before retrieval ranking and top-k selection.",
+        "Generate cited answers only from retrieved evidence and abstain when no authorized evidence exists.",
+        "Represent agent tool intent as a typed proposal with no authority.",
+        "Add server-side role/capability/resource checks and approval bound to the exact operation.",
+        "Use scoped idempotency to prevent duplicate side effects after timeout/retry.",
+        "Write redacted audit events and enforce a request token budget.",
+        "Run cross-tenant, prompt-injection, citation, approval, idempotency and budget regression suites."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "Where should tenant and ACL filters be applied in retrieval?",
+        "options": [
+          "Before ranking and top-k",
+          "Only after answer generation",
+          "Only in the frontend",
+          "Only in citation rendering"
+        ],
+        "correctIndex": 0,
+        "explanation": "Filtering before ranking prevents unauthorized chunks from influencing scores, crowding top-k or leaking metadata."
+      },
+      {
+        "question": "What should happen when no authorized evidence is retrieved?",
+        "options": [
+          "Return an explicit abstention",
+          "Invent a likely citation",
+          "Search every tenant",
+          "Ask the tool gateway to bypass ACL"
+        ],
+        "correctIndex": 0,
+        "explanation": "A grounded system must abstain when evidence is absent or unauthorized instead of fabricating a source or crossing tenant boundaries."
+      },
+      {
+        "question": "What authority does a model-generated tool proposal have?",
+        "options": [
+          "No authority until server policy approves",
+          "Full admin authority",
+          "Tenant membership authority",
+          "Permission to bypass approval"
+        ],
+        "correctIndex": 0,
+        "explanation": "Model output is untrusted data; a server-side policy enforcement point authorizes the principal, capability, resource and approval."
+      },
+      {
+        "question": "What must an approval be bound to?",
+        "options": [
+          "Tenant, action, resource and exact arguments",
+          "Only the tool name",
+          "Only the model response",
+          "Only a timestamp"
+        ],
+        "correctIndex": 0,
+        "explanation": "A scoped approval must be invalid if the tenant, action, resource or proposed value changes."
+      },
+      {
+        "question": "Why use idempotency after a timeout?",
+        "options": [
+          "Prevent duplicate side effects",
+          "Make retrieval more relevant",
+          "Skip authorization",
+          "Increase token budget"
+        ],
+        "correctIndex": 0,
+        "explanation": "The remote operation may have committed before the response was lost; a durable idempotency record returns the original result on retry."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Contracts and ingestion lineage",
+        "weight": 15,
+        "evidence": "Uses versioned schemas and preserves source hash, page/chunk identity and parser/index versions."
+      },
+      {
+        "criterion": "Tenant-safe retrieval and citations",
+        "weight": 25,
+        "evidence": "Filters before ranking, enforces ACLs and returns only resolvable citations or abstention."
+      },
+      {
+        "criterion": "Agent/tool policy and approval",
+        "weight": 25,
+        "evidence": "Separates proposal from authorization and binds approval to tenant/action/resource/arguments."
+      },
+      {
+        "criterion": "Idempotency, audit and budgets",
+        "weight": 20,
+        "evidence": "Prevents duplicate side effects and records redacted audit/cost/trace evidence under enforced budgets."
+      },
+      {
+        "criterion": "Integration and adversarial tests",
+        "weight": 15,
+        "evidence": "Passes cross-tenant, injection, citation, approval, retry, budget and failure-path tests."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Tenant A cannot retrieve or cite Tenant B content.",
+      "Tenant/ACL filtering occurs before ranking and top-k.",
+      "No-evidence query returns explicit abstention.",
+      "Malicious retrieved content cannot authorize a tool.",
+      "Mutation requires scoped admin approval and resource ownership.",
+      "Retry after commit returns the original idempotent result.",
+      "Audit excludes raw prompts, documents and credentials."
+    ]
+  },
+  "references": [
+    {
+      "title": "OWASP Top 10 for LLM Applications",
+      "url": "https://genai.owasp.org/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "OpenAPI Specification",
+      "url": "https://spec.openapis.org/oas/latest.html",
+      "sourceType": "standard",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "JSON Schema",
+      "url": "https://json-schema.org/specification",
+      "sourceType": "standard",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "PostgreSQL Row Security Policies",
+      "url": "https://www.postgresql.org/docs/current/ddl-rowsecurity.html",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "OpenTelemetry Documentation",
+      "url": "https://opentelemetry.io/docs/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "Transactional Outbox Pattern",
+      "url": "https://microservices.io/patterns/data/transactional-outbox.html",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "principal = memberships.resolve(verified_subject, requested_tenant)",
+      "explanation": "Derive tenant membership and roles from the trusted identity service; ignore caller-supplied role and tenant authority."
+    },
+    {
+      "lines": "chunks = retrieval.search(query, tenant_id=principal.tenant_id, acl=principal.roles)",
+      "explanation": "Push tenant and ACL filters into the retrieval operation before ranking and top-k selection."
+    },
+    {
+      "lines": "citations = citation_verifier.verify(chunks)",
+      "explanation": "Build citations from immutable document version, page and chunk references and verify they resolve before returning."
+    },
+    {
+      "lines": "proposal = agent.plan_typed_action(user_intent)",
+      "explanation": "Treat the model/agent output as a typed proposal with no permission to execute."
+    },
+    {
+      "lines": "decision = policy.authorize(principal, proposal, approval)",
+      "explanation": "Check role, capability, resource ownership, approval scope and budget at the trusted policy enforcement point."
+    },
+    {
+      "lines": "result = idempotency.execute_once(scoped_key, operation)",
+      "explanation": "Persist the operation outcome so retries after a lost response do not duplicate side effects."
+    },
+    {
+      "lines": "audit.record(redacted_decision, trace_id, cost, reason_code)",
+      "explanation": "Store safe operational evidence without raw prompts, document content, credentials or tool arguments."
+    }
+  ]
+}
