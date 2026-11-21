@@ -952,3 +952,27 @@
 .a2a-artifact p{margin:0;color:#aab8d0;font-size:12px}
 .a2a-artifact small{font-size:10px;color:#899bb8}
 @media(max-width:760px){.a2a-identity-grid,.a2a-controls{grid-template-columns:1fr}.a2a-board-title{align-items:flex-start;flex-direction:column}.a2a-event-log>div{grid-template-columns:30px 1fr;}.a2a-event-log code{grid-column:2}}
+
+/* Stage 7 Topic 7 — IBM ACP migration workbench */
+.ibm-acp-mapping{display:grid;gap:7px;border:1px solid #293750;border-radius:12px;background:#0e1728;padding:13px;margin:14px 0}
+.ibm-acp-mapping>strong{display:flex;align-items:center;gap:7px;color:#e0e7f7;font-size:12px;margin-bottom:3px}
+.ibm-acp-mapping>div{display:grid;grid-template-columns:1fr 22px 1fr;gap:8px;align-items:center;padding:7px 4px;border-bottom:1px solid #202c41}
+.ibm-acp-mapping code{font:10px 'DM Mono';color:#a6b5d0;overflow-wrap:anywhere}
+.ibm-acp-mapping span{text-align:center;color:#91a2ff}
+.ibm-acp-mapping b{font:10px 'DM Mono';color:#e0e7f7;overflow-wrap:anywhere}
+.ibm-acp-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:14px 0}
+.ibm-acp-metrics article{display:grid;gap:5px;min-width:0;border:1px solid #293750;border-radius:10px;background:#101a2b;padding:11px}
+.ibm-acp-metrics small{font:9px 'DM Mono';color:#8e9fba}
+.ibm-acp-metrics strong{font:600 19px 'Space Grotesk';color:#e2e9ff;overflow-wrap:anywhere}
+.ibm-acp-metrics span{font-size:10px;color:#94a7c5}
+.ibm-acp-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;border:1px solid #293750;border-radius:12px;padding:14px;margin:14px 0}
+.ibm-acp-controls label{display:grid;gap:7px;color:#aab8d0;font-size:11px}
+.ibm-acp-controls label span{display:flex;justify-content:space-between;gap:8px}
+.ibm-acp-controls b{font:10px 'DM Mono';color:#dce5ff}
+.ibm-acp-controls input{width:100%;accent-color:#91a2ff}
+.ibm-acp-gates{display:grid;gap:8px;border:1px solid #293750;border-radius:12px;background:#101a2b;padding:13px;margin:14px 0}
+.ibm-acp-gates>strong{display:flex;align-items:center;gap:7px;color:#e0e7f7;font-size:12px}
+.ibm-acp-gates p{display:flex;gap:9px;align-items:center;margin:0;color:#aab8d0;font-size:11px}
+.ibm-acp-gates p span{font:10px 'DM Mono';color:#dce5ff;min-width:30px}
+.ibm-acp-gates small{font-size:10px;color:#899bb8}
+@media(max-width:760px){.ibm-acp-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.ibm-acp-controls{grid-template-columns:1fr}.ibm-acp-mapping>div{grid-template-columns:1fr 18px 1fr}}

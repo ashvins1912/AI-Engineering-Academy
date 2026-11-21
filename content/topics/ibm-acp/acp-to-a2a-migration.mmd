@@ -1,0 +1,17 @@
+flowchart TD
+ L[Legacy IBM/BeeAI ACP client] --> I[Inventory endpoint + schema + event contract]
+ I --> A[Compatibility adapter]
+ A --> G[Authenticated identity + tenant gateway]
+ G --> D[Trusted A2A Agent Card resolver]
+ D --> V{A2A 1.0.0 interface valid?}
+ V -->|No| R[Reject or approved rollback]
+ V -->|Yes| M[Translate legacy run to Message/Task]
+ M --> K[Stable idempotency mapping]
+ K --> T[A2A specialist task]
+ T --> E[Status + artifact events]
+ E --> N[Legacy event/response normalizer]
+ N --> P[Parity + security evaluator]
+ P --> C{Canary gates pass?}
+ C -->|No| R
+ C -->|Yes| U[Promote A2A traffic]
+ U --> X[Retire legacy after consumer migration]
