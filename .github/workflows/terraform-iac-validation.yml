@@ -1,0 +1,41 @@
+name: terraform-iac-validation
+on:
+  pull_request:
+    paths:
+      - "examples/stage-09/iac/**"
+      - ".github/workflows/terraform-iac-validation.yml"
+  push:
+    branches: [main]
+    paths:
+      - "examples/stage-09/iac/**"
+      - ".github/workflows/terraform-iac-validation.yml"
+permissions:
+  contents: read
+concurrency:
+  group: terraform-iac-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+      - name: Show formatting diff for review
+        working-directory: examples/stage-09/iac/aws-inference
+        run: terraform fmt -diff -recursive || true
+      - name: Format check
+        working-directory: examples/stage-09/iac/aws-inference
+        run: terraform fmt -check -recursive
+      - name: Initialize without remote backend
+        working-directory: examples/stage-09/iac/aws-inference
+        run: terraform init -backend=false -input=false
+      - name: Validate Terraform configuration
+        working-directory: examples/stage-09/iac/aws-inference
+        run: terraform validate
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run repository IaC policy tests
+        run: python -m unittest discover -s examples/stage-09 -p 'test_iac_template.py' -v

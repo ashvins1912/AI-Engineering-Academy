@@ -1296,3 +1296,33 @@
 .cicd-metrics strong{font:600 20px 'Space Grotesk';color:#e8edff;margin:7px 0}
 .cicd-metrics span{font-size:11px;color:#96a6c1;line-height:1.45}
 @media(max-width:760px){.cicd-stage-track{overflow-x:auto}.cicd-stage-track>div{min-width:52px}.cicd-controls{grid-template-columns:1fr}.cicd-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Stage 9 Topic 7 — Terraform plan review workbench */
+.iac-resource-track{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:15px 0;padding:12px;border:1px solid #293750;border-radius:12px;background:#0e1728}
+.iac-resource-track>div{display:grid;justify-items:center;gap:5px;color:#7486a5}
+.iac-resource-track>div.done{color:#b7c7ff}
+.iac-resource-track span{font-size:15px}
+.iac-resource-track small{font:10px 'DM Mono'}
+.iac-state{border:1px solid #293750;border-radius:12px;background:#0e1728;padding:13px;margin:14px 0}
+.iac-state>div{display:flex;justify-content:space-between;gap:12px;padding:7px 2px;border-bottom:1px solid #202c41}
+.iac-state>div:last-child{border-bottom:0}
+.iac-state>div:first-child{align-items:center}
+.iac-state strong{display:flex;align-items:center;gap:7px;color:#e0e7f7;font-size:12px}
+.iac-state span,.iac-state code{font:10px 'DM Mono';color:#91a2be}
+.iac-state b{font:11px 'DM Mono';color:#dbe4ff;text-align:right}
+.iac-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;border:1px solid #293750;border-radius:12px;padding:15px;margin:14px 0}
+.iac-controls label{display:grid;gap:8px;color:#aab8d0;font-size:12px}
+.iac-controls label span{display:flex;justify-content:space-between;gap:8px}
+.iac-controls label b{font:11px 'DM Mono';color:#d9dfff}
+.iac-controls input[type=range]{width:100%;accent-color:#91a2ff}
+.iac-toggle{display:flex!important;align-items:center;gap:9px}
+.iac-toggle input{accent-color:#91a2ff}
+.iac-cost{border:1px solid #293750;border-radius:12px;background:#111b2d;padding:14px;margin:14px 0}
+.iac-cost strong{display:flex;align-items:center;gap:7px;color:#e0e7f7;font-size:12px;margin-bottom:10px}
+.iac-cost>div{display:flex;justify-content:space-between;gap:12px;padding:7px 2px;border-bottom:1px solid #27344c}
+.iac-cost>div span{font:11px 'DM Mono';color:#9aabc5}
+.iac-cost>div b{font:12px 'DM Mono';color:#dbe4ff}
+.iac-cost>div.total{border-bottom:0;border-top:1px solid #52658e;margin-top:4px;padding-top:12px}
+.iac-cost>div.total span,.iac-cost>div.total b{color:#eef2ff;font-weight:700}
+.iac-cost>small{display:block;color:#8e9fba;font-size:10px;line-height:1.5;margin-top:10px}
+@media(max-width:760px){.iac-resource-track{overflow-x:auto}.iac-resource-track>div{min-width:55px}.iac-controls{grid-template-columns:1fr}}

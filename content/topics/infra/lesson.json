@@ -1,0 +1,589 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "infra",
+    "title": "Infrastructure as Code — Terraform, state, security and environment parity",
+    "stage": 9,
+    "estimatedMinutes": 240
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Explain declarative IaC, providers, resources, modules, variables, outputs, state and dependency graphs.",
+      "Build reusable Terraform modules with pinned providers and validated environment inputs.",
+      "Secure remote state with encryption, versioning, locking and least privilege.",
+      "Design private networking, workload identity and runtime secret injection for AI services.",
+      "Review plans for blast radius, drift, cost and policy violations before approval.",
+      "Validate infrastructure code without applying or provisioning billable resources."
+    ],
+    "prerequisites": [
+      "Linux networking, DNS, TLS and IAM basics",
+      "Containers and CI/CD from Stage 9 Topics 5–6",
+      "Git, environment variables, JSON and HCL"
+    ],
+    "glossary": [
+      {
+        "term": "Infrastructure as Code",
+        "definition": "Version-controlled declarative descriptions of infrastructure and desired configuration."
+      },
+      {
+        "term": "Provider",
+        "definition": "A Terraform plugin that translates resource declarations into cloud or platform API operations."
+      },
+      {
+        "term": "Resource",
+        "definition": "A managed object such as a VPC, subnet, security group, load balancer, IAM role or cluster."
+      },
+      {
+        "term": "Module",
+        "definition": "A reusable collection of Terraform resources, variables and outputs with a defined interface."
+      },
+      {
+        "term": "State",
+        "definition": "Terraform's mapping between resource addresses and real infrastructure objects, including metadata."
+      },
+      {
+        "term": "Remote backend",
+        "definition": "Shared state storage protected by encryption, versioning, locking and access controls."
+      },
+      {
+        "term": "Plan",
+        "definition": "A preview of proposed creates, updates, replacements and deletes before apply."
+      },
+      {
+        "term": "Drift",
+        "definition": "A difference between declared configuration/state and actual infrastructure."
+      },
+      {
+        "term": "Workload identity",
+        "definition": "A short-lived identity assigned to a running workload instead of embedding long-lived cloud keys."
+      },
+      {
+        "term": "Policy as Code",
+        "definition": "Machine-enforced rules that reject unsafe or non-compliant infrastructure plans."
+      },
+      {
+        "term": "Environment parity",
+        "definition": "Consistent module and policy behavior across dev, staging and production with explicit input differences."
+      },
+      {
+        "term": "Blast radius",
+        "definition": "The maximum scope of damage or unintended change caused by an operation or compromised identity."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "Manual cloud configuration is difficult to reproduce, review, secure and roll back. AI systems add networking, model storage, secrets, telemetry and data access. IaC makes these dependencies explicit, but careless state handling or unreviewed apply can create outages and unexpected costs.",
+    "plainLanguage": "Terraform describes desired infrastructure as configuration. A provider knows how to talk to AWS, Azure, Kubernetes or another API. Resources declare objects and references create a dependency graph. Variables make a module configurable, outputs expose stable interfaces, and modules package reusable infrastructure patterns. Terraform plans the graph and shows creates, updates, replacements and deletes before an apply changes anything.\n\nA plan is a proposal, not proof that an apply is safe. Review destructive replacements, subnet and route changes, IAM scope, public exposure, encryption, backups, cost and environment targets. Require human approval for production plans and protect the plan artifact so the reviewed plan is the one applied. Never run an unreviewed plan from untrusted pull-request code with privileged credentials.\n\nTerraform state is sensitive operational data. It can contain resource identifiers, endpoints, generated credentials and values marked sensitive in outputs. A production backend needs encryption in transit and at rest, versioning, locking, restricted access, audit logs and recovery procedures. Do not commit state, plan files, local credentials or real tfvars. A lock prevents concurrent writers; it does not replace backups or access control.\n\nSeparate configuration from secrets. Terraform should reference a secret ARN or vault path, not receive the secret value as a normal variable. Use workload identity such as an IAM role for tasks or OIDC federation for CI. Grant only the actions and resources required. Avoid long-lived cloud keys in GitHub secrets when short-lived OIDC identity is available. A sensitive flag masks output; it does not guarantee the value is absent from state or logs.\n\nFor an inference service, a secure baseline commonly includes a VPC, public load balancer, private application subnets, narrow security groups, private service endpoints, encrypted storage, scoped task roles, managed secrets, logs, health checks and resource limits. The application should not receive a public IP by default. Restrict outbound paths; do not add NAT or public endpoints automatically if private endpoints meet the workload's needs.\n\nEnvironment parity comes from one reusable module and versioned policy applied to dev, staging and production. Differences such as region, instance size, scaling limits, CIDR allowlists and desired count should be explicit validated variables. Avoid copied stacks that gradually diverge. Use separate state per environment and separate cloud accounts where practical; never let a dev pipeline target production state.\n\nDrift detection compares declared configuration and state with actual resources. Drift can be caused by manual console changes, emergency operations or external controllers. Investigate before reconciling: blindly applying may overwrite a legitimate emergency fix or destroy data. Import existing resources deliberately and document ownership boundaries.\n\nIaC security checks should run before plan approval. Validate formatting and provider versions, scan for public storage, open security groups, wildcard IAM, unencrypted resources and exposed secrets. Use policy-as-code to block high-risk plans. Estimate costs before applying and tag resources for ownership, environment and budget reporting. This lesson is intentionally plan-and-review only: no credentials, apply or infrastructure provisioning are performed.",
+    "mentalModel": "Versioned module + inputs → provider/resource graph → format/validate → plan → security/cost review → approval → apply → state and drift monitoring.",
+    "limitations": [
+      "Terraform state can contain sensitive values even when outputs are marked sensitive.",
+      "A successful validate does not prove that a cloud plan is affordable or operationally safe.",
+      "Provider APIs and resource semantics change; pin provider versions and review lockfile updates.",
+      "Terraform apply is not a transactional rollback; recovery often needs forward fixes and backups.",
+      "Separate state files reduce cross-environment mistakes but require disciplined ownership and locking.",
+      "Private subnets without NAT need deliberate endpoints for every required service."
+    ],
+    "everydayAnalogy": "IaC is like a building blueprint plus change control. The blueprint specifies rooms, wiring and exits; a plan review predicts what changes; state records what was built. A locked, versioned master blueprint prevents contractors overwriting each other's work, but does not guarantee the building is safe or within budget.",
+    "mathMadeSimple": "An illustrative plan adds an ALB at $18/month, four interface endpoints at $7.30 each, Fargate at $35/month and logs at $5/month. Rough baseline = 18 + 4×7.30 + 35 + 5 = $87.20/month before data transfer, taxes and regional variation. desired_count=0 does not make ALB and endpoints free.",
+    "productionImpact": "Reusable modules and plans reduce drift; remote state locking prevents concurrent corruption; workload identity reduces credential exposure; private networking and narrow IAM limit blast radius; policy and cost gates prevent unsafe or expensive applies."
+  },
+  "useCase": {
+    "scenario": "Define a private AWS inference service with HTTPS load balancer, private Fargate tasks, immutable ECR digest, scoped Secrets Manager access, CloudWatch logs and private VPC endpoints. Validate and review the Terraform plan without applying it.",
+    "actors": [
+      "Platform engineer",
+      "Terraform CLI",
+      "AWS provider",
+      "Remote state backend",
+      "Policy scanner",
+      "Cost estimator",
+      "Approver",
+      "Cloud control plane"
+    ],
+    "inputs": [
+      "Versioned Terraform module and provider lockfile",
+      "Environment variables and CIDR allowlists",
+      "Image digest and existing secret ARN",
+      "TLS certificate ARN",
+      "CPU, memory and desired count",
+      "State backend configuration"
+    ],
+    "constraints": [
+      "No secret values in Terraform variables or source.",
+      "Task ENIs remain in private subnets with no public IP.",
+      "Image is pinned by sha256 digest and ECR tags are immutable.",
+      "Task role and execution role have separate least-privilege policies.",
+      "Production plan requires human approval and policy/cost review.",
+      "The learning exercise runs validate/plan only; it never applies."
+    ],
+    "outputs": [
+      "Reviewed infrastructure plan",
+      "Reusable environment-specific configuration",
+      "Network and IAM dependency graph",
+      "Policy and cost report",
+      "State and drift management runbook"
+    ],
+    "successMetric": "The module validates without credentials, static policy checks pass, the plan shows private workload boundaries and no apply/provisioning occurs."
+  },
+  "architecture": {
+    "diagram": "content/topics/infra/iac-dependency-graph.mmd",
+    "components": [
+      "Version-controlled module",
+      "Pinned provider and lockfile",
+      "Environment variable set",
+      "Remote encrypted state and lock",
+      "Provider resource graph",
+      "Network and IAM policy",
+      "Plan and cost review",
+      "Policy-as-code checks",
+      "Approval and apply workflow",
+      "Drift detection and audit"
+    ],
+    "dataFlow": [
+      {
+        "from": "Git repository",
+        "to": "Terraform module",
+        "payload": "HCL + provider lockfile",
+        "purpose": "Define reusable desired infrastructure."
+      },
+      {
+        "from": "Environment config",
+        "to": "Module inputs",
+        "payload": "region + CIDR + image digest + secret ARN",
+        "purpose": "Supply validated non-secret parameters."
+      },
+      {
+        "from": "Terraform",
+        "to": "Remote state",
+        "payload": "resource mapping + metadata",
+        "purpose": "Read/write state under encryption and lock."
+      },
+      {
+        "from": "Terraform graph",
+        "to": "Plan artifact",
+        "payload": "create/update/replace/delete actions",
+        "purpose": "Preview blast radius before change."
+      },
+      {
+        "from": "Plan artifact",
+        "to": "Policy and cost checks",
+        "payload": "plan JSON + tags + estimates",
+        "purpose": "Block unsafe network, IAM, secret or budget changes."
+      },
+      {
+        "from": "Approver",
+        "to": "Apply workflow",
+        "payload": "approved immutable plan",
+        "purpose": "Apply only reviewed changes using short-lived identity."
+      },
+      {
+        "from": "Cloud resources",
+        "to": "Drift monitor",
+        "payload": "actual configuration",
+        "purpose": "Detect manual or external changes for investigation."
+      }
+    ],
+    "trustBoundaries": [
+      "Terraform state and plan files may contain sensitive metadata; protect and never commit them.",
+      "CI uses short-lived OIDC role with read-only permissions for validation and narrowly scoped apply role for protected environments.",
+      "Untrusted pull requests must not receive production credentials or write access.",
+      "Secrets are referenced by ARN/path and injected at runtime.",
+      "State backends are isolated per account/environment and enforce encryption, locking, versioning and audit."
+    ],
+    "failurePaths": [
+      "Concurrent applies: state lock blocks second writer; retry after first completes.",
+      "Wrong environment target: validate account/region/state identity before plan and apply.",
+      "Secret leaked in tfvars/state: revoke, rotate, audit and migrate to runtime secret reference.",
+      "Public subnet or wildcard ingress: policy scanner blocks plan pending review.",
+      "Private subnet cannot reach ECR/logs/secrets: verify endpoints, DNS, routes and endpoint security group.",
+      "Unplanned destructive replacement: inspect plan and data retention before approval.",
+      "Drift from emergency console change: import or reconcile deliberately; do not blindly overwrite."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-09/iac/aws-inference/terraform.tfvars.example",
+    "steps": [
+      {
+        "label": "Define module inputs",
+        "explanation": "Select environment, region, CIDRs, image digest and secret ARN.",
+        "expectedState": "inputs=validated; secret_values=absent"
+      },
+      {
+        "label": "Build dependency graph",
+        "explanation": "Terraform resolves VPC, subnets, security groups, endpoints, IAM and ECS dependencies.",
+        "expectedState": "resource_graph=acyclic"
+      },
+      {
+        "label": "Generate plan",
+        "explanation": "Preview creates, updates and deletes using remote state lock.",
+        "expectedState": "plan=reviewable; state=locked"
+      },
+      {
+        "label": "Run policy and cost gates",
+        "explanation": "Scan public exposure, IAM scope, secrets, encryption and estimated monthly cost.",
+        "expectedState": "policy=passed; cost=estimated"
+      },
+      {
+        "label": "Approve or reject",
+        "explanation": "Only an approved plan in the intended environment can proceed to apply.",
+        "expectedState": "approval=required; apply=not_executed"
+      }
+    ],
+    "accessibility": [
+      "Each stage includes a textual description and expected state.",
+      "The visualizer displays environment, public exposure, desired count, cost and approval status.",
+      "Controls are keyboard accessible."
+    ],
+    "animation": {
+      "objective": "Explore an IaC plan for a private inference service and inject dangerous configuration changes.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Set environment inputs",
+          "narration": "Choose region, environment, private CIDRs, image digest and secret ARN.",
+          "input": "env=dev; region=ap-south-1; desired_count=0",
+          "transformation": "validate typed variables and immutable image digest",
+          "output": "inputs=valid; secret_value=not_in_terraform",
+          "visualState": "Module inputs ready"
+        },
+        {
+          "step": 2,
+          "title": "Resolve resource graph",
+          "narration": "Terraform builds dependencies for VPC, ALB, private ECS tasks, endpoints and IAM.",
+          "input": "resources=VPC,ALB,ECS,ECR,Secrets,Logs",
+          "transformation": "dependency graph and references",
+          "output": "graph=acyclic; tasks=private",
+          "visualState": "Dependency graph resolved"
+        },
+        {
+          "step": 3,
+          "title": "Create a plan",
+          "narration": "The plan shows what would be created or changed and locks selected state during operation.",
+          "input": "state=environment/dev",
+          "transformation": "refresh + diff + planned actions",
+          "output": "create=18; update=0; delete=0",
+          "visualState": "Plan available for review"
+        },
+        {
+          "step": 4,
+          "title": "Apply policy and cost checks",
+          "narration": "Scan for public tasks, broad ingress, wildcard IAM, secrets and fixed network costs.",
+          "input": "ALB=public; ECS=private; desired_count=0",
+          "transformation": "policy-as-code + monthly cost estimate",
+          "output": "estimated_cost=$87.20/month; apply=blocked until approval",
+          "visualState": "Review required"
+        },
+        {
+          "step": 5,
+          "title": "Approve deliberately",
+          "narration": "A protected approver verifies account, environment, plan, budget and recovery strategy.",
+          "input": "target=dev; approval=not_submitted",
+          "transformation": "verify plan artifact and environment identity",
+          "output": "approval=required; apply=not_executed",
+          "visualState": "No infrastructure provisioned"
+        }
+      ],
+      "controls": [
+        {
+          "name": "desired_count",
+          "min": 0,
+          "max": 8,
+          "defaultValue": 0,
+          "effect": "Compute capacity and cost; zero does not eliminate ALB or endpoint charges."
+        },
+        {
+          "name": "public_task_ip",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 0,
+          "effect": "1 violates private workload policy and blocks the plan."
+        },
+        {
+          "name": "wildcard_iam",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 0,
+          "effect": "1 demonstrates over-broad IAM and blocks approval."
+        },
+        {
+          "name": "monthly_budget_usd",
+          "min": 25,
+          "max": 500,
+          "defaultValue": 100,
+          "effect": "Compare rough fixed infrastructure cost estimate against budget."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "The visualizer reports target environment, network posture, resource count, cost estimate, policy state and approval requirement."
+    }
+  },
+  "workedExample": {
+    "problem": "Review a Terraform plan for a private inference service and identify whether it is safe to approve.",
+    "input": "VPC with public ALB, private ECS tasks, four private endpoints, immutable image digest, existing secret ARN, desired_count=0.",
+    "steps": [
+      {
+        "operation": "Validate inputs",
+        "reasoning": "Check environment, CIDR, certificate, secret ARN and digest syntax; do not pass secret values.",
+        "result": "inputs=valid; digest=sha256; secret=reference only"
+      },
+      {
+        "operation": "Inspect graph",
+        "reasoning": "ALB is public HTTPS; ECS task ENIs are private with assign_public_ip=false; endpoints support ECR, logs and secrets.",
+        "result": "task_network=private; egress=restricted"
+      },
+      {
+        "operation": "Review IAM",
+        "reasoning": "Execution role pulls image and injects one secret; task role has no broad wildcard permissions.",
+        "result": "iam_scope=least privilege"
+      },
+      {
+        "operation": "Estimate fixed cost",
+        "reasoning": "ALB + four interface endpoints + compute + logs is about $87.20/month in this illustrative estimate.",
+        "result": "cost≈$87.20/month before transfer and regional variation"
+      },
+      {
+        "operation": "Approve plan",
+        "reasoning": "Check account, environment, drift, replacements, budget and approval policy. This lesson stops before apply.",
+        "result": "decision=reviewed; apply=not_executed"
+      }
+    ],
+    "expectedOutput": "A reviewable plan with private task networking, least-privilege secret access, digest-pinned image, visible costs and no resource creation."
+  },
+  "implementations": [
+    {
+      "language": "shell",
+      "role": "from-scratch",
+      "path": "examples/stage-09/iac/README.md",
+      "runCommand": "cd examples/stage-09/iac/aws-inference && terraform fmt -check -recursive && terraform init -backend=false && terraform validate",
+      "testsPath": "examples/stage-09/test_iac_template.py",
+      "expectedResult": "Static validation of Terraform module without cloud credentials or apply."
+    },
+    {
+      "language": "other",
+      "role": "production",
+      "path": "examples/stage-09/iac/aws-inference/main.tf",
+      "runCommand": "terraform plan -var-file=terraform.tfvars.example -out=review.tfplan (sandbox account only; do not apply)",
+      "testsPath": "examples/stage-09/iac/validate.yml",
+      "expectedResult": "Private AWS ECS inference architecture with digest-pinned ECR image, VPC endpoints, non-root read-only tasks and least-privilege secret injection."
+    }
+  ],
+  "failures": [
+    {
+      "name": "State file committed to Git",
+      "symptom": "Resource IDs, endpoints or sensitive metadata are exposed in repository history.",
+      "rootCause": "Local state and plan files are not ignored or backend access is uncontrolled.",
+      "recovery": "Remove from tracking, rotate exposed credentials, migrate to encrypted versioned remote state and audit access.",
+      "regressionTest": "Assert .gitignore excludes tfstate and plan files and CI scans repository secrets."
+    },
+    {
+      "name": "Concurrent state writers",
+      "symptom": "Two applies race and overwrite state mappings.",
+      "rootCause": "No remote state locking or lock bypass.",
+      "recovery": "Use backend locking, restrict lock bypass and serialize environment applies.",
+      "regressionTest": "Document backend locking and test concurrent workflow serialization."
+    },
+    {
+      "name": "Public workload exposure",
+      "symptom": "Inference task receives public IP or security group permits arbitrary inbound traffic.",
+      "rootCause": "Network defaults are copied without review.",
+      "recovery": "Use private subnets, ALB-only ingress and policy-as-code checks.",
+      "regressionTest": "Static policy test asserts assign_public_ip=false and task ingress references ALB SG."
+    },
+    {
+      "name": "Secret in Terraform variable",
+      "symptom": "Credential appears in plan, state, logs or CI output.",
+      "rootCause": "Secret value is passed as tfvars or environment variable to resource config.",
+      "recovery": "Rotate it and pass only secret ARN; inject via workload identity/runtime secret manager.",
+      "regressionTest": "Static scan rejects secret_value/password fields in variable definitions."
+    },
+    {
+      "name": "Provider drift",
+      "symptom": "A module behaves differently after an unreviewed provider update.",
+      "rootCause": "Provider version is unconstrained or lockfile is ignored.",
+      "recovery": "Pin provider range, commit .terraform.lock.hcl and review upgrades in a dedicated PR.",
+      "regressionTest": "CI runs init and validate using committed lockfile."
+    },
+    {
+      "name": "Unexpected cost",
+      "symptom": "A small service plan creates billable ALB, endpoints, NAT or GPU resources.",
+      "rootCause": "Cost review counts compute only and misses fixed network resources.",
+      "recovery": "Estimate fixed and variable charges, tag resources, set budgets and require plan approval.",
+      "regressionTest": "Cost estimate includes ALB, endpoints, compute, logs and data transfer assumptions."
+    }
+  ],
+  "practice": {
+    "guided": "Inspect the AWS module and trace which security group allows inbound traffic to ECS tasks and which role reads the runtime secret.",
+    "independent": "Build a reusable Terraform module with validated variables, private networking, workload identity, state backend and policy checks.",
+    "realWorld": "Design dev/staging/production infrastructure for a model API with immutable image, model artifact store, observability and cost budget. Run static validation and review a plan; do not apply.",
+    "expertExtension": "Add separate cloud accounts, OIDC federation, remote backend locking, policy-as-code, Checkov/Trivy, drift detection, cost estimation, KMS rotation and disaster recovery.",
+    "guidedExercise": {
+      "title": "Reject an unsafe infrastructure plan",
+      "instructions": "A production plan must not expose the task publicly or grant wildcard IAM.",
+      "starterCode": "def plan_is_safe(public_task_ip, wildcard_iam):\n    # Return True only if both dangerous settings are disabled\n    raise NotImplementedError",
+      "solutionCode": "def plan_is_safe(public_task_ip, wildcard_iam):\n    return not public_task_ip and not wildcard_iam",
+      "unitTests": "assert plan_is_safe(False, False) is True\nassert plan_is_safe(True, False) is False\nassert plan_is_safe(False, True) is False"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build an IaC plan reviewer that explains resource graph, security and cost before approval.",
+      "steps": [
+        "Load environment variables and validate region, CIDR and image digest.",
+        "Render dependency graph for VPC, ALB, ECS, ECR, IAM, endpoints and logs.",
+        "Show which resources are public and which remain private.",
+        "Inspect IAM role actions and identify the secret retrieval role.",
+        "Inject public task IP and wildcard IAM to trigger policy failures.",
+        "Estimate fixed monthly cost including ALB and private endpoints.",
+        "Simulate state lock, stale state and manual drift.",
+        "Require approval before any apply action; in this lab, do not execute apply."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "Why is Terraform state sensitive?",
+        "options": [
+          "It contains only source code",
+          "It can contain resource metadata and sensitive values",
+          "It is a public image registry",
+          "It replaces IAM"
+        ],
+        "correctIndex": 1,
+        "explanation": "State maps resources and may contain sensitive metadata or values; protect it with encryption, locking and access control."
+      },
+      {
+        "question": "What should Terraform receive for a runtime secret?",
+        "options": [
+          "Plaintext secret value in tfvars",
+          "Only the secret ARN/path; workload retrieves value at runtime",
+          "A password committed to Git",
+          "A base64 secret in source"
+        ],
+        "correctIndex": 1,
+        "explanation": "Reference the secret and use workload identity; avoid placing values in plans or state."
+      },
+      {
+        "question": "What prevents concurrent Terraform state writes?",
+        "options": [
+          "A bigger instance",
+          "Remote backend locking",
+          "A Docker healthcheck",
+          "A mutable image tag"
+        ],
+        "correctIndex": 1,
+        "explanation": "State locking serializes writers; versioning and backups support recovery."
+      },
+      {
+        "question": "Does desired_count=0 make an AWS stack free?",
+        "options": [
+          "Yes, every resource costs zero",
+          "No, ALB, endpoints, logs and storage can still be billable",
+          "Only in production",
+          "Only if state is local"
+        ],
+        "correctIndex": 1,
+        "explanation": "Fixed infrastructure costs remain even when compute desired count is zero."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Terraform structure and module design",
+        "weight": 20,
+        "evidence": "Pinned provider, validated variables, resource graph and outputs are coherent."
+      },
+      {
+        "criterion": "State and secrets safety",
+        "weight": 20,
+        "evidence": "Remote backend, locking, versioning and secret references are documented."
+      },
+      {
+        "criterion": "Network and IAM security",
+        "weight": 25,
+        "evidence": "Private workload, narrow ingress, workload identity and least-privilege roles."
+      },
+      {
+        "criterion": "Plan, policy and cost review",
+        "weight": 20,
+        "evidence": "Format/validate, static policy, blast radius and fixed cost review pass."
+      },
+      {
+        "criterion": "Environment parity and operations",
+        "weight": 15,
+        "evidence": "Reusable module, separate state, drift and recovery are explained."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Terraform format and validation pass.",
+      "IaC static tests pass.",
+      "No apply or infrastructure provisioning is executed.",
+      "Private networking and least-privilege identity are demonstrated.",
+      "State and cost risks are documented."
+    ]
+  },
+  "references": [
+    {
+      "title": "Terraform language documentation",
+      "url": "https://developer.hashicorp.com/terraform/language",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "Terraform state documentation",
+      "url": "https://developer.hashicorp.com/terraform/language/state",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "Terraform backend configuration",
+      "url": "https://developer.hashicorp.com/terraform/language/backend",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "AWS Well-Architected Framework: Security Pillar",
+      "url": "https://docs.aws.amazon.com/wellarchitected/latest/security-pillar/welcome.html",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "AWS ECS task IAM roles",
+      "url": "https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "required_providers.aws.source = \"hashicorp/aws\" and version = \"~> 5.80\"",
+      "explanation": "Pin provider compatibility and commit the lockfile so provider upgrades are reviewed."
+    },
+    {
+      "lines": "assign_public_ip = false",
+      "explanation": "Fargate tasks run in private subnets and receive inbound traffic only through the load balancer."
+    },
+    {
+      "lines": "image = repository_url + \"@\" + image_digest",
+      "explanation": "A content digest pins exact image bytes; mutable tags can point to different images later."
+    },
+    {
+      "lines": "secrets = [{ name = \"APP_SECRET\", valueFrom = secret_arn }]",
+      "explanation": "ECS injects a secret reference at runtime. The execution role retrieves it; do not pass the value through Terraform."
+    },
+    {
+      "lines": "terraform plan -out=review.tfplan",
+      "explanation": "Generate a plan, inspect create/update/replace/delete actions, run policy and cost checks, then approve the exact plan artifact."
+    },
+    {
+      "lines": "terraform apply review.tfplan",
+      "explanation": "Apply is intentionally not run in this learning project. In production it belongs in a protected workflow with remote state lock and short-lived identity."
+    }
+  ]
+}

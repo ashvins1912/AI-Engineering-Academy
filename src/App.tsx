@@ -71,6 +71,8 @@ import ContainerVisualizer from './components/ContainerVisualizer'
 import ContainerLessonDetails from './components/ContainerLessonDetails'
 import CICDVisualizer from './components/CICDVisualizer'
 import CICDLessonDetails from './components/CICDLessonDetails'
+import IaCVisualizer from './components/IaCVisualizer'
+import IaCLessonDetails from './components/IaCLessonDetails'
 import ArchitectureFlow from './components/ArchitectureFlow'
 import StudentReflection from './components/StudentReflection'
 
@@ -119,6 +121,7 @@ export default function App() {
   const [showDataPipeline, setShowDataPipeline] = useState(false)
   const [showContainers, setShowContainers] = useState(false)
   const [showCICD, setShowCICD] = useState(false)
+  const [showIaC, setShowIaC] = useState(false)
 
   useEffect(() => { localStorage.setItem('ai-academy.completed.v1', JSON.stringify(completed)) }, [completed])
   useEffect(() => { localStorage.setItem('ai-academy.bookmarks.v1', JSON.stringify(bookmarks)) }, [bookmarks])
@@ -215,6 +218,8 @@ export default function App() {
         {active.id==='stage-9'&&showContainers&&<><ContainerVisualizer/><ContainerLessonDetails/></>}
         {active.id==='stage-9'&&<div className="phase-lab-launch"><div><strong>Stage 9 · Topic 6 — CI/CD pipelines</strong><p>Connect tests, AI evaluation, security, SBOM, provenance, immutable digest promotion, approvals, canary analysis and rollback.</p></div><button className="lab-primary" onClick={()=>setShowCICD(v=>!v)}>{showCICD?'Hide CI/CD lab':'Open CI/CD release mastery lab'} <ChevronRight size={15}/></button></div>}
         {active.id==='stage-9'&&showCICD&&<><CICDVisualizer/><CICDLessonDetails/></>}
+        {active.id==='stage-9'&&<div className="phase-lab-launch"><div><strong>Stage 9 · Topic 7 — Infrastructure as Code</strong><p>Model private inference infrastructure with Terraform, protected state, workload identity, policy checks and cost-aware plan review.</p></div><button className="lab-primary" onClick={()=>setShowIaC(v=>!v)}>{showIaC?'Hide IaC lab':'Open infrastructure as code mastery lab'} <ChevronRight size={15}/></button></div>}
+        {active.id==='stage-9'&&showIaC&&<><IaCVisualizer/><IaCLessonDetails/></>}
         {active.modules.map((m,mi)=><article className="module" key={m.id}><button className="module-head" onClick={()=>setExpanded(v=>v.includes(m.id)?v.filter(x=>x!==m.id):[...v,m.id])}><div className="module-index">{String(mi+1).padStart(2,'0')}</div><div className="module-title"><h3>{m.title}</h3><p>{m.description}</p><span>{m.lessons.length} lessons · {m.lessons.filter(l=>completed.includes(l.id)).length} completed</span></div><ChevronRight className={expanded.includes(m.id)?'rotate':''} size={18}/></button>
           {expanded.includes(m.id)&&<div className="lesson-list">{m.lessons.map(l=><div className={`lesson ${completed.includes(l.id)?'lesson-complete':''}`} key={l.id}><button className={`check ${completed.includes(l.id)?'done':''}`} onClick={()=>toggle(l.id)} aria-label={completed.includes(l.id)?'Mark lesson incomplete':'Mark lesson complete'}>{completed.includes(l.id)?<CircleCheck size={18}/>:<span/>}</button><button className="lesson-open" onClick={()=>setSelectedLesson(l)}><div className="lesson-body"><strong>{l.title}</strong><p>{l.depth}</p><div className="lab"><Code2 size={13}/><span>LAB</span>{l.lab}</div></div></button><button className={`bookmark-btn ${bookmarks.includes(l.id)?'saved':''}`} onClick={()=>toggleBookmark(l.id)} aria-label={bookmarks.includes(l.id)?'Remove bookmark':'Bookmark lesson'}><Bookmark size={16} fill={bookmarks.includes(l.id)?'currentColor':'none'}/></button></div>)}</div>}
         </article>)}
