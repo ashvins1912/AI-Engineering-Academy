@@ -1185,3 +1185,27 @@
 .registry-alias-history b{font:11px 'DM Mono';color:#dce5ff}
 .registry-alias-history small{font-size:10px;color:#899bb8;text-align:right}
 @media(max-width:760px){.registry-release-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.registry-controls{grid-template-columns:1fr}.registry-manifest>div:first-child{align-items:flex-start;flex-direction:column}.registry-alias-history>div{flex-wrap:wrap}}
+
+/* Stage 9 Topic 3 — evaluation in CI workbench */
+.evaluation-ci-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:14px 0}
+.evaluation-ci-metrics article{display:grid;gap:5px;min-width:0;border:1px solid #293750;border-radius:10px;background:#101a2b;padding:11px}
+.evaluation-ci-metrics small{font:9px 'DM Mono';color:#8e9fba}
+.evaluation-ci-metrics strong{font:600 20px 'Space Grotesk';color:#e2e9ff;overflow-wrap:anywhere}
+.evaluation-ci-metrics span{font-size:10px;color:#94a7c5}
+.evaluation-gates,.evaluation-report{display:grid;gap:7px;border:1px solid #293750;border-radius:12px;background:#0e1728;padding:13px;margin:14px 0}
+.evaluation-gates>strong,.evaluation-report>div:first-child strong{display:flex;align-items:center;gap:7px;color:#e0e7f7;font-size:12px;padding-bottom:8px;border-bottom:1px solid #27344c}
+.evaluation-gates>div,.evaluation-report article{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 2px;border-bottom:1px solid #202c41}
+.evaluation-gates span{font-size:11px;color:#aab8d0}
+.evaluation-gates b{font:10px 'DM Mono';letter-spacing:.4px}
+.evaluation-gates .gate-pass{color:#8ed5ad}
+.evaluation-gates .gate-fail{color:#ff9a9a}
+.evaluation-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;border:1px solid #293750;border-radius:12px;padding:14px;margin:14px 0}
+.evaluation-controls label{display:grid;gap:7px;color:#aab8d0;font-size:11px}
+.evaluation-controls label span{display:flex;justify-content:space-between;gap:8px}
+.evaluation-controls strong{font:10px 'DM Mono';color:#dce5ff}
+.evaluation-controls input[type=range]{width:100%;accent-color:#91a2ff}
+.evaluation-report>div:first-child{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.evaluation-report>div:first-child span{font:9px 'DM Mono';color:#899bb8;overflow-wrap:anywhere}
+.evaluation-report code{font:10px 'DM Mono';color:#9aabc7}
+.evaluation-report b{font:10px 'DM Mono';color:#dce5ff;text-align:right;overflow-wrap:anywhere}
+@media(max-width:760px){.evaluation-ci-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.evaluation-controls{grid-template-columns:1fr}.evaluation-report>div:first-child{align-items:flex-start;flex-direction:column}}
