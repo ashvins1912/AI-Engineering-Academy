@@ -261,7 +261,7 @@
           "input": "Observed 2%; allowed 0.5%",
           "transformation": "Divide observed bad ratio by target error ratio.",
           "output": "4x burn alert",
-          "visualState": "burn"
+          "visualState": "burn-rate"
         },
         {
           "step": 4,
