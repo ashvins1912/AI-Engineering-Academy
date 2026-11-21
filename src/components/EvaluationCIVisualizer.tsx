@@ -1,5 +1,5 @@
 import {useEffect,useState} from 'react'
-import {ArrowLeft,ArrowRight,Pause,Play,RotateCcw,ChartLine,ShieldAlert,Database,GitCompareArrows} from 'lucide-react'
+import {ArrowLeft,ArrowRight,Pause,Play,RotateCcw,ChartLine,ShieldCheck,Database,GitBranch} from 'lucide-react'
 import lesson from '../../content/topics/eval-ci/lesson.json'
 import fixture from '../../examples/stage-09/fixtures/evaluation-ci.json'
 
@@ -33,7 +33,7 @@ export default function EvaluationCIVisualizer(){
    <article><small>CI DECISION</small><strong>{passed?'PASS':'BLOCK'}</strong><span>Exit code {passed?0:1}</span></article>
   </div>
   <div className="evaluation-gates">
-   <strong><ShieldAlert size={14}/> Independent release gates</strong>
+   <strong><ShieldCheck size={14}/> Independent release gates</strong>
    {Object.entries(gates).map(([name,ok])=><div key={name}><span>{({minimum:'Minimum task success ≥ 90%',regression:'Regression no worse than −1pp',safety:'Critical safety violations = 0',latency:'p95 latency ≤ 1,500 ms',cost:'Maximum cost per case ≤ $0.01'} as Record<string,string>)[name]}</span><b className={ok?'gate-pass':'gate-fail'}>{ok?'PASS':'FAIL'}</b></div>)}
   </div>
   <div className="evaluation-controls">
@@ -45,6 +45,6 @@ export default function EvaluationCIVisualizer(){
   </div>
   <div className="evaluation-report"><div><strong><Database size={14}/> Immutable evaluation report</strong><span>{fixture.bundleDigest}</span></div><article><code>dataset_hash</code><b>H1 · golden-set v4</b></article><article><code>evaluator / policy</code><b>deterministic-v1 / release-policy-v2</b></article><article><code>case coverage</code><b>100 / 100</b></article><article><code>report hash</code><b>{reportHash}</b></article><article><code>promotion evidence</code><b>{passed?'eligible for approval':'blocked by CI'}</b></article></div>
   <div className="agent-loop-controls"><button onClick={()=>move(-1)} disabled={step===0}><ArrowLeft size={14}/>Previous</button><button className="agent-loop-play" onClick={()=>{if(step===stages.length-1)setStep(0);setPlaying(v=>!v)}}>{playing?<Pause size={14}/>:<Play size={14}/>} {playing?'Pause':'Play'}</button><button onClick={()=>move(1)} disabled={step===stages.length-1}>Next<ArrowRight size={14}/></button><button onClick={reset}><RotateCcw size={13}/>Reset</button><label className="agent-loop-speed">Speed <select value={speed} onChange={e=>setSpeed(Number(e.target.value))}><option value={0.5}>0.5×</option><option value={1}>1×</option><option value={1.5}>1.5×</option><option value={2}>2×</option></select></label></div>
-  <p className="agent-loop-footnote"><GitCompareArrows size={13}/> Teaching simulation: the deterministic example uses required-fact and forbidden-phrase checks. Real evaluations should add reviewed rubrics, confidence intervals, segment slices and human sampling; a judge model cannot override safety gates.</p>
+  <p className="agent-loop-footnote"><GitBranch size={13}/> Teaching simulation: the deterministic example uses required-fact and forbidden-phrase checks. Real evaluations should add reviewed rubrics, confidence intervals, segment slices and human sampling; a judge model cannot override safety gates.</p>
  </section>
 }
