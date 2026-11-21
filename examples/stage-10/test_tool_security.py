@@ -1,10 +1,12 @@
 import importlib.util
 from pathlib import Path
 import unittest
+import sys
 
 MODULE_PATH = Path(__file__).parent / "tool-security" / "policy_engine.py"
 spec = importlib.util.spec_from_file_location("tool_security_policy_engine", MODULE_PATH)
 policy = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = policy
 spec.loader.exec_module(policy)
 
 class ToolSecurityTests(unittest.TestCase):
