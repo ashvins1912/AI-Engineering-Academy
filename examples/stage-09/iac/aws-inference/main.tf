@@ -166,7 +166,7 @@ resource "aws_iam_role" "task" {
 
 resource "aws_iam_role_policy" "read_secret" {
   name = "read-one-runtime-secret"
-  role = aws_iam_role.task.id
+  role = aws_iam_role.execution.id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
