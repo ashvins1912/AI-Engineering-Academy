@@ -1,0 +1,31 @@
+{
+  "scenario": "Compare frameworks on one tenant-scoped ecommerce refund support task",
+  "tenantId": "tenant-a",
+  "orderId": "ORD-7",
+  "intent": "refund",
+  "amount": 12500,
+  "requiredBehaviors": [
+    "typed tool input/output",
+    "tool allow-list",
+    "tenant authorization",
+    "source citations",
+    "approval gate",
+    "trace export"
+  ],
+  "frameworks": [
+    "OpenAI Agents SDK",
+    "CrewAI",
+    "LlamaIndex",
+    "Haystack",
+    "PydanticAI",
+    "Microsoft Semantic Kernel"
+  ],
+  "evaluation": {
+    "taskSuccessWeight": 25,
+    "toolSafetyWeight": 25,
+    "groundingWeight": 20,
+    "traceabilityWeight": 15,
+    "latencyWeight": 10,
+    "maintainabilityWeight": 5
+  }
+}

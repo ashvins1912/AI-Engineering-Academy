@@ -1,0 +1,21 @@
+flowchart TD
+ F[Fixed task fixture + golden expectations] --> C[Framework-neutral typed contract]
+ C --> A1[OpenAI Agents SDK adapter]
+ C --> A2[CrewAI adapter]
+ C --> A3[LlamaIndex adapter]
+ C --> A4[Haystack adapter]
+ C --> A5[PydanticAI adapter]
+ C --> A6[Semantic Kernel adapter]
+ A1 --> G[Application-owned tool gateway]
+ A2 --> G
+ A3 --> G
+ A4 --> G
+ A5 --> G
+ A6 --> G
+ G --> P[RBAC + tenant + HITL + idempotency]
+ P --> R[Normalized result + citations + trace]
+ R --> E[Common evaluation harness]
+ E --> S[Hard safety gates]
+ S -->|Pass| W[Weighted scorecard]
+ S -->|Fail| X[Reject candidate]
+ W --> D[Decision record + migration plan]
