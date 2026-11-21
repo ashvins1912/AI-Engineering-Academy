@@ -1,0 +1,44 @@
+{
+  "slo": {
+    "availabilityTarget": 0.995,
+    "latencyTargetMs": 2000,
+    "windowDays": 30,
+    "eligibleRequests": 1000,
+    "goodRequests": 995,
+    "allowedBad": 5,
+    "observedBad": 5
+  },
+  "recentWindow": {
+    "observedBadRatio": 0.02,
+    "allowedBadRatio": 0.005,
+    "expectedBurnRate": 4
+  },
+  "dependencies": {
+    "modelProvider": "OUTAGE",
+    "retrieval": "AVAILABLE",
+    "cache": "STALE"
+  },
+  "retry": {
+    "attempts": 4,
+    "baseDelayMs": 100,
+    "maxDelayMs": 500,
+    "jitterFactor": 0.25,
+    "expectedDelaysMs": [
+      75,
+      150,
+      300
+    ]
+  },
+  "expectedFallback": "RETRIEVAL_ONLY_WITH_CITATIONS",
+  "breaker": {
+    "failureThreshold": 3,
+    "cooldownMs": 100,
+    "expectedStates": [
+      "CLOSED",
+      "CLOSED",
+      "OPEN",
+      "HALF_OPEN",
+      "CLOSED"
+    ]
+  }
+}

@@ -1,0 +1,617 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "slos",
+    "title": "SLOs and Reliability — error budgets and resilient AI services",
+    "stage": 10,
+    "estimatedMinutes": 390
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Define user-centered SLIs for availability, latency, freshness and task quality in an AI application.",
+      "Calculate SLO attainment, error budgets, budget consumption and multi-window burn rates from explicit denominators.",
+      "Design request deadlines, bounded retries with exponential backoff and jitter, retry budgets and idempotency for side effects.",
+      "Implement circuit breakers, bulkheads, backpressure and graceful degradation for model, retrieval and tool dependencies.",
+      "Separate infrastructure availability from AI quality and safety objectives, and choose alerts that reflect user impact.",
+      "Build deterministic reliability simulations and failure-injection tests for provider outages, slow responses, queue saturation and recovery."
+    ],
+    "prerequisites": [
+      "Stage 8 deployment and model-serving operations",
+      "Stage 9 deployment strategies and rollback",
+      "Stage 10 Topic 5 tracing and telemetry",
+      "Basic probability, percentiles, HTTP timeouts and distributed systems"
+    ],
+    "glossary": [
+      {
+        "term": "SLI",
+        "definition": "A measurable service indicator that represents a user-visible reliability dimension such as successful requests or latency."
+      },
+      {
+        "term": "SLO",
+        "definition": "A target value for an SLI over a defined measurement window, such as 99.9% successful requests over 30 days."
+      },
+      {
+        "term": "SLA",
+        "definition": "An external agreement that may define service commitments, remedies and exclusions; it is not interchangeable with an internal SLO."
+      },
+      {
+        "term": "Error budget",
+        "definition": "The allowed amount of SLI failure during an SLO window, calculated from the target and eligible event count."
+      },
+      {
+        "term": "Burn rate",
+        "definition": "The rate at which observed bad events consume the allowed error budget relative to the target rate."
+      },
+      {
+        "term": "Circuit breaker",
+        "definition": "A state machine that temporarily stops calls to a failing dependency and later permits controlled recovery probes."
+      },
+      {
+        "term": "Bulkhead",
+        "definition": "Isolation of concurrency, queues or resources so one overloaded dependency cannot exhaust the entire service."
+      },
+      {
+        "term": "Backpressure",
+        "definition": "A signal or admission-control mechanism that slows or rejects upstream work when downstream capacity is exhausted."
+      },
+      {
+        "term": "Graceful degradation",
+        "definition": "A controlled reduced-capability response that remains safe and understandable when optional dependencies fail."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "AI applications depend on model providers, embedding services, vector databases, tool APIs, queues and storage. A provider outage or slow dependency can cascade through retries and queues, exhausting resources and turning a partial failure into a platform-wide outage. Without user-centered SLOs, teams either alert on noise or discover reliability problems through customer complaints.",
+    "plainLanguage": "Start with what the user experiences, not whether a server process is running. An availability SLI might count eligible requests that return a valid response within a deadline. A latency SLI might measure the proportion of requests completed under two seconds, or p95 latency. A RAG system may also need freshness and task-quality indicators. Keep infrastructure reliability, model quality and safety as related but distinct objectives: a fast response can still be wrong or unsafe.\n\nAn SLO is a target over a window. If the target is 99.5% successful requests, the error budget is 0.5% of eligible requests. For 10,000 eligible requests, that allows 50 bad requests. If 80 fail, the budget is exceeded. Define the denominator carefully: decide how to treat invalid client requests, health checks, cancellations, internal retries and synthetic probes. Do not exclude real user-visible failures just because a dependency was external.\n\nBurn rate compares the observed failure ratio with the allowed failure ratio. If the SLO permits 0.5% bad events and a recent window has 2% bad events, the burn rate is 4x. Alert on multi-window burn rates so a fast budget drain pages quickly while a sustained slower regression creates a lower-severity signal. Error budgets are a decision tool: when consumed rapidly, pause risky releases, prioritize reliability work and reduce optional load.\n\nReliability begins with deadlines. Propagate one end-to-end deadline through retrieval, model and tool calls; do not give every downstream service a fresh full timeout. Retry only transient failures, cap attempts, use exponential backoff with jitter and enforce a retry budget. Never retry non-idempotent side effects without an idempotency key. A retry storm can multiply load precisely when a dependency is least able to handle it.\n\nUse circuit breakers to stop repeatedly calling a failing dependency. A simple breaker has CLOSED, OPEN and HALF_OPEN states: calls flow normally when closed; after a failure threshold the breaker opens for a cooldown; then one or a small number of probes test recovery. Bulkheads cap concurrency and queue capacity per dependency or tenant. Backpressure rejects or delays work before memory, connections and token budgets are exhausted.\n\nPlan safe degraded modes. If a model provider is down, a service might return a clearly labeled cached answer within its freshness policy, a retrieval-only result with citations and no generated synthesis, or a retryable unavailable response. Do not silently fabricate a response or claim a tool action succeeded when it did not. If retrieval is unavailable, do not invent citations. Make degradation explicit to the caller and preserve audit evidence.\n\nFinally, test failure and recovery, not just the happy path. Inject timeouts, 429/5xx responses, queue saturation, slow streaming, duplicate side effects and circuit-breaker half-open failures. Measure p50/p95/p99, time-to-first-token, inter-token latency, retry count, queue wait, rejection rate, fallback rate and user-visible success. An SLO is useful only when its measurement and operational response are both trustworthy.",
+    "mentalModel": "User journey → explicit SLI and denominator → SLO target and error budget → burn-rate alert → bounded deadlines/retries → breaker/bulkhead/backpressure → safe degraded mode → failure and recovery tests.",
+    "limitations": [
+      "A single availability SLI cannot represent correctness, relevance, safety, freshness or user satisfaction for an AI application.",
+      "Percentiles depend on sample size, windowing and aggregation; never average service p95 values to derive end-to-end p95.",
+      "Error-budget calculations are only as trustworthy as event eligibility, deduplication and instrumentation.",
+      "Retries can worsen overload and duplicate side effects; they need deadlines, retry budgets and idempotency.",
+      "Circuit breakers can oscillate or block healthy traffic if thresholds, cooldowns and probe limits are poorly tuned.",
+      "A simulator demonstrates policy behavior but does not model real network variance, provider quotas, distributed clocks or production capacity."
+    ],
+    "everydayAnalogy": "A household has a monthly electricity budget and a backup plan. If usage spikes, you stop optional appliances before the main breaker trips. A circuit breaker protects the system, while a safe backup light keeps essential functions available without pretending everything is normal.",
+    "mathMadeSimple": "For 1,000 eligible requests and a 99.5% availability SLO, the allowed failures are 1,000 × (1 − 0.995) = 5. If 5 requests fail, the budget is fully consumed. If 10 fail, 10/5 = 2.0, or 200% budget consumption. If a recent window has a 2% failure ratio, burn rate is 2%/0.5% = 4x.",
+    "productionImpact": "Define SLIs from user-visible outcomes, publish SLOs and error budgets, alert on multi-window burn rates, propagate deadlines, bound retries, protect side effects with idempotency, isolate dependencies with breakers and bulkheads, and provide honest degraded modes. Run outage and recovery drills before production incidents."
+  },
+  "useCase": {
+    "scenario": "Operate a RAG-agent API that depends on a model provider, vector database, MCP tools and asynchronous indexing. Define user-centered reliability targets, measure budget consumption, prevent retry storms and provide safe degraded behavior during provider and retrieval outages.",
+    "actors": [
+      "End user and API gateway",
+      "SLI measurement and SLO evaluator",
+      "Model provider adapter",
+      "Vector retrieval and embedding services",
+      "MCP tool adapters and approval service",
+      "Queue and worker pool",
+      "Circuit breakers, bulkheads and retry budget",
+      "On-call operator and release controller"
+    ],
+    "inputs": [
+      "Eligible request outcomes and latency measurements",
+      "SLO target, measurement window and exclusions",
+      "End-to-end deadline and per-dependency timeout budgets",
+      "Transient/permanent error classification and retry policy",
+      "Circuit-breaker thresholds, cooldown and probe count",
+      "Queue capacity, concurrency limits and fallback freshness policy"
+    ],
+    "constraints": [
+      "Measure user-visible requests with an explicit denominator.",
+      "Do not exclude real dependency failures from availability merely because they are external.",
+      "Use one end-to-end deadline and allocate downstream budgets from remaining time.",
+      "Retry only transient failures and cap attempts, backoff and total retry budget.",
+      "Use idempotency keys for side-effecting operations.",
+      "Open breakers and apply backpressure before resource exhaustion.",
+      "Fallbacks must be labeled, safe, fresh and honest about missing capabilities."
+    ],
+    "outputs": [
+      "Availability and latency SLI reports",
+      "SLO attainment, error budget and burn-rate signals",
+      "Bounded retry and circuit-breaker decisions",
+      "Safe fallback or explicit unavailable response",
+      "Failure-injection and recovery evidence"
+    ],
+    "successMetric": "The service meets its declared SLO under normal load, avoids cascading failure during dependency outages, and returns an explicit safe degraded response without duplicate side effects."
+  },
+  "architecture": {
+    "diagram": "content/topics/slos/reliability-control-loop.mmd",
+    "components": [
+      "User-journey SLI instrumentation",
+      "SLO evaluator and error-budget store",
+      "Multi-window burn-rate alerting",
+      "End-to-end deadline and timeout propagation",
+      "Retry policy and idempotency ledger",
+      "Per-dependency circuit breakers and bulkheads",
+      "Queue admission control and backpressure",
+      "Safe fallback router and recovery probes"
+    ],
+    "dataFlow": [
+      {
+        "from": "User request boundary",
+        "to": "SLI instrumentation",
+        "payload": "Eligible request, outcome and latency",
+        "purpose": "Measure user-visible success with explicit denominator rules."
+      },
+      {
+        "from": "SLI instrumentation",
+        "to": "SLO evaluator",
+        "payload": "Good/bad event counters and latency distributions",
+        "purpose": "Calculate SLO attainment and remaining error budget."
+      },
+      {
+        "from": "SLO evaluator",
+        "to": "Burn-rate alerting",
+        "payload": "Windowed bad-event ratio and target error ratio",
+        "purpose": "Detect rapid and sustained budget consumption."
+      },
+      {
+        "from": "API gateway",
+        "to": "Deadline manager",
+        "payload": "Request deadline and cancellation signal",
+        "purpose": "Allocate remaining time to retrieval, model and tools."
+      },
+      {
+        "from": "Deadline manager",
+        "to": "Dependency adapters",
+        "payload": "Per-call timeout and remaining budget",
+        "purpose": "Prevent nested calls from exceeding the end-to-end deadline."
+      },
+      {
+        "from": "Dependency adapters",
+        "to": "Retry and breaker policy",
+        "payload": "Error class, attempt count and latency",
+        "purpose": "Retry only transient failures within a bounded budget."
+      },
+      {
+        "from": "Breaker and bulkhead",
+        "to": "Fallback router",
+        "payload": "Dependency availability and capacity state",
+        "purpose": "Select safe cache, retrieval-only or unavailable response."
+      },
+      {
+        "from": "Fallback router",
+        "to": "User response",
+        "payload": "Explicit capability state and safe result",
+        "purpose": "Avoid hallucinated success and preserve user trust."
+      }
+    ],
+    "trustBoundaries": [
+      "SLI events are validated and deduplicated before they affect error budgets.",
+      "External provider status is a dependency signal, not proof of user-visible success or failure by itself.",
+      "Retries and circuit-breaker state are server-owned policy; callers cannot raise budgets arbitrarily.",
+      "Fallback content must obey freshness, tenant ACL and safety policy.",
+      "On-call overrides and error-budget exceptions are scoped, time-bound and audited."
+    ],
+    "failurePaths": [
+      "Missing denominator or invalid event: exclude only under a documented eligibility rule and alert on telemetry gaps.",
+      "Provider 429/5xx: apply bounded retry with jitter, respect Retry-After where available and open breaker after threshold.",
+      "Slow provider: propagate remaining deadline and cancel work after expiry.",
+      "Queue saturation: reject or defer with backpressure before exhausting memory and connections.",
+      "Breaker half-open probe fails: reopen cooldown and limit probe concurrency.",
+      "Model outage: use fresh authorized cache, retrieval-only with citations or explicit unavailable response.",
+      "Tool side effect times out: query operation state using idempotency key before retrying."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-10/slos/reliability-scenarios.json",
+    "steps": [
+      {
+        "label": "Measure user outcomes",
+        "explanation": "Count eligible requests and classify valid, failed and over-deadline outcomes.",
+        "expectedState": "SLI denominator and good/bad events are defined."
+      },
+      {
+        "label": "Calculate error budget",
+        "explanation": "Convert the SLO target into an allowed number of bad events for the window.",
+        "expectedState": "Remaining budget and consumption are visible."
+      },
+      {
+        "label": "Detect burn rate",
+        "explanation": "Compare recent failure ratio with the SLO's allowed error ratio across short and long windows.",
+        "expectedState": "Rapid budget drain triggers an actionable alert."
+      },
+      {
+        "label": "Bound downstream work",
+        "explanation": "Propagate one deadline, cap retries and protect side effects with idempotency.",
+        "expectedState": "Calls stop within budget without retry storms."
+      },
+      {
+        "label": "Isolate dependency failure",
+        "explanation": "Circuit breakers, bulkheads and backpressure prevent one provider from exhausting the service.",
+        "expectedState": "Failure remains contained to the affected dependency."
+      },
+      {
+        "label": "Degrade and recover",
+        "explanation": "Return an honest safe fallback, then test controlled recovery probes.",
+        "expectedState": "Users receive a clear reduced-capability result and recovery is measured."
+      }
+    ],
+    "accessibility": [
+      "Each state includes a written formula or decision rule and a text outcome; the state machine can be followed without color.",
+      "The reliability flow is available as a static diagram and the simulation supports step-by-step navigation."
+    ],
+    "animation": {
+      "objective": "Animate SLO measurement, error-budget consumption, burn-rate alerting, bounded retries, circuit-breaker transitions and safe recovery during a model-provider outage.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Measure the SLI",
+          "narration": "Count eligible requests and classify user-visible success and latency against the agreed threshold.",
+          "input": "1000 eligible requests; 995 good",
+          "transformation": "Compute availability and latency compliance from explicit denominators.",
+          "output": "99.5% availability",
+          "visualState": "measure"
+        },
+        {
+          "step": 2,
+          "title": "Calculate error budget",
+          "narration": "A 99.5% target permits five bad events out of one thousand.",
+          "input": "Target 99.5%; 1000 events",
+          "transformation": "Allowed bad events = total × (1 − target).",
+          "output": "5-event budget",
+          "visualState": "budget"
+        },
+        {
+          "step": 3,
+          "title": "Detect burn rate",
+          "narration": "A 2% recent failure ratio against a 0.5% budget rate burns at 4x.",
+          "input": "Observed 2%; allowed 0.5%",
+          "transformation": "Divide observed bad ratio by target error ratio.",
+          "output": "4x burn alert",
+          "visualState": "burn-rate"
+        },
+        {
+          "step": 4,
+          "title": "Bound retries and deadlines",
+          "narration": "A provider timeout consumes the remaining deadline; retries are capped and jittered.",
+          "input": "Transient 503 and remaining 900 ms",
+          "transformation": "Apply attempt, backoff and retry-budget limits.",
+          "output": "Bounded retry or stop",
+          "visualState": "retry"
+        },
+        {
+          "step": 5,
+          "title": "Open circuit breaker",
+          "narration": "Repeated failures open the provider breaker and stop calls during cooldown.",
+          "input": "Failure threshold reached",
+          "transformation": "CLOSED → OPEN; later allow a controlled HALF_OPEN probe.",
+          "output": "Dependency isolated",
+          "visualState": "breaker"
+        },
+        {
+          "step": 6,
+          "title": "Safe fallback and recovery",
+          "narration": "Return fresh authorized cache, retrieval-only evidence or explicit unavailable status; probe recovery before closing the breaker.",
+          "input": "Model provider unavailable",
+          "transformation": "Select safe degraded mode and evaluate recovery probe.",
+          "output": "Honest degraded response",
+          "visualState": "fallback"
+        }
+      ],
+      "controls": [
+        {
+          "name": "availability_target",
+          "min": 990,
+          "max": 1000,
+          "defaultValue": 995,
+          "effect": "Adjust SLO target in per-mille units and recalculate allowed failures."
+        },
+        {
+          "name": "provider_health",
+          "min": 0,
+          "max": 2,
+          "defaultValue": 0,
+          "effect": "Select healthy, intermittent failure or sustained outage to exercise retries and breaker states."
+        },
+        {
+          "name": "cache_freshness",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "Toggle whether cached content is within freshness and authorization policy; stale cache cannot be used as a fallback."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Six narrated states show explicit formulas and state transitions. SLO, burn rate, retry and fallback outcomes are written in text and can be inspected one step at a time."
+    }
+  },
+  "workedExample": {
+    "problem": "A RAG-agent API handles 1,000 eligible requests. 995 are successful and within the availability definition; p95 latency is 1.8 seconds against a 2-second target. A recent short window has 2% failures while the SLO allows 0.5% failures.",
+    "input": "Eligible requests=1000; good requests=995; p95=1800 ms; latency target=2000 ms; SLO availability=99.5%; recent failure ratio=2%.",
+    "steps": [
+      {
+        "operation": "Calculate availability SLI",
+        "reasoning": "Good eligible requests divided by total eligible requests equals 995/1000.",
+        "result": "Availability is 99.5%."
+      },
+      {
+        "operation": "Calculate latency SLI",
+        "reasoning": "The measured p95 of 1.8 seconds is below the 2-second target.",
+        "result": "The p95 latency target is met."
+      },
+      {
+        "operation": "Calculate allowed error budget",
+        "reasoning": "A 99.5% SLO permits 0.5% bad requests; 1000 × 0.005 equals five.",
+        "result": "Allowed failures are five requests; the observed five consume 100% of this window's budget."
+      },
+      {
+        "operation": "Calculate recent burn rate",
+        "reasoning": "Observed failure ratio 2% divided by allowed error ratio 0.5% equals four.",
+        "result": "Recent burn rate is 4x and should trigger the configured rapid-burn alert."
+      },
+      {
+        "operation": "Contain provider failure",
+        "reasoning": "Propagate the remaining request deadline, cap transient retries and open the provider breaker after the threshold.",
+        "result": "The request does not create an unbounded retry storm or exhaust shared capacity."
+      },
+      {
+        "operation": "Choose a safe fallback",
+        "reasoning": "If authorized cache is fresh, serve it with a degraded label; otherwise return retrieval-only evidence or explicit unavailable status.",
+        "result": "No fabricated answer or unconfirmed tool side effect is returned."
+      }
+    ],
+    "expectedOutput": "Availability is exactly 99.5%, p95 latency meets the 2-second target, the five-event error budget is fully consumed, and a 4x burn-rate signal requires investigation. Provider failures are contained by bounded retries and a breaker, with an honest safe fallback."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-10/slos/reliability_engine.py",
+      "runCommand": "python examples/stage-10/slos/reliability_engine.py",
+      "testsPath": "examples/stage-10/test_slos.py",
+      "expectedResult": "Offline simulator calculates availability, latency compliance, error budgets and burn rates; models bounded retry schedules, circuit-breaker transitions and safe fallback selection."
+    },
+    {
+      "language": "other",
+      "role": "production",
+      "path": "examples/stage-10/slos/README.md",
+      "runCommand": "python -m unittest discover -s examples/stage-10 -p 'test_*.py' -v",
+      "testsPath": "examples/stage-10/test_slos.py",
+      "expectedResult": "Production guide defines user-centered SLI/SLOs, alert windows, deadlines, retry budgets, idempotency, bulkheads, backpressure and failure drills."
+    }
+  ],
+  "failures": [
+    {
+      "name": "SLI denominator excludes real failures",
+      "symptom": "Dashboard reports high availability while users see dependency failures and timeouts.",
+      "rootCause": "Eligibility rules silently exclude external-provider failures, retries or cancellations that were user-visible.",
+      "recovery": "Define eligible events at the user boundary, document exclusions and test numerator/denominator accounting.",
+      "regressionTest": "A real provider timeout remains a bad eligible event while only documented invalid traffic is excluded."
+    },
+    {
+      "name": "Retry storm amplifies provider outage",
+      "symptom": "Provider request volume rises while the provider is already returning 429/503.",
+      "rootCause": "Unbounded retries, synchronized backoff or retries at multiple layers multiply attempts.",
+      "recovery": "Use capped attempts, exponential backoff with jitter, Retry-After, a shared retry budget and circuit breaker.",
+      "regressionTest": "A failing dependency cannot exceed the configured attempts or retry budget."
+    },
+    {
+      "name": "Timeout budget resets downstream",
+      "symptom": "A request exceeds its end-to-end deadline after each service applies its own full timeout.",
+      "rootCause": "Each dependency receives a fresh timeout instead of remaining request time.",
+      "recovery": "Propagate one deadline and derive each call timeout from remaining budget.",
+      "regressionTest": "A downstream call is not started when the remaining deadline is exhausted."
+    },
+    {
+      "name": "Side effect repeated after timeout",
+      "symptom": "A payment, write or tool action happens twice after a retry.",
+      "rootCause": "Caller assumes timeout means the remote operation did not execute.",
+      "recovery": "Use an idempotency key and query durable operation state before retrying.",
+      "regressionTest": "Duplicate operation key returns the original outcome without a second side effect."
+    },
+    {
+      "name": "Circuit breaker flaps or blocks recovery",
+      "symptom": "Breaker repeatedly opens and closes or never probes a recovered provider.",
+      "rootCause": "Thresholds, cooldown and half-open probe concurrency are poorly configured.",
+      "recovery": "Use a stable failure window, bounded half-open probes and explicit success/failure transitions.",
+      "regressionTest": "Failed probe reopens the breaker; successful probe closes it."
+    },
+    {
+      "name": "Fallback fabricates missing capability",
+      "symptom": "The service invents citations or reports a tool action as completed during an outage.",
+      "rootCause": "Fallback path generates a normal-looking response without the unavailable dependency's evidence.",
+      "recovery": "Use only fresh authorized cache, retrieval-only evidence with clear labeling, or explicit unavailable status.",
+      "regressionTest": "When retrieval is down and cache is stale, the fallback is SAFE_UNAVAILABLE."
+    },
+    {
+      "name": "Queue or worker saturation",
+      "symptom": "Latency and memory usage rise while backlog grows without bound.",
+      "rootCause": "No queue capacity, concurrency isolation, admission control or backpressure exists.",
+      "recovery": "Bound queue size and per-dependency concurrency; reject or defer before shared resources are exhausted.",
+      "regressionTest": "At capacity, new work is rejected with a retryable overload outcome and memory remains bounded."
+    }
+  ],
+  "practice": {
+    "guided": "Run the reliability simulator with 1,000 requests, 995 good outcomes and a 99.5% target. Calculate the five-event budget and 4x burn-rate scenario, then inject provider failures and observe retry and circuit-breaker states.",
+    "independent": "Add a second SLI for time-to-first-token and a separate quality SLI for citation correctness. Define their denominators and windows, then prove a fast but incorrect answer does not count as a successful task.",
+    "realWorld": "Design SLOs and runbooks for a production RAG-agent API. Include availability, p95 latency, queue wait, TTFT, tool success, freshness and task-quality indicators. Define burn-rate alerts, error-budget policy, deadline propagation, retry budgets and degraded modes.",
+    "expertExtension": "Implement multi-window multi-burn alerts, per-tenant fairness, adaptive concurrency, token-budget admission, hedged requests only for safe idempotent reads, breaker state persistence, retry storm drills and automated release freezes on rapid budget burn.",
+    "guidedExercise": {
+      "title": "Build an error-budget and breaker simulator",
+      "instructions": "Calculate allowed bad events and observed burn rate. Then implement a circuit breaker that transitions CLOSED, OPEN and HALF_OPEN with a cooldown and bounded probe count.",
+      "starterCode": "def error_budget(total_events, good_events, slo_target):\n    raise NotImplementedError",
+      "solutionCode": "def error_budget(total_events, good_events, slo_target):\n    if total_events <= 0 or not 0 <= good_events <= total_events or not 0 < slo_target <= 1:\n        raise ValueError('INVALID_SLI_INPUT')\n    allowed = total_events * (1 - slo_target)\n    bad = total_events - good_events\n    return {'allowed_bad': allowed, 'observed_bad': bad, 'consumption': bad / allowed if allowed else 0}",
+      "unitTests": "assert error_budget(1000, 995, 0.995)['allowed_bad'] == 5\nassert error_budget(1000, 990, 0.995)['consumption'] == 2\nassert breaker.record_failure(now=0).state == 'OPEN'"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build an SLO and reliability workbench that calculates service objectives, visualizes error-budget burn, simulates dependency failures and demonstrates safe fallback/recovery.",
+      "steps": [
+        "Create a synthetic request dataset with success, latency, timeout and cancellation outcomes.",
+        "Calculate availability and latency SLIs using explicit eligibility rules.",
+        "Compute error budget, remaining budget and short/long-window burn rate.",
+        "Simulate bounded exponential retry schedules with jitter and idempotency.",
+        "Drive a circuit breaker through CLOSED, OPEN and HALF_OPEN states.",
+        "Saturate a bounded queue and observe backpressure and bulkhead isolation.",
+        "Inject model and retrieval outages and verify safe fallback selection.",
+        "Produce an SLO report and incident runbook with evidence and owner actions."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "A 99.5% availability SLO permits what failure ratio?",
+        "options": [
+          "0.5% bad events",
+          "5% bad events",
+          "50% bad events",
+          "0.05% bad events"
+        ],
+        "correctIndex": 0,
+        "explanation": "The allowed error ratio is one minus the SLO target: 1 − 0.995 = 0.005, or 0.5%."
+      },
+      {
+        "question": "What is the error budget for 1,000 events at 99.5%?",
+        "options": [
+          "5 bad events",
+          "50 bad events",
+          "0.5 bad events",
+          "995 bad events"
+        ],
+        "correctIndex": 0,
+        "explanation": "Allowed bad events equal total events multiplied by the error ratio: 1000 × 0.005 = 5."
+      },
+      {
+        "question": "Why use a shared end-to-end deadline?",
+        "options": [
+          "Prevent nested timeout multiplication",
+          "Increase retry count",
+          "Avoid authentication",
+          "Make p95 lower by definition"
+        ],
+        "correctIndex": 0,
+        "explanation": "Each downstream operation receives only the remaining time, preventing serial calls from each consuming a full fresh timeout."
+      },
+      {
+        "question": "What should a circuit breaker do after repeated failures?",
+        "options": [
+          "Open and stop calls temporarily",
+          "Retry forever",
+          "Increase queue capacity",
+          "Ignore provider status"
+        ],
+        "correctIndex": 0,
+        "explanation": "The OPEN state contains dependency failure and allows recovery time before a controlled HALF_OPEN probe."
+      },
+      {
+        "question": "What is the safest fallback when retrieval is down and cache is stale?",
+        "options": [
+          "Explicit unavailable response",
+          "Invent citations",
+          "Return another tenant's cache",
+          "Claim the model verified sources"
+        ],
+        "correctIndex": 0,
+        "explanation": "Without authorized fresh evidence, the service must not fabricate citations or claim unavailable capabilities succeeded."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "User-centered SLI/SLO definition",
+        "weight": 20,
+        "evidence": "Defines eligible events, good/bad outcomes, latency thresholds and distinct quality/freshness indicators."
+      },
+      {
+        "criterion": "Error-budget and alert calculations",
+        "weight": 20,
+        "evidence": "Calculates allowed failures, budget consumption and burn rate with correct windows and denominator."
+      },
+      {
+        "criterion": "Deadlines, retries and side-effect safety",
+        "weight": 20,
+        "evidence": "Propagates deadlines, caps retries/backoff and uses idempotency for writes."
+      },
+      {
+        "criterion": "Failure isolation and graceful degradation",
+        "weight": 25,
+        "evidence": "Demonstrates circuit breaker, bulkhead/backpressure and honest safe fallback during outages."
+      },
+      {
+        "criterion": "Failure injection and operational response",
+        "weight": 15,
+        "evidence": "Runs outage/recovery tests and maps burn-rate signals to actionable incident/release decisions."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Availability and latency SLI calculations match the synthetic request set.",
+      "Error budget and burn rate are calculated correctly.",
+      "Retries remain bounded and idempotent side effects are not duplicated.",
+      "Circuit breaker transitions and recovery probes are correct.",
+      "Fallback never invents citations or claims unavailable tool success.",
+      "Runbook identifies alert, owner, mitigation and recovery evidence."
+    ]
+  },
+  "references": [
+    {
+      "title": "Google SRE Book — Service Level Objectives",
+      "url": "https://sre.google/sre-book/service-level-objectives/",
+      "sourceType": "book",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "Google SRE Workbook — Alerting on SLOs",
+      "url": "https://sre.google/workbook/alerting-on-slos/",
+      "sourceType": "book",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "Google SRE Book — Addressing Cascading Failures",
+      "url": "https://sre.google/sre-book/addressing-cascading-failures/",
+      "sourceType": "book",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "OpenTelemetry Semantic Conventions",
+      "url": "https://opentelemetry.io/docs/specs/semconv/",
+      "sourceType": "standard",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "AWS Builders' Library — Timeouts, retries and backoff with jitter",
+      "url": "https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "eligible = [event for event in events if eligibility_policy.includes(event)]",
+      "explanation": "Define the SLI denominator at the user boundary and document exactly which events are eligible."
+    },
+    {
+      "lines": "availability = good_events / eligible_events",
+      "explanation": "Compute the ratio of user-visible good events to all eligible events; dependency failures remain visible."
+    },
+    {
+      "lines": "allowed_bad = eligible_events * (1 - slo_target)",
+      "explanation": "Translate the SLO target into an allowed number of bad events for the measurement window."
+    },
+    {
+      "lines": "burn_rate = observed_bad_ratio / (1 - slo_target)",
+      "explanation": "Compare the current failure ratio with the allowed error ratio to estimate how quickly the budget is being consumed."
+    },
+    {
+      "lines": "remaining = max(0, deadline_monotonic - monotonic_now())",
+      "explanation": "Propagate one end-to-end deadline and give downstream calls only the remaining time."
+    },
+    {
+      "lines": "if breaker.state == 'OPEN': return safe_fallback_or_unavailable()",
+      "explanation": "Do not continue calling a dependency that has crossed its failure threshold; choose an explicit safe degraded path."
+    },
+    {
+      "lines": "result = execute_once(idempotency_key, bounded_retry_policy)",
+      "explanation": "Use a durable idempotency record for side effects and cap transient retries within the request and service retry budgets."
+    }
+  ]
+}

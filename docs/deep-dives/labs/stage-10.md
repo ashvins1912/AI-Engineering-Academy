@@ -94,19 +94,19 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## slos — SLOs and reliability
 
-**Implementation task:** Calculate availability and latency SLI and compare them with an SLO.
+**Implementation task:** Define user-centered availability and latency SLIs with explicit denominators, calculate SLO attainment/error budgets/burn rates, and implement bounded retries, end-to-end deadlines, circuit breakers and safe degraded responses.
 
-**Worked fixture:** 1000 requests, 995 successful; p95 latency 1.8s; targets 99.5% and 2s.
+**Worked fixture:** 1,000 eligible requests, 995 good, p95 latency 1.8 seconds against a 2-second target, 99.5% availability SLO and a recent 2% failure window. The model provider is down, retrieval is available and cache content is stale.
 
-**Expected result:** Availability=99.5%; p95 meets the 2s target.
+**Expected result:** Availability=99.5%; p95 meets the latency target; five allowed failures consume the error budget; recent burn rate=4x; retries remain bounded; stale cache is not served; the service returns retrieval-only evidence or explicit unavailable status.
 
-**Verification tests:** Test denominator rules, invalid traffic and error-budget burn.
+**Verification tests:** Run `python -m unittest discover -s examples/stage-10 -p 'test_*.py' -v`. Test denominator rules, empty/invalid inputs, exact/overrun budget, burn rate, retry bounds, circuit-breaker transitions, half-open probe recovery and fallback freshness/authorization.
 
-**Debugging checklist:** Reduce the example to the smallest failing input; inspect identity, permissions, data flow and intermediate state; reproduce the failure with a test; change one variable at a time and retain a regression test.
+**Debugging checklist:** Verify eligible event count and deduplication; compare numerator and denominator; inspect SLO window and burn-rate calculation; trace deadline propagation; inspect retry attempts and idempotency records; check breaker state/probe count; inspect queue depth and fallback freshness/ACL.
 
-**Interview checks:** What operational action should a rapid error-budget burn trigger?
+**Interview checks:** How does an SLI differ from an SLO and SLA? How is error budget calculated? Why can retries create cascading failure? What is the HALF_OPEN state? Why is retrieval-only safer than fabricated citations when the model or retrieval provider is unavailable?
 
-**Submission evidence:** Include implementation and architecture artifacts, a successful run, positive and negative tests, a short failure analysis, and a 3–5 sentence explanation of the operational trade-off.
+**Submission evidence:** Include SLI definitions, SLO and burn-rate calculation, retry/breaker simulator, outage and recovery tests, safe fallback evidence and an incident runbook with owner actions.
 
 ---
 
