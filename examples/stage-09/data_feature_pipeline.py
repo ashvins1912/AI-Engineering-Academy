@@ -82,7 +82,7 @@ def population_stability_index(reference:list[float],current:list[float],bins:in
  def proportions(values):
   counts=[0]*bins
   for x in values:
-   idx=min(bins-1,max(0,next((i for i in range(bins) if edges[i]<=x<edges[i+1]),bins-1)))
+   idx=0 if x<edges[0] else bins-1 if x>=edges[-1] else next(i for i in range(bins) if edges[i]<=x<edges[i+1])
    counts[idx]+=1
   return [(n/len(values))+epsilon for n in counts]
  a=proportions(reference);b=proportions(current)
