@@ -61,6 +61,6 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 - [x] Every lesson implementation runs from a clean environment. CI compiles Stage 11 and runs all three lesson demos plus the integrated capstone acceptance script.
 - [x] Expected behavior is reproduced and negative tests fail safely. Stage 11 tests cover architecture controls, cross-tenant retrieval, abstention, tool approval, idempotency, release evidence, canary rollback, migration and backup gates.
 - [x] Debugging notes explain at least one failure and its fix. The release-gate CI run exposed a decision-type mismatch between rollout and migration/backup checks; a dedicated gate decision type and regression tests fixed it.
-- [ ] Interview checks are answered without reading the guide. Learner self-check: answer the architecture, security, retrieval, agent authorization, deployment and operations questions from memory.
+- [ ] Interview checks are answered without reading the guide. Complete the [Stage 11 Mastery Defense](../11-enterprise-capstone-defense.md) technical questions and self-check.
 - [x] The stage project in the main guide integrates these lesson skills. The integrated acceptance script composes architecture validation, the two-tenant RAG/tool vertical slice and release/rollback/recovery gates.
 
