@@ -1,0 +1,579 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "eval-ci",
+    "title": "Evaluation in CI — golden sets, regression and quality gates",
+    "stage": 9,
+    "estimatedMinutes": 240
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Build a versioned golden dataset and deterministic evaluation harness for model/prompt candidates.",
+      "Measure task success, structured correctness, safety violations, latency and cost with explicit denominators.",
+      "Compare candidate and baseline on the exact same dataset and evaluator version.",
+      "Enforce quality, safety, latency, cost and non-regression thresholds as CI gates.",
+      "Persist immutable evaluation reports bound to model/prompt release bundle digests.",
+      "Separate deterministic checks, model-based judges, human review and production monitoring."
+    ],
+    "prerequisites": [
+      "Stage 9 Topics 1–2: experiment tracking and model/prompt registry",
+      "Stage 5 RAG evaluation metrics, Python testing, JSON, GitHub Actions and release bundles"
+    ],
+    "glossary": [
+      {
+        "term": "Golden dataset",
+        "definition": "A versioned set of representative inputs and expected properties used to compare candidate behavior."
+      },
+      {
+        "term": "Evaluation case",
+        "definition": "One input with expected facts, structured schema, safety constraints and metadata."
+      },
+      {
+        "term": "Evaluator",
+        "definition": "A deterministic rule, reference-based metric, model judge or human rubric that scores an output."
+      },
+      {
+        "term": "Regression",
+        "definition": "A measurable decline against a declared baseline on the same dataset and evaluator."
+      },
+      {
+        "term": "Quality gate",
+        "definition": "A policy decision that blocks promotion when required metrics or evidence fail."
+      },
+      {
+        "term": "Paired comparison",
+        "definition": "Evaluating baseline and candidate on identical cases so differences are attributable and comparable."
+      },
+      {
+        "term": "Judge model",
+        "definition": "A model used to score outputs; it needs calibration and must not be the sole safety authority."
+      },
+      {
+        "term": "Evaluation report",
+        "definition": "An immutable artifact binding candidate digest, dataset hash, evaluator version, metrics and gate outcomes."
+      },
+      {
+        "term": "Confidence interval",
+        "definition": "A range expressing uncertainty in an estimated metric, especially on small samples."
+      },
+      {
+        "term": "Release gate",
+        "definition": "A CI check that returns a failing exit code when a candidate does not satisfy policy."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "A model can compile, deploy and return plausible text while silently regressing on correctness, safety, latency or cost. Unit tests catch code defects, but AI behavior changes with model weights, prompts, tools, retrieval data and decoding settings. Evaluation must become a repeatable release gate, not a manual spot check.",
+    "plainLanguage": "Start with a golden dataset that represents real user intents, edge cases, difficult inputs, multilingual examples, safety cases and known failure modes. Give each case a stable ID, dataset version, source/provenance, expected facts or structured output, safety constraints and tags. Remove personal or secret data, obtain appropriate review rights and keep a held-out set to reduce overfitting. A golden set is a maintained product asset, not a random handful of easy examples.\n\nUse deterministic evaluators wherever possible. Examples include exact schema validation, required-field checks, policy assertions, citation presence, allowed tool-call checks, forbidden phrase detection and deterministic reference matching. For open-ended language, use a calibrated rubric or model judge as one signal, but sample outputs for human review. An LLM judge can be biased, inconsistent or vulnerable to the same prompt injection as the candidate; it must not independently authorize high-impact actions.\n\nEvaluate the candidate and baseline against the same dataset version and evaluator version. Report denominators, missing outputs, task success, precision/recall where applicable, safety violations, p50/p95 latency, token usage and cost. Never compare two models on different case subsets and call the result a fair regression test. Missing cases should fail the run or be explicitly marked as skipped under a reviewed policy.\n\nSet release gates before running the candidate. A policy might require task success at least 90%, zero critical safety violations, p95 latency under 1.5 seconds, average cost below a budget, and no more than a two-percentage-point decline against baseline. Thresholds depend on use case and risk. High-impact workflows may require stronger safety checks and human review. Track sample size and uncertainty: a one-point change on ten cases is not strong evidence of improvement.\n\nA single aggregate score can hide catastrophic failures. Keep safety as a separate hard gate, inspect per-category metrics, slice by language/intent/customer segment and report worst-case regressions. Prevent Simpson's paradox by comparing the same case IDs and segment weights. For stochastic models, repeat selected cases with controlled seeds or multiple trials and report variance; do not pretend one run is perfectly deterministic.\n\nBind each report to the exact model/prompt release bundle digest, golden dataset hash, evaluator version, policy version, runtime configuration and CI commit. Store raw case-level results securely with access controls and retention limits. Reports should be immutable: re-running a changed evaluator creates a new report ID. Never log secrets or raw sensitive user content unnecessarily.\n\nIn CI, build the candidate bundle, run fast deterministic tests, run golden-set evaluation, compare against the baseline, generate a machine-readable report and fail the pipeline if any hard gate fails. Attach the report as a build artifact and make the promotion workflow require the exact report hash. Expensive human review and large benchmark suites can run as separate pre-release or scheduled jobs, but a required release gate must not silently skip them.\n\nEvaluation in CI is not production monitoring. CI estimates behavior on known cases; production telemetry detects drift, new intents, abuse, latency changes and distribution shifts. Feed reviewed incidents into future golden-set versions, but keep a protected holdout so the benchmark does not become a target that models memorize.",
+    "mentalModel": "Version the golden set → run baseline and candidate on identical cases → score independent quality dimensions → compare against policy → persist report bound to bundle digest → block or allow promotion.",
+    "limitations": [
+      "A golden dataset only represents what it contains; monitor production distribution and blind spots.",
+      "String matching is a teaching evaluator, not a semantic correctness proof.",
+      "LLM judges can be biased, unstable and prompt-injected; calibrate and supplement with human review.",
+      "Small samples have high uncertainty; report counts, slices and confidence intervals.",
+      "A passing CI score does not guarantee safe behavior for every user or input.",
+      "Evaluation reports must be privacy-aware and immutable; avoid storing raw sensitive outputs unnecessarily."
+    ],
+    "everydayAnalogy": "A driving test uses the same route, rules and scoring rubric for every candidate. A driver is not passed because the car starts; they must meet safety, control and time requirements. If the route or rubric changes, scores are not directly comparable.",
+    "mathMadeSimple": "Suppose a golden set has 100 cases. Baseline passes 92 and candidate passes 90, so success changes from 92% to 90%, a −2 percentage-point regression. If policy allows at most 1 point, the release is blocked. If one critical safety case fails, the safety gate can block even when overall success is 99%. A p95 latency of 1.8 seconds also fails a 1.5-second budget.",
+    "productionImpact": "Version datasets and evaluators; bind reports to bundle hashes; use paired case IDs; keep safety separate from quality; set hard thresholds; capture cost/latency; persist immutable reports; fail CI closed; require report hash at promotion; and feed reviewed incidents into future benchmark versions."
+  },
+  "useCase": {
+    "scenario": "A team proposes a new support-assistant model and prompt. CI runs the baseline and candidate on the same golden set, checks task success, forbidden content, p95 latency and cost, compares regression and stores a report linked to the release bundle.",
+    "actors": [
+      "Golden dataset owner",
+      "Baseline model/prompt bundle",
+      "Candidate bundle",
+      "Deterministic evaluator",
+      "Optional calibrated judge",
+      "CI release gate",
+      "Evaluation report store",
+      "Release manager"
+    ],
+    "inputs": [
+      "Versioned golden cases",
+      "Baseline and candidate outputs",
+      "Bundle digests",
+      "Evaluator and policy versions",
+      "Latency and token-cost measurements"
+    ],
+    "constraints": [
+      "Same case IDs and evaluator version for baseline/candidate comparison.",
+      "Missing outputs and critical safety failures fail closed.",
+      "Evaluation policy and dataset versions are immutable per run.",
+      "Raw outputs are minimized and access controlled.",
+      "Only a passing report bound to the exact bundle can satisfy promotion policy."
+    ],
+    "outputs": [
+      "Per-case evaluation results",
+      "Aggregate and slice metrics",
+      "Baseline regression comparison",
+      "Pass/fail quality gate",
+      "Immutable report hash and CI exit code"
+    ],
+    "successMetric": "The pipeline catches regressions before promotion and produces a reproducible report that can be traced to the exact release bundle."
+  },
+  "architecture": {
+    "diagram": "content/topics/eval-ci/evaluation-pipeline.mmd",
+    "components": [
+      "Golden dataset registry",
+      "Baseline/candidate bundle resolver",
+      "Evaluation runner",
+      "Deterministic evaluators",
+      "Calibrated judge adapter",
+      "Metric aggregator and slice analyzer",
+      "Policy gate engine",
+      "Immutable report store",
+      "CI status/artifact publisher",
+      "Promotion workflow"
+    ],
+    "dataFlow": [
+      {
+        "from": "Golden dataset registry",
+        "to": "Evaluation runner",
+        "payload": "dataset version + case IDs + hash",
+        "purpose": "Freeze the evaluation input set."
+      },
+      {
+        "from": "Baseline bundle",
+        "to": "Evaluation runner",
+        "payload": "bundle digest + outputs",
+        "purpose": "Establish paired reference results."
+      },
+      {
+        "from": "Candidate bundle",
+        "to": "Evaluation runner",
+        "payload": "bundle digest + outputs",
+        "purpose": "Score candidate on identical cases."
+      },
+      {
+        "from": "Evaluation runner",
+        "to": "Metric aggregator",
+        "payload": "case results + latency + cost",
+        "purpose": "Compute transparent metrics and slices."
+      },
+      {
+        "from": "Metric aggregator",
+        "to": "Policy gate",
+        "payload": "metrics + baseline deltas + policy version",
+        "purpose": "Evaluate every hard release condition."
+      },
+      {
+        "from": "Policy gate",
+        "to": "Report store",
+        "payload": "pass/fail + case-level evidence + hashes",
+        "purpose": "Persist an immutable decision record."
+      },
+      {
+        "from": "Report store",
+        "to": "CI/promotion",
+        "payload": "report hash + exit code",
+        "purpose": "Block release or authorize next governed step."
+      }
+    ],
+    "trustBoundaries": [
+      "Golden data is reviewed, versioned and scrubbed; user content is not copied into fixtures without permission.",
+      "Candidate outputs and judge explanations are untrusted data, never policy instructions.",
+      "Evaluator code and policy versions are pinned and reviewed like production code.",
+      "Report store enforces tenant/project access and immutable run IDs.",
+      "Promotion verifies the report's bundle digest, dataset hash and policy version."
+    ],
+    "failurePaths": [
+      "Missing candidate output: fail the case/run rather than silently shrinking denominator.",
+      "Critical forbidden output: fail hard safety gate regardless of aggregate score.",
+      "Dataset/evaluator mismatch: reject baseline comparison as invalid.",
+      "Metric regression: fail CI and attach case-level diff.",
+      "Judge disagreement: route to human review; never silently average away a critical issue.",
+      "Report ID reused with changed results: reject immutable report write.",
+      "CI evaluator unavailable: fail closed for required release jobs; do not treat timeout as pass."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-09/fixtures/evaluation-ci.json",
+    "steps": [
+      {
+        "label": "Freeze dataset",
+        "explanation": "Pin the golden dataset version and case IDs.",
+        "expectedState": "dataset_hash=H1; cases=5"
+      },
+      {
+        "label": "Evaluate baseline",
+        "explanation": "Score the current release using the selected evaluator version.",
+        "expectedState": "baseline_success=100%"
+      },
+      {
+        "label": "Evaluate candidate",
+        "explanation": "Run candidate on the same cases and capture safety, latency and cost.",
+        "expectedState": "candidate_success=90%"
+      },
+      {
+        "label": "Apply gates",
+        "explanation": "Compare regression and hard thresholds independently.",
+        "expectedState": "gate=blocked on regression or safety"
+      },
+      {
+        "label": "Persist CI decision",
+        "explanation": "Store immutable report and return the pipeline exit code.",
+        "expectedState": "report_hash=H2; exit_code=0|1"
+      }
+    ],
+    "accessibility": [
+      "Stage labels, case counts and all gate states are available as text.",
+      "Each metric displays its measured value and threshold.",
+      "Pass/fail is written explicitly and never communicated by color alone."
+    ],
+    "animation": {
+      "objective": "Show how golden-set evaluation, candidate regression and independent quality/safety/latency/cost gates decide a CI release.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Freeze golden set",
+          "narration": "Pin one reviewed dataset version so baseline and candidate see the same cases.",
+          "input": "dataset=v4; cases=100; evaluator=deterministic-v1",
+          "transformation": "canonicalize cases → SHA-256 dataset hash",
+          "output": "dataset_hash=H1; denominator=100",
+          "visualState": "Comparable evaluation inputs frozen"
+        },
+        {
+          "step": 2,
+          "title": "Score baseline",
+          "narration": "Run the currently approved bundle and record case-level outcomes.",
+          "input": "baseline bundle=B12; 100 cases",
+          "transformation": "deterministic assertions + safety checks + metrics",
+          "output": "task_success=92%; safety_violations=0",
+          "visualState": "Baseline reference established"
+        },
+        {
+          "step": 3,
+          "title": "Score candidate",
+          "narration": "Run the candidate on the same cases and collect latency and cost.",
+          "input": "candidate bundle=B13; same 100 case IDs",
+          "transformation": "score outputs → aggregate metrics and slices",
+          "output": "task_success=90%; p95=1.8s; safety=0",
+          "visualState": "Candidate evidence captured"
+        },
+        {
+          "step": 4,
+          "title": "Apply independent gates",
+          "narration": "Check minimum quality, non-regression, safety, latency and cost separately.",
+          "input": "min_success=90%; max_regression=1pp; p95_limit=1.5s; max_cost_per_case=$0.01",
+          "transformation": "policy engine evaluates every hard gate",
+          "output": "regression=fail; latency=fail; release=blocked",
+          "visualState": "No aggregate score can hide a hard failure"
+        },
+        {
+          "step": 5,
+          "title": "Persist CI result",
+          "narration": "Store an immutable report linked to the candidate bundle and fail the workflow.",
+          "input": "bundle_digest=B13; dataset_hash=H1; policy=v2",
+          "transformation": "hash report → persist → set CI exit code",
+          "output": "report_hash=H2; exit_code=1",
+          "visualState": "Promotion blocked with reproducible evidence"
+        }
+      ],
+      "controls": [
+        {
+          "name": "candidate_success",
+          "min": 0,
+          "max": 100,
+          "defaultValue": 90,
+          "effect": "Candidate task-success percentage."
+        },
+        {
+          "name": "baseline_success",
+          "min": 0,
+          "max": 100,
+          "defaultValue": 92,
+          "effect": "Baseline task-success percentage for paired regression."
+        },
+        {
+          "name": "candidate_p95_latency",
+          "min": 0,
+          "max": 3000,
+          "defaultValue": 1800,
+          "effect": "Candidate p95 latency in milliseconds."
+        },
+        {
+          "name": "safety_violations",
+          "min": 0,
+          "max": 5,
+          "defaultValue": 0,
+          "effect": "Critical safety failures; default policy allows zero."
+        },
+        {
+          "name": "candidate_cost_milli_usd",
+          "min": 0,
+          "max": 50,
+          "defaultValue": 5,
+          "effect": "Maximum cost per case in thousandths of a USD; policy ceiling is $0.01."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "The workbench shows dataset identity, baseline/candidate scores, percentage-point delta, independent safety and latency gates, report hash and CI exit code as readable text."
+    }
+  },
+  "workedExample": {
+    "problem": "Evaluate a candidate support assistant and decide whether CI may promote it.",
+    "input": "Golden set v4 has 100 cases. Baseline success=92%; candidate=90%; maximum allowed regression=1 percentage point; safety violations=0; p95 latency limit=1.5s; candidate p95=1.8s.",
+    "steps": [
+      {
+        "operation": "Freeze dataset",
+        "reasoning": "Pin the exact case IDs, expected facts and evaluator version for both bundles.",
+        "result": "dataset_hash=H1; baseline and candidate each run 100 cases"
+      },
+      {
+        "operation": "Score baseline",
+        "reasoning": "Approved release passes 92 of 100 cases with no critical safety violations.",
+        "result": "baseline_success=92%; safety=0"
+      },
+      {
+        "operation": "Score candidate",
+        "reasoning": "Candidate passes 90 cases; p95 latency is above the budget.",
+        "result": "candidate_success=90%; delta=-2pp; p95=1.8s"
+      },
+      {
+        "operation": "Apply gates",
+        "reasoning": "The candidate exceeds the allowed regression and latency limit even though safety passes.",
+        "result": "quality=fail; safety=pass; latency=fail; release=blocked"
+      },
+      {
+        "operation": "Persist decision",
+        "reasoning": "Save report with bundle digest, dataset hash, evaluator and policy version.",
+        "result": "report_hash=H2; CI exit_code=1"
+      }
+    ],
+    "expectedOutput": "The candidate is not promoted. The report identifies the exact regression, latency failure, dataset and bundle digests so the team can reproduce and fix the issue."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-09/evaluation.py",
+      "runCommand": "python examples/stage-09/evaluation.py",
+      "testsPath": "examples/stage-09/test_evaluation.py",
+      "expectedResult": "Deterministic golden-set scoring, safety/latency/cost gates and paired baseline comparison."
+    },
+    {
+      "language": "python",
+      "role": "production",
+      "path": "examples/stage-09/evaluation_pipeline.py",
+      "runCommand": "python -m unittest discover -s examples/stage-09 -p 'test_evaluation_pipeline.py' -v",
+      "testsPath": "examples/stage-09/test_evaluation_pipeline.py",
+      "expectedResult": "Immutable SQLite evaluation report storage, tenant-scoped lookup and non-zero CI gate exit codes."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Golden-set denominator shrinks",
+      "symptom": "Candidate appears better because difficult cases were skipped.",
+      "rootCause": "Missing outputs are silently excluded from the score.",
+      "recovery": "Require exact case-ID coverage and fail on missing outputs.",
+      "regressionTest": "Remove one output and assert evaluation rejects the run."
+    },
+    {
+      "name": "Safety regression hidden by average",
+      "symptom": "High task success masks a critical unsafe answer.",
+      "rootCause": "Safety is folded into one blended quality score.",
+      "recovery": "Keep safety as an independent hard gate.",
+      "regressionTest": "Inject a forbidden phrase and assert release fails even when task success remains high."
+    },
+    {
+      "name": "Unfair baseline comparison",
+      "symptom": "Candidate delta looks better or worse due to changed cases or evaluator.",
+      "rootCause": "Baseline and candidate use different dataset/evaluator versions.",
+      "recovery": "Bind both reports to the same dataset hash and evaluator version.",
+      "regressionTest": "Different dataset hash or evaluator version is rejected."
+    },
+    {
+      "name": "Latency or cost budget exceeded",
+      "symptom": "Quality improves but service becomes too slow or expensive.",
+      "rootCause": "Only accuracy is gated.",
+      "recovery": "Add p95 latency and per-case cost hard thresholds.",
+      "regressionTest": "Inject latency and cost over budget and assert gate failure."
+    },
+    {
+      "name": "Judge model is manipulated",
+      "symptom": "Judge gives high scores to unsafe or irrelevant outputs.",
+      "rootCause": "Judge is treated as a trusted policy engine.",
+      "recovery": "Use deterministic safety assertions and calibrated human-reviewed judge rubrics.",
+      "regressionTest": "Judge output cannot override a deterministic safety failure."
+    },
+    {
+      "name": "Report rewritten after approval",
+      "symptom": "Same evaluation ID points to different results later.",
+      "rootCause": "Report store permits mutable run IDs.",
+      "recovery": "Hash canonical report and reject changed content under same tenant/run ID.",
+      "regressionTest": "Save same run ID with changed report and assert immutable conflict."
+    }
+  ],
+  "practice": {
+    "guided": "Take five golden cases and define required facts, forbidden outputs, evaluator version and minimum thresholds. Calculate baseline-to-candidate percentage-point delta.",
+    "independent": "Build a paired evaluation runner with missing-output checks, task success, safety, p95 latency, cost and a non-regression gate.",
+    "realWorld": "Add a required GitHub Actions job that evaluates a candidate model/prompt bundle, stores a report and blocks promotion when a hard gate fails.",
+    "expertExtension": "Add bootstrap confidence intervals, category slices, repeated stochastic trials, calibrated judge/human agreement, protected holdout sets and drift-driven dataset refresh.",
+    "guidedExercise": {
+      "title": "Implement a fail-closed release gate",
+      "instructions": "A candidate must satisfy minimum success, zero safety violations and the regression budget against the same golden dataset.",
+      "starterCode": "def release_allowed(candidate, baseline, min_success=0.90, max_regression=0.02):\n    # require same dataset and evaluator\n    # enforce candidate quality and safety\n    # enforce baseline regression budget\n    raise NotImplementedError",
+      "solutionCode": "def release_allowed(candidate, baseline, min_success=0.90, max_regression=0.01):\n    if candidate['dataset_hash'] != baseline['dataset_hash']:\n        return False\n    if candidate['evaluator_version'] != baseline['evaluator_version']:\n        return False\n    if candidate['metrics']['task_success_rate'] < min_success:\n        return False\n    if candidate['metrics']['safety_violations'] != 0:\n        return False\n    delta = candidate['metrics']['task_success_rate'] - baseline['metrics']['task_success_rate']\n    return candidate['passed'] and delta >= -max_regression",
+      "unitTests": "assert release_allowed(candidate_pass, baseline_pass)\nassert not release_allowed(candidate_safety_fail, baseline_pass)\nassert not release_allowed(candidate_wrong_dataset, baseline_pass)"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build a CI evaluation dashboard that compares baseline and candidate, inspects per-case diffs and explains every blocked gate.",
+      "steps": [
+        "Load a versioned golden dataset and verify its hash.",
+        "Run baseline and candidate with identical case IDs.",
+        "Inspect per-case required-fact and forbidden-output results.",
+        "Compare task success and percentage-point regression.",
+        "Adjust quality, safety, p95 latency and cost policies.",
+        "Inject missing output, unsafe answer, slow response and report replay.",
+        "Persist immutable report and return a CI exit code.",
+        "Require report hash and bundle digest in the promotion workflow."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "Why must baseline and candidate use the same case IDs?",
+        "options": [
+          "To reduce storage",
+          "To make the comparison paired and fair",
+          "To improve model temperature",
+          "To avoid safety checks"
+        ],
+        "correctIndex": 1,
+        "explanation": "The same cases and evaluator make score deltas comparable."
+      },
+      {
+        "question": "Candidate task success is 99%, but one critical safety violation occurs and policy allows zero. What happens?",
+        "options": [
+          "Promote because average is high",
+          "Block on the independent safety gate",
+          "Ignore one case",
+          "Ask the candidate model to approve itself"
+        ],
+        "correctIndex": 1,
+        "explanation": "Critical safety is a hard gate and cannot be averaged away."
+      },
+      {
+        "question": "What should CI do when an output is missing for a golden case?",
+        "options": [
+          "Silently shrink denominator",
+          "Assume success",
+          "Fail or mark an explicitly reviewed skip",
+          "Copy baseline output"
+        ],
+        "correctIndex": 2,
+        "explanation": "Silent denominator changes invalidate the benchmark."
+      },
+      {
+        "question": "What identifies the exact evaluation evidence used for promotion?",
+        "options": [
+          "A screenshot",
+          "Bundle digest + dataset hash + evaluator/policy version + report hash",
+          "Model display name only",
+          "Latest timestamp"
+        ],
+        "correctIndex": 1,
+        "explanation": "The promotion step must verify the immutable report against the exact release candidate."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Golden dataset and provenance",
+        "weight": 20,
+        "evidence": "Stable case IDs, version/hash, coverage, privacy review and holdout policy."
+      },
+      {
+        "criterion": "Deterministic evaluation and metrics",
+        "weight": 20,
+        "evidence": "Correct denominators, task success, safety, latency and cost."
+      },
+      {
+        "criterion": "Paired regression analysis",
+        "weight": 20,
+        "evidence": "Baseline and candidate use identical cases/evaluator and compute deltas correctly."
+      },
+      {
+        "criterion": "CI policy gates",
+        "weight": 25,
+        "evidence": "Hard thresholds fail closed and report actionable per-case evidence."
+      },
+      {
+        "criterion": "Immutable evidence and operations",
+        "weight": 15,
+        "evidence": "Report is bound to bundle digest and cannot be rewritten under same run ID."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Both Python test suites pass.",
+      "Missing outputs and dataset/evaluator mismatch are rejected.",
+      "Safety, latency and cost gates are independent.",
+      "Candidate regression blocks CI as configured.",
+      "Report persistence is immutable and tenant scoped."
+    ]
+  },
+  "references": [
+    {
+      "title": "MLflow model evaluation documentation",
+      "url": "https://mlflow.org/docs/latest/ml/evaluation/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "Weights & Biases Weave evaluations",
+      "url": "https://weave-docs.wandb.ai/guides/core-types/evaluations",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "OpenAI Evals guide",
+      "url": "https://platform.openai.com/docs/guides/evals",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "NIST AI Risk Management Framework",
+      "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+      "sourceType": "standard",
+      "checkedOn": "2026-11-21"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "set(outputs) == {case.case_id for case in cases}",
+      "explanation": "Every golden case must have exactly one candidate result; silently skipping difficult examples invalidates the denominator."
+    },
+    {
+      "lines": "task_success = required_facts_present and no_forbidden_phrase",
+      "explanation": "A deterministic check is easy to reproduce, but substring matching is only a teaching proxy for semantic correctness."
+    },
+    {
+      "lines": "candidate.dataset_hash == baseline.dataset_hash",
+      "explanation": "A regression delta is meaningful only when both versions are evaluated against the same dataset and evaluator."
+    },
+    {
+      "lines": "safety_violations <= policy.max_safety_violations",
+      "explanation": "Keep safety as an independent hard gate so high average quality cannot hide a critical violation."
+    },
+    {
+      "lines": "report_hash = sha256(canonical_json(report))",
+      "explanation": "The report hash binds the decision evidence and prevents a run ID from being silently rewritten."
+    },
+    {
+      "lines": "exit_code = 0 if report.passed else 1",
+      "explanation": "CI must fail closed: a blocked or incomplete required evaluation cannot be treated as successful promotion evidence."
+    }
+  ]
+}

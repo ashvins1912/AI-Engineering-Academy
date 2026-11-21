@@ -1,0 +1,16 @@
+flowchart TD
+ G[Versioned golden dataset] --> H[Freeze case IDs and dataset hash]
+ B[Approved baseline bundle] --> R[Paired evaluation runner]
+ C[Candidate bundle] --> R
+ H --> R
+ R --> D[Deterministic checks]
+ R --> J[Optional calibrated judge]
+ D --> M[Metric aggregator and slice analysis]
+ J --> M
+ M --> P{Policy gates}
+ P -->|Quality, safety, latency or cost fail| F[Fail CI]
+ P -->|All hard gates pass| S[Pass CI]
+ F --> A[Immutable evaluation report]
+ S --> A
+ A --> X[Report hash + bundle digest + dataset hash]
+ X --> Q[Promotion workflow verifies exact report]
