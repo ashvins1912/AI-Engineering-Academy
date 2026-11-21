@@ -1,0 +1,12 @@
+{
+  "request": "Find the price of MUG-1 and apply a 10% discount.",
+  "sku": "MUG-1",
+  "unitPrice": 80,
+  "discountRate": 0.1,
+  "expectedFinalPrice": 72,
+  "expectedActions": [
+    "catalog_search",
+    "apply_discount"
+  ],
+  "maxSteps": 4
+}
