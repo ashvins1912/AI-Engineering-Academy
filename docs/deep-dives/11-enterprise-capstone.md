@@ -4,9 +4,6 @@
 Design, implement and operate a multi-tenant knowledge and agent platform with explicit security boundaries, reproducible evaluation and a defensible operational plan.
 
 ### Architecture and threat model
-Gather functional/non-functional requirements, users, data classes, trust boundaries, scale assumptions and SLOs. Draw context/container/component/data-flow diagrams. Record ADRs for storage, retrieval, model, orchestration and deployment choices. Threat-model tenant escape, prompt injection, tool abuse, data exfiltration, supply-chain compromise and provider outage. Define mitigations and residual risks.
-
-### Architecture and threat model
 Gather functional and non-functional requirements, user journeys, data classes, workload assumptions, retention/residency constraints and measurable SLO/quality/cost objectives. Produce system-context, container, component, deployment and data-flow views; label trust boundaries, identity propagation and data egress. Record ADRs for storage/RLS, vector isolation, model/provider, orchestration, MCP/A2A, queues, deployment and observability. Each ADR must include context, alternatives, decision, consequences and revisit triggers.
 
 Threat-model with STRIDE and AI-specific abuse cases: tenant escape, prompt injection, retrieval poisoning, data exfiltration, unsafe tool execution, agent loop abuse, model/dependency compromise, forged queue context and denial of wallet. Each threat needs an asset, actor, entry point, attack path, likelihood/impact, preventive/detective/recovery controls, negative test evidence and residual-risk owner. Critical tenant-isolation or authorization failures are stop-ship conditions.
@@ -14,7 +11,13 @@ Threat-model with STRIDE and AI-specific abuse cases: tenant escape, prompt inje
 **Architecture acceptance gate:** every sensitive flow must be encrypted, authenticated, tenant-scoped and authorized; model output cannot grant permissions; mutating tools require policy and approval; async jobs require tenant context and idempotency; release artifacts require provenance and rollback compatibility.
 
 ### Build RAG and agent services
-Implement document ingestion, parsing/OCR, provenance, chunking, embeddings, hybrid retrieval, reranking, grounded answer generation and citations. Add a bounded agent with typed tools, explicit authorization, durable state and approval for mutations. Build API contracts, schema validation, idempotency and integration tests. Keep model-generated plans separate from server-side policy.
+Build one vertical slice before broadening the platform. Define versioned contracts for upload, ingestion status, query, citation, action proposal, approval, tool result and audit event. Implement server-side membership resolution and preserve source hash, parser/chunker/embedding versions, page metadata and stable chunk IDs.
+
+For retrieval, push tenant and document ACL predicates into the query before ranking and top-k. Verify every citation against an immutable document version, page and chunk; abstain when authorized evidence is absent. Treat retrieved text and model output as untrusted data.
+
+Keep agent planning separate from execution. The agent emits typed proposals; the tool gateway checks principal, tenant, role, capability, resource ownership, argument schema, budget and risk tier. Mutations require a separate scoped approval and durable idempotency record. A timeout after commit must return the original operation outcome rather than repeat the side effect.
+
+Add redacted audit events, trace propagation, cost metering, SLO/deadline controls and bounded retries to the same path. Validate positive and negative integration tests: cross-tenant retrieval, citation lineage, no-evidence abstention, prompt injection, unauthorized tools, approval replay, idempotency, budget rejection and provider outage. The local reference implementation is an offline contract simulator; replace its in-memory stores and lexical retrieval with production adapters only after the same invariants are proven with database/RLS and deployment tests.
 
 ### Deploy and operate
 Create reproducible container and CI pipeline; run unit/integration/security/evaluation suites; deploy to a staging environment; verify health and quality; promote with canary or controlled rollout. Add traces, metrics, logs, SLOs, budgets, alert thresholds, backup/restore and incident runbooks. Demonstrate rollback and data recovery.

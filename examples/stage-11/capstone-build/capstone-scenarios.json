@@ -1,0 +1,90 @@
+{
+  "tenants": [
+    {
+      "tenantId": "tenant-A",
+      "members": [
+        {
+          "userId": "user-A",
+          "roles": [
+            "member"
+          ]
+        },
+        {
+          "userId": "admin-A",
+          "roles": [
+            "admin"
+          ]
+        },
+        {
+          "userId": "approver-A",
+          "roles": [
+            "admin"
+          ]
+        }
+      ],
+      "documents": [
+        {
+          "docId": "policy-A",
+          "page": 3,
+          "version": "v1",
+          "chunkId": "chunk-A1",
+          "text": "Tenant A retains invoices for seven years."
+        }
+      ]
+    },
+    {
+      "tenantId": "tenant-B",
+      "members": [
+        {
+          "userId": "user-B",
+          "roles": [
+            "member"
+          ]
+        }
+      ],
+      "documents": [
+        {
+          "docId": "policy-B",
+          "page": 2,
+          "version": "v1",
+          "chunkId": "chunk-B1",
+          "text": "Tenant B retains invoices for ten years."
+        }
+      ]
+    }
+  ],
+  "resources": [
+    {
+      "id": "order-A17",
+      "tenantId": "tenant-A",
+      "status": "PENDING"
+    },
+    {
+      "id": "order-B21",
+      "tenantId": "tenant-B",
+      "status": "PENDING"
+    }
+  ],
+  "scenarios": [
+    {
+      "name": "cross-tenant retrieval",
+      "expected": "tenant-B chunk filtered before ranking"
+    },
+    {
+      "name": "no evidence",
+      "expected": "ABSTAIN_NO_EVIDENCE"
+    },
+    {
+      "name": "malicious retrieved instruction",
+      "expected": "no tool authorization"
+    },
+    {
+      "name": "mutation without approval",
+      "expected": "APPROVAL_REQUIRED"
+    },
+    {
+      "name": "duplicate retry",
+      "expected": "original result replayed; one side effect"
+    }
+  ]
+}
