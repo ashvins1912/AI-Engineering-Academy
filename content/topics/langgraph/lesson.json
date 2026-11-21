@@ -1,0 +1,529 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "langgraph",
+    "title": "Graph-based agent orchestration",
+    "stage": 6,
+    "estimatedMinutes": 210
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Model an agent workflow as typed state, nodes, edges and conditional routes.",
+      "Explain graph compilation, execution, reducers, checkpoints, interrupts and resume.",
+      "Implement a small state graph from scratch before using a graph framework.",
+      "Persist tenant-scoped checkpoints with optimistic concurrency and event history.",
+      "Test cycles, invalid routes, missing edges, step limits and interrupted execution."
+    ],
+    "prerequisites": [
+      "Stage 6 Topics 1–6: agent loop, planning, memory, durable state, HITL and patterns",
+      "Python functions, dictionaries, exceptions and SQLite transactions"
+    ],
+    "glossary": [
+      {
+        "term": "State graph",
+        "definition": "A directed graph whose nodes transform shared state and whose edges determine the next node."
+      },
+      {
+        "term": "Node",
+        "definition": "A named unit of work that reads state and returns a partial state update."
+      },
+      {
+        "term": "Edge",
+        "definition": "A transition from one node to the next."
+      },
+      {
+        "term": "Conditional edge",
+        "definition": "A routing function selects the next node using the current state."
+      },
+      {
+        "term": "Reducer",
+        "definition": "A deterministic merge rule that combines a node update with existing state."
+      },
+      {
+        "term": "Checkpoint",
+        "definition": "A durable snapshot of state and execution position used to resume a thread."
+      },
+      {
+        "term": "Interrupt",
+        "definition": "A deliberate pause that yields control for approval or external input before resuming."
+      },
+      {
+        "term": "Thread",
+        "definition": "A stable execution identity whose state and checkpoints persist across invocations."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "Long-running agents need more than a while loop. They branch, retry, wait for approvals, resume after crashes and share state across multiple nodes. A graph makes these transitions explicit and inspectable instead of burying them inside nested conditionals.",
+    "plainLanguage": "A graph-based workflow has a shared state object and named nodes. Each node reads the current state and returns a partial update. An edge chooses what runs next. A conditional edge calls a routing function and maps its result to a registered node. The graph starts at an entry node and ends when execution reaches a terminal state.\n\nCompilation is a validation step. It checks that the entry point exists and every edge and conditional destination is registered. Runtime then executes one node at a time, merges the returned update into state and follows the next edge. A reducer defines how updates merge. A normal field can use last-write-wins; a messages field often appends new messages rather than replacing history. Reducers must be deterministic because replay and recovery depend on them.\n\nA checkpoint stores both state and execution position: current values, next node, thread ID, version, status and relevant metadata. If the process crashes, a later invocation loads the checkpoint and continues from the next node rather than restarting the whole task. Checkpoints are not the same as logs: event history explains what happened, while the latest checkpoint is the resume snapshot.\n\nAn interrupt pauses execution at a safe boundary. For example, a graph can prepare a refund, persist a pending approval state and yield. A human decision arrives later and the graph resumes with the same thread ID. Never keep a database transaction open while waiting for a person. The decision itself must be authenticated and validated by the approval controls from Topic 5.\n\nCycles are useful for retry and reflection, but every graph needs a step or time budget and explicit terminal conditions. Conditional routing must fail closed on unknown route labels. Nodes should be idempotent or checkpoint their side effects carefully: a crash can occur after a remote action succeeds but before the next checkpoint is saved. Use stable idempotency keys and reconciliation for external writes.\n\nFrameworks such as LangGraph provide graph construction, state reducers, conditional routing, checkpoint savers, interrupts and streaming. Learn the underlying execution model first, then use the framework to reduce boilerplate. Framework persistence does not automatically make external side effects exactly once, and framework state is not a substitute for authorization or tenant isolation.",
+    "mentalModel": "Shared state → execute node → merge update with reducer → choose edge → checkpoint → continue, interrupt or finish.",
+    "limitations": [
+      "A graph makes control flow explicit but does not guarantee good model decisions.",
+      "A checkpoint cannot atomically include a remote provider side effect; use idempotency and reconciliation.",
+      "Reducers that are non-deterministic or mutate shared objects can break replay.",
+      "Cycles require explicit step, time, token and cost budgets.",
+      "An interrupt is a pause, not authorization; resume must revalidate identity and policy.",
+      "Tenant isolation must be enforced in checkpoint storage and every state read/write."
+    ],
+    "everydayAnalogy": "A hospital workflow has named stations: registration, triage, specialist review and discharge. Each station updates a patient record and routes to the next station based on observations. If a patient must wait for a test result, the workflow pauses with a saved record and resumes later at the correct station.",
+    "mathMadeSimple": "A graph with nodes A, B and C executes A→B→C. If A writes count=1 and B writes count=2, last-write-wins gives count=2. For messages, an append reducer turns [user] plus [assistant] into [user, assistant]. If a loop repeats node B, a max_steps=4 guard allows at most four node executions before returning step_limit. A checkpoint after B stores next_node=C, so resume starts at C, not A.",
+    "productionImpact": "Production graph orchestration needs typed state schemas, deterministic reducers, graph compilation checks, checkpoint versioning, tenant-scoped thread IDs, interrupt authorization, step/deadline budgets, idempotent nodes, event history, trace IDs and recovery tests."
+  },
+  "useCase": {
+    "scenario": "An invoice support agent classifies an incoming question, routes it to a billing or general-help node, and returns an answer. A longer case can checkpoint after classification and resume later on the same thread.",
+    "actors": [
+      "User",
+      "Graph runtime",
+      "Classifier node",
+      "Conditional router",
+      "Billing node",
+      "General node",
+      "Checkpoint store",
+      "Trace recorder"
+    ],
+    "inputs": [
+      "Tenant and thread ID",
+      "User question",
+      "Registered node functions",
+      "Conditional route map",
+      "Maximum node execution budget"
+    ],
+    "constraints": [
+      "Every edge target must be registered or terminal.",
+      "Unknown route labels fail closed.",
+      "Node updates follow declared reducer behavior.",
+      "Checkpoint reads and writes are tenant scoped.",
+      "Execution stops at a configured step budget."
+    ],
+    "outputs": [
+      "Final answer and final state",
+      "Ordered node execution trace",
+      "Versioned checkpoint and event history",
+      "Explicit step-limit or routing error state"
+    ],
+    "successMetric": "A workflow resumes from the last committed checkpoint without rerunning completed nodes or leaking state across tenants."
+  },
+  "architecture": {
+    "diagram": "content/topics/langgraph/graph-runtime.mmd",
+    "components": [
+      "Typed graph state",
+      "Node registry",
+      "Edge and conditional-route registry",
+      "Graph compiler",
+      "Execution engine",
+      "State reducer",
+      "Checkpoint saver",
+      "Interrupt/resume adapter",
+      "Trace and event recorder"
+    ],
+    "dataFlow": [
+      {
+        "from": "Input",
+        "to": "Graph state",
+        "payload": "tenant + thread + request",
+        "purpose": "Initialize a scoped execution."
+      },
+      {
+        "from": "Graph state",
+        "to": "Node registry",
+        "payload": "current state + node ID",
+        "purpose": "Run one registered node."
+      },
+      {
+        "from": "Node",
+        "to": "Reducer",
+        "payload": "partial state update",
+        "purpose": "Merge deterministic state changes."
+      },
+      {
+        "from": "Reducer",
+        "to": "Router",
+        "payload": "updated state",
+        "purpose": "Choose a registered next edge."
+      },
+      {
+        "from": "Router",
+        "to": "Checkpoint saver",
+        "payload": "next node + state + version",
+        "purpose": "Persist a resumable boundary."
+      },
+      {
+        "from": "Checkpoint saver",
+        "to": "Execution engine",
+        "payload": "checkpoint or interrupt",
+        "purpose": "Resume, pause or finish safely."
+      }
+    ],
+    "trustBoundaries": [
+      "Model-generated route labels are untrusted; only compiled route maps are executable.",
+      "Node output is validated before merging into shared state.",
+      "Checkpoint queries always include tenant and thread identity.",
+      "Human interrupts require authenticated decisions through the HITL service.",
+      "External writes use idempotency keys; graph checkpoints alone do not guarantee exactly-once effects."
+    ],
+    "failurePaths": [
+      "Unknown conditional route: stop and record routing failure.",
+      "Node exception: preserve last committed checkpoint and retry only under node-specific policy.",
+      "Step budget exhausted: return step_limit, not a fabricated completion.",
+      "Stale checkpoint version: reject concurrent writer and reload latest state.",
+      "Crash after provider success: reconcile using operation key before retrying.",
+      "Cross-tenant thread ID: return not found and do not reveal checkpoint existence."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-06/fixtures/graph-orchestration.json",
+    "steps": [
+      {
+        "label": "Initialize",
+        "explanation": "Create thread-scoped state and set the entry node.",
+        "expectedState": "next_node=classify"
+      },
+      {
+        "label": "Execute node",
+        "explanation": "Classifier returns a partial state update.",
+        "expectedState": "intent=billing"
+      },
+      {
+        "label": "Conditional route",
+        "explanation": "Router selects a registered destination from state.",
+        "expectedState": "next_node=billing"
+      },
+      {
+        "label": "Checkpoint",
+        "explanation": "Persist state, version and next node before continuing.",
+        "expectedState": "checkpoint_version=1"
+      },
+      {
+        "label": "Resume and finish",
+        "explanation": "Reload checkpoint and execute remaining nodes until terminal state.",
+        "expectedState": "status=completed"
+      }
+    ],
+    "accessibility": [
+      "Every node and edge is labeled in text.",
+      "Current node, next node, state diff and checkpoint version are announced.",
+      "Keyboard controls support play, pause, step and reset."
+    ],
+    "animation": {
+      "objective": "Animate a conditional invoice-support graph and inspect state changes, route selection, checkpoint and resume.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Initialize",
+          "narration": "A new thread starts at the graph entry node.",
+          "input": "thread=support-thread-42; question=invoice",
+          "transformation": "initialize state and entry pointer",
+          "output": "next_node=classify; steps=0",
+          "visualState": "Graph ready"
+        },
+        {
+          "step": 2,
+          "title": "Classify",
+          "narration": "The classifier reads the question and writes an intent field.",
+          "input": "question contains invoice",
+          "transformation": "node returns partial update {intent: billing}",
+          "output": "intent=billing; steps=1",
+          "visualState": "State updated"
+        },
+        {
+          "step": 3,
+          "title": "Route",
+          "narration": "Conditional edge maps billing to the registered billing node.",
+          "input": "route_key=billing",
+          "transformation": "lookup in compiled route map",
+          "output": "next_node=billing",
+          "visualState": "Billing branch selected"
+        },
+        {
+          "step": 4,
+          "title": "Checkpoint",
+          "narration": "Persist the updated state and next node as a versioned snapshot.",
+          "input": "state.intent=billing; next_node=billing",
+          "transformation": "compare-and-swap version and append graph event",
+          "output": "checkpoint_version=1",
+          "visualState": "Durable resume boundary"
+        },
+        {
+          "step": 5,
+          "title": "Resume",
+          "narration": "A new invocation loads the checkpoint and continues from billing, then reaches finish.",
+          "input": "resume(thread=support-thread-42)",
+          "transformation": "load checkpoint → execute billing → finish",
+          "output": "status=completed; answer=invoice help",
+          "visualState": "Graph completed"
+        }
+      ],
+      "controls": [
+        {
+          "name": "max_steps",
+          "min": 1,
+          "max": 10,
+          "defaultValue": 5,
+          "effect": "Stops cycles and returns step_limit when exhausted."
+        },
+        {
+          "name": "checkpoint_after_step",
+          "min": 0,
+          "max": 4,
+          "defaultValue": 2,
+          "effect": "Pauses at a chosen boundary and resumes from saved next_node."
+        },
+        {
+          "name": "route",
+          "min": 0,
+          "max": 2,
+          "defaultValue": 0,
+          "effect": "0 selects billing, 1 selects general, and 2 demonstrates fail-closed unknown route."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "The graph is represented as labeled nodes and edges with a textual state diff, route, next node, checkpoint version and final status."
+    }
+  },
+  "workedExample": {
+    "problem": "Route an invoice question through a conditional graph and resume after a checkpoint.",
+    "input": "thread=support-thread-42; question='Where is my invoice?'; entry=classify.",
+    "steps": [
+      {
+        "operation": "Initialize",
+        "reasoning": "Create state with the question and entry pointer.",
+        "result": "next_node=classify; steps=0"
+      },
+      {
+        "operation": "Classify",
+        "reasoning": "The classifier detects invoice intent and returns a partial update.",
+        "result": "intent=billing; steps=1"
+      },
+      {
+        "operation": "Route",
+        "reasoning": "Conditional route resolves billing to a registered node.",
+        "result": "next_node=billing"
+      },
+      {
+        "operation": "Checkpoint",
+        "reasoning": "Persist state and next node at a versioned boundary.",
+        "result": "version=1; next_node=billing"
+      },
+      {
+        "operation": "Resume",
+        "reasoning": "Reload the same thread and continue without rerunning classify.",
+        "result": "nodes_on_resume=billing,finish; status=completed"
+      }
+    ],
+    "expectedOutput": "The billing answer is returned, trace contains classify then billing, and resume starts at the saved next node."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-06/graph_orchestration.py",
+      "runCommand": "python examples/stage-06/graph_orchestration.py",
+      "testsPath": "examples/stage-06/test_graph_orchestration.py",
+      "expectedResult": "A compiled conditional state graph with bounded execution, trace and in-memory checkpoint resume."
+    },
+    {
+      "language": "python",
+      "role": "production",
+      "path": "examples/stage-06/graph_orchestration_production.py",
+      "runCommand": "python -m unittest discover -s examples/stage-06 -p 'test_graph_orchestration_production.py' -v",
+      "testsPath": "examples/stage-06/test_graph_orchestration_production.py",
+      "expectedResult": "SQLite tenant-scoped checkpoint snapshots, optimistic versions and append-only node event history."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Unknown route",
+      "symptom": "Graph tries to execute an unregistered destination.",
+      "rootCause": "Conditional output is trusted without a compiled route map.",
+      "recovery": "Validate route keys and destinations during compile and fail closed at runtime.",
+      "regressionTest": "Return an unknown route key and assert no destination executes."
+    },
+    {
+      "name": "Infinite graph cycle",
+      "symptom": "Agent repeatedly visits nodes and consumes unbounded resources.",
+      "rootCause": "No step, time or cost budget.",
+      "recovery": "Enforce max_steps and deadline; return step_limit explicitly.",
+      "regressionTest": "Create a self-loop and assert execution stops at configured count."
+    },
+    {
+      "name": "Checkpoint lost progress",
+      "symptom": "Resume restarts from entry and repeats completed work.",
+      "rootCause": "Only values were stored, not next_node or version.",
+      "recovery": "Persist state, execution pointer, status and version together.",
+      "regressionTest": "Checkpoint after first node and assert resume starts at second node."
+    },
+    {
+      "name": "Concurrent checkpoint writer",
+      "symptom": "Two workers overwrite each other's state.",
+      "rootCause": "No optimistic version check or lease ownership.",
+      "recovery": "Use compare-and-swap version and retry from latest checkpoint.",
+      "regressionTest": "Save with stale expected version and assert conflict."
+    },
+    {
+      "name": "Remote side effect duplicated",
+      "symptom": "Crash after payment success causes payment node to run twice.",
+      "rootCause": "Checkpoint and external provider are not one atomic transaction.",
+      "recovery": "Use stable idempotency key and reconciliation before retry.",
+      "regressionTest": "Simulate provider success then checkpoint failure and verify one logical operation."
+    }
+  ],
+  "practice": {
+    "guided": "Draw a three-node graph with one conditional edge. Predict the state after each node and identify the next node.",
+    "independent": "Implement a graph builder, compile-time edge validation, conditional routing, a deterministic reducer, checkpoint save/load and a max-step guard.",
+    "realWorld": "Build an invoice support graph with tenant-scoped thread state, human approval interrupt for account changes and resumable execution.",
+    "expertExtension": "Add streaming node events, subgraphs, parallel branches, reducer conflict policies, durable PostgreSQL checkpointing, interrupt authentication and graph replay evaluation.",
+    "guidedExercise": {
+      "title": "Implement a conditional graph edge",
+      "instructions": "Map a validated state intent to a registered destination and fail closed for unknown labels.",
+      "starterCode": "def choose_next(state, route_map):\n    # read the route key from state\n    # ensure the route exists\n    # return the registered next node\n    raise NotImplementedError",
+      "solutionCode": "def choose_next(state, route_map):\n    route = state['intent']\n    if route not in route_map:\n        raise ValueError('unmapped route')\n    return route_map[route]",
+      "unitTests": "assert choose_next({'intent':'billing'}, {'billing':'billing_node'}) == 'billing_node'\ntry:\n    choose_next({'intent':'admin'}, {'billing':'billing_node'})\n    raise AssertionError('unknown route should fail')\nexcept ValueError:\n    pass"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build a visual graph editor and execution inspector for a support workflow.",
+      "steps": [
+        "Display nodes, directed edges and conditional route labels from the fixture.",
+        "Run one node at a time and show state diff and next-node pointer.",
+        "Change route between billing and general and inspect branch selection.",
+        "Inject unknown route, node exception and self-loop to inspect safe failures.",
+        "Pause after a node, save checkpoint and resume using the same thread ID.",
+        "Attempt stale checkpoint save and verify optimistic concurrency rejection.",
+        "Inspect event history separately from the latest checkpoint snapshot."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "What does a node return in a state graph?",
+        "options": [
+          "A complete new application database",
+          "A partial state update merged by a reducer",
+          "A direct browser navigation",
+          "An authorization token"
+        ],
+        "correctIndex": 1,
+        "explanation": "Nodes return partial updates; reducers define deterministic merge behavior with shared graph state."
+      },
+      {
+        "question": "A conditional router returns an unknown label. What should happen?",
+        "options": [
+          "Execute the label as a tool",
+          "Guess the closest route",
+          "Fail closed and record routing failure",
+          "Skip authorization"
+        ],
+        "correctIndex": 2,
+        "explanation": "Only compiled route-map destinations are executable."
+      },
+      {
+        "question": "A checkpoint stores values but not the next node. What is missing?",
+        "options": [
+          "Execution position needed to resume safely",
+          "A larger prompt",
+          "More temperature",
+          "A vector index"
+        ],
+        "correctIndex": 0,
+        "explanation": "Resume requires the state and execution pointer, plus version/status metadata."
+      },
+      {
+        "question": "A graph node charges a payment, then crashes before checkpoint save. What prevents a duplicate charge?",
+        "options": [
+          "The graph edge",
+          "A stable provider idempotency key and reconciliation",
+          "A larger step budget",
+          "A reducer"
+        ],
+        "correctIndex": 1,
+        "explanation": "A checkpoint cannot atomically commit a remote side effect. Idempotency and reconciliation handle crash-after-success."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Graph modeling and compile validation",
+        "weight": 20,
+        "evidence": "Nodes, entry, edges and conditional destinations are registered and validated."
+      },
+      {
+        "criterion": "State and reducer correctness",
+        "weight": 20,
+        "evidence": "Partial updates merge deterministically and preserve message/history semantics."
+      },
+      {
+        "criterion": "Checkpoint and resume",
+        "weight": 25,
+        "evidence": "Resume continues from saved next node and rejects stale versions."
+      },
+      {
+        "criterion": "Interrupt, safety and failure handling",
+        "weight": 20,
+        "evidence": "Unknown routes, cycles and unauthorized resume fail closed."
+      },
+      {
+        "criterion": "Production observability",
+        "weight": 15,
+        "evidence": "Trace, event history, thread identity and recovery behavior are documented."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "From-scratch and SQLite checkpoint tests pass.",
+      "Unknown routes and infinite cycles stop safely.",
+      "Resume continues without rerunning completed nodes.",
+      "Tenant scope and optimistic concurrency tests pass.",
+      "External side-effect idempotency limitations are explained."
+    ]
+  },
+  "references": [
+    {
+      "title": "LangGraph documentation: overview",
+      "url": "https://docs.langchain.com/oss/python/langgraph/overview",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "LangGraph documentation: persistence",
+      "url": "https://docs.langchain.com/oss/python/langgraph/persistence",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "LangGraph documentation: interrupts",
+      "url": "https://docs.langchain.com/oss/python/langgraph/interrupts",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "graph.add_conditional_edges('classify', router, route_map)",
+      "explanation": "The router chooses a label, but the compiled route map defines the only allowed next nodes."
+    },
+    {
+      "lines": "state.values.update(node_update)",
+      "explanation": "A node returns a partial update. Production graphs should use explicit reducers for list append, counters and concurrent writes."
+    },
+    {
+      "lines": "checkpoint.save(thread_id, state, next_node, version)",
+      "explanation": "Persist the execution pointer with state; otherwise resume may repeat or skip nodes."
+    },
+    {
+      "lines": "if state.steps >= max_steps: return step_limit",
+      "explanation": "Cycles are allowed but bounded. A limit must return incomplete status rather than a fabricated success."
+    },
+    {
+      "lines": "compare_and_swap(expected_version, new_checkpoint)",
+      "explanation": "Optimistic concurrency prevents stale workers from overwriting newer thread state."
+    }
+  ]
+}
