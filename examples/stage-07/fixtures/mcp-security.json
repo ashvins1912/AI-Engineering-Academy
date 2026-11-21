@@ -1,0 +1,44 @@
+{
+  "scenario": "OAuth-protected stateless MCP server with per-tool scopes",
+  "protocolVersion": "2026-07-28",
+  "resourceUri": "https://mcp.example.com/mcp",
+  "authorizationServer": "https://auth.example.com",
+  "protectedResourceMetadata": {
+    "resource": "https://mcp.example.com/mcp",
+    "authorization_servers": [
+      "https://auth.example.com"
+    ],
+    "scopes_supported": [
+      "mcp:read",
+      "orders:read",
+      "refund:write"
+    ]
+  },
+  "tools": [
+    {
+      "name": "health",
+      "auth": "public"
+    },
+    {
+      "name": "lookup_order",
+      "auth": "orders:read"
+    },
+    {
+      "name": "issue_refund",
+      "auth": "refund:write"
+    }
+  ],
+  "checks": [
+    "JWT signature via trusted verifier",
+    "iss",
+    "aud",
+    "exp",
+    "nbf",
+    "scope hierarchy",
+    "RFC 9207 iss response validation",
+    "issuer-bound credentials",
+    "401 invalid_token",
+    "403 insufficient_scope",
+    "CIMD preferred over deprecated DCR"
+  ]
+}
