@@ -1,0 +1,16 @@
+flowchart TD
+ S[Start workflow + code version] --> H[Append workflow history]
+ H --> D[Deterministic replay runtime]
+ D --> A[Schedule activity + idempotency key]
+ A --> Q[Activity task queue]
+ Q --> C[Worker claims lease + fence]
+ C --> W[Execute side effect + heartbeat]
+ W --> R[Persist activity result]
+ R --> H
+ W -->|Worker crash| E[Lease expires]
+ E --> N[New worker claims higher fence]
+ N --> D
+ G[External signal] --> SG[Authenticate + deduplicate signal]
+ SG --> H
+ H -->|History threshold| K[Continue-as-new compact state]
+ K --> S2[New linked workflow run]

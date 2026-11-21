@@ -1,0 +1,60 @@
+{
+  "scenario": "Loan approval workflow resumes after an activity worker crash",
+  "workflowId": "loan-42",
+  "tenantId": "tenant-a",
+  "codeVersion": 3,
+  "history": [
+    {
+      "type": "WorkflowStarted"
+    },
+    {
+      "type": "ActivityScheduled",
+      "activity": "verify_identity"
+    },
+    {
+      "type": "ActivityCompleted",
+      "providerRef": "idv-9"
+    },
+    {
+      "type": "ActivityScheduled",
+      "activity": "credit_check"
+    }
+  ],
+  "activity": {
+    "id": "credit_check",
+    "idempotencyKey": "loan-42:credit",
+    "leaseOwner": "worker-A",
+    "leaseSeconds": 30,
+    "fence": 12,
+    "heartbeatSeconds": 10
+  },
+  "recovery": {
+    "expiredWorker": "worker-A",
+    "newWorker": "worker-B",
+    "newFence": 13,
+    "replaySkipsCompleted": true
+  },
+  "signal": {
+    "signalId": "approval-1",
+    "payload": {
+      "decision": "approved"
+    }
+  },
+  "continueAsNew": {
+    "historyThreshold": 10000,
+    "newWorkflowId": "loan-42-run-2",
+    "compactState": {
+      "application": "A1",
+      "status": "awaiting_review"
+    }
+  },
+  "failureInjection": [
+    "nondeterministic workflow time",
+    "crash after provider success",
+    "lease expiry",
+    "stale worker write",
+    "duplicate signal",
+    "workflow code version mismatch",
+    "history overflow"
+  ]
+}

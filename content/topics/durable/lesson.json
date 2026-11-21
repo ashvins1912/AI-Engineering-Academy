@@ -1,0 +1,572 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "durable",
+    "title": "Durable workflow engines — Temporal, Prefect, Airflow and Dagster",
+    "stage": 8,
+    "estimatedMinutes": 240
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Explain durable execution, event-history replay, activities, signals, timers and worker leases.",
+      "Compare Temporal, Prefect, Airflow and Dagster by execution model, workload fit and recovery semantics.",
+      "Separate deterministic workflow orchestration from side-effecting activities and external I/O.",
+      "Implement durable activity scheduling, idempotency, retry, heartbeat, lease fencing and recovery.",
+      "Design workflow versioning, history compaction, cancellation and human signal handling."
+    ],
+    "prerequisites": [
+      "Stage 8 Topics 1–2: workflow patterns and event-driven automation",
+      "Python concurrency, SQL transactions, queues, retries, leases and idempotency"
+    ],
+    "glossary": [
+      {
+        "term": "Durable execution",
+        "definition": "Workflow progress is persisted so it can resume after process or worker failure."
+      },
+      {
+        "term": "Workflow history",
+        "definition": "Append-only decisions, timers, signals and activity outcomes used to reconstruct workflow state."
+      },
+      {
+        "term": "Replay",
+        "definition": "Re-executes deterministic workflow logic against recorded history without repeating completed side effects."
+      },
+      {
+        "term": "Activity",
+        "definition": "A side-effecting unit of work executed by a worker with retries, timeouts and idempotency."
+      },
+      {
+        "term": "Signal",
+        "definition": "A durable external message that updates a running workflow's state."
+      },
+      {
+        "term": "Timer",
+        "definition": "A persisted deadline or delay that can wake a workflow after restart."
+      },
+      {
+        "term": "Heartbeat",
+        "definition": "Worker progress checkpoint proving a long-running activity is still alive."
+      },
+      {
+        "term": "Lease and fencing token",
+        "definition": "Time-bounded worker ownership with a monotonically increasing token that rejects stale workers."
+      },
+      {
+        "term": "Continue-as-new",
+        "definition": "Starts a fresh linked workflow run with compacted state when event history grows too large."
+      },
+      {
+        "term": "Workflow versioning",
+        "definition": "A controlled mechanism keeping old executions compatible while new workflow code is deployed."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "A long-running workflow may wait hours for a human, retry a flaky provider, survive a deploy, resume after a worker crash and run for weeks. A normal Python function or cron job loses its stack and local variables when the process stops. Durable workflow engines persist execution history and coordinate workers so business progress survives.",
+    "plainLanguage": "Durable execution separates workflow logic from activity side effects. The workflow defines deterministic decisions: which activity runs next, which branch is selected, when a timer fires and how a signal changes state. Activities perform nondeterministic work such as HTTP requests, database writes, sending email or generating a document. The engine records activity scheduling and results so replay reconstructs the workflow without calling completed activities again.\n\nTemporal is designed around durable workflow execution and event-history replay. Workflow code must be deterministic: do not read wall-clock time, generate random values, call arbitrary network APIs or access mutable databases directly inside workflow logic. Use workflow-safe APIs for time, timers and signals, and put external side effects inside Activities. Activity retries require idempotency because a provider may succeed before the worker loses its response. Long activities heartbeat progress; timeout can trigger retry or cancellation.\n\nTemporal offers signals and updates to communicate with running workflows, queries to inspect state, timers, child workflows, task queues, activity retry policies and workflow versioning. Continue-as-new starts a fresh run with compact state while preserving a chain of execution. Workflow IDs and reuse/conflict policies protect business identity. Worker task queues decouple scheduling from worker processes.\n\nPrefect is Python-first orchestration for workflows and tasks, with persisted states, retries, deployments, work pools/workers, concurrency limits, schedules and event-driven automations. It fits teams that want to orchestrate Python data/automation code with a flexible operational UI. Understand task caching, state transitions, worker availability and deployment semantics before assuming it provides the same deterministic replay model as Temporal.\n\nApache Airflow is a scheduler and orchestrator for batch-oriented DAGs. DAG runs and task instances follow schedules/data intervals, with retries, dependencies, backfills, catchup and executor choices. XCom is for small task-to-task metadata, not large data transfer. Sensors and deferrable operators handle waiting efficiently. Airflow is strong for scheduled data pipelines, but it is not a general-purpose durable application workflow runtime for interactive, signal-heavy business processes.\n\nDagster is asset-centric orchestration. Software-defined assets, dependencies, partitions, resources, IO managers, materializations, sensors and schedules make data products and lineage first-class. It is useful when the central question is which data assets were produced, with what lineage and partition status, rather than managing a long-lived application transaction.\n\nChoose based on workload. Temporal fits application workflows that wait, receive signals, coordinate external side effects and must survive restarts. Prefect fits Python automation/data workflows with deployment and operational state. Airflow fits scheduled DAGs and batch/backfill pipelines. Dagster fits asset-centric data engineering with lineage and partitioning. These products overlap, but their execution semantics and operational models differ.\n\nDurability does not make external side effects exactly once. A worker can charge a card and crash before the engine records completion. The activity may run again. Use a stable idempotency key, persist provider operation IDs and reconcile ambiguous outcomes. Use a transactional outbox when a workflow transition must publish an event.\n\nWorker leases protect activity ownership. A worker claims a task with a lease expiry and fencing token. Heartbeats extend the lease while work continues. If the worker disappears, the lease expires and another worker can claim a higher fencing token. The old worker must be rejected when it later returns. A timeout without fencing can allow two workers to mutate the same business object.\n\nWorkflow code evolves while executions are running. Use explicit version markers, backward-compatible command changes and replay tests. Do not deploy a new workflow implementation that replays old histories differently. Keep history bounded with continue-as-new or engine-specific compaction. Persist signals and timers so deploys do not lose external decisions or waiting periods.\n\nOperationalize the engine: define workflow IDs, task queues, worker concurrency, retry budgets, deadlines, heartbeat intervals, cancellation semantics, visibility timeouts, history limits, retention, failure dashboards and manual recovery. Monitor stuck workflows and oldest pending tasks, not only CPU and HTTP health.",
+    "mentalModel": "Persist workflow decisions and activity outcomes → dispatch activities to workers → record results/signals/timers → replay deterministic logic → recover expired work with leases and fencing.",
+    "limitations": [
+      "Durable history replay requires deterministic workflow code and version-aware deployments.",
+      "Activity retries can repeat provider side effects; use stable idempotency keys and reconciliation.",
+      "Durable state does not make external databases or APIs part of one ACID transaction.",
+      "Worker leases need fencing tokens; expiry alone cannot stop a stale worker from writing.",
+      "Long histories need compaction/continue-as-new and retention policies.",
+      "Each engine has distinct semantics; a common DAG diagram does not imply interchangeable recovery or deployment behavior."
+    ],
+    "everydayAnalogy": "A long-running court case has a permanent docket. Every filing, hearing, deadline and decision is recorded. If a clerk leaves, the next clerk reads the docket and continues from the last recorded event. The clerk does not rerun completed hearings; they follow the recorded history and current rules.",
+    "mathMadeSimple": "A workflow has 80 activities. If 73 completed results are persisted, a worker crash should replay workflow decisions and schedule only the remaining 7 activities—not repeat all 80 side effects. A worker lease expires after 30 seconds. Worker A holds fencing token 12; after expiry worker B claims token 13. Any late write from token 12 is rejected.",
+    "productionImpact": "Production durable orchestration requires deterministic workflow code, durable event history, idempotent activities, retries/timeouts, heartbeats, task queues, lease/fencing, signals/timers, workflow versioning, history compaction, retention and operational recovery."
+  },
+  "useCase": {
+    "scenario": "A loan application workflow waits for identity verification, credit checks, manual review and a bank response. It may run for days, receive signals from external systems and survive worker restarts or application deployments.",
+    "actors": [
+      "Workflow engine",
+      "Workflow worker",
+      "Activity worker pool",
+      "Identity provider",
+      "Credit bureau",
+      "Human reviewer",
+      "Bank API",
+      "History store",
+      "Task queue",
+      "Operations dashboard"
+    ],
+    "inputs": [
+      "Application and tenant identity",
+      "Workflow code version",
+      "Activity results and provider IDs",
+      "Human approval signal",
+      "Timer deadlines and retry policy"
+    ],
+    "constraints": [
+      "Workflow decisions are deterministic and replayable.",
+      "External API calls run in activities with stable idempotency keys.",
+      "Long activities heartbeat and obey deadlines.",
+      "Signals are persisted and authorized.",
+      "Worker leases use fencing tokens.",
+      "Code upgrades preserve replay compatibility."
+    ],
+    "outputs": [
+      "Durable workflow state",
+      "Activity result history",
+      "Pending human/timer waits",
+      "Provider operation references",
+      "Completed/failed/recovery-required application",
+      "Operational metrics and audit"
+    ],
+    "successMetric": "An application resumes after restart without repeating completed side effects, losing approvals or accepting stale worker writes."
+  },
+  "architecture": {
+    "diagram": "content/topics/durable/durable-workflow-runtime.mmd",
+    "components": [
+      "Workflow definition/version registry",
+      "History/event store",
+      "Deterministic replay runtime",
+      "Workflow task queue",
+      "Activity task queue",
+      "Worker lease and heartbeat manager",
+      "Idempotent activity adapter",
+      "Signal and timer service",
+      "Fencing-token validator",
+      "Continue-as-new/history compactor",
+      "Operations dashboard"
+    ],
+    "dataFlow": [
+      {
+        "from": "Start request",
+        "to": "Workflow runtime",
+        "payload": "workflow ID + input + code version",
+        "purpose": "Create durable execution identity."
+      },
+      {
+        "from": "Workflow runtime",
+        "to": "History store",
+        "payload": "workflow decision/event",
+        "purpose": "Persist deterministic progress."
+      },
+      {
+        "from": "Workflow runtime",
+        "to": "Activity queue",
+        "payload": "activity command + idempotency key",
+        "purpose": "Dispatch side-effecting work."
+      },
+      {
+        "from": "Activity worker",
+        "to": "Lease manager",
+        "payload": "claim + heartbeat + fencing token",
+        "purpose": "Maintain exclusive task ownership."
+      },
+      {
+        "from": "Activity worker",
+        "to": "History store",
+        "payload": "activity result/error/provider reference",
+        "purpose": "Record completion for replay."
+      },
+      {
+        "from": "External system",
+        "to": "Signal service",
+        "payload": "authenticated signal + correlation",
+        "purpose": "Wake a waiting workflow safely."
+      },
+      {
+        "from": "History store",
+        "to": "Replay runtime",
+        "payload": "ordered history + version markers",
+        "purpose": "Reconstruct state after restart or deploy."
+      }
+    ],
+    "trustBoundaries": [
+      "Workflow input and external signals are untrusted until schema and tenant validation.",
+      "Workflow code can schedule only registered activity types.",
+      "Activity credentials are least-privilege and never stored in workflow history.",
+      "Fencing tokens are validated at the resource boundary, not just by the worker manager.",
+      "Replay must not reissue completed side effects; activity results and idempotency keys are durable."
+    ],
+    "failurePaths": [
+      "Worker crash: lease expires, new worker claims higher fencing token and resumes activity safely.",
+      "Crash after provider success: retry with same provider key and reconcile before repeat write.",
+      "Workflow code upgrade: version marker preserves old replay behavior.",
+      "Signal arrives twice: deduplicate by signal ID and workflow ID.",
+      "History grows too large: continue-as-new with compact state and chain reference.",
+      "Stale worker resumes after lease expiry: fencing token rejects its writes.",
+      "Task queue backlog: cap concurrency, autoscale workers and alert on oldest task age."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-08/fixtures/durable-workflow.json",
+    "steps": [
+      {
+        "label": "Start and record",
+        "explanation": "Create workflow identity and persist deterministic decisions.",
+        "expectedState": "history=1"
+      },
+      {
+        "label": "Dispatch activity",
+        "explanation": "Schedule external work with idempotency key and worker lease.",
+        "expectedState": "activity=in_progress"
+      },
+      {
+        "label": "Heartbeat and result",
+        "explanation": "Worker renews lease and records activity outcome.",
+        "expectedState": "activity=completed"
+      },
+      {
+        "label": "Crash and replay",
+        "explanation": "New worker reconstructs workflow from history and fences stale worker.",
+        "expectedState": "only pending activity re-dispatched"
+      },
+      {
+        "label": "Signal and compact",
+        "explanation": "Persist external signal and continue-as-new when history grows.",
+        "expectedState": "new run linked to prior chain"
+      }
+    ],
+    "accessibility": [
+      "Task state and context IDs are labeled as text.",
+      "Streaming events are listed with event type and sequence.",
+      "Artifact name, MIME type and validation status are explicit."
+    ],
+    "animation": {
+      "objective": "Show durable workflow replay after worker failure, with activity history, heartbeats, lease fencing and signal-driven resume.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Start workflow",
+          "narration": "Workflow engine creates a stable workflow ID and records the first decision.",
+          "input": "workflow_id=loan-42; code_version=3",
+          "transformation": "append WorkflowStarted + decision events",
+          "output": "history_events=2; state=running",
+          "visualState": "Durable execution created"
+        },
+        {
+          "step": 2,
+          "title": "Schedule activity",
+          "narration": "Workflow schedules identity verification with a stable idempotency key.",
+          "input": "activity=verify_identity; key=loan-42:verify",
+          "transformation": "activity task queue → worker claim",
+          "output": "worker=A; lease=30s; fence=12",
+          "visualState": "Side effect isolated in activity"
+        },
+        {
+          "step": 3,
+          "title": "Heartbeat and complete",
+          "narration": "Worker reports progress and stores provider result before workflow continues.",
+          "input": "heartbeat=10s; provider_ref=idv-9",
+          "transformation": "renew lease → record ActivityCompleted",
+          "output": "activity=completed; history_events=5",
+          "visualState": "Completed activity is replay-safe"
+        },
+        {
+          "step": 4,
+          "title": "Worker crash and replay",
+          "narration": "Worker B claims expired work with a higher fence; replay skips completed activity.",
+          "input": "worker=A lost; worker=B claims",
+          "transformation": "lease expiry → fence 13 → replay history",
+          "output": "fence=13; completed activities not repeated",
+          "visualState": "Stale worker A rejected"
+        },
+        {
+          "step": 5,
+          "title": "Signal and continue-as-new",
+          "narration": "Human approval signal is persisted; long history is compacted into a new run.",
+          "input": "signal=approved; history=10000 events",
+          "transformation": "dedupe signal → update state → continue-as-new",
+          "output": "signal=applied; run=loan-42/2",
+          "visualState": "Long-running workflow remains bounded"
+        }
+      ],
+      "controls": [
+        {
+          "name": "history_events",
+          "min": 10,
+          "max": 20000,
+          "defaultValue": 10000,
+          "effect": "History size; high values trigger compaction/continue-as-new."
+        },
+        {
+          "name": "lease_seconds",
+          "min": 5,
+          "max": 120,
+          "defaultValue": 30,
+          "effect": "Worker ownership lease duration."
+        },
+        {
+          "name": "worker_fence",
+          "min": 1,
+          "max": 20,
+          "defaultValue": 12,
+          "effect": "Current fencing token; replacement worker receives a larger value."
+        },
+        {
+          "name": "crash_worker",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "Injects worker failure and recovery."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Stages show workflow ID, code version, history count, activity state, lease owner, fencing token, signal and run chain."
+    }
+  },
+  "workedExample": {
+    "problem": "A loan workflow completes identity verification, then the worker crashes before the engine records the next credit-check activity.",
+    "input": "workflow=loan-42; version=3; identity activity completed; history events=5; worker A lease expires.",
+    "steps": [
+      {
+        "operation": "Persist identity result",
+        "reasoning": "Activity result and provider reference are durable before workflow schedules next step.",
+        "result": "identity=completed; provider_ref=idv-9"
+      },
+      {
+        "operation": "Worker failure",
+        "reasoning": "Worker A disappears; its lease expires after 30 seconds.",
+        "result": "activity credit-check remains pending"
+      },
+      {
+        "operation": "Claim with fencing",
+        "reasoning": "Worker B claims the activity with a higher fencing token.",
+        "result": "worker=B; fence=13; prior fence=12 rejected"
+      },
+      {
+        "operation": "Replay history",
+        "reasoning": "Workflow logic replays recorded decisions; completed identity activity is not invoked again.",
+        "result": "identity_calls=1; credit_check scheduled once"
+      },
+      {
+        "operation": "Continue",
+        "reasoning": "Credit result is recorded and workflow waits for approval signal.",
+        "result": "state=awaiting_approval; signal channel active"
+      }
+    ],
+    "expectedOutput": "Workflow resumes from durable history, does not repeat identity verification and rejects writes from the stale worker."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-08/durable_workflows.py",
+      "runCommand": "python examples/stage-08/durable_workflows.py",
+      "testsPath": "examples/stage-08/test_durable_workflows.py",
+      "expectedResult": "Event-history replay, activity result caching, signal deduplication, lease/fencing simulation and continue-as-new."
+    },
+    {
+      "language": "python",
+      "role": "production",
+      "path": "examples/stage-08/durable_workflows_production.py",
+      "runCommand": "python -m unittest discover -s examples/stage-08 -p 'test_durable_workflows_production.py' -v",
+      "testsPath": "examples/stage-08/test_durable_workflows_production.py",
+      "expectedResult": "SQLite workflow/activity store with worker leases, heartbeats, fencing tokens, signals and durable event history."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Nondeterministic workflow code",
+      "symptom": "Replay takes a different branch from original execution.",
+      "rootCause": "Workflow code reads wall-clock time, random values or external state directly.",
+      "recovery": "Move nondeterministic I/O to activities and use engine-provided deterministic APIs.",
+      "regressionTest": "Replay recorded history and assert same command sequence."
+    },
+    {
+      "name": "Duplicate activity side effect",
+      "symptom": "Payment or email repeats after worker crash.",
+      "rootCause": "Provider succeeded but activity result was not persisted before crash.",
+      "recovery": "Stable provider idempotency key and reconciliation.",
+      "regressionTest": "Simulate provider success then worker loss; assert one logical provider operation."
+    },
+    {
+      "name": "Stale worker write",
+      "symptom": "Old worker overwrites new worker's result after lease expiry.",
+      "rootCause": "Lease expiry without fencing at resource boundary.",
+      "recovery": "Monotonic fencing tokens and compare token on every write.",
+      "regressionTest": "Fence 12 write rejected after fence 13 claimed."
+    },
+    {
+      "name": "History growth",
+      "symptom": "Replay becomes slow and event store grows indefinitely.",
+      "rootCause": "Unbounded workflow history.",
+      "recovery": "Continue-as-new or engine-specific history compaction with compact state.",
+      "regressionTest": "History threshold starts linked new run and preserves business state."
+    },
+    {
+      "name": "Signal replay",
+      "symptom": "Duplicate approval signal triggers a second transition.",
+      "rootCause": "Signal lacks durable workflow-scoped deduplication ID.",
+      "recovery": "Persist signal ID and bind it to workflow/tenant.",
+      "regressionTest": "Deliver same signal twice and assert one state transition."
+    },
+    {
+      "name": "Incompatible workflow deploy",
+      "symptom": "Old executions fail replay after new code is deployed.",
+      "rootCause": "Workflow command sequence changed without versioning.",
+      "recovery": "Use version markers and replay compatibility tests before rollout.",
+      "regressionTest": "Replay old history with new deployment and verify version branch."
+    }
+  ],
+  "practice": {
+    "guided": "Classify workflow logic vs activity side effects. Mark which operations must be deterministic and which require idempotency.",
+    "independent": "Implement append-only workflow history, deterministic replay, activity result cache, signal inbox and worker lease with fencing.",
+    "realWorld": "Build a loan approval workflow that survives worker restart, waits for external identity/credit results, accepts a human approval signal and continues after deployment.",
+    "expertExtension": "Compare Temporal, Prefect, Airflow and Dagster with a workload decision matrix; implement workflow versioning, heartbeat timeouts, continue-as-new, task queue metrics and manual recovery.",
+    "guidedExercise": {
+      "title": "Reject a stale worker",
+      "instructions": "Accept a write only when the worker fencing token matches the current lease token.",
+      "starterCode": "def validate_fence(current_token, worker_token):\n    # reject stale or missing worker token\n    raise NotImplementedError",
+      "solutionCode": "def validate_fence(current_token, worker_token):\n    if worker_token != current_token:\n        raise PermissionError('stale worker fence')\n    return True",
+      "unitTests": "assert validate_fence(13, 13)\ntry:\n    validate_fence(13, 12)\n    raise AssertionError('stale worker must be rejected')\nexcept PermissionError:\n    pass"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build a durable workflow runtime inspector that survives process restarts and worker replacement.",
+      "steps": [
+        "Start a loan workflow and inspect its event history and code version.",
+        "Schedule an activity with stable idempotency key and worker lease.",
+        "Advance heartbeat and observe lease expiry behavior.",
+        "Crash worker A, claim with worker B and inspect fencing token.",
+        "Replay history and verify completed activities are not re-executed.",
+        "Send the same approval signal twice and inspect deduplication.",
+        "Grow history past threshold and perform continue-as-new.",
+        "Compare Temporal, Prefect, Airflow and Dagster against the same workload."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "What belongs in a Temporal-style Activity rather than deterministic workflow code?",
+        "options": [
+          "Branch on recorded result",
+          "Call a payment provider",
+          "Update workflow-local state",
+          "Create a deterministic timer"
+        ],
+        "correctIndex": 1,
+        "explanation": "External side effects belong in Activities so workflow replay does not repeat arbitrary I/O."
+      },
+      {
+        "question": "What does a fencing token prevent?",
+        "options": [
+          "All network timeouts",
+          "A stale worker writing after a newer worker has claimed the task",
+          "Workflow history growth",
+          "Duplicate schema versions"
+        ],
+        "correctIndex": 1,
+        "explanation": "A monotonic fencing token lets the resource reject stale worker writes."
+      },
+      {
+        "question": "Which engine is most asset-centric for data lineage and materializations?",
+        "options": [
+          "Temporal",
+          "Prefect",
+          "Airflow",
+          "Dagster"
+        ],
+        "correctIndex": 3,
+        "explanation": "Dagster centers its model on software-defined assets, lineage and materializations."
+      },
+      {
+        "question": "What is continue-as-new used for?",
+        "options": [
+          "Delete workflow history without a trace",
+          "Start a fresh linked run with compact state to bound history",
+          "Retry every activity",
+          "Cancel worker leases"
+        ],
+        "correctIndex": 1,
+        "explanation": "It keeps long-running execution history bounded while preserving workflow continuity."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Engine selection and execution model",
+        "weight": 20,
+        "evidence": "Compare Temporal, Prefect, Airflow and Dagster against workload requirements."
+      },
+      {
+        "criterion": "Deterministic replay and versioning",
+        "weight": 20,
+        "evidence": "Replay uses recorded history and compatible workflow version markers."
+      },
+      {
+        "criterion": "Activity reliability",
+        "weight": 20,
+        "evidence": "Activities use idempotency, retry, timeout and heartbeat."
+      },
+      {
+        "criterion": "Lease/fencing and signals",
+        "weight": 25,
+        "evidence": "Stale workers and duplicate signals are rejected."
+      },
+      {
+        "criterion": "History and operations",
+        "weight": 15,
+        "evidence": "Continue-as-new, queue metrics, retention and recovery are documented."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Both Python suites pass.",
+      "Replay does not re-run completed activities.",
+      "Stale worker fencing is enforced.",
+      "Signals are durably deduplicated.",
+      "Workflow version upgrade and history compaction are tested."
+    ]
+  },
+  "references": [
+    {
+      "title": "Temporal documentation — Workflows",
+      "url": "https://docs.temporal.io/workflows",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "Prefect documentation — Flows and tasks",
+      "url": "https://docs.prefect.io/v3/develop/write-flows",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "Apache Airflow documentation — DAGs",
+      "url": "https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/dags.html",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "Dagster documentation — Assets",
+      "url": "https://docs.dagster.io/guides/build/assets",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "workflow logic reads recorded history, not live wall clock",
+      "explanation": "Replay must produce the same command decisions for the same history."
+    },
+    {
+      "lines": "activity.execute(idempotency_key)",
+      "explanation": "External side effects run outside deterministic workflow code and must tolerate retries."
+    },
+    {
+      "lines": "heartbeat(activity_id, fence_token)",
+      "explanation": "Long activities report progress and prove current ownership."
+    },
+    {
+      "lines": "write(resource, fence_token) only if token == current",
+      "explanation": "Fencing is enforced at the resource boundary so stale workers cannot overwrite new results."
+    },
+    {
+      "lines": "continue_as_new(compact_state)",
+      "explanation": "A new linked run bounds history while preserving workflow continuity."
+    }
+  ]
+}
