@@ -1,0 +1,624 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "supply-chain",
+    "title": "AI Supply-Chain Security — provenance, integrity and dependency trust",
+    "stage": 10,
+    "estimatedMinutes": 390
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Map the AI artifact supply chain from datasets and source code through dependencies, model weights, tokenizers, prompts, containers and deployment.",
+      "Verify cryptographic hashes, signatures, provenance attestations and immutable artifact references before promotion.",
+      "Build a software bill of materials (SBOM) and model/data inventory with ownership, license, source and version metadata.",
+      "Distinguish checksum integrity, signer identity, build provenance and license approval as separate controls.",
+      "Detect typosquatting, vulnerable dependencies, unsafe model serialization, malicious model repositories and secret leakage in CI logs.",
+      "Implement a deterministic offline release gate that rejects tampered artifacts and quarantines unknown licenses or incomplete provenance."
+    ],
+    "prerequisites": [
+      "Stage 4 data lineage and reproducible datasets",
+      "Stage 8 containers, CI/CD and deployment artifacts",
+      "Stage 10 Topic 1 prompt injection and Topic 2 tool authorization",
+      "Basic cryptographic hashes, package managers and source control"
+    ],
+    "glossary": [
+      {
+        "term": "Artifact",
+        "definition": "A versioned file or package such as model weights, tokenizer, dataset snapshot, prompt bundle, dependency or container image."
+      },
+      {
+        "term": "SBOM",
+        "definition": "A machine-readable inventory of software components, versions and relationships included in a build."
+      },
+      {
+        "term": "Provenance attestation",
+        "definition": "Verifiable metadata describing where, how, by whom and from which inputs an artifact was built."
+      },
+      {
+        "term": "Digest",
+        "definition": "A cryptographic hash that identifies exact artifact bytes and detects unexpected modification."
+      },
+      {
+        "term": "Signature",
+        "definition": "A cryptographic statement from a signer identity that binds approval to a specific artifact digest."
+      },
+      {
+        "term": "Reproducible build",
+        "definition": "A build process designed so the same declared inputs and environment produce the same output bytes."
+      },
+      {
+        "term": "Typosquatting",
+        "definition": "A malicious package-name lookalike intended to trick developers into installing an attacker-controlled dependency."
+      },
+      {
+        "term": "License gate",
+        "definition": "A policy check that allows approved licenses, rejects prohibited terms and holds unknown or incompatible licenses for review."
+      },
+      {
+        "term": "Quarantine",
+        "definition": "A state that prevents an unverified artifact from reaching training, evaluation or production until review is complete."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "AI systems depend on more than application source code. Model weights, tokenizers, datasets, embedding models, prompt templates, Python packages, container images and build workflows can all be replaced, poisoned, compromised or distributed under unacceptable terms. A model that passes evaluation can still be unsafe if the bytes deployed are not the bytes reviewed.",
+    "plainLanguage": "Think of an AI release as a chain of ingredients. A model file may come from a public repository, a tokenizer from another source, a dataset from a vendor, and the serving image from a container registry. Your application also depends on Python packages and build actions. Every item needs an identity, source, version, digest, license and review state. If even one dependency is silently replaced, the final system is different from the one you tested.\n\nA SHA-256 digest answers a narrow question: are these exact bytes the same as the bytes named in the manifest? It does not tell you who created them, whether the source is trustworthy, whether the build was compromised or whether the license permits your use. A digital signature binds a digest to a signer identity, but you still need to trust the signing identity and validate its policy. Provenance explains the build process and declared inputs; it should be authenticated and tied to the output digest.\n\nCreate a release manifest that pins every artifact to an immutable digest rather than a mutable tag such as latest or main. Keep an inventory for model weights, tokenizer, configuration, prompt bundle, training/evaluation data snapshots, vector index snapshot, container image and all direct and transitive software dependencies. Generate an SBOM for software components and a model/data bill of materials for AI-specific artifacts. Record licenses and ownership, not only package names.\n\nThe release gate should fail closed. Reject a digest mismatch, invalid signature, untrusted publisher, missing required provenance, critical vulnerability or forbidden source. Hold unknown or incompatible licenses for legal review instead of silently accepting them. A missing SBOM or unpinned dependency should block promotion until resolved. Quarantine suspicious model files and inspect formats before loading them. Prefer non-executable tensor formats such as safetensors when available; never assume that loading an arbitrary pickle-based model file is a passive data operation.\n\nProtect the build itself. Pin third-party actions and dependencies to reviewed immutable versions, use lockfiles with hashes, isolate build credentials, grant short-lived least-privilege tokens, separate untrusted pull-request builds from privileged release jobs, and prevent secrets from appearing in logs or artifacts. Use isolated runners and do not execute install scripts from untrusted packages with production credentials. Promote the same verified digest from test to staging to production rather than rebuilding from mutable inputs at each environment.\n\nFinally, keep evidence. Store attestations, SBOMs, artifact digests, license decisions, vulnerability scan results, approvals and release signatures alongside the release. Monitor for newly disclosed vulnerabilities and revocation of signing identities. Supply-chain security is a lifecycle: an artifact trusted yesterday may need quarantine tomorrow if its publisher, dependency or signature is compromised.",
+    "mentalModel": "Declared inputs → immutable artifact digests → signature and provenance verification → SBOM/license/vulnerability policy → quarantine or promotion → signed release manifest → deployment by digest → continuous monitoring.",
+    "limitations": [
+      "A matching hash proves byte equality with a trusted expected digest; it does not prove the source or build is trustworthy.",
+      "A valid signature proves control of a signing key, not that the signer or build process is safe; verify identity, trust roots, revocation and policy.",
+      "An SBOM can be incomplete, stale or inaccurate and must be generated from the actual build artifact and reviewed.",
+      "Vulnerability databases have false positives, false negatives and disclosure delays; risk decisions need context and documented exceptions.",
+      "License identifiers do not replace legal review of obligations, model terms, dataset rights, attribution or commercial restrictions.",
+      "A local verifier demonstrates policy logic but does not provide a hardened build runner, key management system or trusted transparency service."
+    ],
+    "everydayAnalogy": "A restaurant checks supplier invoices, batch numbers, seals and expiry dates before serving ingredients. A sealed package proves it was not opened after sealing, but it does not prove the supplier is reputable or that the ingredient is permitted. AI releases need the same layered checks.",
+    "mathMadeSimple": "Suppose a release contains 1 model, 1 tokenizer, 2 datasets, 1 prompt bundle, 1 container and 120 software dependencies: 126 tracked components. If 125 pass and one model digest differs from the reviewed manifest, the release must still be blocked. Supply-chain gates are conjunctive: every required component must satisfy its policy, not just a high percentage.",
+    "productionImpact": "Pin artifacts by digest, verify signatures and authenticated provenance, generate SBOM and AI artifact inventories, enforce license and vulnerability gates, isolate builds, scan for secret leakage and promote the exact verified release bundle. Quarantine uncertainty rather than silently converting it into trust."
+  },
+  "useCase": {
+    "scenario": "Build a secure model-release pipeline that assembles a serving image from reviewed model weights, tokenizer, dataset snapshot, prompt bundle and locked dependencies. The pipeline must reject tampered bytes and high-risk dependencies, hold unknown licenses for review, and produce a signed release manifest that can be promoted unchanged.",
+    "actors": [
+      "Model and dataset publishers",
+      "Source repository and dependency registries",
+      "Isolated CI builder",
+      "SBOM and artifact inventory generator",
+      "Digest/signature/provenance verifier",
+      "License and vulnerability policy gate",
+      "Release approver and artifact registry",
+      "Deployment controller and security monitor"
+    ],
+    "inputs": [
+      "Immutable artifact references and expected SHA-256 digests",
+      "Trusted signer identities and signature verification results",
+      "Build provenance and source commit metadata",
+      "SBOM plus model/data artifact inventory",
+      "License identifiers and dependency vulnerability findings",
+      "Secret scan results and release approval"
+    ],
+    "constraints": [
+      "No mutable latest tags in release manifests.",
+      "Every model, tokenizer, dataset and image is pinned by digest.",
+      "Hash, signature and provenance checks are independent requirements.",
+      "Unknown or incompatible licenses are held for review.",
+      "Critical/high known vulnerabilities block promotion unless a documented exception policy applies.",
+      "Untrusted pull requests never receive release credentials.",
+      "Secrets are never printed into logs, artifacts or model metadata."
+    ],
+    "outputs": [
+      "Accepted or quarantined artifact decisions with reason codes",
+      "Software and AI artifact inventories",
+      "License and vulnerability review report",
+      "Signed release manifest tied to exact digests",
+      "Auditable promotion decision and deployment reference"
+    ],
+    "successMetric": "Only artifacts with matching digests, trusted signatures, verified provenance, approved licenses and acceptable vulnerability status can enter the release bundle."
+  },
+  "architecture": {
+    "diagram": "content/topics/supply-chain/supply-chain-gate.mmd",
+    "components": [
+      "Source and artifact registries",
+      "Immutable dependency and model lockfiles",
+      "Isolated build runner with short-lived credentials",
+      "SBOM and model/data inventory generator",
+      "Digest verifier and signature trust-root verifier",
+      "Provenance and builder identity verifier",
+      "License and vulnerability policy engine",
+      "Quarantine registry and signed release manifest",
+      "Deployment by immutable digest and monitoring"
+    ],
+    "dataFlow": [
+      {
+        "from": "Source and artifact registries",
+        "to": "Immutable input manifest",
+        "payload": "Pinned source commit, model, tokenizer, datasets, prompts and dependencies",
+        "purpose": "Declare every input with an immutable version and digest."
+      },
+      {
+        "from": "Immutable input manifest",
+        "to": "Isolated builder",
+        "payload": "Reviewed inputs and locked dependency graph",
+        "purpose": "Build without mutable tags or production credentials."
+      },
+      {
+        "from": "Isolated builder",
+        "to": "Inventory generator",
+        "payload": "Build outputs, SBOM and AI artifact metadata",
+        "purpose": "Record software components and model/data lineage."
+      },
+      {
+        "from": "Inventory generator",
+        "to": "Integrity verifier",
+        "payload": "Artifact bytes, expected digests and signatures",
+        "purpose": "Verify exact bytes and trusted signer identity independently."
+      },
+      {
+        "from": "Integrity verifier",
+        "to": "Provenance verifier",
+        "payload": "Verified artifact digest and build attestation",
+        "purpose": "Bind output to source, builder identity, workflow and declared inputs."
+      },
+      {
+        "from": "Provenance verifier",
+        "to": "Policy gate",
+        "payload": "Provenance result, licenses and vulnerability findings",
+        "purpose": "Apply license, vulnerability and source trust policy."
+      },
+      {
+        "from": "Policy gate",
+        "to": "Quarantine or release registry",
+        "payload": "Decision, reason codes and evidence",
+        "purpose": "Prevent unverified or review-required artifacts from promotion."
+      },
+      {
+        "from": "Release registry",
+        "to": "Deployment controller",
+        "payload": "Signed manifest and immutable image/model digests",
+        "purpose": "Deploy the exact verified bundle without rebuilding mutable inputs."
+      }
+    ],
+    "trustBoundaries": [
+      "Public registries, model hubs and package indexes are untrusted until independently verified.",
+      "Build scripts, dependency install hooks and model serialization formats can execute code.",
+      "Signing keys and provenance identities are trusted only through reviewed roots, scoped access and revocation checks.",
+      "SBOMs and attestations are evidence inputs and must be authenticated and tied to artifact digests.",
+      "Release and deployment credentials are unavailable to untrusted pull-request jobs.",
+      "Exceptions require explicit owner, rationale, expiry and audit evidence."
+    ],
+    "failurePaths": [
+      "Artifact digest mismatch: quarantine immediately and block all downstream steps.",
+      "Signature missing, invalid or revoked: reject; do not substitute a hash check.",
+      "Provenance missing or references a different digest: quarantine pending trusted rebuild.",
+      "Unknown license: hold for legal review; do not infer permission from public availability.",
+      "Critical/high vulnerable dependency: block promotion and require upgrade or documented exception.",
+      "Secret scanner detects credential: redact logs, fail the build, revoke/rotate the credential and investigate exposure.",
+      "Mutable image/model tag changes after review: deploy by digest and verify the signed manifest at admission."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-10/supply-chain/supply-chain-scenarios.json",
+    "steps": [
+      {
+        "label": "Declare inputs",
+        "explanation": "Pin source, model, tokenizer, datasets, prompts and dependencies to immutable versions and digests.",
+        "expectedState": "Complete input manifest."
+      },
+      {
+        "label": "Build in isolation",
+        "explanation": "Use a clean runner with short-lived least-privilege credentials and no secrets in untrusted jobs.",
+        "expectedState": "Isolated build output."
+      },
+      {
+        "label": "Verify integrity and signer",
+        "explanation": "Compare SHA-256 digests and independently verify signer identity and signature.",
+        "expectedState": "Tampered or unsigned artifact rejected."
+      },
+      {
+        "label": "Verify provenance and inventory",
+        "explanation": "Tie the artifact digest to source commit, builder workflow, SBOM and model/data lineage.",
+        "expectedState": "Authenticated provenance and inventory."
+      },
+      {
+        "label": "Apply license and vulnerability policy",
+        "explanation": "Reject critical vulnerabilities and hold unknown or incompatible licenses for review.",
+        "expectedState": "Policy decision with explicit reason."
+      },
+      {
+        "label": "Promote exact release",
+        "explanation": "Sign a release manifest and deploy the exact verified artifact digests.",
+        "expectedState": "Immutable, auditable release bundle."
+      }
+    ],
+    "accessibility": [
+      "Every stage includes a plain-language explanation, input and expected state; rejection and review states are named in text.",
+      "The diagram and animation are understandable without color, and the steps can be navigated individually for reduced-motion access."
+    ],
+    "animation": {
+      "objective": "Animate a model artifact from an untrusted registry through digest, signature, provenance, SBOM, license and vulnerability gates to quarantine or signed promotion.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Declare immutable inputs",
+          "narration": "Pin the source commit and every model, tokenizer, dataset, prompt and dependency digest.",
+          "input": "Mutable tags and source references",
+          "transformation": "Resolve and record immutable digests in the release manifest.",
+          "output": "Declared inputs",
+          "visualState": "manifest"
+        },
+        {
+          "step": 2,
+          "title": "Isolated build",
+          "narration": "Build on a clean runner with short-lived credentials and locked dependencies.",
+          "input": "Reviewed manifest and lockfiles",
+          "transformation": "Build in an isolated job with no release secrets exposed to untrusted code.",
+          "output": "Build outputs and SBOM",
+          "visualState": "build"
+        },
+        {
+          "step": 3,
+          "title": "Integrity and signature",
+          "narration": "Compare exact bytes with expected hashes and verify the signer identity.",
+          "input": "Artifact bytes, digest and signature",
+          "transformation": "Hash content and validate signature against a trusted identity.",
+          "output": "Integrity decision",
+          "visualState": "integrity"
+        },
+        {
+          "step": 4,
+          "title": "Provenance and inventory",
+          "narration": "Verify the builder, source commit, workflow and SBOM are bound to this digest.",
+          "input": "Attestation and component inventory",
+          "transformation": "Check provenance subject digest, builder identity and declared inputs.",
+          "output": "Verified lineage",
+          "visualState": "provenance"
+        },
+        {
+          "step": 5,
+          "title": "License and vulnerability gate",
+          "narration": "Reject known critical risk and hold unknown licenses for human review.",
+          "input": "License IDs and vulnerability findings",
+          "transformation": "Apply allow, deny and hold policy with explicit reason codes.",
+          "output": "Policy decision",
+          "visualState": "policy"
+        },
+        {
+          "step": 6,
+          "title": "Quarantine or promote",
+          "narration": "Only the complete verified bundle is signed and promoted by immutable digest.",
+          "input": "All artifact decisions",
+          "transformation": "Quarantine failures or sign the release manifest and deploy by digest.",
+          "output": "Auditable release",
+          "visualState": "release"
+        }
+      ],
+      "controls": [
+        {
+          "name": "artifact_integrity",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "Switch between matching and tampered bytes; a digest mismatch must block release."
+        },
+        {
+          "name": "license_status",
+          "min": 0,
+          "max": 2,
+          "defaultValue": 0,
+          "effect": "Select approved, unknown or prohibited license status; unknown is held and prohibited is rejected."
+        },
+        {
+          "name": "dependency_risk",
+          "min": 0,
+          "max": 2,
+          "defaultValue": 0,
+          "effect": "Select no known issue, high vulnerability or critical vulnerability; high and critical block by default."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Six narrated stages expose input, transformation and output. Integrity failures, license review and vulnerability blocks are labeled in text and can be navigated step by step."
+    }
+  },
+  "workedExample": {
+    "problem": "A release contains a model file whose reviewed digest is known, a tokenizer with a verified digest, and two dependencies. One model file is altered after review; the tokenizer has an unknown license; one dependency has a critical known vulnerability.",
+    "input": "Model bytes hash to bdf50d… but manifest expects cef1c2…; tokenizer hash matches but license is UNKNOWN; package fasttensor 1.2.0 has a CRITICAL vulnerability; build provenance is present for the original reviewed model.",
+    "steps": [
+      {
+        "operation": "Verify model digest",
+        "reasoning": "Compute SHA-256 over the downloaded model bytes and compare it with the immutable manifest digest.",
+        "result": "Mismatch: reject and quarantine the model artifact."
+      },
+      {
+        "operation": "Verify tokenizer identity",
+        "reasoning": "The tokenizer digest matches, but byte integrity does not establish usage rights.",
+        "result": "Integrity passes; license status remains pending."
+      },
+      {
+        "operation": "Apply license policy",
+        "reasoning": "UNKNOWN is not equivalent to an approved license and public download availability grants no usage permission.",
+        "result": "Hold the tokenizer for legal review."
+      },
+      {
+        "operation": "Scan dependency graph",
+        "reasoning": "The critical vulnerability is a release-blocking finding under the default policy.",
+        "result": "Reject the dependency set until upgraded or formally excepted."
+      },
+      {
+        "operation": "Verify provenance binding",
+        "reasoning": "The attestation refers to the reviewed model digest, not the altered bytes.",
+        "result": "The changed artifact cannot inherit the original artifact's provenance."
+      },
+      {
+        "operation": "Evaluate release gate",
+        "reasoning": "All required artifacts and dependencies must pass; one passing component cannot compensate for another failure.",
+        "result": "No signed release manifest is created and deployment is blocked."
+      }
+    ],
+    "expectedOutput": "The altered model is rejected, the unknown-license tokenizer is held for review, the critical dependency blocks promotion, and no production release is signed. The original reviewed model may be fetched again by digest and re-verified."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-10/supply-chain/policy_engine.py",
+      "runCommand": "python examples/stage-10/supply-chain/policy_engine.py",
+      "testsPath": "examples/stage-10/test_supply_chain.py",
+      "expectedResult": "Offline verifier accepts trusted synthetic artifacts, rejects digest/signature/provenance failures, holds unknown licenses, blocks vulnerable dependencies and redacts synthetic secrets."
+    },
+    {
+      "language": "other",
+      "role": "production",
+      "path": "examples/stage-10/supply-chain/README.md",
+      "runCommand": "python -m unittest discover -s examples/stage-10 -p 'test_*.py' -v",
+      "testsPath": "examples/stage-10/test_supply_chain.py",
+      "expectedResult": "Production guide defines immutable release manifests, SBOMs, attestations, license/vulnerability gates, isolated builds and deployment by digest."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Artifact bytes differ from reviewed manifest",
+      "symptom": "A downloaded model or container image has a different digest than the release manifest.",
+      "rootCause": "A mutable tag, compromised registry, accidental overwrite or tampering replaced the reviewed bytes.",
+      "recovery": "Quarantine the artifact, preserve evidence, fetch the exact immutable digest and verify it again.",
+      "regressionTest": "Modify one byte and prove the verifier returns CHECKSUM_MISMATCH."
+    },
+    {
+      "name": "Hash accepted without signer verification",
+      "symptom": "An artifact with a matching digest is accepted from an untrusted publisher.",
+      "rootCause": "The pipeline confuses byte integrity with publisher identity and trust.",
+      "recovery": "Verify a signature against a reviewed identity and trust root; check expiry and revocation.",
+      "regressionTest": "A matching hash with an invalid or untrusted signature is rejected."
+    },
+    {
+      "name": "Provenance does not bind to output",
+      "symptom": "An attestation exists but references a different artifact digest or unknown builder.",
+      "rootCause": "The pipeline checks only that an attestation file exists.",
+      "recovery": "Verify subject digest, builder identity, source revision, workflow and declared materials.",
+      "regressionTest": "Attestation digest mismatch or untrusted builder is rejected."
+    },
+    {
+      "name": "Unknown license silently accepted",
+      "symptom": "A model or dataset is promoted without clear rights or terms.",
+      "rootCause": "The release process treats public availability or a missing license field as permission.",
+      "recovery": "Hold unknown terms for legal review and document owner, decision and allowed use.",
+      "regressionTest": "Unknown license produces HOLD_LICENSE_REVIEW, never ALLOW."
+    },
+    {
+      "name": "Vulnerable or typosquatted dependency",
+      "symptom": "A compromised package or vulnerable transitive dependency enters the serving image.",
+      "rootCause": "Dependencies are unpinned, lockfiles are not enforced or package identity is not reviewed.",
+      "recovery": "Pin exact versions and hashes, inspect dependency graph and publisher, scan advisories and rebuild in isolation.",
+      "regressionTest": "Critical/high vulnerability or unpinned dependency blocks promotion."
+    },
+    {
+      "name": "Unsafe model serialization executes code",
+      "symptom": "Loading a model artifact triggers unexpected code execution or import behavior.",
+      "rootCause": "A pickle-based artifact is treated as inert data from an untrusted source.",
+      "recovery": "Prefer safe tensor formats, inspect provenance and load only in a restricted isolated environment.",
+      "regressionTest": "The release checklist flags unsafe serialization and requires an isolated review path."
+    },
+    {
+      "name": "Secret leaked in CI logs or build artifact",
+      "symptom": "A credential appears in logs, cache, crash output or published metadata.",
+      "rootCause": "Secrets are injected into untrusted build steps or logging is not redacted.",
+      "recovery": "Fail the build, revoke and rotate the credential, purge accessible copies and investigate scope.",
+      "regressionTest": "Synthetic AWS/GitHub/API secret patterns are detected and redacted before log output."
+    }
+  ],
+  "practice": {
+    "guided": "Run the offline supply-chain verifier against the synthetic manifest. Inspect the accepted model, tampered model, unknown-license tokenizer, untrusted signature and critical dependency. Compare the decision reason with the evidence.",
+    "independent": "Extend the policy with a transitive dependency graph and a time-bounded exception record. Ensure exceptions are scoped to one digest, owner, reason and expiry; prove a new digest does not inherit an old approval.",
+    "realWorld": "Design a release pipeline for a fine-tuned model and RAG application. Inventory model weights, tokenizer, dataset snapshots, prompt bundle, embedding model, vector index, Python dependencies, container image and CI actions. Define who signs each artifact and where attestations are stored.",
+    "expertExtension": "Generate SPDX or CycloneDX SBOMs, verify SLSA provenance, use Sigstore/Cosign identity-based signing, pin GitHub Actions by full commit SHA, scan model repositories for unsafe serialization, add transparency-log verification and automate vulnerability-driven quarantine.",
+    "guidedExercise": {
+      "title": "Build a fail-closed artifact verification gate",
+      "instructions": "Compute SHA-256 from actual bytes, compare with the immutable manifest, verify signature and provenance flags, then apply license policy. Never allow unknown license or digest mismatch to reach release.",
+      "starterCode": "def verify_artifact(artifact, policy):\n    raise NotImplementedError",
+      "solutionCode": "def verify_artifact(artifact, policy):\n    if sha256(artifact.content) != artifact.expected_sha256:\n        return Decision('REJECT', 'CHECKSUM_MISMATCH')\n    if not artifact.signature_verified:\n        return Decision('REJECT', 'SIGNATURE_UNVERIFIED')\n    if not artifact.provenance_verified:\n        return Decision('REJECT', 'PROVENANCE_MISSING')\n    if artifact.license_id not in policy.allowed_licenses:\n        return Decision('HOLD', 'LICENSE_REVIEW')\n    return Decision('ALLOW', 'VERIFIED')",
+      "unitTests": "assert verify_artifact(valid_model, policy).status == 'ALLOW'\nassert verify_artifact(tampered_model, policy).reason == 'CHECKSUM_MISMATCH'\nassert verify_artifact(unknown_license_model, policy).status == 'HOLD'"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build an AI artifact trust workbench that inventories model and software components, verifies integrity/provenance, applies license and vulnerability policy, and emits a signed-release readiness report.",
+      "steps": [
+        "Create synthetic model, tokenizer, dataset and dependency fixtures with immutable digests.",
+        "Generate an inventory and record source, version, owner and license for each component.",
+        "Verify SHA-256 and signer identity independently.",
+        "Bind provenance attestations to exact output digests and builder identity.",
+        "Run license and vulnerability policy; quarantine or hold findings.",
+        "Scan CI output for synthetic secrets and redact before persistence.",
+        "Produce a release manifest with exact digests and a complete evidence trail."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "What does a matching SHA-256 digest establish?",
+        "options": [
+          "The bytes match the expected digest",
+          "The publisher is trustworthy",
+          "The license permits commercial use",
+          "The build process was secure"
+        ],
+        "correctIndex": 0,
+        "explanation": "A digest detects byte changes relative to a trusted expected value; it does not establish publisher identity, license rights or build security."
+      },
+      {
+        "question": "Why verify a signature after checking a hash?",
+        "options": [
+          "Bind digest to trusted signer",
+          "Replace dependency scanning",
+          "Prove license compatibility",
+          "Guarantee model accuracy"
+        ],
+        "correctIndex": 0,
+        "explanation": "A signature binds an artifact digest to a signer identity, which must itself be trusted and checked for revocation and policy."
+      },
+      {
+        "question": "What should happen when a model license is unknown?",
+        "options": [
+          "Hold for legal review",
+          "Assume public means free",
+          "Deploy but hide metadata",
+          "Ignore license fields"
+        ],
+        "correctIndex": 0,
+        "explanation": "Unknown license terms do not grant permission. Hold the artifact until its rights and obligations are reviewed."
+      },
+      {
+        "question": "What must provenance verify?",
+        "options": [
+          "Builder and output digest",
+          "Only a file name",
+          "Only the model score",
+          "Only the download URL"
+        ],
+        "correctIndex": 0,
+        "explanation": "Authenticated provenance should bind the exact output digest to its builder identity, source revision, workflow and declared inputs."
+      },
+      {
+        "question": "How should production deploy a verified model image?",
+        "options": [
+          "By immutable digest",
+          "By mutable latest tag",
+          "By registry search result",
+          "By local file name"
+        ],
+        "correctIndex": 0,
+        "explanation": "Deploying by immutable digest ensures the deployed bytes are the same bytes that passed verification and release approval."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Supply-chain inventory and threat model",
+        "weight": 20,
+        "evidence": "Tracks model/data/software artifacts, sources, owners, versions, licenses and build boundaries."
+      },
+      {
+        "criterion": "Integrity, signatures and provenance",
+        "weight": 25,
+        "evidence": "Verifies digests, signer identity, provenance subject digest and builder/source metadata independently."
+      },
+      {
+        "criterion": "SBOM, license and vulnerability policy",
+        "weight": 20,
+        "evidence": "Produces component inventory and rejects or holds vulnerable, unknown or prohibited inputs."
+      },
+      {
+        "criterion": "Build and release hardening",
+        "weight": 20,
+        "evidence": "Uses isolated builds, locked dependencies, least-privilege credentials, secret scanning and deployment by digest."
+      },
+      {
+        "criterion": "Adversarial evidence and operations",
+        "weight": 15,
+        "evidence": "Tests tampering, untrusted signers, provenance mismatch, license review, vulnerable dependencies and secret redaction."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Tampered model bytes are rejected against the expected digest.",
+      "Signature and provenance are verified as separate checks.",
+      "Unknown or incompatible licenses are held for review.",
+      "Critical/high vulnerable dependencies block release by default.",
+      "CI secret patterns are detected and redacted.",
+      "The release manifest pins exact artifact digests and records review evidence."
+    ]
+  },
+  "references": [
+    {
+      "title": "SLSA — Supply-chain Levels for Software Artifacts",
+      "url": "https://slsa.dev/spec/v1.1/",
+      "sourceType": "standard",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "Sigstore Documentation",
+      "url": "https://docs.sigstore.dev/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "SPDX Specification",
+      "url": "https://spdx.github.io/spdx-spec/v2.3/",
+      "sourceType": "standard",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "OWASP Software Supply Chain Security Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Software_Supply_Chain_Security_Cheat_Sheet.html",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "Hugging Face Safetensors Documentation",
+      "url": "https://huggingface.co/docs/safetensors/index",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "NIST Secure Software Development Framework (SSDF)",
+      "url": "https://csrc.nist.gov/pubs/sp/800/218/final",
+      "sourceType": "standard",
+      "checkedOn": "2026-11-22"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "manifest = load_release_manifest(path, verify_signature=True)",
+      "explanation": "Load a signed manifest that names immutable source revisions, artifact digests, dependencies and policy metadata."
+    },
+    {
+      "lines": "inventory = build_sbom_and_ai_artifact_inventory(build_outputs)",
+      "explanation": "Record software components plus model, tokenizer, dataset, prompt and container artifacts with source and license metadata."
+    },
+    {
+      "lines": "digest = sha256_file(artifact.path)",
+      "explanation": "Hash the actual bytes and compare them with the digest pinned in the reviewed manifest."
+    },
+    {
+      "lines": "signature = verify_signature(artifact.digest, trusted_identity_policy)",
+      "explanation": "Verify that a trusted signer approved this exact digest; a matching hash alone does not authenticate the publisher."
+    },
+    {
+      "lines": "provenance = verify_attestation(artifact.digest, builder, source_revision)",
+      "explanation": "Ensure the attestation subject matches the output and identifies the expected builder, workflow and source revision."
+    },
+    {
+      "lines": "decision = policy.evaluate(license, vulnerabilities, source, provenance)",
+      "explanation": "Apply separate allow, reject and hold outcomes for license review, vulnerability severity and trust policy."
+    },
+    {
+      "lines": "release = sign_manifest(only_verified_artifacts, immutable_digests=True)",
+      "explanation": "Create a release manifest only when every required artifact passes and deploy the exact digest without rebuilding."
+    }
+  ]
+}
