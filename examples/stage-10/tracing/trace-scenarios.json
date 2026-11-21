@@ -1,0 +1,63 @@
+{
+  "traceId": "1234567890abcdef1234567890abcdef",
+  "spans": [
+    {
+      "spanId": "root0001",
+      "parentId": null,
+      "name": "rag.request",
+      "startMs": 0,
+      "endMs": 3200,
+      "status": "OK"
+    },
+    {
+      "spanId": "retr0001",
+      "parentId": "root0001",
+      "name": "vector.search",
+      "startMs": 120,
+      "endMs": 540,
+      "status": "OK"
+    },
+    {
+      "spanId": "model001",
+      "parentId": "root0001",
+      "name": "model.generate",
+      "startMs": 600,
+      "endMs": 2700,
+      "status": "ERROR"
+    },
+    {
+      "spanId": "tool0001",
+      "parentId": "root0001",
+      "name": "mcp.tool",
+      "startMs": 1800,
+      "endMs": 2450,
+      "status": "OK"
+    },
+    {
+      "spanId": "worker01",
+      "parentId": "root0001",
+      "name": "queue.consume",
+      "startMs": 2750,
+      "endMs": 3100,
+      "status": "OK"
+    }
+  ],
+  "attributes": {
+    "model_family": "small",
+    "token_count": 128,
+    "cache_hit": false,
+    "prompt": "synthetic private prompt",
+    "authorization": "synthetic secret"
+  },
+  "expected": {
+    "rootDurationMs": 3200,
+    "slowSpans": [
+      "model.generate",
+      "mcp.tool"
+    ],
+    "errorSpans": [
+      "model.generate"
+    ],
+    "tailSampled": true
+  }
+}
