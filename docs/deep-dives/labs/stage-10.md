@@ -22,19 +22,19 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
  
 ## tool-security — Tool authorization and sandboxing
 
-**Implementation task:** Authorize each action using principal, verb, resource and context before invoking a tool.
+**Implementation task:** Build a policy decision point and enforcement point that authorize a normalized tool/action/resource request using verified identity, authoritative ownership, scope, approval, expiry and budget. Execute only approved jobs through a constrained sandbox boundary.
 
-**Worked fixture:** User has read permission on report A but no write permission on report B.
+**Worked fixture:** User-17 has `reports:read` and owns report-A. User-22 owns report-B. User-17 proposes reading report-A, writing report-B, changing the target after authorization, reading `../secrets.txt`, and fetching a loopback URL.
 
-**Expected result:** Read A is allowed; write B is denied before the tool is called.
+**Expected result:** Read report-A is allowed. Cross-owner write, argument mutation, path traversal and loopback/metadata network access are denied before the adapter or sandbox performs a side effect. Repeated idempotency keys do not repeat writes.
 
-**Verification tests:** Test path traversal, SSRF, replay, argument tampering and privilege escalation.
+**Verification tests:** Run the Stage 10 tool-security tests. Add an unknown tool, unknown argument, expired capability, revoked grant, redirect to a private address, duplicate request and sandbox budget overrun. Verify deny-by-default behavior and no adapter invocation on denied requests.
 
-**Debugging checklist:** Reduce the example to the smallest failing input; inspect identity, permissions, data flow and intermediate state; reproduce the failure with a test; change one variable at a time and retain a regression test.
+**Debugging checklist:** Trace verified principal derivation; inspect canonical arguments and authoritative resource metadata; compare policy decision and enforcement point; check capability scope/expiry/revocation; inspect workspace path resolution, DNS answers, redirects, budgets and idempotency records; verify audit redaction.
 
-**Interview checks:** What should a capability/authorization check evaluate?
+**Interview checks:** Distinguish authentication, authorization, PDP and PEP. Explain why a schema is not permission, why authorization must bind to normalized arguments, how SSRF bypasses hostname-only checks, and why a subprocess is not automatically a secure sandbox.
 
-**Submission evidence:** Include implementation and architecture artifacts, a successful run, positive and negative tests, a short failure analysis, and a 3–5 sentence explanation of the operational trade-off.
+**Submission evidence:** Include PDP/PEP diagram, policy implementation, synthetic allow/deny fixtures, sandbox manifest, positive and negative test output, one failure analysis and a short explanation of which controls require OS enforcement.
 
 ---
 
