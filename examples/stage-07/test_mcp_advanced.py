@@ -14,6 +14,11 @@ class MCPAdvancedTests(unittest.TestCase):
   self.assertEqual(self.engine.resume(first["requestState"],{"refund_approval":{"kind":"elicit","action":"decline"}},101)["status"],"CANCELLED")
   first=self.engine.start("c2","ORD-8",1000,100)
   with self.assertRaises(RequestStateError):self.engine.resume(first["requestState"],{"refund_approval":{"kind":"elicit","action":"accept","content":{"approved":"yes"}}},101)
+ def test_multi_round_trip_limit(self):
+  engine=MultiRoundTripEngine(self.signer,max_rounds=2)
+  first=engine.start("c1","ORD-7",1000,100)
+  second=engine.resume(first["requestState"],{},101)
+  with self.assertRaises(RequestStateError):engine.resume(second["requestState"],{},102)
  def test_request_state_tamper_and_expiry(self):
   first=self.engine.start("c1","ORD-7",1000,100)
   token=first["requestState"][:-1]+("A" if first["requestState"][-1]!="A" else "B")
