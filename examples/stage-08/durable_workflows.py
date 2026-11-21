@@ -29,7 +29,8 @@ class ReplayWorkflow:
         for event in self.history:
             p=event.payload
             if event.event_type=="ActivityScheduled":
-                state["activities"].setdefault(p["activity_id"],{"status":"scheduled","input":p["input"],"idempotency_key":p["idempotency_key"]})
+                prior=state["activities"].get(p["activity_id"],{})
+                state["activities"][p["activity_id"]]={"status":"scheduled","input":p["input"],"idempotency_key":p["idempotency_key"],"attempt":prior.get("attempt",0)+1}
             elif event.event_type=="ActivityCompleted":
                 state["activities"][p["activity_id"]]={"status":"completed","result":p["result"],"idempotency_key":p["idempotency_key"]}
             elif event.event_type=="ActivityFailed":
@@ -50,7 +51,7 @@ class ReplayWorkflow:
             return {"dispatch":False,"status":"completed","result":prior["result"]}
         if prior:
             if prior.get("idempotency_key")!=idempotency_key:raise DurableWorkflowError("activity key changed")
-            return {"dispatch":False,"status":prior["status"]}
+            if prior.get("status")!="failed":return {"dispatch":False,"status":prior["status"],"attempt":prior.get("attempt",1)}
         self.append("ActivityScheduled",{"activity_id":activity_id,"input":activity_input,"idempotency_key":idempotency_key})
         return {"dispatch":True,"status":"scheduled"}
     def complete_activity(self,activity_id,idempotency_key,result):
