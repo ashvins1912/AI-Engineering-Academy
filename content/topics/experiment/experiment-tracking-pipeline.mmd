@@ -1,0 +1,14 @@
+flowchart TD
+ Q[Research question] --> E[Experiment registry]
+ D[Dataset source] --> M[Manifest + file hashes + split IDs]
+ G[Git + lockfile + hardware + seed] --> R[Run metadata]
+ E --> R
+ M --> R
+ R --> T[Training process]
+ T --> L[Step-indexed metric logger]
+ T --> A[Artifact store + SHA-256]
+ L --> B[Tracking backend]
+ A --> B
+ B --> C[Compare compatible runs]
+ C --> V[Independent evaluation]
+ V --> P[Model registry promotion gate]
