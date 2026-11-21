@@ -1,0 +1,11 @@
+flowchart TD
+ A[Git repository: HCL + lockfile] --> B[Validated module inputs]
+ B --> C[Terraform provider graph]
+ C --> D[Remote encrypted state + lock]
+ C --> E[Plan artifact]
+ E --> F[Policy + cost review]
+ F -->|Reject| X[Fix module or inputs]
+ F -->|Pass| G[Protected environment approval]
+ G --> H[Apply reviewed plan]
+ H --> I[Cloud resources]
+ I --> J[Drift detection + audit]
