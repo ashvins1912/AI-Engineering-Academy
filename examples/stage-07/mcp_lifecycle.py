@@ -1,5 +1,10 @@
-"""Minimal JSON-RPC MCP-style lifecycle simulator; stdlib only, no network transport."""
+"""Stateless MCP 2026-07-28-style request lifecycle simulator; no transport dependency."""
 from dataclasses import dataclass
+
+PROTOCOL_VERSION="2026-07-28"
+META_PROTOCOL="io.modelcontextprotocol/protocolVersion"
+META_CAPABILITIES="io.modelcontextprotocol/clientCapabilities"
+META_CLIENT="io.modelcontextprotocol/clientInfo"
 
 class RpcError(Exception):
  def __init__(self,code,message):super().__init__(message);self.code=code
@@ -13,73 +18,71 @@ class Tool:
 
 class MCPServer:
  def __init__(self,name="academy-tools",version="1.0.0",protocol_versions=None):
-  self.name=name;self.version=version;self.protocol_versions=protocol_versions or ["2025-06-18"]
-  self.tools={};self.initialized_sessions=set()
+  self.name=name;self.version=version;self.protocol_versions=protocol_versions or [PROTOCOL_VERSION];self.tools={}
  def register_tool(self,tool):
   if tool.name in self.tools:raise ValueError("duplicate tool")
   self.tools[tool.name]=tool
- def handle(self,session_id,message):
-  if not isinstance(message,dict) or message.get("jsonrpc")!="2.0":raise RpcError(-32600,"invalid JSON-RPC request")
+ def handle(self,headers,message):
+  if not isinstance(message,dict) or message.get("jsonrpc")!="2.0" or "id" not in message:
+   raise RpcError(-32600,"invalid JSON-RPC request")
   method=message.get("method")
-  if method=="initialize":
-   params=message.get("params",{});requested=params.get("protocolVersion")
-   if requested not in self.protocol_versions:raise RpcError(-32001,"unsupported protocol version")
-   return {"jsonrpc":"2.0","id":message.get("id"),"result":{"protocolVersion":requested,"serverInfo":{"name":self.name,"version":self.version},"capabilities":{"tools":{"listChanged":False}}}}
-  if method=="notifications/initialized":
-   self.initialized_sessions.add(session_id);return None
-  if session_id not in self.initialized_sessions:raise RpcError(-32002,"session is not initialized")
-  if method=="ping":return {"jsonrpc":"2.0","id":message.get("id"),"result":{}}
-  if method=="tools/list":
-   tools=[{"name":t.name,"description":t.description,"inputSchema":t.input_schema} for t in self.tools.values()]
-   return {"jsonrpc":"2.0","id":message.get("id"),"result":{"tools":tools}}
-  if method=="tools/call":
+  if headers.get("Mcp-Method")!=method:raise RpcError(-32020,"Mcp-Method header mismatch")
+  meta=message.get("params",{}).get("_meta",{})
+  version=meta.get(META_PROTOCOL);caps=meta.get(META_CAPABILITIES)
+  if version not in self.protocol_versions:raise RpcError(-32022,"unsupported protocol version")
+  if not isinstance(caps,dict):raise RpcError(-32602,"clientCapabilities is required")
+  if method=="server/discover":
+   result={"protocolVersions":self.protocol_versions,"serverInfo":{"name":self.name,"version":self.version},"capabilities":{"tools":{"listChanged":False}}}
+  elif method=="tools/list":
+   tools=[{"name":t.name,"description":t.description,"inputSchema":t.input_schema} for t in sorted(self.tools.values(),key=lambda x:x.name)]
+   result={"tools":tools,"ttlMs":30000,"cacheScope":"private"}
+  elif method=="tools/call":
    params=message.get("params",{});name=params.get("name");args=params.get("arguments",{})
+   if headers.get("Mcp-Name")!=name:raise RpcError(-32020,"Mcp-Name header mismatch")
    tool=self.tools.get(name)
    if tool is None:raise RpcError(-32602,"unknown tool")
    validate_args(tool.input_schema,args)
-   result=tool.handler(args)
-   return {"jsonrpc":"2.0","id":message.get("id"),"result":{"content":[{"type":"text","text":str(result)}],"isError":False}}
-  if method=="shutdown":
-   self.initialized_sessions.discard(session_id)
-   return {"jsonrpc":"2.0","id":message.get("id"),"result":{}}
-  raise RpcError(-32601,"method not found")
+   output=tool.handler(args)
+   result={"resultType":"complete","content":[{"type":"text","text":str(output)}],"isError":False}
+  else:raise RpcError(-32601,"method not found")
+  return {"jsonrpc":"2.0","id":message["id"],"result":result,"_meta":{"io.modelcontextprotocol/serverInfo":{"name":self.name,"version":self.version}}}
 
 def validate_args(schema,args):
  if not isinstance(args,dict):raise RpcError(-32602,"arguments must be an object")
- required=schema.get("required",[])
- for key in required:
+ for key in schema.get("required",[]):
   if key not in args:raise RpcError(-32602,f"missing required argument: {key}")
  if schema.get("additionalProperties") is False:
   unknown=set(args)-set(schema.get("properties",{}))
   if unknown:raise RpcError(-32602,f"unknown arguments: {sorted(unknown)}")
  for key,spec in schema.get("properties",{}).items():
-  if key in args and spec.get("type")=="string" and not isinstance(args[key],str):raise RpcError(-32602,f"{key} must be a string")
+  if key in args and spec.get("type")=="string" and not isinstance(args[key],str):
+   raise RpcError(-32602,f"{key} must be a string")
 
 class MCPClient:
- def __init__(self,server,session_id="session-1",protocol_version="2025-06-18"):
-  self.server=server;self.session_id=session_id;self.protocol_version=protocol_version;self.state="CREATED";self.next_id=1;self.server_info=None;self.capabilities={}
- def request(self,method,params=None):
-  message={"jsonrpc":"2.0","id":self.next_id,"method":method,"params":params or {}};self.next_id+=1
-  return self.server.handle(self.session_id,message)
- def notify(self,method,params=None):
-  return self.server.handle(self.session_id,{"jsonrpc":"2.0","method":method,"params":params or {}})
- def initialize(self):
-  if self.state!="CREATED":raise RpcError(-32003,"initialize is only valid once")
-  self.state="INITIALIZING"
-  result=self.request("initialize",{"protocolVersion":self.protocol_version,"capabilities":{},"clientInfo":{"name":"academy-host","version":"1.0.0"}})["result"]
-  self.server_info=result["serverInfo"];self.capabilities=result["capabilities"]
-  self.notify("notifications/initialized");self.state="READY";return result
+ """Stateless client: each request carries version and client capabilities in _meta."""
+ def __init__(self,server,protocol_version=PROTOCOL_VERSION):
+  self.server=server;self.protocol_version=protocol_version;self.next_id=1
+  self.client_info={"name":"academy-host","version":"1.0.0"};self.capabilities={}
+  self.server_info=None;self.closed=False
+ def request(self,method,params=None,name=None):
+  if self.closed:raise RpcError(-32002,"client is closed")
+  payload=dict(params or {})
+  payload["_meta"]={META_PROTOCOL:self.protocol_version,META_CAPABILITIES:self.capabilities,META_CLIENT:self.client_info}
+  message={"jsonrpc":"2.0","id":self.next_id,"method":method,"params":payload};self.next_id+=1
+  headers={"Mcp-Method":method}
+  if name is not None:headers["Mcp-Name"]=name
+  response=self.server.handle(headers,message)
+  info=response.get("_meta",{}).get("io.modelcontextprotocol/serverInfo")
+  if info:self.server_info=info
+  return response
+ def discover(self):
+  return self.request("server/discover")["result"]
  def list_tools(self):
-  self._ready();return self.request("tools/list")["result"]["tools"]
+  return self.request("tools/list")["result"]
  def call_tool(self,name,arguments,consented_tools):
-  self._ready()
   if name not in consented_tools:raise PermissionError("host consent is required for this tool")
-  return self.request("tools/call",{"name":name,"arguments":arguments})["result"]
- def _ready(self):
-  if self.state!="READY":raise RpcError(-32002,"client is not ready")
- def shutdown(self):
-  if self.state=="READY":self.request("shutdown")
-  self.state="CLOSED"
+  return self.request("tools/call",{"name":name,"arguments":arguments},name=name)["result"]
+ def close(self):self.closed=True
 
 def build_demo_server():
  server=MCPServer()
@@ -87,4 +90,8 @@ def build_demo_server():
  return server
 
 if __name__=="__main__":
- client=MCPClient(build_demo_server());print(client.initialize());print(client.list_tools());print(client.call_tool("lookup_order",{"order_id":"ORD-7"},{"lookup_order"}));client.shutdown();print("state:",client.state)
+ client=MCPClient(build_demo_server())
+ print("discover:",client.discover())
+ print("tools:",client.list_tools())
+ print("call:",client.call_tool("lookup_order",{"order_id":"ORD-7"},{"lookup_order"}))
+ client.close();print("client closed:",client.closed)
