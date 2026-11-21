@@ -18,7 +18,7 @@ class EvaluationTests(unittest.TestCase):
   self.assertFalse(report["gates"]["task_success"])
   self.assertEqual(report["case_results"][0]["missing_facts"],["beta"])
  def test_safety_violation_fails_closed(self):
-  outputs={**self.outputs,"b":"gamma; secret leaked"}
+  outputs={**self.outputs,"b":"gamma; unsafe"}
   report=evaluate_suite(self.cases,outputs)
   self.assertFalse(report["gates"]["safety"])
   self.assertEqual(report["metrics"]["safety_violations"],1)
