@@ -1,0 +1,14 @@
+flowchart TD
+ A[Agent proposes action] --> B[Server risk policy]
+ B -->|Low risk| G[Protected tool adapter]
+ B -->|High risk| C[Persist exact action and hash]
+ C --> D[Notify reviewer queue]
+ D --> E[Authenticate reviewer and load RBAC]
+ E --> F{Role, separation, expiry and hash valid?}
+ F -->|No| X[Reject and audit]
+ F -->|Yes| H[Append decision]
+ H --> I{Quorum reached?}
+ I -->|No| D
+ I -->|Yes| J[Recheck workflow version]
+ J --> G
+ G --> K[Idempotent side effect and audit]
