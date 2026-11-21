@@ -182,6 +182,24 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ---
 
+## kubernetes — Kubernetes for AI services
+
+**Implementation task:** Deploy a stateless inference API with a digest-pinned image, explicit CPU/memory requests and limits, startup/readiness/liveness probes, a bounded HPA and least-privilege runtime settings.
+
+**Worked fixture:** Two replicas request 6 GiB each; the node has 16 GiB allocatable. The model loads in 75 seconds and the startup budget is 120 seconds. A third replica requires 18 GiB and cannot fit on this node.
+
+**Expected result:** Two replicas schedule and become Ready after model verification; the third replica remains Pending with an Insufficient memory diagnosis. A startup budget shorter than measured cold start must be rejected.
+
+**Verification tests:** Test exact placement boundaries, invalid resource inputs, startup timeout, concurrency memory exceeding limit, mutable image rejection, privileged container rejection, invalid HPA bounds, missing metrics and GPU scheduling without a device plugin.
+
+**Debugging checklist:** Start with `kubectl describe pod` Events; inspect current and previous container logs; compare requests with node allocatable resources; check probe timing and container restart reason; inspect Service selectors and EndpointSlices; verify HPA metrics; check GPU device-plugin resources, labels and taints; confirm the cluster CNI enforces NetworkPolicy.
+
+**Interview checks:** Explain why requests affect scheduling while limits affect runtime; distinguish startup, readiness and liveness; explain why HPA cannot create node capacity; describe the role of GPU extended resources, node selectors and tolerations.
+
+**Submission evidence:** Include the simulator output, passing tests with one negative case, Deployment/Service/HPA/NetworkPolicy manifests, a resource-capacity calculation, and a 3–5 sentence explanation of one failure and its recovery.
+
+---
+
 ## Stage completion evidence
 
 - [ ] Every lesson implementation runs from a clean environment.
