@@ -51,6 +51,8 @@ import AgentClientProtocolVisualizer from './components/AgentClientProtocolVisua
 import AgentClientProtocolLessonDetails from './components/AgentClientProtocolLessonDetails'
 import ToolIntegrationVisualizer from './components/ToolIntegrationVisualizer'
 import ToolIntegrationLessonDetails from './components/ToolIntegrationLessonDetails'
+import WorkflowPatternsVisualizer from './components/WorkflowPatternsVisualizer'
+import WorkflowPatternsLessonDetails from './components/WorkflowPatternsLessonDetails'
 import ArchitectureFlow from './components/ArchitectureFlow'
 import StudentReflection from './components/StudentReflection'
 
@@ -89,6 +91,7 @@ export default function App() {
   const [showIBMAMigration, setShowIBMAMigration] = useState(false)
   const [showClientACP, setShowClientACP] = useState(false)
   const [showToolIntegration, setShowToolIntegration] = useState(false)
+  const [showWorkflowPatterns, setShowWorkflowPatterns] = useState(false)
 
   useEffect(() => { localStorage.setItem('ai-academy.completed.v1', JSON.stringify(completed)) }, [completed])
   useEffect(() => { localStorage.setItem('ai-academy.bookmarks.v1', JSON.stringify(bookmarks)) }, [bookmarks])
@@ -165,6 +168,8 @@ export default function App() {
         {active.id==='stage-7'&&showClientACP&&<><AgentClientProtocolVisualizer/><AgentClientProtocolLessonDetails/></>}
         {active.id==='stage-7'&&<div className="phase-lab-launch"><div><strong>Stage 7 · Topic 9 — Production tool integration engineering</strong><p>Build typed tool contracts with tenant authorization, rate limits, idempotency, bounded retries, circuit breakers, reconciliation and redacted observability.</p></div><button className="lab-primary" onClick={()=>setShowToolIntegration(v=>!v)}>{showToolIntegration?'Hide tool integration lab':'Open production tool integration mastery lab'} <ChevronRight size={15}/></button></div>}
         {active.id==='stage-7'&&showToolIntegration&&<><ToolIntegrationVisualizer/><ToolIntegrationLessonDetails/></>}
+        {active.id==='stage-8'&&<div className="phase-lab-launch"><div><strong>Stage 8 · Topic 1 — Workflow patterns</strong><p>Design sequential, parallel, branching, fan-out/fan-in, map-reduce and saga workflows with durable recovery and compensation.</p></div><button className="lab-primary" onClick={()=>setShowWorkflowPatterns(v=>!v)}>{showWorkflowPatterns?'Hide workflow lab':'Open workflow patterns mastery lab'} <ChevronRight size={15}/></button></div>}
+        {active.id==='stage-8'&&showWorkflowPatterns&&<><WorkflowPatternsVisualizer/><WorkflowPatternsLessonDetails/></>}
         {active.modules.map((m,mi)=><article className="module" key={m.id}><button className="module-head" onClick={()=>setExpanded(v=>v.includes(m.id)?v.filter(x=>x!==m.id):[...v,m.id])}><div className="module-index">{String(mi+1).padStart(2,'0')}</div><div className="module-title"><h3>{m.title}</h3><p>{m.description}</p><span>{m.lessons.length} lessons · {m.lessons.filter(l=>completed.includes(l.id)).length} completed</span></div><ChevronRight className={expanded.includes(m.id)?'rotate':''} size={18}/></button>
           {expanded.includes(m.id)&&<div className="lesson-list">{m.lessons.map(l=><div className={`lesson ${completed.includes(l.id)?'lesson-complete':''}`} key={l.id}><button className={`check ${completed.includes(l.id)?'done':''}`} onClick={()=>toggle(l.id)} aria-label={completed.includes(l.id)?'Mark lesson incomplete':'Mark lesson complete'}>{completed.includes(l.id)?<CircleCheck size={18}/>:<span/>}</button><button className="lesson-open" onClick={()=>setSelectedLesson(l)}><div className="lesson-body"><strong>{l.title}</strong><p>{l.depth}</p><div className="lab"><Code2 size={13}/><span>LAB</span>{l.lab}</div></div></button><button className={`bookmark-btn ${bookmarks.includes(l.id)?'saved':''}`} onClick={()=>toggleBookmark(l.id)} aria-label={bookmarks.includes(l.id)?'Remove bookmark':'Bookmark lesson'}><Bookmark size={16} fill={bookmarks.includes(l.id)?'currentColor':'none'}/></button></div>)}</div>}
         </article>)}
