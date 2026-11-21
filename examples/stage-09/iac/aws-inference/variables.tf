@@ -33,7 +33,7 @@ variable "private_subnet_cidrs" {
 
 variable "allowed_ingress_cidrs" {
   type        = list(string)
-  description = "Restrict to approved client ranges in production; the example default is public HTTPS."
+  description = "Restrict to approved client ranges; the example default is a documentation-only TEST-NET placeholder."
   default     = ["203.0.113.10/32"]
 }
 
