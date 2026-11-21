@@ -1,0 +1,26 @@
+{
+  "scenario": "MCP server exposes one refund quote tool, a read-only policy resource, a tenant order resource template and a safe review prompt",
+  "protocolVersion": "2026-07-28",
+  "tools": [
+    "calculate_refund"
+  ],
+  "resources": [
+    "policy://refunds/v3"
+  ],
+  "resourceTemplates": [
+    "tenant://{tenant_id}/orders/{order_id}"
+  ],
+  "prompts": [
+    "refund_review"
+  ],
+  "cache": {
+    "ttlMs": 30000,
+    "cacheScope": "private"
+  },
+  "security": [
+    "tool consent and scope",
+    "tenant-bound resource URI",
+    "prompt allow-list",
+    "tools only quote; no side effect"
+  ]
+}
