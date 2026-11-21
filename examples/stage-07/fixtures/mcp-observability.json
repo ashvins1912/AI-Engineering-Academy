@@ -1,0 +1,39 @@
+{
+  "scenario": "Operate a stateless MCP service with redacted telemetry, bounded retries, circuit breaker and durable idempotency",
+  "signals": [
+    "request_count",
+    "error_rate",
+    "p50_latency",
+    "p95_latency",
+    "tool_failure_rate",
+    "429_rate",
+    "circuit_state",
+    "idempotency_replays",
+    "pending_operations"
+  ],
+  "redact": [
+    "Authorization",
+    "access_token",
+    "refresh_token",
+    "client_secret",
+    "cookie",
+    "pkce_verifier"
+  ],
+  "retryableStatuses": [
+    429,
+    502,
+    503,
+    504
+  ],
+  "retryRule": "only idempotent operations or calls with stable idempotency keys",
+  "circuitBreaker": {
+    "failureThreshold": 3,
+    "resetAfterSeconds": 30
+  },
+  "operations": [
+    "RESERVED",
+    "IN_PROGRESS",
+    "COMPLETED",
+    "RECONCILE"
+  ]
+}

@@ -1,0 +1,13 @@
+flowchart TD
+ R[MCP request + trace ID] --> X[Redact secrets + pseudonymize tenant]
+ X --> M[Metrics + traces]
+ R --> T[Tool adapter]
+ T --> P[Retry policy + circuit breaker]
+ P -->|Safe transient retry| T
+ P -->|Write operation| I[Idempotency reservation]
+ I --> D[Remote provider call outside DB transaction]
+ D -->|Success| C[Persist COMPLETED result]
+ D -->|Ambiguous timeout/crash| Q[Reconciliation by provider key]
+ Q -->|Found| C
+ Q -->|Unknown| W[Keep PENDING; manual/automated recovery]
+ M --> A[SLO alerts + runbooks]

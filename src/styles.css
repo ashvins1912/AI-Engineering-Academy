@@ -872,3 +872,24 @@
 .mcp-transport-gates b.fail{color:#f0a1a1}
 .mcp-transport-gates p{font-size:10px;color:#94a5c0;line-height:1.5;margin:4px 0 0}
 @media(max-width:760px){.mcp-transport-modes{grid-template-columns:1fr}}
+
+/* Stage 7 Topic 5 — MCP observability and recovery workbench */
+.mcp-ops-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:14px 0}
+.mcp-ops-metrics article{display:grid;gap:6px;min-width:0;border:1px solid #2b3a55;border-radius:10px;background:#101a2b;padding:12px}
+.mcp-ops-metrics small{font:9px 'DM Mono';color:#8e9fba;letter-spacing:.7px}
+.mcp-ops-metrics strong{font:600 17px 'Space Grotesk';color:#e1e8f8;overflow-wrap:anywhere}
+.mcp-ops-metrics span{font-size:10px;color:#99abc6;line-height:1.4}
+.mcp-ops-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;border:1px solid #2b3a55;border-radius:11px;background:#111b2d;padding:13px;margin:14px 0}
+.mcp-ops-controls label{display:grid;gap:7px;font-size:11px;color:#aab8d0}
+.mcp-ops-controls label span{display:flex;justify-content:space-between;gap:8px}
+.mcp-ops-controls b{font:10px 'DM Mono';color:#dce5ff}
+.mcp-ops-controls input{width:100%;accent-color:#91a2ff}
+.mcp-ops-actions{display:flex;flex-wrap:wrap;gap:9px;margin:14px 0}
+.mcp-ops-actions button{display:flex;align-items:center;gap:7px;border:1px solid #465b82;border-radius:8px;background:#1a2945;color:#dfe7fb;padding:9px 12px;font-size:11px;cursor:pointer}
+.mcp-ops-actions button:disabled{opacity:.45;cursor:not-allowed}
+.mcp-ops-ledger{display:grid;gap:7px;border:1px solid #2b3a55;border-radius:11px;background:#0e1728;padding:13px;margin:14px 0}
+.mcp-ops-ledger>strong{display:flex;align-items:center;gap:7px;color:#e0e7f7;font-size:12px}
+.mcp-ops-ledger>div{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid #26344c;font-size:11px}
+.mcp-ops-ledger>div span{color:#94a5c0}
+.mcp-ops-ledger>div b{font:10px 'DM Mono';color:#dbe4ff;text-align:right;overflow-wrap:anywhere}
+@media(max-width:760px){.mcp-ops-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.mcp-ops-controls{grid-template-columns:1fr}}
