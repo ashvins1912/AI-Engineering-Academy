@@ -1,0 +1,17 @@
+sequenceDiagram
+ participant IDE as Client / IDE
+ participant Agent as Coding Agent
+ participant Workspace as Workspace Gate
+ participant User as Permission UI
+ IDE->>Agent: initialize(version, capabilities)
+ Agent-->>IDE: negotiated version + capabilities
+ IDE->>Agent: session/new(cwd, roots, MCP config)
+ IDE->>Agent: session/prompt(parts)
+ Agent-->>IDE: session/update(agent message, tool_call_update)
+ Agent->>Workspace: read/write within negotiated roots
+ Agent->>User: session/request_permission(exact command/path)
+ User-->>Agent: selected allow option or cancelled
+ Agent-->>IDE: terminal_update / tool_call_update / diff
+ IDE->>Agent: session/resume(replayFrom?)
+ Agent-->>IDE: current snapshot + optional ordered replay
+ IDE->>Agent: session/cancel or tool_call/cancel

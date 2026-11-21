@@ -1,0 +1,63 @@
+{
+  "scenario": "IDE client launches a coding agent to fix a failing test",
+  "protocolVersion": 2,
+  "client": {
+    "name": "academy-ide",
+    "capabilities": {
+      "fs": {
+        "readTextFile": true,
+        "writeTextFile": true
+      },
+      "terminal": true
+    }
+  },
+  "agent": {
+    "name": "academy-coder",
+    "capabilities": {
+      "session": {},
+      "authMethods": []
+    }
+  },
+  "workspace": {
+    "cwd": "/workspace/app",
+    "roots": [
+      "/workspace/app"
+    ],
+    "files": {
+      "/workspace/app/test.py": "assert add(1, 2) == 3"
+    }
+  },
+  "session": {
+    "sessionId": "sess-1",
+    "prompt": "Fix the failing test"
+  },
+  "permission": {
+    "requestId": "perm-1",
+    "title": "Run pytest?",
+    "command": "pytest",
+    "cwd": "/workspace/app",
+    "options": [
+      "allow_once",
+      "reject_once"
+    ]
+  },
+  "toolCall": {
+    "toolCallId": "call-1",
+    "status": "in_progress",
+    "cancelSupported": true
+  },
+  "resume": {
+    "sessionId": "sess-1",
+    "replayFrom": {
+      "type": "start"
+    }
+  },
+  "failureInjection": [
+    "session method before initialize",
+    "unsupported fs.writeTextFile",
+    "path traversal",
+    "cancelled permission",
+    "unknown tool status",
+    "stdout log corrupts JSON-RPC framing"
+  ]
+}

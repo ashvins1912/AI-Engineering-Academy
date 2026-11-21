@@ -1,0 +1,573 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "client-acp",
+    "title": "Agent Client Protocol — IDE and coding-agent integration",
+    "stage": 7,
+    "estimatedMinutes": 210
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Explain the Agent Client Protocol client/agent roles and JSON-RPC 2.0 request/notification model.",
+      "Negotiate protocol version and capabilities during initialize before creating sessions.",
+      "Implement session/new, session/resume, session/prompt, session/update and cancellation lifecycle.",
+      "Handle tool-call progress, permission requests, filesystem/terminal capabilities and MCP server configuration safely.",
+      "Explain ACP v1-to-v2 session migration, replay semantics, stdio transport and remote transport maturity."
+    ],
+    "prerequisites": [
+      "Stage 7 MCP and A2A fundamentals; distinguish IBM/BeeAI ACP from Agent Client Protocol",
+      "JSON-RPC 2.0, subprocess/stdio, IDE workspaces, filesystem permissions and terminal lifecycle"
+    ],
+    "glossary": [
+      {
+        "term": "Client",
+        "definition": "An IDE or user-facing application that owns the workspace, UI, permission prompts and client capabilities."
+      },
+      {
+        "term": "Agent",
+        "definition": "A coding-agent process that receives prompts, plans work and reports changes and tool progress to the Client."
+      },
+      {
+        "term": "initialize",
+        "definition": "The first JSON-RPC request that negotiates protocol version, implementation identity and supported capabilities."
+      },
+      {
+        "term": "Capability",
+        "definition": "A negotiated feature surface; omitted capabilities mean unsupported and must not be assumed."
+      },
+      {
+        "term": "Session",
+        "definition": "A conversation/workspace-scoped interaction with history, state and updates."
+      },
+      {
+        "term": "session/resume",
+        "definition": "Reconnects to a retained session; replayFrom can request history replay in v2."
+      },
+      {
+        "term": "session/update",
+        "definition": "A one-way notification from Agent to Client reporting messages, tool calls, state, diffs and terminal updates."
+      },
+      {
+        "term": "Permission request",
+        "definition": "An Agent request asking the Client to present an explicit user decision before a sensitive operation."
+      },
+      {
+        "term": "Tool call",
+        "definition": "A reported agent action with status, content, locations and optional cancellation capability."
+      },
+      {
+        "term": "Transport",
+        "definition": "The channel carrying JSON-RPC messages; stdio is the primary ACP v2 transport."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "An IDE and a coding agent need a standard way to negotiate features, create sessions, send prompts, show progress, request permission and interact with the user's workspace. Without a shared client-agent contract, every editor and agent needs a custom integration, and the client cannot reliably enforce workspace or command permissions.",
+    "plainLanguage": "Agent Client Protocol is not IBM/BeeAI Agent Communication Protocol. It is a protocol between a user-facing Client—typically an IDE or editor—and an Agent that can autonomously modify code. The Client owns the interface, workspace roots, filesystem/terminal capabilities and permission prompts. The Agent owns model reasoning, task planning and tool execution.\n\nACP uses JSON-RPC 2.0 methods and notifications. A method is a request/response pair; a notification is one-way. Both sides can send requests, so request IDs are chosen independently by each side and must not be reused while outstanding. ACP v2 does not use JSON-RPC batches. The first operation is initialize; no session method should run before version/capability negotiation succeeds.\n\nDuring initialize, the Client advertises its implementation and capabilities, such as filesystem read/write, terminal or elicitation support. The Agent responds with its supported protocol version, implementation and capabilities. Capabilities are opt-in: omitted means unsupported. A Client must not assume filesystem or terminal access merely because the Agent asks for it.\n\nAfter initialization, the Client creates a session with session/new, including an absolute working directory, workspace roots and optional MCP server configurations supported by the negotiated capabilities. It sends user prompts through session/prompt. The Agent streams progress and user-visible changes through session/update notifications: agent messages, tool-call updates, diffs, terminal output, plans and state updates. The session/prompt response indicates acceptance; it is not necessarily the completion of all background activity.\n\nSessions are long-lived and may be resumed. In ACP v2, session/resume replaces the old split between v1 session/load and session/resume. Omitting replayFrom reconnects without full history replay; replayFrom={type:start} asks the Agent to replay retained history using session/update notifications. A resume response can include the current state snapshot. Do not confuse reconnecting with replaying all history.\n\nTool calls are reported by the Agent so the Client can render what is happening. tool_call_update is an upsert keyed by toolCallId; tool_call_content_chunk appends incremental content. Statuses include pending, in_progress, paused, completed, failed and cancelled. The Client must preserve update order and not treat tool names or display metadata as permission grants.\n\nBefore a sensitive operation, the Agent can call session/request_permission. The Client presents the operation, path/command and choices such as allow_once, allow_always, reject_once or reject_always. The Agent owns remembered decisions and their scope. A cancelled or unknown outcome is not approval. The Agent should execute only the exact operation the user approved; changed commands or resolved targets require a new decision.\n\nFilesystem and terminal APIs are capability-gated. If the Client does not advertise fs.readTextFile, fs.writeTextFile or terminal support, the Agent must not use those operations. Paths must remain within negotiated workspace roots. Terminal output is display content, not executable client input; sanitize terminal escape sequences and links. Terminal cancellation is separate from cancelling the foreground session or a tool call.\n\nACP can carry MCP server configuration during session setup, allowing the coding Agent to connect to its own tools and context. This does not turn ACP into MCP: ACP coordinates the IDE and coding Agent; MCP connects the Agent to tool/resource servers. A2A is different again: it connects independent agents.\n\nTransport discipline matters. ACP v2 documentation describes stdio as the primary transport: each message is one JSON-RPC object. A standard remote transport using streamable HTTP/SSE and WebSocket is being specified separately and is not part of core v2. Do not assume a remote transport is standardized just because an implementation offers a custom one. Pin protocol version, transport and capability set.\n\nProduction clients need process lifecycle management, stderr/stdout separation, request timeouts, cancellation, session persistence, workspace-root enforcement, user-visible permission decisions, audit events and crash recovery. Treat repository files, prompts and tool outputs as untrusted; never allow a project instruction file to grant itself more filesystem or terminal authority.",
+    "mentalModel": "Initialize → negotiate version/capabilities → create or resume session → prompt → render ordered updates → request user permission → execute within workspace → cancel/close safely.",
+    "limitations": [
+      "ACP is client-to-coding-agent, not agent-to-agent; do not confuse it with IBM/BeeAI ACP or A2A.",
+      "Capabilities are negotiated and optional; absence means unsupported, not implicitly enabled.",
+      "session/prompt acceptance is not a guarantee that all foreground/background work has completed.",
+      "session/resume may reconnect without history replay; replayFrom controls retained-history replay.",
+      "Permission prompts are a UI and policy boundary; the Agent must still enforce the exact approved operation.",
+      "ACP v2 core uses stdio; remote transport work is specified separately and may vary by implementation.",
+      "Terminal and filesystem capabilities must be sandboxed to the workspace and user-approved scope."
+    ],
+    "everydayAnalogy": "The IDE is a workshop supervisor and the coding agent is a skilled contractor. The supervisor shows the work area, tools and safety rules, approves risky actions and watches progress. The contractor can plan the work but cannot expand the workshop boundary or run an unapproved command.",
+    "mathMadeSimple": "A Client negotiates 12 capability flags, but the Agent supports only 8. The usable capability set is the intersection, not the union. If fs.writeTextFile is false, a request to write a file must fail even if the Agent can write files in its own environment. If a tool call has status in_progress and cancelSupported=false, tool_call/cancel is invalid. Permission selected=allow_once authorizes only that operation once.",
+    "productionImpact": "Production ACP clients need strict JSON-RPC framing, initialize gating, version/capability negotiation, stdio process supervision, workspace-root sandboxing, explicit permission UI, ordered notification handling, session resume/replay, terminal output sanitization, audit and safe cancellation."
+  },
+  "useCase": {
+    "scenario": "An IDE launches a local coding agent over stdio. The agent inspects a repository, proposes a patch, requests permission before running tests or modifying protected files, streams tool updates and resumes the session after the editor reconnects.",
+    "actors": [
+      "IDE Client",
+      "ACP JSON-RPC transport",
+      "Coding Agent process",
+      "Workspace root policy",
+      "Permission UI",
+      "Terminal adapter",
+      "MCP servers configured for the agent",
+      "Session store"
+    ],
+    "inputs": [
+      "Client and Agent implementation info",
+      "Protocol version and capability sets",
+      "Workspace cwd and roots",
+      "User prompt and optional MCP server configuration",
+      "Tool-call and permission events"
+    ],
+    "constraints": [
+      "No session methods before initialize completes.",
+      "Only negotiated capabilities can be used.",
+      "Filesystem paths remain inside workspace roots.",
+      "Permission rejection/cancellation never authorizes the operation.",
+      "Notifications are applied in received order.",
+      "Terminal output is display-only and sanitized."
+    ],
+    "outputs": [
+      "Negotiated connection",
+      "Session state and history",
+      "Tool-call progress and content",
+      "Permission decisions",
+      "File diffs and terminal output",
+      "Resumable session state"
+    ],
+    "successMetric": "A user can safely supervise a coding agent through one interoperable client-agent session without capability escalation or unapproved workspace changes."
+  },
+  "architecture": {
+    "diagram": "content/topics/client-acp/acp-client-agent.mmd",
+    "components": [
+      "IDE Client",
+      "JSON-RPC stdio transport",
+      "Initialize/capability negotiator",
+      "Session manager",
+      "Coding Agent runtime",
+      "Workspace root gate",
+      "Permission broker",
+      "Tool-call/update renderer",
+      "Terminal adapter",
+      "MCP client configuration",
+      "Session persistence"
+    ],
+    "dataFlow": [
+      {
+        "from": "Client",
+        "to": "Agent",
+        "payload": "initialize + client capabilities",
+        "purpose": "Negotiate protocol version and features."
+      },
+      {
+        "from": "Agent",
+        "to": "Client",
+        "payload": "initialize result + agent capabilities",
+        "purpose": "Agree on supported methods before sessions."
+      },
+      {
+        "from": "Client",
+        "to": "Agent",
+        "payload": "session/new or session/resume + workspace roots",
+        "purpose": "Create or restore a scoped coding session."
+      },
+      {
+        "from": "Client",
+        "to": "Agent",
+        "payload": "session/prompt + content parts",
+        "purpose": "Send user intent to coding agent."
+      },
+      {
+        "from": "Agent",
+        "to": "Client",
+        "payload": "session/update notifications",
+        "purpose": "Stream messages, tool calls, diffs, terminal output and state."
+      },
+      {
+        "from": "Agent",
+        "to": "Client",
+        "payload": "session/request_permission",
+        "purpose": "Obtain user decision before sensitive operations."
+      },
+      {
+        "from": "Agent",
+        "to": "MCP servers",
+        "payload": "negotiated MCP configuration",
+        "purpose": "Connect the coding agent to its own tools/context."
+      }
+    ],
+    "trustBoundaries": [
+      "The Client owns workspace roots and capability grants.",
+      "Agent-authored tool titles and command descriptions are not authorization.",
+      "A permission decision applies only to the exact operation and scope shown.",
+      "Terminal output and repository content are untrusted display data.",
+      "MCP credentials belong to the Agent's tool connection and are not exposed to the IDE unnecessarily."
+    ],
+    "failurePaths": [
+      "Method before initialize: reject with invalid request.",
+      "Version mismatch: close connection and show compatibility error.",
+      "Unadvertised filesystem/terminal method: reject capability-gated request.",
+      "Permission cancelled: Agent must not execute the operation.",
+      "Workspace path escapes root: deny before file access.",
+      "stdio framing polluted by logs: keep protocol stdout clean and send diagnostics to stderr.",
+      "Resume session missing/expired: return session-not-found and offer a new session.",
+      "Cancel accepted but work still running: wait for final tool/terminal/session state update."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-07/fixtures/client-acp.json",
+    "steps": [
+      {
+        "label": "Initialize",
+        "explanation": "Negotiate protocol version and capabilities.",
+        "expectedState": "version=2; capabilities intersected"
+      },
+      {
+        "label": "Create session",
+        "explanation": "Bind cwd, workspace roots and MCP config to a session.",
+        "expectedState": "session active"
+      },
+      {
+        "label": "Prompt and stream",
+        "explanation": "Send prompt and render ordered session updates and tool calls.",
+        "expectedState": "tool progress visible"
+      },
+      {
+        "label": "Request permission",
+        "explanation": "Agent asks Client to approve a specific operation.",
+        "expectedState": "exact operation allowed or denied"
+      },
+      {
+        "label": "Resume and close",
+        "explanation": "Reconnect with replay policy and cancel/close safely.",
+        "expectedState": "session state synchronized"
+      }
+    ],
+    "accessibility": [
+      "Every JSON-RPC method and notification is labeled.",
+      "Capability flags and workspace roots are displayed as text.",
+      "Permission prompt includes the exact command/path and explicit outcome.",
+      "Tool status and terminal exit state are not conveyed by color alone."
+    ],
+    "animation": {
+      "objective": "Animate a Client and coding Agent negotiating capabilities, creating a workspace session, streaming tool updates and requesting permission.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Initialize and negotiate",
+          "narration": "Client and Agent exchange protocol version, implementation info and capability sets.",
+          "input": "client=v2; agent=v2; client.fs.write=true",
+          "transformation": "choose common protocol version and intersect capabilities",
+          "output": "protocol=2; terminal=true; fs.read/write negotiated",
+          "visualState": "Connection ready"
+        },
+        {
+          "step": 2,
+          "title": "Create session",
+          "narration": "Client creates a session bound to cwd and workspace roots.",
+          "input": "cwd=/workspace/app; roots=[/workspace/app]",
+          "transformation": "session/new + optional MCP server config",
+          "output": "sessionId=sess-1; state=idle",
+          "visualState": "Workspace scope established"
+        },
+        {
+          "step": 3,
+          "title": "Prompt and update",
+          "narration": "Agent receives a prompt and sends ordered session updates for messages and tool calls.",
+          "input": "session/prompt: inspect failing test",
+          "transformation": "session/update + tool_call_update",
+          "output": "call-1=in_progress; files=2",
+          "visualState": "Progress visible in IDE"
+        },
+        {
+          "step": 4,
+          "title": "Request permission",
+          "narration": "Before a sensitive terminal action, Agent asks the Client to display an explicit permission choice.",
+          "input": "command=pytest; cwd=/workspace/app",
+          "transformation": "session/request_permission → user choice",
+          "output": "allow_once or cancelled; no implicit approval",
+          "visualState": "User remains in control"
+        },
+        {
+          "step": 5,
+          "title": "Resume or cancel",
+          "narration": "Client resumes with optional replayFrom or cancels foreground/tool work and waits for final state.",
+          "input": "session/resume; replayFrom=start",
+          "transformation": "restore state + ordered history or cancellation updates",
+          "output": "state synchronized; session ready/closed",
+          "visualState": "Lifecycle completed safely"
+        }
+      ],
+      "controls": [
+        {
+          "name": "fs_write",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "Whether the Client advertises filesystem write capability."
+        },
+        {
+          "name": "terminal",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "Whether the Client advertises terminal capability."
+        },
+        {
+          "name": "permission_decision",
+          "min": 0,
+          "max": 2,
+          "defaultValue": 0,
+          "effect": "0=allow_once, 1=reject_once, 2=cancelled. Only the allow choice authorizes the exact operation."
+        },
+        {
+          "name": "replay_history",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "1 requests replayFrom=start; 0 resumes with current state only."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Five stages show negotiated version, capability flags, session/workspace, tool status, permission outcome and replay mode as text."
+    }
+  },
+  "workedExample": {
+    "problem": "An IDE starts a coding agent, grants workspace read/write but requires explicit permission before running tests.",
+    "input": "ACP v2; cwd=/workspace/app; root=/workspace/app; Client terminal=true; prompt=fix failing test.",
+    "steps": [
+      {
+        "operation": "Initialize",
+        "reasoning": "Client and Agent agree on v2 and the supported feature intersection.",
+        "result": "version=2; fs.read/write=true; terminal=true"
+      },
+      {
+        "operation": "Create session",
+        "reasoning": "Session is bound to the IDE workspace and optional MCP servers.",
+        "result": "sessionId=sess-1; state=idle"
+      },
+      {
+        "operation": "Prompt",
+        "reasoning": "Client sends user prompt and Agent begins foreground work.",
+        "result": "session state=running; tool_call=call-1 pending"
+      },
+      {
+        "operation": "Permission",
+        "reasoning": "Agent asks before running pytest; Client returns allow_once or cancelled.",
+        "result": "approved=true only for exact command and cwd"
+      },
+      {
+        "operation": "Resume",
+        "reasoning": "After reconnect, Client uses session/resume with replayFrom=start when it needs retained history.",
+        "result": "ordered updates restored; state snapshot synchronized"
+      }
+    ],
+    "expectedOutput": "The IDE displays the Agent's progress, grants only negotiated capabilities and requires user approval for the exact terminal command."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-07/acp_client.py",
+      "runCommand": "python examples/stage-07/acp_client.py",
+      "testsPath": "examples/stage-07/test_acp_client.py",
+      "expectedResult": "ACP v2 initialize, capability negotiation, sessions, resume/replay, permission outcomes, tool cancellation and workspace-bound filesystem/terminal simulation."
+    },
+    {
+      "language": "python",
+      "role": "production",
+      "path": "examples/stage-07/acp_client_production.py",
+      "runCommand": "python -m unittest discover -s examples/stage-07 -p 'test_acp_client_production.py' -v",
+      "testsPath": "examples/stage-07/test_acp_client_production.py",
+      "expectedResult": "SQLite session persistence, owner/workspace isolation, optimistic state versions, permission audit and tool-call cancellation capability."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Method before initialize",
+      "symptom": "Agent receives session/new before version negotiation.",
+      "rootCause": "Client skips mandatory initialization.",
+      "recovery": "Gate all session methods until initialize succeeds.",
+      "regressionTest": "Call session/new before initialize and assert rejection."
+    },
+    {
+      "name": "Capability assumption",
+      "symptom": "Agent tries to write files or launch terminal when Client did not advertise support.",
+      "rootCause": "Omitted capability is treated as enabled.",
+      "recovery": "Compute capability intersection and fail closed.",
+      "regressionTest": "Disable fs.writeTextFile/terminal and assert no call succeeds."
+    },
+    {
+      "name": "Workspace escape",
+      "symptom": "Agent reads or writes a path outside the project root.",
+      "rootCause": "Path is checked by string prefix only or cwd is trusted.",
+      "recovery": "Normalize paths, reject parent traversal and enforce root containment.",
+      "regressionTest": "Try ../ traversal and sibling-prefix path; assert denied."
+    },
+    {
+      "name": "Permission bypass",
+      "symptom": "Agent executes a command after user cancels or selects an unknown option.",
+      "rootCause": "Any response is treated as approval.",
+      "recovery": "Only a valid selected allow option authorizes the exact described action.",
+      "regressionTest": "Cancelled/unknown permission outcome prevents execution."
+    },
+    {
+      "name": "Resume history confusion",
+      "symptom": "Client expects full history but reconnects without replay.",
+      "rootCause": "session/resume reconnect semantics are confused with replay.",
+      "recovery": "Use replayFrom={type:start} when retained history replay is required.",
+      "regressionTest": "Resume without cursor returns snapshot only; replayFrom=start returns ordered history."
+    },
+    {
+      "name": "Transport framing corruption",
+      "symptom": "Agent logs appear on protocol stdout and break JSON-RPC parsing.",
+      "rootCause": "Application logs and stdio protocol share stdout.",
+      "recovery": "Keep stdout exclusively for ACP frames and route logs to stderr.",
+      "regressionTest": "Capture stdio and assert every stdout line is one valid JSON-RPC object."
+    }
+  ],
+  "practice": {
+    "guided": "Draw the initialize handshake and calculate the intersection of Client and Agent capabilities. Mark which side owns each operation.",
+    "independent": "Implement initialize, session/new, session/prompt, session/update, session/request_permission, session/resume and capability-gated terminal/filesystem methods.",
+    "realWorld": "Build an IDE-to-agent adapter that launches a local process over stdio, binds a workspace root, renders tool updates and requires approval before terminal execution.",
+    "expertExtension": "Add v1-to-v2 compatibility, replay cursor persistence, W3C trace metadata, process supervision, terminal chunk decoding, permission policy scopes and session recovery after IDE restart.",
+    "guidedExercise": {
+      "title": "Enforce negotiated capability before file write",
+      "instructions": "A Client that did not advertise fs.writeTextFile must reject the operation before touching the workspace.",
+      "starterCode": "def write_file(client_capabilities, path, content):\n    # verify negotiated write capability\n    # verify workspace root\n    # perform the write only after both checks\n    raise NotImplementedError",
+      "solutionCode": "def write_file(client_capabilities, path, content, roots, files):\n    if not client_capabilities.get('fs', {}).get('writeTextFile', False):\n        raise PermissionError('write capability not negotiated')\n    if not path.startswith(tuple(root.rstrip('/') + '/' for root in roots)):\n        raise PermissionError('outside workspace roots')\n    files[path] = content\n    return True",
+      "unitTests": "assert write_file({'fs': {'writeTextFile': True}}, '/workspace/app/a.py', 'x', ['/workspace/app'], files)\nassert write_without_capability_raises_permission_error"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build a minimal IDE client simulator that negotiates capabilities and supervises a coding-agent session.",
+      "steps": [
+        "Send initialize and render negotiated protocol version and capabilities.",
+        "Create a session with absolute cwd and allowed workspace roots.",
+        "Send prompt and render agent_message_chunk and tool_call_update notifications in order.",
+        "Simulate a file read/write and reject paths outside the workspace.",
+        "Display a permission request for pytest and record allow_once/reject/cancelled outcome.",
+        "Create terminal output chunks and sanitize display content.",
+        "Reconnect with session/resume and test replayFrom omitted vs start.",
+        "Cancel foreground work and a separately cancellable tool call; wait for final status updates."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "What must happen before session/new?",
+        "options": [
+          "Call MCP initialize only",
+          "Complete ACP initialize and negotiate version/capabilities",
+          "Run a terminal command",
+          "Read the workspace"
+        ],
+        "correctIndex": 1,
+        "explanation": "ACP initialization is the required first protocol operation."
+      },
+      {
+        "question": "Client omitted fs.writeTextFile capability. What should Agent do?",
+        "options": [
+          "Assume write access",
+          "Ask the model to override it",
+          "Treat file writing as unsupported",
+          "Use terminal to bypass the capability"
+        ],
+        "correctIndex": 2,
+        "explanation": "Omitted capabilities are unsupported; agents must not bypass them through another channel."
+      },
+      {
+        "question": "In ACP v2, how does Client request full retained history on resume?",
+        "options": [
+          "session/load",
+          "replayFrom={type:start} on session/resume",
+          "session/cancel",
+          "tool_call_update"
+        ],
+        "correctIndex": 1,
+        "explanation": "V2 unifies load/resume and uses replayFrom to request history replay."
+      },
+      {
+        "question": "User cancels a permission request. Can Agent continue the operation?",
+        "options": [
+          "Yes if confidence is high",
+          "Yes if tool is read-only",
+          "No; cancelled is not approval",
+          "Only after a new prompt from model"
+        ],
+        "correctIndex": 2,
+        "explanation": "The Agent must not proceed after a cancelled or invalid permission outcome."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Protocol roles and initialize",
+        "weight": 15,
+        "evidence": "Explain Client/Agent roles and negotiate version/capabilities before sessions."
+      },
+      {
+        "criterion": "Session lifecycle and updates",
+        "weight": 20,
+        "evidence": "Create, prompt, resume, replay and cancel with ordered notifications."
+      },
+      {
+        "criterion": "Capability and workspace safety",
+        "weight": 25,
+        "evidence": "Filesystem/terminal operations require negotiated capabilities and workspace root enforcement."
+      },
+      {
+        "criterion": "Permission and tool lifecycle",
+        "weight": 25,
+        "evidence": "User decisions are explicit; tool status/cancel semantics are correct."
+      },
+      {
+        "criterion": "Transport and operations",
+        "weight": 15,
+        "evidence": "stdio framing, process supervision, logging and recovery are documented."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Both Python suites pass.",
+      "Unadvertised capabilities are rejected.",
+      "Workspace traversal is blocked.",
+      "Cancelled permission never authorizes an operation.",
+      "Resume replay behavior and cancellation states are tested."
+    ]
+  },
+  "references": [
+    {
+      "title": "Agent Client Protocol v2 overview",
+      "url": "https://agentclientprotocol.com/protocol/v2/overview",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "Agent Client Protocol v2 initialization",
+      "url": "https://agentclientprotocol.com/protocol/v2/initialization",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "Agent Client Protocol v2 tool calls and permissions",
+      "url": "https://agentclientprotocol.com/protocol/v2/tool-calls",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "Agent Client Protocol v1 to v2 migration",
+      "url": "https://agentclientprotocol.com/protocol/v2/migration",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "initialize → protocolVersion + capabilities",
+      "explanation": "Establish compatibility before any session-scoped request; omitted capabilities mean unsupported."
+    },
+    {
+      "lines": "session/new → cwd + roots + optional MCP servers",
+      "explanation": "The IDE owns the workspace boundary and advertises which client features the Agent may use."
+    },
+    {
+      "lines": "session/update → tool_call_update / diff / terminal_update",
+      "explanation": "Notifications are ordered UI state changes; tool names and paths are display metadata, not permissions."
+    },
+    {
+      "lines": "session/request_permission → selected or cancelled",
+      "explanation": "Only a valid allow option authorizes the exact described action; cancelled means do not proceed."
+    },
+    {
+      "lines": "session/resume(replayFrom={type:start})",
+      "explanation": "V2 unifies v1 load/resume; the cursor determines whether retained history is replayed."
+    }
+  ]
+}
