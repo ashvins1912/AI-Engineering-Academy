@@ -1,0 +1,49 @@
+{
+  "tenants": [
+    {
+      "id": "tenant-A",
+      "user": "user-A",
+      "document": {
+        "id": "invoice-7",
+        "text": "Quarterly plan"
+      }
+    },
+    {
+      "id": "tenant-B",
+      "user": "user-B",
+      "document": {
+        "id": "invoice-7",
+        "text": "Acquisition plan"
+      }
+    }
+  ],
+  "attacks": [
+    {
+      "id": "forged-tenant",
+      "actor": "user-A",
+      "tenant": "tenant-B",
+      "expected": "TENANT_CONTEXT_MISMATCH"
+    },
+    {
+      "id": "cache-collision",
+      "resource": "invoice-7",
+      "expected": "different tenant-prefixed keys"
+    },
+    {
+      "id": "vector-top-k",
+      "expected": "tenant filter applied before ranking"
+    },
+    {
+      "id": "pool-reuse",
+      "sequence": [
+        "tenant-A",
+        "tenant-B"
+      ],
+      "expected": "transaction context reset"
+    },
+    {
+      "id": "job-resource-mismatch",
+      "expected": "deny before side effects"
+    }
+  ]
+}

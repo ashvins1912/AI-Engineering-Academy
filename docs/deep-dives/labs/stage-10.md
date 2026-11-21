@@ -40,19 +40,19 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## tenant-security — Multi-tenant security
 
-**Implementation task:** Apply tenant isolation consistently to database, vector search, cache and background jobs.
+**Implementation task:** Implement tenant isolation across repository queries, PostgreSQL RLS, vector retrieval, cache keys, object storage and asynchronous workers. Derive tenant context from verified identity and membership; reject missing or inconsistent context.
 
-**Worked fixture:** Tenant A and B each own a document with the same external ID.
+**Worked fixture:** Tenant A and tenant B each own a document with external ID `invoice-7`. Tenant A's value is “Quarterly plan”; tenant B's value is “Acquisition plan”. User-A belongs only to tenant A. A forged queue job claims tenant B.
 
-**Expected result:** A query returns only tenant A records in every data layer.
+**Expected result:** User-A sees only the A document across every data layer. A vector filter is applied before ranking/top-k; cache keys differ by tenant; object references are server-generated; the forged job is denied before side effects; transaction context is reset after success and failure.
 
-**Verification tests:** Test cache-key collision, async tenant-context loss and cross-tenant update.
+**Verification tests:** Run `python -m unittest discover -s examples/stage-10 -p 'test_*.py' -v`. Cover duplicate external IDs, cross-tenant reads/updates, missing context, vector filter order, cache collisions, object path traversal, forged jobs, actor/resource mismatch and transaction-context reset.
 
-**Debugging checklist:** Reduce the example to the smallest failing input; inspect identity, permissions, data flow and intermediate state; reproduce the failure with a test; change one variable at a time and retain a regression test.
+**Debugging checklist:** Trace verified subject and membership resolution; inspect the tenant context at every service boundary; verify composite keys and SQL predicates; inspect RLS role and transaction-local setting; confirm vector filters execute before top-k; compare cache keys and invalidation; validate object metadata; inspect serialized job identity; reproduce connection reuse across commit, rollback and exception.
 
-**Interview checks:** Why is a frontend-supplied tenant ID not a trusted identity claim?
+**Interview checks:** Why is a frontend tenant ID not an identity claim? Why is RLS defense in depth rather than a replacement for application checks? Why must vector filters be applied before top-k? How can a pooled connection leak tenant context? What must a worker revalidate after receiving a queue message?
 
-**Submission evidence:** Include implementation and architecture artifacts, a successful run, positive and negative tests, a short failure analysis, and a 3–5 sentence explanation of the operational trade-off.
+**Submission evidence:** Include a threat model, isolation diagram, deterministic implementation, SQL RLS reference, positive and negative tests, one failure analysis and a short explanation of why local simulation does not prove production isolation.
 
 ---
 
