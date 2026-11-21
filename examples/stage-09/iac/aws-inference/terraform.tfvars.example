@@ -1,0 +1,8 @@
+aws_region              = "ap-south-1"
+project_name            = "academy-inference"
+environment             = "dev"
+certificate_arn         = "arn:aws:acm:ap-south-1:111122223333:certificate/replace-me"
+image_digest            = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+app_secret_arn          = "arn:aws:secretsmanager:ap-south-1:111122223333:secret:academy-inference-dev/replace-me"
+allowed_ingress_cidrs   = ["203.0.113.10/32"]
+desired_count           = 0
