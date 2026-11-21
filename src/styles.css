@@ -1081,3 +1081,29 @@
 .event-driven-recovery p{display:flex;gap:10px;margin:0;color:#aab8d0;font-size:10px}
 .event-driven-recovery p span{min-width:70px;font:10px 'DM Mono';color:#dce5ff}
 @media(max-width:760px){.event-driven-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.event-driven-controls{grid-template-columns:1fr}.event-driven-envelope>div:first-child{align-items:flex-start;flex-direction:column}}
+
+/* Stage 8 Topic 3 — durable workflow engine workbench */
+.durable-workflow-state{display:grid;gap:7px;border:1px solid #293750;border-radius:12px;background:#0e1728;padding:13px;margin:14px 0}
+.durable-workflow-state>div:first-child{display:flex;justify-content:space-between;align-items:center;gap:10px;padding-bottom:8px;border-bottom:1px solid #27344c}
+.durable-workflow-state>div:first-child strong{display:flex;align-items:center;gap:7px;color:#e0e7f7;font-size:12px}
+.durable-workflow-state>div:first-child span{font:10px 'DM Mono';color:#8e9fba}
+.durable-workflow-state>div:not(:first-child){display:flex;justify-content:space-between;gap:10px;padding:6px 2px;border-bottom:1px solid #202c41}
+.durable-workflow-state code{font:10px 'DM Mono';color:#9aabc7}
+.durable-workflow-state b{font:10px 'DM Mono';color:#dce5ff;text-align:right;overflow-wrap:anywhere}
+.durable-workflow-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:14px 0}
+.durable-workflow-metrics article{display:grid;gap:5px;min-width:0;border:1px solid #293750;border-radius:10px;background:#101a2b;padding:11px}
+.durable-workflow-metrics small{font:9px 'DM Mono';color:#8e9fba}
+.durable-workflow-metrics strong{font:600 16px 'Space Grotesk';color:#e2e9ff;overflow-wrap:anywhere}
+.durable-workflow-metrics span{font-size:10px;color:#94a7c5}
+.durable-workflow-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;border:1px solid #293750;border-radius:12px;padding:14px;margin:14px 0}
+.durable-workflow-controls label{display:grid;gap:7px;color:#aab8d0;font-size:11px}
+.durable-workflow-controls label span{display:flex;justify-content:space-between;gap:8px}
+.durable-workflow-controls b{font:10px 'DM Mono';color:#dce5ff}
+.durable-workflow-controls input{width:100%;accent-color:#91a2ff}
+.durable-workflow-controls input[type=checkbox]{width:auto;justify-self:start}
+.durable-engine-matrix{display:grid;gap:8px;border:1px solid #293750;border-radius:12px;background:#101a2b;padding:13px;margin:14px 0}
+.durable-engine-matrix>strong{display:flex;align-items:center;gap:7px;color:#e0e7f7;font-size:12px}
+.durable-engine-matrix>div{display:grid;grid-template-columns:90px 1fr;gap:10px;padding:8px;border-radius:7px;background:#0e1728}
+.durable-engine-matrix b{font:11px 'DM Mono';color:#dce5ff}
+.durable-engine-matrix span{font-size:10px;color:#aab8d0}
+@media(max-width:760px){.durable-workflow-state>div:first-child{align-items:flex-start;flex-direction:column}.durable-workflow-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.durable-workflow-controls{grid-template-columns:1fr}.durable-engine-matrix>div{grid-template-columns:1fr}}
