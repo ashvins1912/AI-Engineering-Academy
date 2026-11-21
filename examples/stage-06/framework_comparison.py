@@ -50,6 +50,11 @@ def validate_result(result, request, gateway):
         raise TypeError("adapter must return AgentResult")
     if len(result.tool_calls) > gateway._max_calls:
         raise ValueError("tool-call budget exceeded")
+    for call in result.tool_calls:
+        if call.name not in ALLOWED_TOOLS:
+            raise PermissionError("tool is not allow-listed")
+        if call.arguments.get("tenant_id") != request["tenant_id"]:
+            raise PermissionError("tenant scope mismatch")
     if len(result.tool_calls) != len(gateway.calls):
         raise ValueError("reported tool calls do not match gateway executions")
     for reported, executed in zip(result.tool_calls, gateway.calls):
