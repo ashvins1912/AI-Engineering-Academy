@@ -1,0 +1,15 @@
+flowchart LR
+ C[Client] --> G[Gateway and authentication]
+ G --> V[Token and request validation]
+ V --> A[Bounded admission queue]
+ A --> T[Tokenizer]
+ T --> S[Inference scheduler]
+ S --> P[Prefill]
+ P --> K[(KV cache blocks)]
+ K --> D[Continuous decode batch]
+ D --> W[Streaming response]
+ D --> M[Metrics and traces]
+ W --> C
+ X[Cancellation and deadline] --> A
+ X --> S
+ S --> R[Release cache and slots]
