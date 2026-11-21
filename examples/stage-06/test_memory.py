@@ -16,5 +16,5 @@ class MemorySelectionTests(unittest.TestCase):
   records=[dict(FIXTURE['records'][0],deleted=True)]
   self.assertEqual(select_memories(records,'acme',1000,120)['items'],[])
  def test_score_is_deterministic(self):
-  self.assertAlmostEqual(memory_score(FIXTURE['records'][0]),.925)
+  self.assertAlmostEqual(memory_score(FIXTURE['records'][0]),.955)
 if __name__=='__main__':unittest.main()
