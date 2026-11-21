@@ -5,6 +5,7 @@ class IACTemplateTests(unittest.TestCase):
  def test_inference_tasks_are_private_and_nonroot(self):
   main=(IAC/"main.tf").read_text()
   self.assertIn("assign_public_ip = false",main)
+  self.assertIn("egress = []",main)
   self.assertIn('user                   = "10001:10001"',main)
   self.assertIn("readonlyRootFilesystem = true",main)
   self.assertIn('drop = ["ALL"]',main)
@@ -21,6 +22,8 @@ class IACTemplateTests(unittest.TestCase):
   self.assertIn("image_tag_mutability = \"IMMUTABLE\"",main)
   self.assertIn("@${var.image_digest}",main)
   self.assertIn("sha256:[0-9a-f]{64}",variables)
+  self.assertIn("203.0.113.10/32",variables)
+  self.assertNotIn("0.0.0.0/0",variables)
  def test_private_tasks_have_private_aws_endpoints(self):
   main=(IAC/"main.tf").read_text()
   for endpoint in ("ecr.api","ecr.dkr","logs","secretsmanager","s3"):
