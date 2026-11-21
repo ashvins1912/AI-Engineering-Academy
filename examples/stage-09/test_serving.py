@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import sys
 import unittest
 from pathlib import Path
 
@@ -7,6 +8,7 @@ ROOT = Path(__file__).parent
 SIMULATOR_PATH = ROOT / "serving" / "simulator.py"
 SPEC = importlib.util.spec_from_file_location("stage09_serving_simulator", SIMULATOR_PATH)
 serving_simulator = importlib.util.module_from_spec(SPEC)
+sys.modules[SPEC.name] = serving_simulator
 SPEC.loader.exec_module(serving_simulator)
 
 AdmissionController = serving_simulator.AdmissionController
