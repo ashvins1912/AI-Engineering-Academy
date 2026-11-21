@@ -1,5 +1,6 @@
 """A deterministic Agent Client Protocol v2 session simulator."""
 from pathlib import PurePosixPath
+import posixpath
 import itertools
 
 PROTOCOL_VERSION = 2
@@ -16,6 +17,17 @@ class ACPConnection:
         self.requests = itertools.count(1)
         self.tool_calls = {}
         self.events = []
+
+    @staticmethod
+    def _workspace_path(path, roots):
+        raw = PurePosixPath(path)
+        if not raw.is_absolute() or ".." in raw.parts:
+            raise PermissionError("workspace path must be absolute and cannot traverse parents")
+        normalized = PurePosixPath(posixpath.normpath(str(raw)))
+        normalized_roots = [PurePosixPath(posixpath.normpath(root)) for root in roots]
+        if not any(str(normalized) == str(root) or str(normalized).startswith(str(root).rstrip("/") + "/") for root in normalized_roots):
+            raise PermissionError("path is outside negotiated workspace roots")
+        return normalized
 
     def _request_id(self):
         return next(self.requests)
@@ -45,11 +57,12 @@ class ACPConnection:
         self._require_init()
         if not self.agent_capabilities.get("session"):
             raise PermissionError("agent did not advertise session capability")
-        path = PurePosixPath(cwd)
-        if not path.is_absolute():
-            raise ValueError("cwd must be absolute")
+        if not roots:
+            raise ValueError("at least one workspace root is required")
+        normalized_roots = [str(PurePosixPath(posixpath.normpath(r))) for r in roots]
+        path = self._workspace_path(cwd, normalized_roots)
         self.sessions[session_id] = {
-            "cwd": str(path), "roots": [str(PurePosixPath(r)) for r in roots],
+            "cwd": str(path), "roots": normalized_roots,
             "mcp_servers": list(mcp_servers or []), "state":"idle",
             "history":[], "updates":[], "tool_calls":{},
         }
@@ -142,9 +155,7 @@ class ACPConnection:
         session = self._session(session_id)
         if not self.client_capabilities.get("fs", {}).get("readTextFile", False):
             raise PermissionError("client did not advertise fs.readTextFile")
-        target = PurePosixPath(path)
-        if not target.is_absolute() or not any(str(target).startswith(root.rstrip("/") + "/") or str(target) == root for root in session["roots"]):
-            raise PermissionError("path is outside negotiated workspace roots")
+        target = self._workspace_path(path, session["roots"])
         if str(target) not in workspace_files:
             raise FileNotFoundError(str(target))
         return workspace_files[str(target)]
