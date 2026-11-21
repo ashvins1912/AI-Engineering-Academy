@@ -5,18 +5,17 @@ sequenceDiagram
  participant S as MCP Server
  participant G as Domain Tool Gateway
  U->>H: Request task
- H->>C: Start managed session
- C->>S: initialize(protocolVersion, capabilities, clientInfo)
- S-->>C: negotiated version + serverInfo + capabilities
- C->>S: notifications/initialized
- C->>S: tools/list
- S-->>C: tool definitions + input schemas
- H->>H: Check user consent + identity + tenant policy
- H->>C: Authorized tools/call
- C->>S: tools/call(name, arguments)
+ H->>C: Provide task + trusted user context
+ opt Optional discovery
+  C->>S: server/discover + request _meta
+  S-->>C: versions + capabilities + serverInfo
+ end
+ C->>S: tools/list + per-request _meta + Mcp-Method
+ S-->>C: tools + input schemas + ttlMs + cacheScope
+ H->>H: Check consent + scopes + tenant policy
+ C->>S: tools/call + _meta + Mcp-Method + Mcp-Name
  S->>G: Validate schema + invoke scoped domain handler
  G-->>S: Result
- S-->>C: JSON-RPC result or error
+ S-->>C: resultType + content + serverInfo metadata
  C-->>H: Untrusted tool content
- H->>C: shutdown
- C->>S: shutdown / close transport
+ H->>H: Validate and sanitize result
