@@ -225,7 +225,57 @@
     "guided": "Calculate the attention output for two tokens by hand.",
     "independent": "Implement scaled dot-product attention with a causal mask.",
     "realWorld": "Trace attention for a short next-token prediction request.",
-    "expertExtension": "Compare attention memory and compute cost as sequence length grows."
+    "expertExtension": "Compare attention memory and compute cost as sequence length grows.",
+    "guidedExercise": {
+      "title": "Calculate a two-key attention output",
+      "instructions": "Complete the missing softmax normalization and weighted sum. Use the deterministic two-dimensional fixture and verify that weights sum to one.",
+      "starterCode": "import math\nscores = [1 / math.sqrt(2), 0.0]\n# TODO: stabilize exponentials, normalize weights, combine values\nvalues = [[2.0, 0.0], [0.0, 4.0]]",
+      "solutionCode": "import math\nscores = [1 / math.sqrt(2), 0.0]\nexps = [math.exp(x - max(scores)) for x in scores]\nweights = [x / sum(exps) for x in exps]\nvalues = [[2.0, 0.0], [0.0, 4.0]]\noutput = [sum(weights[i] * values[i][j] for i in range(2)) for j in range(2)]\nassert abs(sum(weights) - 1.0) < 1e-9",
+      "unitTests": "assert abs(sum(weights) - 1.0) < 1e-9\nassert abs(output[0] - 1.3395231) < 1e-6\nassert abs(output[1] - 1.3209538) < 1e-6"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Add a transparent attention-inspection panel to a small text classification demo.",
+      "steps": [
+        "Accept a short token sequence and show its token IDs and toy embeddings.",
+        "Calculate Q/K/V, scaled scores, softmax weights and weighted output using the same fixture values.",
+        "Expose a step-through explanation and record shape checks and numerical assertions for each request."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "Your attention weights contain NaN for a long input. What should you check first?",
+        "options": [
+          "Subtract the maximum score before exponentiation and verify finite inputs",
+          "Increase the number of attention heads",
+          "Round all weights to two decimal places",
+          "Remove the softmax operation"
+        ],
+        "correctIndex": 0,
+        "explanation": "Max-subtracted softmax is numerically stable. More heads do not repair overflow, rounding hides it, and removing softmax changes the operation."
+      },
+      {
+        "question": "A decoder can attend to future tokens during training. Which fix is correct?",
+        "options": [
+          "Apply a causal mask to future positions before softmax",
+          "Increase dropout on the value vectors",
+          "Normalize the embeddings again",
+          "Use a larger batch size"
+        ],
+        "correctIndex": 0,
+        "explanation": "The causal mask prevents future positions from receiving probability mass. It must be applied to scores before softmax."
+      },
+      {
+        "question": "Sequence length doubles in standard full self-attention. What happens to the attention score matrix size?",
+        "options": [
+          "It approximately doubles",
+          "It approximately quadruples",
+          "It stays constant",
+          "It becomes half as large"
+        ],
+        "correctIndex": 1,
+        "explanation": "The score matrix has one row and column per token, so its size grows with sequence_length squared. Doubling length creates roughly four times as many scores."
+      }
+    ]
   },
   "assessment": {
     "rubric": [
@@ -269,6 +319,20 @@
       "sourceType": "official-docs",
       "checkedOn": "2026-11-20",
       "version": "stable"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "scores = [dot(q, key) / sqrt(d) for key in keys]",
+      "explanation": "The dot product measures query-key alignment. Dividing by the square root of the key dimension keeps score magnitudes from growing too quickly as vectors get wider."
+    },
+    {
+      "lines": "weights = softmax(scores)",
+      "explanation": "Softmax turns arbitrary scores into positive weights that sum to one, so each value contributes a share of the output."
+    },
+    {
+      "lines": "output = sum(weight * value)",
+      "explanation": "Each value vector is scaled by its attention weight, then the weighted vectors are added to form the context-aware output."
     }
   ]
 }
