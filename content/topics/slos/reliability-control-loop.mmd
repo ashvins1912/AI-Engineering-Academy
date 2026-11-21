@@ -1,0 +1,15 @@
+flowchart TD
+  A[User request] --> B[SLI measurement]
+  B --> C[SLO + error budget]
+  C --> D[Multi-window burn alert]
+  A --> E[End-to-end deadline]
+  E --> F[Bounded retries + idempotency]
+  F --> G{Circuit breaker}
+  G -->|Closed| H[Dependency call]
+  G -->|Open| I[Safe fallback router]
+  H -->|Failure threshold| G
+  I --> J[Fresh cache / retrieval-only / unavailable]
+  J --> K[User response + audit]
+  H --> K
+  L[Queue and concurrency limits] --> F
+  L --> I
