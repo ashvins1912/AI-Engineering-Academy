@@ -1,0 +1,48 @@
+{
+  "pricingVersion": "synthetic-2026-11-v1",
+  "rates": {
+    "inputPerMillion": "2.00",
+    "outputPerMillion": "8.00",
+    "embeddingPerMillion": "0.10",
+    "rerankPer1000": "1.00"
+  },
+  "task": {
+    "id": "task-1",
+    "tenant": "tenant-A",
+    "attempts": [
+      {
+        "inputTokens": 2000,
+        "outputTokens": 500,
+        "embeddingTokens": 1000,
+        "rerankCalls": 1,
+        "success": false
+      },
+      {
+        "inputTokens": 2000,
+        "outputTokens": 500,
+        "embeddingTokens": 0,
+        "rerankCalls": 0,
+        "success": true
+      }
+    ],
+    "expectedCostPerSuccessfulTask": "0.0171"
+  },
+  "attacks": [
+    {
+      "id": "cross-tenant-cache",
+      "expected": "different cache keys"
+    },
+    {
+      "id": "stale-index-version",
+      "expected": "cache miss"
+    },
+    {
+      "id": "prompt-stuffing",
+      "expected": "INPUT_TOKEN_LIMIT"
+    },
+    {
+      "id": "retry-storm",
+      "expected": "bounded attempts and budget"
+    }
+  ]
+}
