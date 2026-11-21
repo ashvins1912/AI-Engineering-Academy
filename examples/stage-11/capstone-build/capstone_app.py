@@ -155,6 +155,9 @@ class ApprovalService:
     def issue(self, proposal: ActionProposal, approver: Principal) -> Approval:
         if approver.tenant_id != proposal.tenant_id:
             raise PermissionError("APPROVAL_TENANT_MISMATCH")
+        requester = Principal(proposal.requested_by, proposal.tenant_id)
+        if not self.memberships.is_member(requester):
+            raise PermissionError("REQUESTER_MEMBERSHIP_REQUIRED")
         if approver.user_id == proposal.requested_by:
             raise PermissionError("FOUR_EYES_APPROVAL_REQUIRED")
         if "admin" not in self.memberships.roles_for(approver):
@@ -192,7 +195,7 @@ class ToolGateway:
         self.approvals = approvals
         self.resource_tenants = dict(resource_tenants)
         self.status = dict(initial_status)
-        self._idempotency: dict[tuple[str, str, str], ToolResult] = {}
+        self._idempotency: dict[tuple[str, str, str, str], ToolResult] = {}
 
     def execute(
         self,
@@ -210,17 +213,19 @@ class ToolGateway:
             return ToolResult(False, "TOOL_NOT_ALLOWED")
         if self.resource_tenants.get(proposal.resource_id) != principal.tenant_id:
             return ToolResult(False, "RESOURCE_TENANT_MISMATCH")
-        if proposal.action in self.MUTATION_ACTIONS:
-            if "admin" not in roles:
-                return ToolResult(False, "ROLE_NOT_ALLOWED")
-            if not self.approvals.verify(proposal, approval):
-                return ToolResult(False, "APPROVAL_REQUIRED")
+        if proposal.resource_id not in self.status:
+            return ToolResult(False, "RESOURCE_NOT_FOUND")
+        if proposal.action in self.MUTATION_ACTIONS and "admin" not in roles:
+            return ToolResult(False, "ROLE_NOT_ALLOWED")
         if not idempotency_key:
             return ToolResult(False, "IDEMPOTENCY_KEY_REQUIRED")
-        scope = (principal.tenant_id, principal.user_id, idempotency_key)
+        fingerprint = self.approvals.fingerprint(proposal)
+        scope = (principal.tenant_id, principal.user_id, idempotency_key, fingerprint)
         if scope in self._idempotency:
             previous = self._idempotency[scope]
             return ToolResult(previous.allowed, previous.reason, previous.value, replayed=True)
+        if proposal.action in self.MUTATION_ACTIONS and not self.approvals.verify(proposal, approval):
+            return ToolResult(False, "APPROVAL_REQUIRED")
         if proposal.action == "order.read":
             result = ToolResult(True, "READ_ALLOWED", self.status[proposal.resource_id])
         else:
