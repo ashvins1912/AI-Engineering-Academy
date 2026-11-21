@@ -1,0 +1,88 @@
+{
+  "scenario": "Promote a compatible support model and prompt bundle, then roll back on canary regression",
+  "tenantId": "academy-demo",
+  "model": {
+    "name": "support-assistant",
+    "version": "v13",
+    "digest": "sha256:7c2a…a91e",
+    "sourceRun": "run-2026-11-21-014",
+    "datasetHash": "sha256:dataset-42",
+    "codeCommit": "8f3a2d1",
+    "family": "support-llm",
+    "tokenizer": "tok-v3",
+    "toolSchema": "tools-v4",
+    "inputSchema": {
+      "question": "string"
+    },
+    "outputSchema": {
+      "answer": "string",
+      "citations": "array"
+    }
+  },
+  "prompt": {
+    "name": "support-system",
+    "version": "p9",
+    "digest": "sha256:9f31…b27c",
+    "variables": {
+      "question": "string"
+    },
+    "safetyPolicy": "support-safety-v5"
+  },
+  "evaluation": {
+    "reportHash": "sha256:eval-0.94",
+    "qualityScore": 94,
+    "safety": "pass",
+    "latencyP95Ms": 820
+  },
+  "gates": {
+    "minimumQuality": 90,
+    "compatibility": true,
+    "independentApproval": true,
+    "releaseManagerRole": true
+  },
+  "aliases": {
+    "production": {
+      "bundleId": "release-12",
+      "version": 7
+    },
+    "staging": {
+      "bundleId": "release-12",
+      "version": 3
+    }
+  },
+  "candidate": {
+    "bundleId": "release-13",
+    "manifestHash": "sha256:manifest-H1"
+  },
+  "canary": {
+    "errorRatePercent": 4,
+    "rollbackThresholdPercent": 1
+  },
+  "expectedHistory": [
+    {
+      "sequence": 1,
+      "action": "promote",
+      "bundleId": "release-12"
+    },
+    {
+      "sequence": 2,
+      "action": "promote",
+      "bundleId": "release-13"
+    },
+    {
+      "sequence": 3,
+      "action": "rollback",
+      "bundleId": "release-12"
+    }
+  ],
+  "failureInjection": [
+    "mutate existing version",
+    "model/prompt tool schema mismatch",
+    "missing provenance",
+    "creator self-approval",
+    "unauthorized release manager",
+    "stale alias version",
+    "canary error threshold exceeded",
+    "cross-tenant alias lookup"
+  ]
+}
