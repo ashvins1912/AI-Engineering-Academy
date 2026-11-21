@@ -1,0 +1,616 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "tracing",
+    "title": "Tracing and Telemetry — observe distributed AI request paths",
+    "stage": 10,
+    "estimatedMinutes": 390
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Distinguish traces, spans, metrics, structured logs and events, and select the right signal for each operational question.",
+      "Model an AI request as a distributed trace across gateway, retrieval, model, tool, queue and storage boundaries.",
+      "Propagate W3C trace context through synchronous and asynchronous calls without leaking sensitive baggage.",
+      "Instrument retrieval, model generation, tool execution, retries, streaming and cache operations with useful span attributes and events.",
+      "Control telemetry cardinality, redact sensitive content and apply head/tail sampling without losing incident evidence.",
+      "Build deterministic trace validation and diagnose missing parents, context loss, invalid timing, errors and misleading latency summaries."
+    ],
+    "prerequisites": [
+      "Stage 6 agent loops and tool execution",
+      "Stage 7 MCP and service boundaries",
+      "Stage 8 CI/CD, deployment and service operations",
+      "Basic HTTP headers, asynchronous jobs and distributed systems concepts"
+    ],
+    "glossary": [
+      {
+        "term": "Trace",
+        "definition": "A correlated record of work for one logical request across multiple services and operations."
+      },
+      {
+        "term": "Span",
+        "definition": "A timed operation within a trace, with a name, parent relationship, attributes, events and status."
+      },
+      {
+        "term": "Trace context",
+        "definition": "Identifiers and sampling state propagated between services so their spans join the same trace."
+      },
+      {
+        "term": "W3C Trace Context",
+        "definition": "A standard HTTP propagation format that defines traceparent and tracestate headers."
+      },
+      {
+        "term": "Metric",
+        "definition": "A numerical measurement aggregated over time, such as request rate, error ratio or latency histogram."
+      },
+      {
+        "term": "Structured log",
+        "definition": "A timestamped event with explicit fields that can be searched and correlated with trace identifiers."
+      },
+      {
+        "term": "Cardinality",
+        "definition": "The number of distinct values a telemetry dimension can take; unbounded values can overload metrics backends."
+      },
+      {
+        "term": "Head sampling",
+        "definition": "A sampling decision made near trace start, before the full outcome is known."
+      },
+      {
+        "term": "Tail sampling",
+        "definition": "A sampling decision made after spans arrive, allowing errors or slow traces to be retained selectively."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "A single AI request can cross an API gateway, authentication, retrieval, embedding, reranking, model provider, MCP tool, queue and database. Looking at one service's logs cannot explain end-to-end latency, retries, missing context or which downstream operation failed.",
+    "plainLanguage": "A trace is like a flight itinerary for one request. Each service records a span for the work it performs, and child spans show which operation caused another operation. If a user waits 4 seconds, the trace can show 300 ms in retrieval, 2.8 seconds in model generation, and 900 ms in a tool call that overlapped with streaming. The total is not always the sum of every span because operations can run in parallel.\n\nUse three core signals for different questions. Metrics show trends and rates across many requests: request volume, error ratio, queue depth, token throughput and latency histograms. Logs explain discrete events with structured fields and correlation identifiers. Traces show causal relationships and time spent across service boundaries. An event is not a metric, and a trace is not a substitute for an aggregate SLO dashboard.\n\nStart one trace at the request boundary and create spans for authentication, query rewrite, embedding, vector search, reranking, prompt assembly, model generation, each tool call, retries, streaming and persistence. Propagate W3C trace context in HTTP headers. When a task crosses a queue or process boundary, serialize trace context explicitly and create a consumer span linked to the producer context. Do not assume thread-local or request-local state survives asynchronous execution.\n\nSpan names should describe stable operations such as vector.search or model.generate, not contain user IDs, document IDs, raw prompts or URLs with query strings. Attributes should answer operational questions: model family, provider, route, retrieval top-k, cache hit, token counts, timeout class and error category. Do not record prompt bodies, retrieved text, access tokens, customer documents or tool arguments by default. Redact at the instrumentation boundary, not only in the dashboard.\n\nKeep metrics dimensions bounded. A route template like /documents/{id} is useful; a raw URL, prompt, trace ID or user ID as a metric label creates unbounded cardinality. Use trace IDs in logs and traces, not metric labels. For multi-tenant systems, use controlled tenant tiers or sampled diagnostic metadata with strict access, rather than putting every tenant ID into global metrics.\n\nSampling is a cost and evidence trade-off. Head sampling is cheap but may drop a trace before you know it failed. Tail sampling can retain slow, failed or high-value traces, but requires buffering and collector capacity. A practical design uses a baseline head rate plus tail policies for errors, latency outliers and selected diagnostics. Never make sampling decisions depend on sensitive prompt contents.\n\nFinally, instrument failure semantics. Record retry attempt, timeout category, cancellation, provider status and fallback choice. Distinguish queue wait from execution time and time-to-first-token from inter-token latency. Use monotonic clocks for durations, avoid assuming clocks across hosts are synchronized perfectly, and ensure streaming spans close on disconnect. Validate the trace graph itself: missing parents, mixed trace IDs, impossible child timing and orphaned spans indicate broken context propagation.",
+    "mentalModel": "Request boundary → trace context → parent/child spans across services → metrics for aggregate behavior + logs for events + traces for causality → redaction and cardinality controls → sampling and retention.",
+    "limitations": [
+      "A trace shows recorded operations, not necessarily every operation; instrumentation gaps and sampling can hide work.",
+      "Span durations across different hosts can be affected by clock skew; use monotonic clocks locally and interpret cross-host timestamps carefully.",
+      "Tail sampling needs buffering and can drop data under collector overload; size collectors and define explicit fallback behavior.",
+      "Metrics with high-cardinality labels can exhaust storage and query capacity even when individual labels seem useful.",
+      "Redaction rules can miss secrets in free text; avoid collecting sensitive payloads rather than relying on post-hoc scrubbing.",
+      "A local trace simulator validates graph and policy logic but does not replace OpenTelemetry SDKs, collectors, exporters or backend capacity tests."
+    ],
+    "everydayAnalogy": "A package delivery has one tracking number and scan events at pickup, sorting, transit and delivery. Metrics tell you how many packages are late; logs explain a specific scan failure; the trace-like sequence shows where this package spent its time.",
+    "mathMadeSimple": "A request starts at 10:00:00.000 and ends at 10:00:03.200, so end-to-end latency is 3,200 ms. Its spans show gateway 3,200 ms, retrieval 420 ms, model 2,100 ms and tool 650 ms. Retrieval and tool overlap by 200 ms, so adding all child durations gives 3,170 ms and does not represent the critical path exactly. The trace tree and interval boundaries explain the overlap.",
+    "productionImpact": "Instrument stable spans at service and AI-operation boundaries, propagate W3C context through queues, separate metrics/logs/traces, record bounded operational attributes, redact sensitive payloads, control cardinality and sample errors/slow traces deliberately. Measure queue wait, TTFT, inter-token latency, retries and cancellation separately."
+  },
+  "useCase": {
+    "scenario": "Instrument a multi-service RAG and agent request from gateway through retrieval, model generation, MCP tool execution and asynchronous indexing. An incident report must identify the slow or failed span, correlate safe logs and metrics, and retain enough trace evidence without storing customer prompts or secrets.",
+    "actors": [
+      "API gateway and trace-context propagator",
+      "Authentication and request service",
+      "Embedding, vector search and reranking services",
+      "LLM provider adapter and streaming gateway",
+      "MCP tool adapter and approval service",
+      "Queue producer and asynchronous worker",
+      "OpenTelemetry SDK, collector and exporters",
+      "Metrics, logs and trace backend operators"
+    ],
+    "inputs": [
+      "W3C traceparent and optional tracestate headers",
+      "Stable span names and bounded attributes",
+      "Service timing, queue wait, token usage and provider status",
+      "Structured logs with trace and span identifiers",
+      "Sampling policy and redaction allowlist",
+      "Collector capacity, retention and access policy"
+    ],
+    "constraints": [
+      "Never put raw prompts, retrieved text, credentials or tool arguments into telemetry by default.",
+      "Use stable operation names and bounded metric labels.",
+      "Propagate trace context across HTTP and queue boundaries.",
+      "Represent asynchronous consumer work with a new span and parent/link relationship appropriate to the message lifecycle.",
+      "Use monotonic clocks for local durations and close spans on cancellation/disconnect.",
+      "Sampling must retain policy-selected errors and slow traces without depending on sensitive payload contents.",
+      "Telemetry access and retention follow tenant and data-classification controls."
+    ],
+    "outputs": [
+      "Trace graph with parent/child spans and operation timing",
+      "Aggregate metrics for rate, errors, latency, tokens and queue depth",
+      "Structured logs correlated by trace and span IDs",
+      "Redacted failure evidence and sampled slow/error traces",
+      "Instrumentation gap and telemetry-quality diagnostics"
+    ],
+    "successMetric": "A request can be followed end to end, its slow/error operation is identified, queue and model latency are separated, and no sensitive prompt or credential is present in exported telemetry."
+  },
+  "architecture": {
+    "diagram": "content/topics/tracing/distributed-ai-trace.mmd",
+    "components": [
+      "Gateway trace-context extractor and root span",
+      "OpenTelemetry SDKs in application services",
+      "AI operation instrumentation for retrieval/model/tools",
+      "W3C propagation across HTTP and message queue",
+      "Redaction and attribute allowlist processor",
+      "Collector with head/tail sampling and batching",
+      "Metrics, logs and traces exporters",
+      "Access-controlled observability backend and alerting"
+    ],
+    "dataFlow": [
+      {
+        "from": "API gateway",
+        "to": "Trace context extractor",
+        "payload": "traceparent, tracestate and request metadata",
+        "purpose": "Continue a valid upstream trace or create a new root trace."
+      },
+      {
+        "from": "Trace context extractor",
+        "to": "Application service",
+        "payload": "Trace ID, span ID and sampling context",
+        "purpose": "Establish a parent span for the logical request."
+      },
+      {
+        "from": "Application service",
+        "to": "AI operation spans",
+        "payload": "Stable span names and bounded attributes",
+        "purpose": "Measure retrieval, model, tool, retry, queue and streaming operations."
+      },
+      {
+        "from": "Application service",
+        "to": "Queue producer",
+        "payload": "Message plus serialized trace context",
+        "purpose": "Carry correlation across the asynchronous boundary."
+      },
+      {
+        "from": "Queue consumer",
+        "to": "Worker spans",
+        "payload": "Validated message context and producer reference",
+        "purpose": "Create consumer work spans without relying on ambient request state."
+      },
+      {
+        "from": "SDKs",
+        "to": "Redaction processor",
+        "payload": "Span attributes, events and structured log fields",
+        "purpose": "Remove sensitive values and reject unbounded labels before export."
+      },
+      {
+        "from": "Redaction processor",
+        "to": "Collector",
+        "payload": "Sanitized telemetry batches",
+        "purpose": "Apply sampling, batching, retry and backpressure controls."
+      },
+      {
+        "from": "Collector",
+        "to": "Observability backends",
+        "payload": "OTLP metrics, logs and traces",
+        "purpose": "Correlate request evidence while enforcing access and retention policy."
+      }
+    ],
+    "trustBoundaries": [
+      "Incoming trace context is correlation metadata, not authentication or authorization.",
+      "Baggage and span attributes can be caller-controlled and must be allowlisted before use.",
+      "Telemetry may contain sensitive data and requires access control, redaction and retention policy.",
+      "Queue messages cross process boundaries; context is serialized and validated explicitly.",
+      "Collectors and exporters are part of the data plane and must be protected from overload and unauthorized access."
+    ],
+    "failurePaths": [
+      "Missing traceparent: create a new root and record propagation gap without failing user traffic.",
+      "Invalid traceparent: reject the malformed context and start a new trace; do not trust arbitrary identifiers for authorization.",
+      "Async worker loses context: serialize trace context and create a consumer span linked to producer.",
+      "High-cardinality metric labels: enforce an allowlist and drop raw IDs, URLs and prompts.",
+      "Sensitive prompt or token in span: redact at instrumentation boundary, fail telemetry tests and investigate retention.",
+      "Collector unavailable: use bounded queues and controlled drop/retry policy; never block critical request handling indefinitely.",
+      "Streaming disconnect: cancel downstream work where supported and close spans with a cancellation status."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-10/tracing/trace-scenarios.json",
+    "steps": [
+      {
+        "label": "Start root trace",
+        "explanation": "Extract a valid W3C trace context or create a new trace at the gateway.",
+        "expectedState": "Root span and trace identifiers exist."
+      },
+      {
+        "label": "Create service spans",
+        "explanation": "Record gateway, retrieval, model and tool operations as related spans.",
+        "expectedState": "Parent/child graph captures causal work."
+      },
+      {
+        "label": "Propagate async context",
+        "explanation": "Serialize trace context into a queue message and create a worker consumer span.",
+        "expectedState": "Worker work remains correlated after the request ends."
+      },
+      {
+        "label": "Sanitize telemetry",
+        "explanation": "Allowlist stable attributes and redact prompt, token and customer data.",
+        "expectedState": "Only safe bounded fields remain."
+      },
+      {
+        "label": "Sample and export",
+        "explanation": "Retain errors and slow traces while controlling volume and collector backpressure.",
+        "expectedState": "Evidence is exported within configured limits."
+      },
+      {
+        "label": "Diagnose the trace",
+        "explanation": "Inspect duration, critical path, error spans and propagation gaps alongside metrics and logs.",
+        "expectedState": "Slow or failed operation is identified."
+      }
+    ],
+    "accessibility": [
+      "Every state includes a textual explanation and expected state; the trace tree is also available as a static diagram and table.",
+      "The sequence can be stepped without relying on color or animation, and error, slow and dropped states have explicit text labels."
+    ],
+    "animation": {
+      "objective": "Follow one RAG-agent request across gateway, retrieval, model, tool and worker spans, then sanitize and sample the resulting trace.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Root request span",
+          "narration": "The gateway extracts traceparent or starts a new trace for the incoming request.",
+          "input": "HTTP request and optional traceparent",
+          "transformation": "Create or continue trace context and start a root span.",
+          "output": "Trace ID and root span",
+          "visualState": "root"
+        },
+        {
+          "step": 2,
+          "title": "Service and AI spans",
+          "narration": "Retrieval, model generation and tool calls create child spans with bounded timing attributes.",
+          "input": "Gateway span context",
+          "transformation": "Create spans for vector search, model generation, tool execution and retries.",
+          "output": "Causal span tree",
+          "visualState": "spans"
+        },
+        {
+          "step": 3,
+          "title": "Queue propagation",
+          "narration": "A producer serializes trace context; the worker creates a consumer span after dequeue.",
+          "input": "Queue message and producer context",
+          "transformation": "Validate context and create a worker span or link.",
+          "output": "Correlated async work",
+          "visualState": "async"
+        },
+        {
+          "step": 4,
+          "title": "Redact and bound",
+          "narration": "Raw prompt, token and user fields are removed; stable operation attributes remain.",
+          "input": "Span attributes and structured logs",
+          "transformation": "Apply allowlist, redaction and cardinality controls.",
+          "output": "Sanitized telemetry",
+          "visualState": "sanitize"
+        },
+        {
+          "step": 5,
+          "title": "Sample and export",
+          "narration": "Sampling retains selected errors and latency outliers while limiting routine trace volume.",
+          "input": "Sanitized spans and policy",
+          "transformation": "Head/tail sampling, batching and bounded exporter queues.",
+          "output": "Exported evidence",
+          "visualState": "export"
+        },
+        {
+          "step": 6,
+          "title": "Diagnose",
+          "narration": "The trace tree and aggregate signals reveal whether retrieval, model, tool or queue caused the delay.",
+          "input": "Traces, metrics and correlated logs",
+          "transformation": "Inspect critical path, error status and propagation gaps.",
+          "output": "Operational diagnosis",
+          "visualState": "diagnose"
+        }
+      ],
+      "controls": [
+        {
+          "name": "trace_outcome",
+          "min": 0,
+          "max": 2,
+          "defaultValue": 0,
+          "effect": "Select normal, slow or failed request; sampling policy retains slow and failed traces."
+        },
+        {
+          "name": "async_context",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "Toggle serialized queue trace context; without it the worker becomes an uncorrelated root."
+        },
+        {
+          "name": "sensitive_attributes",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "Toggle prompt/token attributes; redaction must remove sensitive values before export."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Six narrated states show inputs, transformations and outputs. Slow, failed, uncorrelated and redacted states are text-labeled and can be inspected one step at a time."
+    }
+  },
+  "workedExample": {
+    "problem": "A RAG-agent request spans gateway, vector retrieval, model generation, tool execution and queue processing. Diagnose latency and sampling while keeping prompt text and credentials out of telemetry.",
+    "input": "Root span 0–3200 ms; retrieval 120–540 ms; model 600–2700 ms; tool 1800–2450 ms; queue wait 40–340 ms; one model span has ERROR status. A raw prompt and token are present in untrusted attributes.",
+    "steps": [
+      {
+        "operation": "Build the trace graph",
+        "reasoning": "Each operation has a span ID, trace ID and parent relationship. The gateway is the root; retrieval, model and tool spans are children; queue work uses explicit producer context.",
+        "result": "A correlated trace tree identifies each operation and asynchronous boundary."
+      },
+      {
+        "operation": "Calculate request latency",
+        "reasoning": "The root interval is 3200 ms. Child durations overlap, so do not sum every span as if all operations were sequential.",
+        "result": "End-to-end latency is 3200 ms; model generation is the longest child interval at 2100 ms."
+      },
+      {
+        "operation": "Separate queue wait",
+        "reasoning": "Queue wait is measured as its own span/event rather than being hidden inside worker execution.",
+        "result": "Queue wait is 300 ms; worker processing is reported separately."
+      },
+      {
+        "operation": "Redact sensitive fields",
+        "reasoning": "Prompt and credential values are not needed to diagnose timing and are removed before export.",
+        "result": "Only safe attributes such as model family, status code, token counts and cache outcome remain."
+      },
+      {
+        "operation": "Apply sampling",
+        "reasoning": "The trace has an error and slow model span, so a tail policy retains it even if routine head sampling would omit it.",
+        "result": "The full diagnostic trace is retained under the error/latency policy."
+      },
+      {
+        "operation": "Correlate signals",
+        "reasoning": "Use trace ID in structured logs, aggregate latency/error metrics by bounded route and model-family labels, and inspect span timing for causality.",
+        "result": "The model span is the primary latency/error focus; queue wait is a separate contributing delay."
+      }
+    ],
+    "expectedOutput": "A 3.2-second correlated trace is retained, model generation is identified as the longest child operation, queue wait is reported separately, the error is visible, and prompt/token values are absent from exported telemetry."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-10/tracing/trace_engine.py",
+      "runCommand": "python examples/stage-10/tracing/trace_engine.py",
+      "testsPath": "examples/stage-10/test_tracing.py",
+      "expectedResult": "Offline trace simulator validates parent-child graphs, duration boundaries, latency summaries, traceparent format, sampling, metric-label allowlists and sensitive-attribute redaction."
+    },
+    {
+      "language": "other",
+      "role": "production",
+      "path": "examples/stage-10/tracing/README.md",
+      "runCommand": "python -m unittest discover -s examples/stage-10 -p 'test_*.py' -v",
+      "testsPath": "examples/stage-10/test_tracing.py",
+      "expectedResult": "Production guide maps the simulator to OpenTelemetry SDKs, OTLP collectors, W3C propagation, tail sampling, redaction and telemetry backend operations."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Missing parent span or broken trace graph",
+      "symptom": "A downstream operation appears as an unrelated trace or cannot be found from the gateway.",
+      "rootCause": "Context propagation is missing, invalid or replaced at an HTTP or asynchronous boundary.",
+      "recovery": "Extract and inject W3C trace context at every service boundary and serialize context into queue messages.",
+      "regressionTest": "A simulated worker span with no producer context is flagged as an orphan or separate root."
+    },
+    {
+      "name": "Invalid or mixed trace identifiers",
+      "symptom": "Spans with different trace IDs are rendered as one request or a malformed trace is accepted.",
+      "rootCause": "Trace headers are parsed loosely or caller-provided identifiers are trusted without format validation.",
+      "recovery": "Validate W3C traceparent format and create a new root when incoming context is invalid.",
+      "regressionTest": "Malformed and all-zero identifiers are rejected without failing the business request."
+    },
+    {
+      "name": "High-cardinality metrics",
+      "symptom": "Metrics backend memory, storage or query latency grows rapidly.",
+      "rootCause": "Raw user IDs, document IDs, prompts, URLs or trace IDs are used as metric labels.",
+      "recovery": "Use stable route templates and bounded enumerations; keep unique identifiers in access-controlled traces/logs.",
+      "regressionTest": "Metric label sanitizer drops keys outside the allowlist."
+    },
+    {
+      "name": "Sensitive content in telemetry",
+      "symptom": "Prompts, retrieved documents, tokens or tool arguments appear in spans or logs.",
+      "rootCause": "Instrumentation captures full payload objects or relies only on dashboard-level redaction.",
+      "recovery": "Do not collect payloads by default; allowlist safe fields and redact before export.",
+      "regressionTest": "Synthetic prompt and credential values are absent from sanitized attributes."
+    },
+    {
+      "name": "Misleading latency from overlapping spans",
+      "symptom": "Summed child durations exceed or misrepresent end-to-end request time.",
+      "rootCause": "Parallel or nested operations are treated as sequential durations.",
+      "recovery": "Inspect interval boundaries, parent-child relationships and critical path; separate queue wait and execution.",
+      "regressionTest": "Overlapping span fixture reports root duration independently from sum of child durations."
+    },
+    {
+      "name": "Sampling drops incident evidence",
+      "symptom": "Slow or failed requests have no trace during an incident.",
+      "rootCause": "Head sampling drops traces before error or latency outcome is known.",
+      "recovery": "Use tail sampling or targeted diagnostic policies for errors and slow traces with bounded buffering.",
+      "regressionTest": "Error and latency-outlier fixture is retained by the policy."
+    },
+    {
+      "name": "Streaming or cancellation leaves spans open",
+      "symptom": "Trace shows requests running long after client disconnect or token stream completion.",
+      "rootCause": "Cancellation and stream-finalization paths do not close spans or propagate cancellation.",
+      "recovery": "Use finally blocks and cancellation-aware provider/tool adapters to end spans with explicit status.",
+      "regressionTest": "Simulated disconnect closes stream and downstream spans with CANCELLED status."
+    }
+  ],
+  "practice": {
+    "guided": "Run the trace simulator with the sample RAG-agent trace. Inspect the root interval, child spans, overlapping model/tool work, queue wait, error status and redacted attributes. Break the parent ID and observe the graph validation failure.",
+    "independent": "Add a batch indexing worker trace with producer and consumer context, retries and a cancellation event. Implement a bounded attribute allowlist and prove prompt text, customer IDs and credentials cannot become metric labels or exported attributes.",
+    "realWorld": "Instrument a production-style RAG and MCP agent path using OpenTelemetry. Define spans for retrieval, reranking, model TTFT/inter-token streaming, tool calls, approval, queue wait and persistence. Design metrics, logs and traces separately and document sampling, retention and access controls.",
+    "expertExtension": "Add W3C baggage policy, trace links for fan-out/fan-in, tail sampling under collector overload, exemplars linking histogram buckets to traces, semantic conventions for GenAI spans, tenant-aware telemetry access and load tests for exporter backpressure.",
+    "guidedExercise": {
+      "title": "Build a safe trace graph validator",
+      "instructions": "Validate unique span IDs, consistent trace IDs, valid parent references and child timing. Summarize root latency, slow/error spans and sanitize attributes before export.",
+      "starterCode": "def validate_trace(spans):\n    raise NotImplementedError",
+      "solutionCode": "def validate_trace(spans):\n    ids = {span.span_id for span in spans}\n    if len(ids) != len(spans):\n        return False, 'DUPLICATE_SPAN_ID'\n    trace_ids = {span.trace_id for span in spans}\n    if len(trace_ids) != 1:\n        return False, 'MIXED_TRACE_IDS'\n    for span in spans:\n        if span.end_ms < span.start_ms:\n            return False, 'NEGATIVE_DURATION'\n        if span.parent_id and span.parent_id not in ids:\n            return False, 'MISSING_PARENT'\n    return True, 'VALID'",
+      "unitTests": "assert validate_trace(valid_spans) == (True, 'VALID')\nassert validate_trace(orphaned_spans)[1] == 'MISSING_PARENT'\nassert 'prompt' not in sanitize_attributes({'prompt': 'private text'})"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build an observability workbench that visualizes one AI request's distributed trace, validates span relationships, explains latency and exports only safe bounded telemetry.",
+      "steps": [
+        "Create a synthetic trace with gateway, retrieval, model, tool and queue spans.",
+        "Validate unique IDs, trace IDs, parent relationships and timing boundaries.",
+        "Calculate root duration, per-span duration, slow spans and errors without summing overlapping work.",
+        "Propagate trace context into a synthetic queue message and worker consumer span.",
+        "Apply attribute redaction and metric-label allowlists before export.",
+        "Compare head sampling and tail retention for normal, slow and failed requests.",
+        "Generate a diagnosis report with trace, metric and log responsibilities separated."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "Which signal best explains the causal path and timing of one request across services?",
+        "options": [
+          "Distributed trace",
+          "Aggregate counter",
+          "License inventory",
+          "Static configuration"
+        ],
+        "correctIndex": 0,
+        "explanation": "A trace groups related spans and parent relationships so operators can follow one request across service boundaries."
+      },
+      {
+        "question": "Which value should generally not be a metric label?",
+        "options": [
+          "Raw user or trace ID",
+          "Bounded route template",
+          "Model family",
+          "HTTP status class"
+        ],
+        "correctIndex": 0,
+        "explanation": "Raw identifiers create unbounded cardinality. Keep them in access-controlled traces or logs rather than aggregate metric dimensions."
+      },
+      {
+        "question": "What should an async worker do with trace context?",
+        "options": [
+          "Receive serialized context",
+          "Assume thread-local state",
+          "Generate random parent IDs",
+          "Trust prompt metadata"
+        ],
+        "correctIndex": 0,
+        "explanation": "Queue boundaries cross processes; serialize and validate trace context and create a consumer span or link."
+      },
+      {
+        "question": "Why can summed child durations exceed root duration?",
+        "options": [
+          "Child spans can overlap",
+          "Trace IDs are encrypted",
+          "Metrics use histograms",
+          "The root span is always wrong"
+        ],
+        "correctIndex": 0,
+        "explanation": "Parallel and nested work overlaps in time, so summing durations double-counts intervals; inspect the trace timeline and critical path."
+      },
+      {
+        "question": "Which sampling approach can retain a trace after observing an error?",
+        "options": [
+          "Tail sampling",
+          "Only head sampling",
+          "Random log deletion",
+          "Metric aggregation"
+        ],
+        "correctIndex": 0,
+        "explanation": "Tail sampling evaluates completed or buffered spans and can retain errors and latency outliers, at the cost of collector buffering."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Signal model and trace architecture",
+        "weight": 20,
+        "evidence": "Distinguishes metrics, logs and traces and models service and AI operation spans."
+      },
+      {
+        "criterion": "Context propagation and graph correctness",
+        "weight": 25,
+        "evidence": "Uses W3C context across HTTP/queue boundaries and validates trace IDs, parent relationships and timing."
+      },
+      {
+        "criterion": "AI-specific instrumentation",
+        "weight": 20,
+        "evidence": "Measures retrieval, model, tool, queue, retry, streaming and cancellation operations."
+      },
+      {
+        "criterion": "Privacy, cardinality and sampling",
+        "weight": 20,
+        "evidence": "Redacts sensitive attributes, bounds metric labels and retains selected errors/slow traces."
+      },
+      {
+        "criterion": "Operational diagnosis and tests",
+        "weight": 15,
+        "evidence": "Explains latency and failures from trace evidence and includes regression tests for instrumentation gaps."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Valid trace graph is reconstructed across services and queue worker.",
+      "Root latency and overlapping child spans are interpreted correctly.",
+      "Missing parent, mixed IDs and impossible timing are detected.",
+      "Prompt and credential values are absent from exported telemetry.",
+      "Metric label allowlist prevents unbounded dimensions.",
+      "Slow and failed traces are retained by the documented sampling policy."
+    ]
+  },
+  "references": [
+    {
+      "title": "OpenTelemetry Documentation",
+      "url": "https://opentelemetry.io/docs/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "W3C Trace Context Recommendation",
+      "url": "https://www.w3.org/TR/trace-context/",
+      "sourceType": "standard",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "OpenTelemetry Semantic Conventions",
+      "url": "https://opentelemetry.io/docs/specs/semconv/",
+      "sourceType": "standard",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "OpenTelemetry Collector Documentation",
+      "url": "https://opentelemetry.io/docs/collector/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "Google SRE Book — Monitoring Distributed Systems",
+      "url": "https://sre.google/sre-book/monitoring-distributed-systems/",
+      "sourceType": "book",
+      "checkedOn": "2026-11-22"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "context = propagator.extract(request.headers)",
+      "explanation": "Extract and validate W3C trace context from the inbound request; invalid context starts a new trace and never grants authorization."
+    },
+    {
+      "lines": "with tracer.start_as_current_span('rag.request') as root:",
+      "explanation": "Create a root or server span and keep the request's work under a consistent trace context."
+    },
+    {
+      "lines": "with tracer.start_as_current_span('vector.search') as span:",
+      "explanation": "Instrument retrieval with stable operation names and bounded attributes such as top-k, latency and result count."
+    },
+    {
+      "lines": "carrier = propagator.inject({})",
+      "explanation": "Serialize trace context into a queue message so the worker can correlate asynchronous work after the original request ends."
+    },
+    {
+      "lines": "safe = sanitize_attributes(attributes, ALLOWED_KEYS)",
+      "explanation": "Allowlist operational fields and remove prompts, secrets, customer content and high-cardinality values before export."
+    },
+    {
+      "lines": "decision = tail_sampler.evaluate(trace_spans)",
+      "explanation": "Retain errors and latency outliers according to policy while controlling routine trace volume and collector capacity."
+    },
+    {
+      "lines": "metrics.record('model.request.duration', duration, {'model_family': family, 'status': status})",
+      "explanation": "Use bounded metric labels for aggregation; keep trace IDs and unique resource identifiers in traces or protected logs."
+    }
+  ]
+}
