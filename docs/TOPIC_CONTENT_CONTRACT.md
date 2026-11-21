@@ -1,6 +1,6 @@
 # Topic content contract
 
-The machine-readable contract lives in [`content/topic.schema.json`](../content/topic.schema.json). A complete example is in [`content/examples/attention-topic.json`](../content/examples/attention-topic.json), with its runnable fixture, implementation, test and diagram beside it.
+The machine-readable v1.1.0 contract lives in [`content/topic.schema.json`](../content/topic.schema.json). A complete example is in [`content/examples/attention-topic.json`](../content/examples/attention-topic.json), with its runnable fixture, implementation, test and diagram beside it.
 
 ## Authoring rules
 
@@ -8,6 +8,9 @@ The machine-readable contract lives in [`content/topic.schema.json`](../content/
 - Explain the concept in plain language before introducing framework terminology.
 - Use a real scenario with actors, inputs, constraints, outputs and a measurable success metric.
 - Keep the architecture diagram, visual walkthrough, worked example and code tied to the same deterministic fixture.
+- Animated topics require at least three deterministic stages with input, transformation, output and visual state, plus adjustable controls and play/pause/reset/step/speed behavior.
+- Animation values must be computed from the same fixture used by the runnable implementation; decorative values that disagree with code are not acceptable.
+- Include both a from-scratch implementation and a production-shaped implementation, each with a runnable command and tests.
 - Include at least three topic-specific failures. Each must include symptom, root cause, recovery and a regression test.
 - Include guided, independent, realistic and expert-level practice.
 - Make assessment evidence observable. Self-reported confidence is not proof of mastery.
