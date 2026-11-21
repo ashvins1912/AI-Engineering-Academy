@@ -1,0 +1,15 @@
+flowchart TD
+ A[Order received] --> V[Validate DAG + contracts]
+ V --> F{Ready independent checks?}
+ F -->|Yes| P[Parallel fraud + address]
+ P --> G[Fan-in result]
+ G --> I[Reserve inventory]
+ I --> Y[Authorize payment]
+ Y --> S[Book shipping]
+ S -->|Success| N[Notify customer]
+ S -->|Failure| C[Compensate payment]
+ C --> R[Release inventory]
+ R --> Z{All compensations succeeded?}
+ Z -->|Yes| D[Mark compensated]
+ Z -->|No| H[compensation_required + operator task]
+ N --> O[Mark completed]
