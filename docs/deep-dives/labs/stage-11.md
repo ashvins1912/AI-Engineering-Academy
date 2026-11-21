@@ -22,19 +22,19 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## capstone-build — Build RAG and agent services
 
-**Implementation task:** Build a vertical slice from upload through parsing, indexing, retrieval and cited answer, with a bounded agent tool.
+**Implementation task:** Build one end-to-end vertical slice: authenticate a tenant member, ingest and version a document, retrieve only authorized chunks before ranking, return citations or abstain, propose a typed agent action, authorize it in a server-side tool gateway, require approval for mutation, and persist idempotent outcome/audit evidence.
 
-**Worked fixture:** One policy PDF, two tenants, one no-answer query and one malicious document.
+**Worked fixture:** Two tenants have policy documents and order resources. Tenant B has a higher lexical match; a malicious Tenant A document instructs the agent to execute a mutation; an order update commits but the response times out.
 
-**Expected result:** Citations resolve to source page/chunk; tenant isolation holds; malicious content cannot authorize tools.
+**Expected result:** Tenant A receives only its own citation; no-evidence queries abstain; retrieved text cannot grant tool authority; only a scoped tenant-admin approval permits the exact mutation; cross-tenant resources are denied; retry with the same idempotency key does not repeat the side effect.
 
-**Verification tests:** Run integration, ACL, citation verification, injection and idempotency tests.
+**Verification tests:** Run `python -m unittest discover -s examples/stage-11 -p 'test_*.py' -v`. Test membership, filter-before-ranking, citation lineage, abstention, malicious content, capability allowlist, approval scope, resource ownership, idempotency, budget and audit redaction.
 
-**Debugging checklist:** Reduce the example to the smallest failing input; inspect identity, permissions, data flow and intermediate state; reproduce the failure with a test; change one variable at a time and retain a regression test.
+**Debugging checklist:** Inspect principal and tenant resolution; confirm ACL predicates are pushed before ranking; trace document version/page/chunk through citations; separate proposal from authorization; verify approval fingerprint and approver role; inspect idempotency scope and operation state; confirm audit contains only safe metadata.
 
-**Interview checks:** How do you prove evidence lineage and tenant isolation end to end?
+**Interview checks:** Why filter before top-k? How do you prove citation lineage? Why is a model tool call only a proposal? How should an approval be scoped? What happens when a side effect commits but the response times out?
 
-**Submission evidence:** Include implementation and architecture artifacts, a successful run, positive and negative tests, a short failure analysis, and a 3–5 sentence explanation of the operational trade-off.
+**Submission evidence:** Include API/event contracts, a successful vertical-slice run, cross-tenant and no-evidence tests, injection/tool denial tests, approval/idempotency evidence, audit privacy test and a production-adapter gap analysis.
 
 ---
 
