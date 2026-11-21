@@ -194,7 +194,7 @@
       "role": "production",
       "path": "content/examples/attention_production.py",
       "runCommand": "python content/examples/attention_production.py",
-      "testsPath": "content/examples/tests/test_attention.py",
+      "testsPath": "content/examples/tests/test_attention_production.py",
       "expectedResult": "Stable scaled attention weights and context vector match the deterministic fixture."
     }
   ],
