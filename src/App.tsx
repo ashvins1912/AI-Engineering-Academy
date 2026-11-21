@@ -29,6 +29,8 @@ import GraphOrchestrationVisualizer from './components/GraphOrchestrationVisuali
 import GraphOrchestrationLessonDetails from './components/GraphOrchestrationLessonDetails'
 import FrameworkComparisonVisualizer from './components/FrameworkComparisonVisualizer'
 import FrameworkComparisonLessonDetails from './components/FrameworkComparisonLessonDetails'
+import AgentEvaluationVisualizer from './components/AgentEvaluationVisualizer'
+import AgentEvaluationLessonDetails from './components/AgentEvaluationLessonDetails'
 import ArchitectureFlow from './components/ArchitectureFlow'
 import StudentReflection from './components/StudentReflection'
 
@@ -56,6 +58,7 @@ export default function App() {
   const [showAgentPatterns, setShowAgentPatterns] = useState(false)
   const [showGraphOrchestration, setShowGraphOrchestration] = useState(false)
   const [showFrameworkComparison, setShowFrameworkComparison] = useState(false)
+  const [showAgentEvaluation, setShowAgentEvaluation] = useState(false)
 
   useEffect(() => { localStorage.setItem('ai-academy.completed.v1', JSON.stringify(completed)) }, [completed])
   useEffect(() => { localStorage.setItem('ai-academy.bookmarks.v1', JSON.stringify(bookmarks)) }, [bookmarks])
@@ -110,6 +113,8 @@ export default function App() {
         {active.id==='stage-6'&&showGraphOrchestration&&<><GraphOrchestrationVisualizer/><GraphOrchestrationLessonDetails/></>}
         {active.id==='stage-6'&&<div className="phase-lab-launch"><div><strong>Topic 8 · Agent framework comparison</strong><p>Compare Agents SDK, CrewAI, LlamaIndex, Haystack, PydanticAI and Semantic Kernel using one shared task contract and safety-first benchmark.</p></div><button className="lab-primary" onClick={()=>setShowFrameworkComparison(v=>!v)}>{showFrameworkComparison?'Hide framework lab':'Open framework decision mastery lab'} <ChevronRight size={15}/></button></div>}
         {active.id==='stage-6'&&showFrameworkComparison&&<><FrameworkComparisonVisualizer/><FrameworkComparisonLessonDetails/></>}
+        {active.id==='stage-6'&&<div className="phase-lab-launch"><div><strong>Topic 9 · Agent evaluation</strong><p>Evaluate task success, tool accuracy, citations, trajectories, safety, latency and cost with hard release gates.</p></div><button className="lab-primary" onClick={()=>setShowAgentEvaluation(v=>!v)}>{showAgentEvaluation?'Hide evaluation lab':'Open agent evaluation mastery lab'} <ChevronRight size={15}/></button></div>}
+        {active.id==='stage-6'&&showAgentEvaluation&&<><AgentEvaluationVisualizer/><AgentEvaluationLessonDetails/></>}
         {active.modules.map((m,mi)=><article className="module" key={m.id}><button className="module-head" onClick={()=>setExpanded(v=>v.includes(m.id)?v.filter(x=>x!==m.id):[...v,m.id])}><div className="module-index">{String(mi+1).padStart(2,'0')}</div><div className="module-title"><h3>{m.title}</h3><p>{m.description}</p><span>{m.lessons.length} lessons · {m.lessons.filter(l=>completed.includes(l.id)).length} completed</span></div><ChevronRight className={expanded.includes(m.id)?'rotate':''} size={18}/></button>
           {expanded.includes(m.id)&&<div className="lesson-list">{m.lessons.map(l=><div className={`lesson ${completed.includes(l.id)?'lesson-complete':''}`} key={l.id}><button className={`check ${completed.includes(l.id)?'done':''}`} onClick={()=>toggle(l.id)} aria-label={completed.includes(l.id)?'Mark lesson incomplete':'Mark lesson complete'}>{completed.includes(l.id)?<CircleCheck size={18}/>:<span/>}</button><button className="lesson-open" onClick={()=>setSelectedLesson(l)}><div className="lesson-body"><strong>{l.title}</strong><p>{l.depth}</p><div className="lab"><Code2 size={13}/><span>LAB</span>{l.lab}</div></div></button><button className={`bookmark-btn ${bookmarks.includes(l.id)?'saved':''}`} onClick={()=>toggleBookmark(l.id)} aria-label={bookmarks.includes(l.id)?'Remove bookmark':'Bookmark lesson'}><Bookmark size={16} fill={bookmarks.includes(l.id)?'currentColor':'none'}/></button></div>)}</div>}
         </article>)}
