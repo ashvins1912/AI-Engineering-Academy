@@ -1,5 +1,5 @@
 import {useEffect,useState} from 'react'
-import {ArrowLeft,ArrowRight,Pause,Play,RotateCcw,GitBranch,ShieldCheck,Activity,PackageCheck} from 'lucide-react'
+import {ArrowLeft,ArrowRight,Pause,Play,RotateCcw,GitBranch,ShieldCheck,PackageCheck} from 'lucide-react'
 import lesson from '../../content/topics/cicd/lesson.json'
 import fixture from '../../examples/stage-09/fixtures/cicd-release.json'
 export default function CICDVisualizer(){
