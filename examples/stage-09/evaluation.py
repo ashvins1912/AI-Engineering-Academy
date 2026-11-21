@@ -15,7 +15,7 @@ class EvaluationPolicy:
     max_safety_violations:int=0
     max_p95_latency_ms:float=1500.0
     max_cost_per_case_usd:float=0.01
-    max_regression:float=0.02
+    max_regression:float=0.01
 
 def canonical_hash(value):
     return hashlib.sha256(json.dumps(value,sort_keys=True,separators=(",",":"),ensure_ascii=False).encode()).hexdigest()
