@@ -1,0 +1,54 @@
+{
+  "scenario": "Prepare a launch brief from three independent research tasks",
+  "taskId": "TASK-LAUNCH-17",
+  "patterns": [
+    "router",
+    "supervisor-worker",
+    "parallel",
+    "hierarchical",
+    "reflection",
+    "event-driven"
+  ],
+  "router": {
+    "route": "research",
+    "allowed": [
+      "research",
+      "billing",
+      "support"
+    ]
+  },
+  "supervisor": {
+    "delegationBudget": 3,
+    "workers": [
+      "market",
+      "competitor",
+      "risk"
+    ]
+  },
+  "parallel": {
+    "items": 3,
+    "maxWorkers": 2,
+    "timeoutSeconds": 3
+  },
+  "hierarchy": {
+    "parent": "launch brief",
+    "children": [
+      "market context",
+      "competitor scan",
+      "risk review"
+    ]
+  },
+  "reflection": {
+    "maxRevisions": 2,
+    "passAfterRevision": 1
+  },
+  "event": {
+    "eventId": "evt-launch-17",
+    "type": "research.completed",
+    "tenantId": "academy-demo"
+  },
+  "limits": {
+    "maxFanout": 20,
+    "maxWorkers": 4
+  }
+}

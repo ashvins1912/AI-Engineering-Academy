@@ -1,0 +1,14 @@
+flowchart TD
+ U[Incoming task] --> R[Intent router]
+ R -->|One capability| W[Allow-listed worker]
+ R -->|Composite task| S[Supervisor]
+ S --> P[Bounded delegation plan]
+ P --> F[Parallel independent workers]
+ F --> A[Aggregator with partial failure]
+ A --> H[Hierarchical synthesis]
+ H --> C[Evidence critic]
+ C -->|Revision budget remains| H
+ C -->|Pass or budget exhausted| O[Validated output]
+ E[Domain event] --> D[Deduplicate tenant and event ID]
+ D -->|New| X[Handler and durable state]
+ D -->|Duplicate| Z[Return prior result]

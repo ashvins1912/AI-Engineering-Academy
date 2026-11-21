@@ -677,3 +677,26 @@
 .human-reviewers>label em{font:10px 'DM Mono';font-style:normal;color:#9fb3ff}
 .human-reviewers>p{display:flex;align-items:center;gap:7px;color:#8f9fba;font-size:11px;margin:10px 0 0;overflow-wrap:anywhere}
 @media(max-width:760px){.human-approval-board{grid-template-columns:repeat(2,minmax(0,1fr))}.human-approval-controls{grid-template-columns:1fr}.human-review-head{align-items:flex-start;flex-direction:column}}
+
+/* Stage 6 Topic 6 — agent architecture pattern workbench */
+.patterns-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:15px 0}
+.patterns-metrics article{min-width:0;border:1px solid #2a3852;background:#111b2d;border-radius:11px;padding:13px}
+.patterns-metrics small,.patterns-metrics strong,.patterns-metrics span{display:block}
+.patterns-metrics small{font:10px 'DM Mono';letter-spacing:.7px;color:#8c9bb7}
+.patterns-metrics strong{font:600 20px 'Space Grotesk';color:#e8edff;margin:7px 0}
+.patterns-metrics span{font-size:11px;color:#96a6c1;line-height:1.45}
+.patterns-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;border:1px solid #293750;border-radius:12px;padding:15px;margin:14px 0}
+.patterns-controls label{display:grid;gap:8px;color:#aab8d0;font-size:12px}
+.patterns-controls label span{display:flex;justify-content:space-between;gap:8px}
+.patterns-controls strong{font:11px 'DM Mono';color:#d9dfff}
+.patterns-controls input[type=range]{width:100%;accent-color:#91a2ff}
+.patterns-failure-toggle{display:flex!important;align-items:center;gap:9px}
+.patterns-failure-toggle input{accent-color:#91a2ff}
+.patterns-event{display:grid;grid-template-columns:1fr auto;gap:8px 14px;align-items:center;border:1px solid #293750;border-radius:12px;background:#0e1728;padding:14px;margin:14px 0}
+.patterns-event>div{display:grid;gap:5px}
+.patterns-event strong{display:flex;align-items:center;gap:7px;color:#e0e7f7;font-size:12px}
+.patterns-event small,.patterns-event span{color:#8e9fba;font:10px 'DM Mono';overflow-wrap:anywhere}
+.patterns-event p{margin:0;color:#aab8d0;font-size:12px}
+.patterns-event button{grid-column:2;grid-row:1/3;border:1px solid #52658e;border-radius:8px;padding:8px 12px;background:#1c2b47;color:#e2eaff;cursor:pointer}
+.patterns-event span{grid-column:1/-1}
+@media(max-width:760px){.patterns-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.patterns-controls{grid-template-columns:1fr}.patterns-event{grid-template-columns:1fr}.patterns-event button{grid-column:1;grid-row:auto;justify-self:start}}
