@@ -243,7 +243,7 @@
           "input": "HTTP request and optional traceparent",
           "transformation": "Create or continue trace context and start a root span.",
           "output": "Trace ID and root span",
-          "visualState": "root"
+          "visualState": "root-span"
         },
         {
           "step": 2,
