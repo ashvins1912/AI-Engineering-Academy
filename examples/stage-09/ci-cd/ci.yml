@@ -1,0 +1,70 @@
+name: inference-container-ci
+on:
+  pull_request:
+    paths:
+      - "examples/stage-09/container-demo/**"
+      - "examples/stage-09/ci-cd/**"
+      - "examples/stage-09/release_pipeline.py"
+      - "examples/stage-09/test_release_pipeline.py"
+  push:
+    branches: [main]
+    paths:
+      - "examples/stage-09/container-demo/**"
+      - "examples/stage-09/ci-cd/**"
+      - "examples/stage-09/release_pipeline.py"
+      - "examples/stage-09/test_release_pipeline.py"
+permissions:
+  contents: read
+concurrency:
+  group: inference-container-ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run release policy tests
+        run: python -m unittest discover -s examples/stage-09 -p 'test_*.py' -v
+      - name: Build the exact candidate image
+        uses: docker/build-push-action@v6
+        with:
+          context: examples/stage-09/container-demo
+          load: true
+          push: false
+          tags: academy-inference:ci
+      - name: Smoke test the built image
+        run: |
+          set -euo pipefail
+          docker run -d --name academy-inference -p 8080:8080 academy-inference:ci
+          cleanup() { docker logs academy-inference || true; docker rm -f academy-inference || true; }
+          trap cleanup EXIT
+          for attempt in $(seq 1 20); do
+            if curl --fail --silent http://localhost:8080/health/ready; then break; fi
+            sleep 1
+          done
+          curl --fail --silent http://localhost:8080/health/live
+          curl --fail --silent -X POST http://localhost:8080/predict -H 'Content-Type: application/json' -d '{"features":[1,2,3]}'
+          test "$(docker inspect -f '{{.Config.User}}' academy-inference)" = "10001:10001"
+      - name: Generate SBOM for the candidate image
+        uses: anchore/sbom-action@v0
+        with:
+          image: academy-inference:ci
+          format: cyclonedx-json
+          output-file: sbom.cyclonedx.json
+      - name: Scan candidate image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: academy-inference:ci
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+      - uses: actions/upload-artifact@v4
+        with:
+          name: inference-sbom-${{ github.sha }}
+          path: sbom.cyclonedx.json
+          if-no-files-found: error

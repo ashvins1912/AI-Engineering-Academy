@@ -1,0 +1,15 @@
+flowchart TD
+ A[Pull request / commit] --> B[Unit + integration + AI eval]
+ B -->|Fail| X[Block candidate]
+ B --> C[Build one image and release bundle]
+ C --> D[SBOM + scan + signature + provenance]
+ D -->|Policy fail| X
+ D --> E[Immutable release candidate]
+ E --> F[Development gate]
+ F --> G[Staging approval + compatibility]
+ G --> H[Production approval]
+ H --> I[5% canary]
+ I --> J{SLO and quality healthy?}
+ J -->|Yes| K[Expand traffic and promote]
+ J -->|No| L[Restore previous known-good bundle]
+ L --> M[Append rollback audit event]

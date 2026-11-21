@@ -1,0 +1,36 @@
+{
+  "scenario": "AI inference image promotion with canary rollback",
+  "candidate": {
+    "releaseId": "release-2026-11-21.1",
+    "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "imageDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "sbomDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "tests": "passed",
+    "signature": "verified",
+    "provenance": "verified",
+    "criticalVulnerabilities": 0,
+    "highVulnerabilities": 0,
+    "qualityScore": 0.96,
+    "p95LatencyMs": 350,
+    "costPer1000": 0.25
+  },
+  "environments": [
+    "dev",
+    "staging",
+    "production"
+  ],
+  "approvals": {
+    "dev": "engineer",
+    "staging": "release-manager",
+    "production": "production-approver"
+  },
+  "canary": {
+    "trafficPercent": 5,
+    "errorRate": 0.001,
+    "p95LatencyMs": 250
+  },
+  "rollback": {
+    "previousGoodRelease": "release-2026-11-20.3",
+    "trigger": "error rate or latency budget breached"
+  }
+}
