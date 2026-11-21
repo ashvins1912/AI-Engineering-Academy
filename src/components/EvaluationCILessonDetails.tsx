@@ -1,5 +1,5 @@
 import {useState} from 'react'
-import {BookOpen,Bug,Code2,Lightbulb,Target,ChartNoAxesCombined} from 'lucide-react'
+import {BookOpen,Bug,Code2,Lightbulb,Target,ChartLine} from 'lucide-react'
 import lesson from '../../content/topics/eval-ci/lesson.json'
 export default function EvaluationCILessonDetails(){
  const [answers,setAnswers]=useState<Record<number,number>>({})
