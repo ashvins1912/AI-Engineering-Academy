@@ -37,9 +37,9 @@ def calculate_sli(events: list[RequestEvent], latency_target_ms: int) -> dict:
 def calculate_error_budget(total_events: int, good_events: int, slo_target: float) -> dict:
     if total_events <= 0 or not 0 <= good_events <= total_events or not 0 < slo_target <= 1:
         raise ValueError("INVALID_SLI_INPUT")
-    allowed_bad = total_events * (1 - slo_target)
+    allowed_bad = round(total_events * (1 - slo_target), 10)
     observed_bad = total_events - good_events
-    consumption = observed_bad / allowed_bad if allowed_bad else (0.0 if observed_bad == 0 else float("inf"))
+    consumption = round(observed_bad / allowed_bad, 10) if allowed_bad else (0.0 if observed_bad == 0 else float("inf"))
     return {
         "allowed_bad": allowed_bad,
         "observed_bad": observed_bad,
@@ -53,7 +53,7 @@ def calculate_burn_rate(observed_bad_ratio: float, slo_target: float) -> float:
     if not 0 <= observed_bad_ratio <= 1 or not 0 < slo_target < 1:
         raise ValueError("INVALID_BURN_RATE_INPUT")
     allowed_bad_ratio = 1 - slo_target
-    return observed_bad_ratio / allowed_bad_ratio
+    return round(observed_bad_ratio / allowed_bad_ratio, 10)
 
 
 def retry_delays(max_attempts: int, base_delay_ms: int, max_delay_ms: int, jitter_factor: float = 0.0) -> list[int]:
