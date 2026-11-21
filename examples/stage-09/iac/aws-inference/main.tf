@@ -67,30 +67,38 @@ resource "aws_security_group" "alb" {
     protocol    = "tcp"
     cidr_blocks = var.allowed_ingress_cidrs
   }
-  egress {
-    from_port       = var.container_port
-    to_port         = var.container_port
-    protocol        = "tcp"
-    security_groups = [aws_security_group.tasks.id]
-  }
+  egress = []
 }
 
 resource "aws_security_group" "tasks" {
   name        = "${var.project_name}-${var.environment}-tasks"
   description = "Inference tasks accept traffic only from the ALB"
   vpc_id      = aws_vpc.main.id
-  ingress {
-    from_port       = var.container_port
-    to_port         = var.container_port
-    protocol        = "tcp"
-    security_groups = [aws_security_group.alb.id]
-  }
+  ingress = []
   egress {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
     cidr_blocks = [var.vpc_cidr]
   }
+}
+
+resource "aws_security_group_rule" "alb_to_tasks" {
+  type                     = "egress"
+  security_group_id        = aws_security_group.alb.id
+  from_port                = var.container_port
+  to_port                  = var.container_port
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.tasks.id
+}
+
+resource "aws_security_group_rule" "tasks_from_alb" {
+  type                     = "ingress"
+  security_group_id        = aws_security_group.tasks.id
+  from_port                = var.container_port
+  to_port                  = var.container_port
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.alb.id
 }
 
 resource "aws_security_group" "endpoints" {
