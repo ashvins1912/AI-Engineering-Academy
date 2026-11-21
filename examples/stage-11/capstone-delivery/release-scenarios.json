@@ -1,0 +1,53 @@
+{
+  "currentRelease": {
+    "releaseId": "release-10",
+    "codeCommit": "1111111111111111111111111111111111111111",
+    "imageDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "modelDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "promptVersion": "prompt-4",
+    "indexVersion": "index-7",
+    "schemaVersion": "schema-3",
+    "apiContractVersion": "api-v2"
+  },
+  "candidateRelease": {
+    "releaseId": "release-11",
+    "codeCommit": "2222222222222222222222222222222222222222",
+    "promptVersion": "prompt-5",
+    "indexVersion": "index-8",
+    "schemaVersion": "schema-4",
+    "apiContractVersion": "api-v3",
+    "allEvidenceVerified": true,
+    "rollbackReleaseId": "release-10"
+  },
+  "canary": {
+    "sampleSize": 2000,
+    "errors": 20,
+    "errorRate": 0.01,
+    "p95Ms": 1700,
+    "qualityScore": 0.92,
+    "costPerSuccessfulTask": 0.018,
+    "thresholds": {
+      "maxErrorRate": 0.005,
+      "maxP95Ms": 2000,
+      "minQualityScore": 0.9,
+      "maxCostPerSuccess": 0.05
+    },
+    "expected": "ROLLBACK"
+  },
+  "migration": {
+    "phases": [
+      "expand",
+      "backfill",
+      "switch",
+      "drain",
+      "contract"
+    ],
+    "contractAllowedOnlyWhenOldInstancesDrained": true
+  },
+  "backup": {
+    "restoreTested": true,
+    "tenantIntegrityVerified": true,
+    "rpoMinutes": 10,
+    "rtoMinutes": 30
+  }
+}

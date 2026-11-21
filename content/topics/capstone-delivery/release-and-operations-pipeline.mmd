@@ -1,0 +1,13 @@
+flowchart TD
+  A[Reviewed source + contracts] --> B[CI tests / security / eval]
+  B --> C[Build image + SBOM + provenance]
+  C --> D[Sign immutable release bundle]
+  D --> E[Compatibility + migration gate]
+  E --> F[Staging smoke tests]
+  F --> G[Canary traffic]
+  G --> H{Error / quality / cost gates pass?}
+  H -->|Yes| I[Promote candidate]
+  H -->|No| J[Rollback compatible bundle]
+  I --> K[SLO dashboards + alerts]
+  J --> K
+  K --> L[Backup restore + incident drills]
