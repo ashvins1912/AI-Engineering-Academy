@@ -21,15 +21,11 @@ export default function AgentLoopVisualizer() {
 
   useEffect(() => {
     if (!playing) return
-    const timer = window.setTimeout(() => {
-      setStep(currentStep => {
-        if (currentStep >= stages.length - 1) {
-          setPlaying(false)
-          return currentStep
-        }
-        return currentStep + 1
-      })
-    }, 1800 / speed)
+    if (step >= stages.length - 1) {
+      setPlaying(false)
+      return
+    }
+    const timer = window.setTimeout(() => setStep(step + 1), 1800 / speed)
     return () => window.clearTimeout(timer)
   }, [playing, speed, step])
 
