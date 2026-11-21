@@ -331,7 +331,57 @@
     "guided": "Run the beginner implementation. Change max_steps from 4 to 1 and explain why the tool lookup occurs but the task cannot finish. Restore the budget and add a test for an unknown SKU.",
     "independent": "Add a second catalog item and a currency conversion tool. Extend the state machine so the agent can look up an item, apply a discount and convert the result, while preserving a maximum of three tool calls.",
     "realWorld": "Wrap a read-only order-status API as an allow-listed tool. Record a trace ID, validate the order identifier against the authenticated user's tenant, enforce a timeout and return a clear incomplete status when the tool is unavailable.",
-    "expertExtension": "Replace the deterministic planner with a model-backed decision provider. Keep tool execution outside the model, add per-tool authorization and idempotency, persist checkpoints, and evaluate task success, tool selection accuracy, cost and p95 latency on a fixed task set."
+    "expertExtension": "Replace the deterministic planner with a model-backed decision provider. Keep tool execution outside the model, add per-tool authorization and idempotency, persist checkpoints, and evaluate task success, tool selection accuracy, cost and p95 latency on a fixed task set.",
+    "guidedExercise": {
+      "title": "Complete a bounded agent loop",
+      "instructions": "Implement the missing tool allow-list check and stop condition. The loop must stop after max_steps and must never call an unregistered tool.",
+      "starterCode": "def run(actions, tools, max_steps=3):\n    trace = []\n    for step, action in enumerate(actions[:max_steps], start=1):\n        # TODO: reject unknown tools before calling them\n        # TODO: append the observation to trace\n        pass\n    return trace",
+      "solutionCode": "def run(actions, tools, max_steps=3):\n    if max_steps < 1:\n        raise ValueError('max_steps must be positive')\n    trace = []\n    for step, action in enumerate(actions[:max_steps], start=1):\n        name = action['name']\n        if name not in tools:\n            raise PermissionError('tool is not allow-listed')\n        observation = tools[name](**action['arguments'])\n        trace.append({'step': step, 'tool': name, 'observation': observation})\n    return trace",
+      "unitTests": "assert len(run([{'name':'add','arguments':{'a':2,'b':3}}], {'add': lambda a,b:a+b})) == 1\ntry:\n    run([{'name':'delete_all','arguments':{}}], {})\n    raise AssertionError('unknown tool should be denied')\nexcept PermissionError:\n    pass\nassert len(run([{'name':'add','arguments':{'a':1,'b':1}}] * 4, {'add': lambda a,b:a+b}, max_steps=2)) == 2"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build an order-assistance agent that checks an order, calculates an eligible refund and asks for approval before any write action.",
+      "steps": [
+        "Expose a read-only order lookup tool with tenant-scoped authorization and typed arguments.",
+        "Add a pure refund-calculation tool; record observations and enforce step, tool-call, timeout and cost budgets.",
+        "Add a separate approval-gated refund tool with an idempotency key, audit record and tests for duplicate submissions."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "The model proposes a tool named issue_refund, but the user is not authorized to refund this order. Where should the request be rejected?",
+        "options": [
+          "At the server-side tool authorization boundary before execution",
+          "In the model system prompt only",
+          "After the refund is submitted",
+          "Only in the UI after displaying success"
+        ],
+        "correctIndex": 0,
+        "explanation": "Authorization belongs in trusted application/service code and must be checked before a side effect. Prompts and UI checks are not security boundaries."
+      },
+      {
+        "question": "A tool call times out, but the remote service may have completed the refund. What is the safest retry strategy?",
+        "options": [
+          "Retry immediately with a new request ID",
+          "Use the same idempotency key and reconcile the remote result",
+          "Assume the refund failed and submit again",
+          "Remove the timeout"
+        ],
+        "correctIndex": 1,
+        "explanation": "The same idempotency key lets the service deduplicate the operation. The caller should reconcile status rather than creating a second side effect."
+      },
+      {
+        "question": "The agent reaches its step budget before it has enough evidence to answer. What should it return?",
+        "options": [
+          "A fabricated best guess",
+          "A success response with partial data",
+          "An explicit incomplete or budget-exhausted status",
+          "An unlimited retry loop"
+        ],
+        "correctIndex": 2,
+        "explanation": "The system must be honest about incomplete work. An explicit stop status protects correctness, cost and observability."
+      }
+    ]
   },
   "assessment": {
     "rubric": [
@@ -380,6 +430,24 @@
       "url": "https://openai.github.io/openai-agents-python/",
       "sourceType": "official-docs",
       "checkedOn": "2026-11-21"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "decision = await decide(messages)",
+      "explanation": "The decision provider sees the user request and the observations collected so far. In production this can call a model, but its output is only a proposal."
+    },
+    {
+      "lines": "if name not in tools: raise PermissionError(...)",
+      "explanation": "The tool registry is owned by the application. A model cannot invent a new capability or call a function just because it names it."
+    },
+    {
+      "lines": "observation = await asyncio.wait_for(tools[name](arguments), timeout=...)",
+      "explanation": "The orchestrator bounds how long it waits for the tool. A write tool must still enforce idempotency because a timeout does not prove the remote side effect did not happen."
+    },
+    {
+      "lines": "messages.append({role: 'tool', content: observation})",
+      "explanation": "The tool result becomes a new observation. The next planning step can now choose an action using updated evidence instead of repeating the same lookup."
     }
   ]
 }
