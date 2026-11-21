@@ -1,5 +1,5 @@
 import {useEffect,useState} from 'react'
-import {ArrowLeft,ArrowRight,Pause,Play,RotateCcw,Boxes,ShieldCheck,GitBranch,Database,AlertTriangle} from 'lucide-react'
+import {ArrowLeft,ArrowRight,Pause,Play,RotateCcw,Boxes,GitBranch,Database,AlertTriangle} from 'lucide-react'
 import lesson from '../../content/topics/registry/lesson.json'
 import fixture from '../../examples/stage-09/fixtures/model-prompt-registry.json'
 
