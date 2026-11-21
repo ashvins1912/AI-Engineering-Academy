@@ -106,7 +106,7 @@ class TaskRegistry:
     def __init__(self):
         self.tasks = {}
         self.counter = 0
-        self.callback_events = set()
+        self.callback_events = {}
 
     def create_task(self, tenant_id, context_id, message):
         if not tenant_id or not context_id or not message or not message.get("parts"):
@@ -158,9 +158,12 @@ class TaskRegistry:
         validate_push_callback(callback_url, allowed_hosts)
         if not event_id:
             raise ValueError("event ID is required")
-        if event_id in self.callback_events:
+        prior_task = self.callback_events.get((tenant_id, event_id))
+        if prior_task:
+            if prior_task != task_id:
+                raise ValueError("push event ID already belongs to another task")
             return {"accepted": True, "duplicate": True, "taskId": task_id}
-        self.callback_events.add(event_id)
+        self.callback_events[(tenant_id, event_id)] = task_id
         task.events.append({"sequence": len(task.events) + 1, "type": "push", "eventId": event_id, "payload": dict(payload)})
         return {"accepted": True, "duplicate": False, "taskId": task_id}
 
