@@ -322,12 +322,36 @@
     "problem": "Two tenants each own a document with external ID invoice-7. A tenant-A request asks for invoice-7 while a forged job claims tenant B. Show why every layer must scope the same logical resource.",
     "input": "Tenant A: invoice-7 → “Quarterly plan”. Tenant B: invoice-7 → “Acquisition plan”. User user-17 is a member of A only. Cache starts empty.",
     "steps": [
-      "Authentication verifies user-17 and membership lookup returns tenant A. The client-supplied tenant B value is not accepted.",
-      "The database transaction sets app.tenant_id to tenant A using a transaction-local setting. RLS and the repository predicate both restrict invoice-7 to tenant A.",
-      "Vector retrieval includes tenant=A inside the search filter. Tenant B chunks are not candidates even if they have a higher similarity score.",
-      "The cache key is tenant:A:invoice-7, so tenant B's entry cannot overwrite or satisfy this lookup.",
-      "The object adapter resolves invoice-7 from tenant A metadata and generates a tenant-A object reference; it does not concatenate an untrusted path.",
-      "A worker receives a job with tenant B but actor user-17. Membership and resource checks fail, so the worker performs no read or write."
+      {
+        "operation": "Resolve the tenant",
+        "reasoning": "Verify user-17 and check membership in the server-side membership store; the forged tenant B field is not authority.",
+        "result": "The request is bound to tenant A."
+      },
+      {
+        "operation": "Read through PostgreSQL",
+        "reasoning": "Set app.tenant_id transaction-locally and combine RLS with the repository tenant predicate.",
+        "result": "Only tenant A's invoice-7 row is visible."
+      },
+      {
+        "operation": "Search the vector index",
+        "reasoning": "Pass tenant=A as an index-side filter before similarity ranking and top-k selection.",
+        "result": "Tenant B chunks are excluded from candidate ranking."
+      },
+      {
+        "operation": "Read from cache",
+        "reasoning": "Build a canonical key containing tenant A and the resource ID.",
+        "result": "tenant:A:invoice-7 cannot collide with tenant:B:invoice-7."
+      },
+      {
+        "operation": "Resolve the object",
+        "reasoning": "Load tenant-scoped metadata and generate a server-owned object reference rather than trusting a client path.",
+        "result": "Only tenant A's object can be signed or downloaded."
+      },
+      {
+        "operation": "Process the queued job",
+        "reasoning": "Worker verifies user-A membership and confirms the resource belongs to the serialized tenant before executing.",
+        "result": "The forged tenant B job is denied with TENANT_CONTEXT_MISMATCH before side effects."
+      }
     ],
     "expectedOutput": "The user receives “Quarterly plan”. Tenant B's “Acquisition plan” is never returned, cached, cited, downloaded or processed by the forged job. The job is denied with TENANT_CONTEXT_MISMATCH and the transaction context is reset."
   },
@@ -349,7 +373,7 @@
       "expectedResult": "Reference SQL demonstrates transaction-local tenant context, FORCE ROW LEVEL SECURITY, restrictive grants and tenant-aware read/write policies; it is not automatically applied to shared infrastructure."
     },
     {
-      "language": "text",
+      "language": "other",
       "role": "production",
       "path": "examples/stage-10/tenant-security/README.md",
       "runCommand": "python -m unittest discover -s examples/stage-10 -p 'test_*.py' -v",
