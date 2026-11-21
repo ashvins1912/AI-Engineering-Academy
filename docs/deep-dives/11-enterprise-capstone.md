@@ -47,6 +47,17 @@ Operate with user-centered SLO dashboards, traces, redacted logs, actionable ale
 - Rollback restores a known-good release and compatible artifacts.
 - Cost and latency remain inside documented budgets under a representative load test.
 
+## Integrated acceptance command
+
+Run the local cross-topic capstone acceptance and all Stage 11 tests:
+
+```bash
+python examples/stage-11/capstone_acceptance.py
+python -m unittest discover -s examples/stage-11 -p 'test_*.py' -v
+```
+
+The acceptance report composes architecture validation, the tenant-scoped RAG/tool vertical slice and release/rollback/recovery gates. It uses synthetic fixtures only and does not provision infrastructure or call external model/tool providers.
+
 ## Final review rubric
 Score each area 0–4: correctness, architecture, security, reliability, evaluation, observability, cost, documentation and operability. A zero in tenant isolation, authorization or data handling is an automatic failure regardless of aggregate score.
 
