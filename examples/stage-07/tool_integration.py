@@ -138,10 +138,6 @@ class ToolGateway:
             raise AuthorizationError("tenant scope mismatch")
         if spec.side_effect and not spec.idempotent and not idempotency_key:
             raise IdempotencyConflict("non-idempotent write requires an idempotency key")
-        bucket = self.buckets.setdefault(auth.tenant_id, TokenBucket(10,2,self.clock))
-        bucket.consume()
-        if self.in_flight >= self.max_in_flight:
-            raise RateLimitError("bulkhead is full")
         key = (auth.tenant_id, name, idempotency_key) if idempotency_key else None
         payload_hash = fingerprint(args)
         if key:
@@ -153,9 +149,14 @@ class ToolGateway:
                     self.trace.append({"event":"idempotency_replay","tool":name,"tenant":auth.tenant_id})
                     return prior["result"]
                 raise OperationPending("operation is pending reconciliation")
-            self.operations[key] = {"payload_hash":payload_hash,"status":"pending","result":None}
+        bucket = self.buckets.setdefault(auth.tenant_id, TokenBucket(10,2,self.clock))
+        bucket.consume()
+        if self.in_flight >= self.max_in_flight:
+            raise RateLimitError("bulkhead is full")
         breaker = self.breakers.setdefault(name, CircuitBreaker(clock=self.clock))
         breaker.allow()
+        if key:
+            self.operations[key] = {"payload_hash":payload_hash,"status":"pending","result":None}
         self.in_flight += 1
         try:
             result = retry_call(
