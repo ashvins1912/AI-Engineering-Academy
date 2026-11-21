@@ -4,6 +4,12 @@ The planner is deterministic on purpose: it makes control flow visible without
 requiring an LLM API key. A production planner can replace choose_action().
 """
 from dataclasses import dataclass
+import json
+from pathlib import Path
+
+
+FIXTURE_PATH = Path(__file__).parent / 'fixtures' / 'agent-loop.json'
+FIXTURE = json.loads(FIXTURE_PATH.read_text(encoding='utf-8'))
 
 
 @dataclass
@@ -14,7 +20,7 @@ class Step:
 
 
 def catalog_search(sku: str) -> dict:
-    catalog = {"MUG-1": {"sku": "MUG-1", "unit_price": 80.0}}
+    catalog = {FIXTURE["sku"]: {"sku": FIXTURE["sku"], "unit_price": float(FIXTURE["unitPrice"])}}
     if sku not in catalog:
         raise LookupError("SKU not found")
     return catalog[sku]
@@ -26,7 +32,7 @@ def apply_discount(amount: float, rate: float) -> dict:
     return {"final_price": round(amount * (1 - rate), 2)}
 
 
-def run_agent(sku: str, discount_rate: float = 0.1, max_steps: int = 4) -> dict:
+def run_agent(sku: str = FIXTURE["sku"], discount_rate: float = FIXTURE["discountRate"], max_steps: int = FIXTURE["maxSteps"]) -> dict:
     if max_steps < 1:
         raise ValueError("max_steps must be positive")
     state = {"sku": sku, "product": None, "discount": None}
