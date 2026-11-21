@@ -1,0 +1,533 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "state",
+    "title": "State, checkpoints and durable execution",
+    "stage": 6,
+    "estimatedMinutes": 180
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Model an agent workflow as an explicit state machine with typed states, transitions and invariants.",
+      "Persist checkpoints and event history so interrupted work can resume without inventing completed results.",
+      "Design idempotent side effects, retry policies, leases and reconciliation for at-least-once execution.",
+      "Handle human approval interrupts and safe recovery across process restarts.",
+      "Test crash windows, duplicate delivery, stale workers, partial commits and state-version conflicts."
+    ],
+    "prerequisites": [
+      "Stage 6 Topic 1: bounded agent loop and tool execution",
+      "Stage 6 Topic 2: dependency graphs and replanning",
+      "Stage 6 Topic 3: memory provenance and lifecycle",
+      "Python functions, exceptions, dictionaries and basic SQL transactions"
+    ],
+    "glossary": [
+      {
+        "term": "Workflow state",
+        "definition": "The authoritative snapshot describing what an execution has completed, what is pending and what is allowed next."
+      },
+      {
+        "term": "Checkpoint",
+        "definition": "A durable, versioned snapshot of workflow state saved at a safe boundary."
+      },
+      {
+        "term": "Event log",
+        "definition": "An append-only sequence of facts about state transitions and external outcomes."
+      },
+      {
+        "term": "Idempotency key",
+        "definition": "A stable key that makes repeated requests for the same logical side effect return the original result instead of performing it again."
+      },
+      {
+        "term": "Lease",
+        "definition": "A time-bounded claim that gives one worker temporary permission to process a workflow or task."
+      },
+      {
+        "term": "Fencing token",
+        "definition": "A monotonically increasing ownership number used to reject writes from an expired or stale worker."
+      },
+      {
+        "term": "Compensation",
+        "definition": "A deliberate business action that counteracts a completed step when a later step makes the overall operation fail."
+      },
+      {
+        "term": "Reconciliation",
+        "definition": "A read-after-uncertain-outcome process that discovers whether an external side effect actually happened."
+      },
+      {
+        "term": "Human interrupt",
+        "definition": "A persisted pause that waits for an authorized person or external event before a guarded transition can continue."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "A process can crash after a payment provider accepts a charge but before the agent records success. On restart, blindly replaying the step can charge twice; assuming it succeeded can lose the order. Durable execution makes state, checkpoints, side-effect identity and recovery explicit.",
+    "plainLanguage": "An agent workflow is not just a Python while-loop. It is a state machine: a finite set of named states and guarded transitions. An order workflow might move through CREATED, VALIDATED, PAYMENT_PENDING, PAUSED_FOR_APPROVAL, PAID, SHIPMENT_BOOKED and COMPLETED. A failed or cancelled path is explicit too. A transition is legal only when its preconditions hold.\n\nA checkpoint stores the current workflow state, completed step results, pending work, version and timestamp. Save it after a safe boundary—especially after recording an external outcome. On restart, load the latest checkpoint and continue from known state rather than replaying the whole conversation or trusting model memory. An append-only event log records what happened; a checkpoint is a compact snapshot that speeds recovery. The event log is useful for audit and reconstruction, but it does not magically make external services transactional.\n\nThe hardest failure is the uncertain side-effect window. The worker sends a payment request; the provider charges the card; the network drops before the response reaches the worker. A retry with a stable idempotency key should return the original charge result. If the provider does not support idempotency, first reconcile by querying the provider using a durable merchant reference. Never generate a fresh key for a retry of the same logical operation.\n\nWorkers can overlap after pauses, slow calls or lease expiry. A lease limits ownership time; a fencing token increases each time ownership changes. Every state write checks the token/version so a stale worker cannot overwrite newer progress. Use optimistic concurrency (`expected_version`) to reject conflicting checkpoint updates. A lease alone is not enough if a paused worker wakes up after its lease expires.\n\nRetries are for transient failures, not every error. Use bounded attempts, exponential backoff with jitter, deadlines and a dead-letter or operator-review path. Validation errors and authorization denials should fail closed, not retry forever. A timeout means the result is unknown, not necessarily that the remote operation was cancelled. Reconcile before retrying a non-idempotent operation.\n\nHuman approval is also durable state. Persist the exact action awaiting approval, who may approve it, its expiry and the state version. On approval, verify the approver and re-check the underlying facts and permissions before executing. A model-generated message saying approved is not authorization. Rejection, timeout and cancellation are separate transitions.\n\nFor multi-service workflows, a database transaction cannot cover a remote payment, shipping API and email provider together. Use a saga: persist each step, make each side effect idempotent, and define compensations where business rules allow. Compensation is not rollback; a refund is a new action with its own failure modes. Keep a reconciliation queue for uncertain or incomplete operations.",
+    "mentalModel": "Command → validate transition → claim with lease/fencing token → execute idempotent side effect → record outcome/event → checkpoint version → continue, pause, compensate or reconcile.",
+    "limitations": [
+      "A checkpoint cannot atomically commit a remote provider side effect; idempotency and reconciliation are still required.",
+      "Exactly-once execution across independent services is not generally guaranteed. Aim for at-least-once delivery with idempotent effects and durable deduplication.",
+      "Event sourcing increases storage, schema-evolution and replay complexity; do not adopt it without an audit/reconstruction need.",
+      "Leases without fencing allow stale workers to write after expiry.",
+      "Compensation may be impossible or imperfect (for example, an email cannot be unsent)."
+    ],
+    "everydayAnalogy": "A long train journey has a ticket, a stamped travel log and station checkpoints. If you change trains, the next conductor checks the last confirmed station instead of assuming the whole trip restarted. A payment receipt is like a provider-issued stamp: if the message carrying it gets lost, you look up the same booking reference rather than buying the ticket again.",
+    "mathMadeSimple": "Suppose a task retries with exponential backoff: delay_n = min(cap, base × 2^n) + jitter. With base=2 seconds, cap=20 seconds and jitter values 0.2, 0.5, 0.1, the first delays are 2.2s, 4.5s and 8.1s. If the deadline is 15 seconds, do not start a fourth attempt whose delay plus expected execution time exceeds the deadline. Checkpoint versions also behave like compare-and-swap: update only when stored_version equals expected_version; otherwise reload and reconcile.",
+    "productionImpact": "Durable agents need a database-backed state store, append-only transition events, checkpoint versioning, stable idempotency keys, unique constraints, leases plus fencing tokens, bounded retries, deadlines, reconciliation, human approval records, audit trails and recovery drills. Monitor workflow age, stuck states, retry counts, duplicate suppression, lease steals and compensation failures."
+  },
+  "useCase": {
+    "scenario": "An ecommerce order workflow validates an order, authorizes payment, pauses for approval above a threshold, books shipping and notifies the customer. A worker crashes after the payment provider succeeds but before it records the response. Recovery resumes from the persisted payment intent and the same idempotency key, then reconciles provider status instead of charging again.",
+    "actors": [
+      "Workflow API",
+      "Durable state store",
+      "Worker with lease and fencing token",
+      "Payment provider",
+      "Human approver",
+      "Shipping adapter",
+      "Reconciliation worker"
+    ],
+    "inputs": [
+      "Authenticated tenant and order ID",
+      "Versioned workflow state and event history",
+      "Stable operation idempotency key",
+      "Lease duration, retry budget and deadline",
+      "Approval policy and provider status"
+    ],
+    "constraints": [
+      "Every transition is validated against current state and expected version.",
+      "Every side effect has a stable idempotency key or a reconciliation strategy.",
+      "A stale worker cannot write after losing its fencing token.",
+      "Approval must come from an authorized human and be bound to the exact pending action.",
+      "Retries are bounded and transient-only."
+    ],
+    "outputs": [
+      "Durable checkpoint and append-only transition events",
+      "Exactly identified external operations with provider references",
+      "Paused/approved/rejected workflow state",
+      "Recovery decision and audit trail"
+    ],
+    "successMetric": "A crash after provider success does not create a second charge; restart converges to one paid order and the next safe workflow step."
+  },
+  "architecture": {
+    "diagram": "examples/stage-06/visual/durable-state.mmd",
+    "components": [
+      "Workflow command API",
+      "Transition validator and policy gate",
+      "Lease manager and fencing counter",
+      "Worker and idempotent tool adapters",
+      "Checkpoint repository with optimistic versioning",
+      "Append-only event log",
+      "Human approval inbox",
+      "Retry scheduler and reconciliation worker"
+    ],
+    "dataFlow": [
+      {
+        "from": "Workflow command",
+        "to": "Transition validator",
+        "payload": "workflow ID, command, actor, expected version",
+        "purpose": "Reject illegal or unauthorized state transitions"
+      },
+      {
+        "from": "Transition validator",
+        "to": "Lease manager",
+        "payload": "validated task and ownership request",
+        "purpose": "Claim work with expiry and monotonically increasing fencing token"
+      },
+      {
+        "from": "Lease manager",
+        "to": "Worker",
+        "payload": "task, lease and fencing token",
+        "purpose": "Execute only while current ownership remains valid"
+      },
+      {
+        "from": "Worker",
+        "to": "External tool adapter",
+        "payload": "stable idempotency key and validated request",
+        "purpose": "Perform bounded external side effect"
+      },
+      {
+        "from": "External tool adapter",
+        "to": "Event log and checkpoint",
+        "payload": "provider reference and outcome",
+        "purpose": "Persist observed result and advance version"
+      },
+      {
+        "from": "Approval inbox",
+        "to": "Transition validator",
+        "payload": "human decision bound to pending action and version",
+        "purpose": "Resume only after fresh authorization and state validation"
+      },
+      {
+        "from": "Reconciliation worker",
+        "to": "External provider",
+        "payload": "merchant reference or idempotency key",
+        "purpose": "Resolve uncertain outcomes before retry or compensation"
+      }
+    ],
+    "trustBoundaries": [
+      "Tenant and actor identity come from authenticated server context, not model output.",
+      "Tool results and retrieved state are data; only the transition validator can authorize a state change.",
+      "A stale worker's fencing token is rejected at the persistence boundary.",
+      "Approval links are scoped, expiring and single-use; approval is re-authorized when consumed."
+    ],
+    "failurePaths": [
+      "Crash before side effect: lease expires and another worker resumes from prior checkpoint.",
+      "Crash after side effect before checkpoint: retry with same idempotency key or reconcile provider reference.",
+      "Stale worker resumes after lease steal: fencing token rejects checkpoint write.",
+      "Optimistic version conflict: reload latest state and recompute transition; do not overwrite.",
+      "Approval expires or approver lacks permission: remain paused and emit an audit event."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-06/fixtures/durable-state.json",
+    "steps": [
+      {
+        "label": "Create durable workflow",
+        "explanation": "Create a workflow with version zero, an explicit state and a stable order operation ID.",
+        "expectedState": "CREATED checkpoint and workflow event are persisted."
+      },
+      {
+        "label": "Claim work safely",
+        "explanation": "Worker A receives lease and fencing token 7; only the current owner can advance state.",
+        "expectedState": "PAYMENT_PENDING is claimed under token 7."
+      },
+      {
+        "label": "Simulate uncertain payment",
+        "explanation": "Provider accepts the charge, but the worker crashes before recording the response.",
+        "expectedState": "External operation may have succeeded; checkpoint remains at prior known version."
+      },
+      {
+        "label": "Recover idempotently",
+        "explanation": "Worker B takes token 8 and retries with the same payment idempotency key; provider returns the original charge.",
+        "expectedState": "One provider charge reference is recorded; no duplicate charge."
+      },
+      {
+        "label": "Pause for approval and resume",
+        "explanation": "Persist an approval interrupt, validate the human decision and current state version, then continue.",
+        "expectedState": "Approved transition moves to SHIPMENT_BOOKED and then COMPLETED."
+      }
+    ],
+    "accessibility": [
+      "Every stage lists state name, version, worker owner, fencing token, idempotency key and provider outcome in text.",
+      "Crash and recovery are represented by labels as well as motion; color is not the only status indicator.",
+      "Playback, pause, reset and step controls are keyboard accessible."
+    ],
+    "animation": {
+      "objective": "Trace a crash between external side-effect success and checkpoint persistence, then demonstrate recovery with the same idempotency key and a higher fencing token.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Persist initial state",
+          "narration": "The workflow starts with an explicit state and a stable operation ID. The checkpoint and event are committed before a worker acts.",
+          "input": "order=ORD-1042; state=CREATED; version=0",
+          "transformation": "Validate initial command and persist state plus event",
+          "output": "checkpoint v0 · CREATED",
+          "visualState": "A durable checkpoint appears in the state store"
+        },
+        {
+          "step": 2,
+          "title": "Claim with a lease",
+          "narration": "Worker A claims the payment step and receives fencing token 7. Every later write must prove this token is still current.",
+          "input": "worker=A; lease=30s; fence=7",
+          "transformation": "Atomically increment ownership token and record lease expiry",
+          "output": "PAYMENT_PENDING · owner A · fence 7",
+          "visualState": "Worker A owns the task while its lease is valid"
+        },
+        {
+          "step": 3,
+          "title": "Crash after provider success",
+          "narration": "The payment provider accepts the charge, but the worker crashes before saving the response. The local state is uncertain, not failed.",
+          "input": "idempotency_key=pay:ORD-1042:v1; provider=CHARGED",
+          "transformation": "Simulate process crash before checkpoint update",
+          "output": "provider may have charged once; local checkpoint still PAYMENT_PENDING",
+          "visualState": "A crash marker appears between provider and checkpoint"
+        },
+        {
+          "step": 4,
+          "title": "Recover with deduplication",
+          "narration": "Worker B receives fencing token 8 and repeats the same logical operation with the same key. The provider returns the original charge result.",
+          "input": "worker=B; fence=8; same idempotency key",
+          "transformation": "Provider deduplicates request; checkpoint compare-and-swap accepts only current fence/version",
+          "output": "one charge reference · PAYMENT_CONFIRMED · version=2",
+          "visualState": "Duplicate request maps to one provider operation and new checkpoint"
+        },
+        {
+          "step": 5,
+          "title": "Human interrupt and completion",
+          "narration": "The workflow persists a pause for approval, verifies the approver and pending action, then resumes from the checkpoint.",
+          "input": "approval=approved; actor=finance-reviewer; pending_action=book_shipment",
+          "transformation": "Re-check authorization, expiry and expected state version before transition",
+          "output": "SHIPMENT_BOOKED → COMPLETED",
+          "visualState": "Approval gate opens and workflow reaches completed state"
+        }
+      ],
+      "controls": [
+        {
+          "name": "worker_crash",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "Toggle whether the worker crashes after provider success but before checkpoint persistence."
+        },
+        {
+          "name": "retry_count",
+          "min": 0,
+          "max": 4,
+          "defaultValue": 1,
+          "effect": "Change retry count while the idempotency key remains stable."
+        },
+        {
+          "name": "lease_owner",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 0,
+          "effect": "Switch owner from worker A to worker B and observe fencing token increment."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "The text trace exposes every state, version, worker, token, provider outcome and idempotency key. A crash is shown as an uncertain external result, not as proof that the payment failed."
+    }
+  },
+  "workedExample": {
+    "problem": "Recover an order after a worker crashes after payment succeeds but before the workflow checkpoint is updated.",
+    "input": "Order ORD-1042; payment key pay:ORD-1042:v1; checkpoint PAYMENT_PENDING v1; worker A fence 7; provider accepted charge but response was lost.",
+    "steps": [
+      {
+        "operation": "Classify the failure window",
+        "reasoning": "The remote side effect may have succeeded. A timeout or crash does not prove failure.",
+        "result": "Mark payment outcome UNKNOWN; do not create a new payment key."
+      },
+      {
+        "operation": "Acquire new ownership",
+        "reasoning": "Worker A's lease expires. Worker B claims the workflow and receives fence 8.",
+        "result": "Only fence 8 may write the next checkpoint."
+      },
+      {
+        "operation": "Retry or reconcile",
+        "reasoning": "Use the same idempotency key, or query the provider by merchant reference if retry is unsupported.",
+        "result": "Provider returns the original charge reference; one charge exists."
+      },
+      {
+        "operation": "Commit observed result",
+        "reasoning": "Append PAYMENT_CONFIRMED event and update checkpoint with expected version and current fence.",
+        "result": "Checkpoint advances to PAYMENT_CONFIRMED v2."
+      },
+      {
+        "operation": "Resume guarded workflow",
+        "reasoning": "Continue only after checking approval policy, actor identity and the latest workflow version.",
+        "result": "Approval pause is persisted, then accepted and shipment can be booked."
+      }
+    ],
+    "expectedOutput": "The workflow converges to one payment operation, records the provider reference and resumes from a versioned checkpoint. It never assumes the remote side effect failed merely because the worker crashed."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-06/state.py",
+      "runCommand": "python examples/stage-06/state.py",
+      "testsPath": "examples/stage-06/test_state.py",
+      "expectedResult": "A deterministic state machine demonstrates legal transitions, event history, checkpoint versioning, crash recovery and stable idempotency keys."
+    },
+    {
+      "language": "python",
+      "role": "production",
+      "path": "examples/stage-06/state_production.py",
+      "runCommand": "python -m unittest discover -s examples/stage-06 -p 'test_state_production.py' -v",
+      "testsPath": "examples/stage-06/test_state_production.py",
+      "expectedResult": "SQLite-backed durable workflow store persists snapshots/events and enforces optimistic versions, leases, fencing, idempotent operations and approval decisions."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Duplicate payment after timeout",
+      "symptom": "Customer is charged twice after a worker retries.",
+      "rootCause": "Retry generated a new idempotency key or did not reconcile provider outcome.",
+      "recovery": "Persist one stable key per logical operation and query provider status before retrying when necessary.",
+      "regressionTest": "Simulate provider success plus lost response; retry and assert one provider operation and one charge reference."
+    },
+    {
+      "name": "Stale worker overwrites newer state",
+      "symptom": "A paused worker writes old progress after another worker has resumed the workflow.",
+      "rootCause": "Lease expiry was not paired with fencing-token validation and checkpoint version checks.",
+      "recovery": "Increment fencing token on ownership change and reject writes from stale tokens or versions.",
+      "regressionTest": "Claim with worker A, steal lease with B, then assert A's checkpoint update is rejected."
+    },
+    {
+      "name": "Unbounded retry storm",
+      "symptom": "A transient provider outage creates thousands of requests and consumes the entire budget.",
+      "rootCause": "No attempt cap, deadline, backoff or jitter.",
+      "recovery": "Use transient-only retry classification, exponential backoff with jitter, max attempts and a workflow deadline.",
+      "regressionTest": "Inject repeated transient failures and assert no more than configured attempts occur."
+    },
+    {
+      "name": "Approval spoofing or replay",
+      "symptom": "A model-generated approval or reused link releases a sensitive action.",
+      "rootCause": "Approval was not bound to an authenticated actor, exact pending action, expiry and state version.",
+      "recovery": "Persist a single-use approval record; authenticate and authorize approver and revalidate state at consumption.",
+      "regressionTest": "Reject wrong actor, expired approval, replay and approval for a changed action."
+    },
+    {
+      "name": "Checkpoint/event inconsistency",
+      "symptom": "The snapshot claims a step completed but the event history does not, or vice versa.",
+      "rootCause": "Checkpoint and transition event were written in separate transactions.",
+      "recovery": "Commit event append and checkpoint update in one database transaction with a unique transition ID.",
+      "regressionTest": "Inject failure during transition and assert both event and snapshot commit or neither does."
+    }
+  ],
+  "practice": {
+    "guided": "Draw the order workflow as states and legal transitions. Mark the exact crash window between provider success and checkpoint write. Decide what is known, unknown and safe to retry.",
+    "independent": "Implement a versioned checkpoint store with event append, optimistic concurrency, stable idempotency keys and lease/fencing checks. Add a crash-recovery test.",
+    "realWorld": "Build a durable order agent that can pause for human approval, resume after restart, reconcile payment status and continue shipping without duplicating side effects.",
+    "expertExtension": "Compare transactional outbox, inbox deduplication, saga orchestration, event sourcing and durable workflow engines such as Temporal. Explain when a database-backed custom state machine becomes too expensive to maintain.",
+    "guidedExercise": {
+      "title": "Implement guarded state transitions",
+      "instructions": "Implement a transition function that checks current state and expected version, appends an event, advances the checkpoint and refuses stale writes.",
+      "starterCode": "def transition(snapshot, command, expected_version):\n    # TODO: validate the transition is legal\n    # TODO: compare expected version\n    # TODO: append event and return next snapshot\n    raise NotImplementedError",
+      "solutionCode": "ALLOWED = {'CREATED': {'VALIDATED'}, 'VALIDATED': {'PAYMENT_PENDING'}, 'PAYMENT_PENDING': {'PAYMENT_CONFIRMED'}, 'PAYMENT_CONFIRMED': {'COMPLETED'}}\ndef transition(snapshot, target, expected_version):\n    if snapshot['version'] != expected_version:\n        raise RuntimeError('version conflict')\n    if target not in ALLOWED.get(snapshot['state'], set()):\n        raise ValueError('illegal transition')\n    return {**snapshot, 'state': target, 'version': expected_version + 1}",
+      "unitTests": "assert transition({'state':'CREATED','version':0}, 'VALIDATED', 0)['version'] == 1\n# A stale expected version must fail.\n# PAYMENT_PENDING -> COMPLETED must fail because it skips payment confirmation."
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build a workflow inspector that displays state, version, event history, current lease owner, fencing token, idempotency key, retries and approval status.",
+      "steps": [
+        "Create an order workflow and render its state machine.",
+        "Add a transition command and reject illegal edges.",
+        "Persist a checkpoint and append event atomically.",
+        "Simulate provider success followed by worker crash before local persistence.",
+        "Restart under a new lease and retry with the same idempotency key.",
+        "Reject writes from stale fencing tokens and stale expected versions.",
+        "Pause for approval; test wrong actor, expiry and replay.",
+        "Add a reconciliation queue and a bounded retry/deadline policy."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "A payment request times out after the provider may have charged the card. What is the safest next step?",
+        "options": [
+          "Generate a new idempotency key and retry",
+          "Assume payment failed",
+          "Retry with the same stable key or reconcile by merchant reference",
+          "Mark the workflow completed"
+        ],
+        "correctIndex": 2,
+        "explanation": "The external outcome is uncertain. Preserve operation identity and reconcile before creating another logical side effect."
+      },
+      {
+        "question": "Worker A's lease expires and worker B takes over. What prevents A from overwriting B's state later?",
+        "options": [
+          "A longer timeout",
+          "A fencing token checked on every write",
+          "A UI warning",
+          "A model instruction"
+        ],
+        "correctIndex": 1,
+        "explanation": "Fencing tokens make ownership monotonic and allow the persistence boundary to reject stale workers."
+      },
+      {
+        "question": "What should be committed atomically when a workflow transition succeeds?",
+        "options": [
+          "Only the in-memory state",
+          "The checkpoint update and transition event",
+          "Only the external provider call",
+          "A chat transcript"
+        ],
+        "correctIndex": 1,
+        "explanation": "The event and snapshot must agree. External services still require idempotency/reconciliation because they are outside the database transaction."
+      },
+      {
+        "question": "A model response says that a finance manager approved a payment. Is that sufficient?",
+        "options": [
+          "Yes, the model has context",
+          "Yes, if the confidence is high",
+          "No; verify an authenticated approver and bind approval to the pending action/version",
+          "Only if the prompt includes the manager's name"
+        ],
+        "correctIndex": 2,
+        "explanation": "Approval is a security decision, not model-generated text. Authenticate, authorize, expire and consume it exactly once."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "State machine and transition invariants",
+        "weight": 20,
+        "evidence": "Legal transition graph and invalid-transition tests"
+      },
+      {
+        "criterion": "Checkpoint and event durability",
+        "weight": 20,
+        "evidence": "Restart restores a consistent snapshot and event history"
+      },
+      {
+        "criterion": "Idempotency and uncertain side effects",
+        "weight": 25,
+        "evidence": "Crash-after-success test proves one external operation"
+      },
+      {
+        "criterion": "Leases, fencing and concurrency",
+        "weight": 15,
+        "evidence": "Stale worker and version-conflict tests"
+      },
+      {
+        "criterion": "Approval, retries and reconciliation",
+        "weight": 20,
+        "evidence": "Approval replay denied and retries bounded"
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Passing from-scratch and SQLite-backed tests",
+      "Crash-after-provider-success recovery test",
+      "Stale fencing token and optimistic version conflict rejected",
+      "Approval replay and unauthorized actor rejected",
+      "Written recovery runbook for uncertain outcomes"
+    ]
+  },
+  "references": [
+    {
+      "title": "Temporal documentation: Durable Execution",
+      "url": "https://docs.temporal.io/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "AWS Prescriptive Guidance: Saga pattern",
+      "url": "https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/saga.html",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "Transactional outbox pattern",
+      "url": "https://microservices.io/patterns/data/transactional-outbox.html",
+      "sourceType": "technical-reference",
+      "checkedOn": "2026-11-21"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "if snapshot['version'] != expected_version: raise RuntimeError('version conflict')",
+      "explanation": "Optimistic concurrency prevents a stale command from overwriting a newer workflow state."
+    },
+    {
+      "lines": "idempotency_key = f'pay:{order_id}:v1'",
+      "explanation": "The key identifies one logical payment attempt. Every retry of that operation must reuse it."
+    },
+    {
+      "lines": "UPDATE checkpoints SET ... WHERE workflow_id=? AND version=? AND fence=?",
+      "explanation": "The write succeeds only for the expected checkpoint version and current worker fencing token."
+    },
+    {
+      "lines": "BEGIN; INSERT INTO events ...; UPDATE checkpoints ...; COMMIT",
+      "explanation": "The event and snapshot are one local transaction so recovery never sees half a transition."
+    }
+  ]
+}
