@@ -922,3 +922,33 @@
 .mcp-advanced-deprecation input{accent-color:#d9b66f}
 .mcp-advanced-deprecation ul{margin:0;padding-left:18px;color:#d2c4a6;font-size:10px;line-height:1.7}
 @media(max-width:760px){.mcp-advanced-panels{grid-template-columns:1fr}}
+
+/* Stage 7 Topic 6 — A2A interoperability workbench */
+.a2a-identity-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+.a2a-identity-grid article{display:grid;gap:6px;min-width:0;border:1px solid #293750;border-radius:11px;background:#101a2b;padding:12px}
+.a2a-identity-grid small{font:9px 'DM Mono';color:#8e9fba;letter-spacing:.7px}
+.a2a-identity-grid strong{font-size:13px;color:#e0e7f7}
+.a2a-identity-grid code{font:10px 'DM Mono';color:#aab8d0;overflow-wrap:anywhere}
+.a2a-identity-grid span{font-size:10px;color:#94a7c5}
+.a2a-state-board{border:1px solid #293750;border-radius:12px;background:#0e1728;padding:13px;margin:14px 0}
+.a2a-board-title{display:flex;justify-content:space-between;align-items:center;gap:8px;border-bottom:1px solid #27344c;padding-bottom:9px;margin-bottom:5px}
+.a2a-board-title strong{display:flex;align-items:center;gap:7px;color:#e0e7f7;font-size:12px}
+.a2a-board-title span{font:10px 'DM Mono';color:#899bb8}
+.a2a-state-board>div:not(.a2a-board-title){display:flex;justify-content:space-between;gap:12px;padding:7px 2px;border-bottom:1px solid #202c41}
+.a2a-state-board code{font:11px 'DM Mono';color:#9aaac5}
+.a2a-state-board b{font:11px 'DM Mono';color:#dbe4ff;text-align:right;overflow-wrap:anywhere}
+.a2a-event-log{display:grid;gap:7px;border:1px solid #293750;border-radius:12px;background:#101a2b;padding:13px;margin:14px 0}
+.a2a-event-log>strong{font-size:12px;color:#e0e7f7;margin-bottom:3px}
+.a2a-event-log>div{display:grid;grid-template-columns:38px 1fr auto;gap:8px;align-items:center;padding:8px;border-radius:7px;background:#0e1728;color:#8192ae}
+.a2a-event-log>div.active{background:#1b2a45;color:#dbe5ff}
+.a2a-event-log small,.a2a-event-log code{font:10px 'DM Mono'}
+.a2a-event-log span{font-size:11px}
+.a2a-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;border:1px solid #293750;border-radius:12px;padding:13px;margin:14px 0}
+.a2a-controls label{display:flex;justify-content:space-between;align-items:center;gap:10px;color:#aab8d0;font-size:11px}
+.a2a-controls label b{font:10px 'DM Mono';color:#dce5ff}
+.a2a-controls input{accent-color:#91a2ff}
+.a2a-artifact{display:grid;gap:7px;border:1px solid #293750;border-radius:12px;background:#0e1728;padding:13px;margin:14px 0}
+.a2a-artifact>div{display:flex;align-items:center;gap:8px;color:#dce5ff;font-size:12px}
+.a2a-artifact p{margin:0;color:#aab8d0;font-size:12px}
+.a2a-artifact small{font-size:10px;color:#899bb8}
+@media(max-width:760px){.a2a-identity-grid,.a2a-controls{grid-template-columns:1fr}.a2a-board-title{align-items:flex-start;flex-direction:column}.a2a-event-log>div{grid-template-columns:30px 1fr;}.a2a-event-log code{grid-column:2}}
