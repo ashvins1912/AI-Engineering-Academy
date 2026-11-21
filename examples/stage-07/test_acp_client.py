@@ -1,11 +1,25 @@
 import unittest
-from acp_client import ACPConnection
+from acp_client import ACPConnection,validate_jsonrpc_message
 
 class ACPClientTests(unittest.TestCase):
  def connection(self,fs=True,terminal=True):
   c=ACPConnection()
   c.initialize({"name":"ide","version":"1"},{"fs":{"readTextFile":fs,"writeTextFile":fs},"terminal":terminal},{"session":{}},2)
   return c
+ def test_jsonrpc_rejects_batches_and_null_request_ids(self):
+  self.assertTrue(validate_jsonrpc_message({"jsonrpc":"2.0","id":"req-1","method":"initialize","params":{}}))
+  with self.assertRaises(ValueError):validate_jsonrpc_message([{"jsonrpc":"2.0","id":1,"method":"initialize"}])
+  with self.assertRaises(ValueError):validate_jsonrpc_message({"jsonrpc":"2.0","id":None,"method":"session/new"})
+ def test_tool_content_and_terminal_output_chunks_preserve_order(self):
+  c=self.connection();c.session_new("/workspace/app","s1",["/workspace/app"])
+  c.tool_call_content_chunk("s1","call-1",{"text":"first"})
+  c.tool_call_content_chunk("s1","call-1",{"text":"second"})
+  self.assertEqual([x["text"] for x in c.sessions["s1"]["tool_calls"]["call-1"]["content"]],["first","second"])
+  c.create_terminal("s1","term-1","pytest","/workspace/app")
+  import base64
+  c.terminal_output_chunk("s1","term-1",base64.b64encode(b"one").decode())
+  output=c.terminal_output_chunk("s1","term-1",base64.b64encode(b"two").decode())
+  self.assertEqual(output,b"onetwo")
  def test_initialize_required_and_version_negotiation(self):
   c=ACPConnection()
   with self.assertRaises(ValueError):c.session_new("/w","s",["/w"])
