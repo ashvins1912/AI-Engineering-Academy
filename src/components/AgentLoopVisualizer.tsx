@@ -1,20 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
+import agentLoopLesson from '../../content/topics/agent-loop/lesson.json'
 import { ArrowLeft, ArrowRight, Pause, Play, RotateCcw, ShieldCheck, Timer } from 'lucide-react'
 
-const stages = [
-  { title: 'Initialize state', narration: 'The request becomes task state. No tool has run yet, and the step budget is ready.', input: 'request: find MUG-1 and apply a discount', transform: 'Create product=null, discount=null, trace=[]', output: 'remaining_steps = max_steps', state: 'State panel: both observation slots are empty.' },
-  { title: 'Choose catalog tool', narration: 'Because the product price is unknown, the planner proposes catalog_search. The host checks its allow-list before dispatch.', input: 'product=null; proposed_tool=catalog_search', transform: 'Validate tool name and SKU argument', output: 'catalog_search accepted; sku=MUG-1', state: 'Decision passes through the policy gate.' },
-  { title: 'Append observation', narration: 'The catalog returns a unit price of ₹80. The result is added to the trajectory and becomes available to the next decision.', input: 'catalog response: unit_price=80', transform: 'Store product observation and consume one step', output: 'product.unit_price=80; remaining_steps=max_steps−1', state: 'First trace row appears; product slot fills with ₹80.' },
-  { title: 'Calculate and stop', narration: 'The planner now has enough evidence to calculate the discount. Once the result exists, the loop stops instead of calling tools again.', input: 'amount=80; discount rate is adjustable', transform: '80 × (1 − discount_percent / 100)', output: 'final price is calculated from the current slider value', state: 'Second trace row appears and the loop terminates.' }
-]
+const animation = agentLoopLesson.visual.animation
+const stages = animation.stages
+const initialControl = (name: string, fallback: number) =>
+  animation.controls.find(control => control.name === name)?.defaultValue ?? fallback
 
 export default function AgentLoopVisualizer() {
   const [step, setStep] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState(1)
-  const [maxSteps, setMaxSteps] = useState(4)
-  const [timeoutMs, setTimeoutMs] = useState(2000)
-  const [discountPercent, setDiscountPercent] = useState(10)
+  const [maxSteps, setMaxSteps] = useState(() => initialControl('max_steps', 4))
+  const [timeoutMs, setTimeoutMs] = useState(() => initialControl('tool_timeout_ms', 2000))
+  const [discountPercent, setDiscountPercent] = useState(() => initialControl('discount_percent', 10))
   const finalPrice = useMemo(() => 80 * (1 - discountPercent / 100), [discountPercent])
   const simulatedCatalogLatencyMs = 400
   const catalogTimedOut = timeoutMs < simulatedCatalogLatencyMs
@@ -37,7 +36,7 @@ export default function AgentLoopVisualizer() {
 
   return <section className="agent-loop-lab" aria-labelledby="agent-loop-title">
     <div className="agent-loop-head">
-      <div><span className="agent-loop-kicker"><ShieldCheck size={13}/> STAGE 06 · LIVE NUMERICAL TRACE</span><h3 id="agent-loop-title">Animate the agent control loop</h3><p>Watch the same request move through state, tool selection, policy validation, observation and a bounded stop condition. All values update from the controls below.</p></div>
+      <div><span className="agent-loop-kicker"><ShieldCheck size={13}/> STAGE 06 · LIVE NUMERICAL TRACE</span><h3 id="agent-loop-title">Animate the agent control loop</h3><p>{animation.objective} All values update from the controls below.</p></div>
       <span className="agent-loop-count">STEP {step + 1} / {stages.length}</span>
     </div>
     <div className="agent-loop-progress" aria-label="Animation progress">{stages.map((item, index) => <button key={item.title} className={index === step ? 'active' : index < step ? 'visited' : ''} onClick={() => {setPlaying(false);setStep(index)}} aria-label={`Go to step ${index + 1}: ${item.title}`} />)}</div>
@@ -48,7 +47,7 @@ export default function AgentLoopVisualizer() {
         <div><small>TRANSFORMATION</small><code>{step === 3 ? `80 × (1 − ${discountPercent}/100) = ${finalPrice.toFixed(2)}` : current.transform}</code></div>
         <div><small>OUTPUT</small><code>{step === 3 ? (canComplete ? `status=completed; final_price=₹${finalPrice.toFixed(2)}; tool_calls=2` : catalogTimedOut ? `status=tool_timeout; final_price=not available; timeout_ms=${timeoutMs}` : 'status=step_limit; final_price=not available; only one tool call allowed') : step === 2 ? (catalogTimedOut ? `status=tool_timeout; timeout_ms=${timeoutMs}; product observation unavailable` : `product.unit_price=₹80; remaining_steps=${Math.max(0, maxSteps - 1)}`) : current.output}</code></div>
       </div>
-      <div className="agent-loop-state"><span className="state-pulse"/>{step === 2 && catalogTimedOut ? `Catalog tool exceeded the ${timeoutMs} ms timeout; no observation was appended.` : step === 3 && !canComplete ? (catalogTimedOut ? 'The catalog observation is missing after timeout; the agent cannot calculate a price.' : 'Budget exhausted before the second tool: task remains incomplete.') : current.state}</div>
+      <div className="agent-loop-state"><span className="state-pulse"/>{step === 2 && catalogTimedOut ? `Catalog tool exceeded the ${timeoutMs} ms timeout; no observation was appended.` : step === 3 && !canComplete ? (catalogTimedOut ? 'The catalog observation is missing after timeout; the agent cannot calculate a price.' : 'Budget exhausted before the second tool: task remains incomplete.')  : current.visualState}</div>
     </div>
     <div className="agent-loop-controls">
       <button onClick={previous} disabled={step === 0}><ArrowLeft size={14}/>Back</button>
