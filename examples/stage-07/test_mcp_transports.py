@@ -1,6 +1,6 @@
 import json,unittest
 from mcp_transports import StreamableHTTPGateway,TransportError,parse_stdio_lines
-from mcp_lifecycle import build_demo_server, MCPServer, Tool, PROTOCOL_VERSION,META_PROTOCOL,META_CAPS
+from mcp_lifecycle import build_demo_server, MCPServer, Tool, PROTOCOL_VERSION,META_PROTOCOL,META_CAPABILITIES
 
 def message(method="tools/list",params=None):
  p=dict(params or {});p["_meta"]={META_PROTOCOL:PROTOCOL_VERSION,META_CAPS:{}}
