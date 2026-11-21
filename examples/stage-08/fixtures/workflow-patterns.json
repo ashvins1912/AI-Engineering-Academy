@@ -1,0 +1,62 @@
+{
+  "scenario": "Order fulfillment saga with parallel checks and reverse compensation",
+  "workflowId": "order-ORD-7",
+  "tenantId": "tenant-a",
+  "maxWorkers": 2,
+  "nodes": [
+    {
+      "id": "fraud",
+      "dependsOn": [],
+      "sideEffect": false
+    },
+    {
+      "id": "address",
+      "dependsOn": [],
+      "sideEffect": false
+    },
+    {
+      "id": "inventory",
+      "dependsOn": [
+        "fraud",
+        "address"
+      ],
+      "compensate": "release_inventory"
+    },
+    {
+      "id": "payment",
+      "dependsOn": [
+        "inventory"
+      ],
+      "compensate": "void_payment"
+    },
+    {
+      "id": "shipping",
+      "dependsOn": [
+        "payment"
+      ],
+      "compensate": "cancel_shipment"
+    }
+  ],
+  "successPath": [
+    "fraud",
+    "address",
+    "inventory",
+    "payment",
+    "shipping"
+  ],
+  "failurePath": [
+    "shipping_failed",
+    "void_payment",
+    "release_inventory",
+    "compensated"
+  ],
+  "failureInjection": [
+    "cycle",
+    "worker exception",
+    "partial fan-out",
+    "duplicate step",
+    "shipping timeout",
+    "payment compensation failure",
+    "inventory release failure"
+  ]
+}
