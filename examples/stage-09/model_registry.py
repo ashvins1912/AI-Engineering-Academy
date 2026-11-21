@@ -44,15 +44,19 @@ class ArtifactRegistry:
           "tokenizer":model["tokenizer_version"],"tool_schema":model["tool_schema_version"],
           "safety_policy":prompt["safety_policy"],"evaluation_hash":evaluation_hash}
         manifest_hash=digest(json.dumps(manifest,sort_keys=True,separators=(",",":")))
+        creators=sorted({model["creator"],prompt["creator"]})
         record={"tenant":tenant,"bundle_id":bundle_id,"manifest":manifest,"manifest_hash":manifest_hash,
-          "quality_score":quality_score,"creator":model["creator"],"approval":None}
+          "quality_score":quality_score,"creators":creators,"approval":None}
         prior=self.bundles.get((tenant,bundle_id))
-        if prior and prior!=record:raise VersionConflict("release bundle ID is immutable")
+        if prior:
+            if any(prior[key]!=record[key] for key in ("manifest","manifest_hash","quality_score","creators")):
+                raise VersionConflict("release bundle ID is immutable")
+            return prior
         self.bundles[(tenant,bundle_id)]=record;return record
     def approve(self,tenant,bundle_id,approver,allowed_approvers):
         bundle=self.bundles.get((tenant,bundle_id))
         if not bundle:raise KeyError("bundle not found")
-        if approver not in set(allowed_approvers) or approver==bundle["creator"]:
+        if approver not in set(allowed_approvers) or approver in bundle["creators"]:
             raise PromotionDenied("independent authorized approval required")
         approval={"approver":approver,"manifest_hash":bundle["manifest_hash"],"approved":True}
         bundle["approval"]=approval;return approval
