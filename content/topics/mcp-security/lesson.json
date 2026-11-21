@@ -1,65 +1,553 @@
 {
- "schemaVersion":"1.1.0",
- "topic":{"id":"mcp-security","title":"MCP authorization and security","stage":7,"estimatedMinutes":240},
- "state":"visualized",
- "learning":{
-  "outcomes":["Explain the MCP server as an OAuth 2.1 resource server, separate from the authorization server.","Implement Protected Resource Metadata discovery and validate issuer, audience, expiry, signature and scopes.","Distinguish 401 invalid_token from 403 insufficient_scope and implement scope step-up.","Apply RFC 9207 issuer validation, issuer-bound credentials and current client registration guidance.","Secure stateless requests, per-tool authorization, tenant context, transport headers and tool outputs."],
-  "prerequisites":["Stage 7 Topics 1–2: stateless MCP and primitive semantics","OAuth 2.1, JWT/JWKS, OIDC discovery, HTTP middleware and RBAC"],
-  "glossary":[{"term":"Resource server","definition":"The MCP server that validates access tokens and enforces access to its protected resource; it does not issue tokens."},{"term":"Authorization server","definition":"The external identity/authorization system that authenticates users and issues access tokens."},{"term":"Protected Resource Metadata (PRM)","definition":"RFC 9728 metadata describing an MCP resource and the authorization servers that protect it."},{"term":"Audience","definition":"The resource identifier the access token was issued for; an MCP server must reject tokens intended for another resource."},{"term":"Scope","definition":"A delegated permission such as orders:read or refund:write."},{"term":"Step-up authorization","definition":"A new authorization round when a requested operation needs scopes not present in the current token."},{"term":"Issuer mix-up","definition":"An OAuth attack where a client is tricked into sending an authorization code or token to the wrong authorization server."},{"term":"CIMD","definition":"Client ID Metadata Documents: a URL-based client identity approach favored by the current MCP authorization guidance over new Dynamic Client Registration deployments."}]},
- "explanation":{
-  "problem":"An MCP server can expose tools that read private records or trigger real-world side effects. A valid JSON-RPC request is not proof that the caller is authenticated or authorized. Security must be enforced at the HTTP/resource boundary, bound to the correct resource audience and issuer, and checked again against per-tool scopes and tenant policy.",
-  "plainLanguage":"Separate the authorization server from the MCP resource server. The authorization server authenticates the user and issues an access token. The MCP server is a resource server: it verifies the token and enforces access. It does not mint tokens or act as a generic token broker. The host obtains a token for the specific MCP resource and sends it as a Bearer token over a protected HTTP transport.\n\nWhen a client first encounters a protected MCP server, it can receive HTTP 401 with a WWW-Authenticate challenge pointing to Protected Resource Metadata. The PRM document (RFC 9728) identifies the canonical resource URI, authorization server issuer(s) and supported scopes. The client then discovers authorization server metadata (RFC 8414 or OIDC discovery), performs the authorization code flow with PKCE, requests a resource-bound token and retries the MCP request. PRM is public bootstrap metadata; it is not a secret and should be reachable without a token.\n\nThe resource server validates the access token cryptographically using a trusted JWT/JWKS or introspection verifier. Validate signature and allowed algorithm, issuer (iss), audience (aud), expiry (exp), not-before (nbf) and required scopes. A token from the right issuer but for another audience is still invalid. Bind stored credentials to the issuer that minted them and to the intended resource; do not reuse a token across MCP servers or authorization servers.\n\nUse HTTP status semantics correctly. Missing, expired, malformed or wrong-audience credentials produce 401 invalid_token and a WWW-Authenticate challenge that points to PRM. A valid token lacking a required scope produces 403 insufficient_scope, optionally identifying the required scopes so the client can perform step-up authorization. Scope hierarchies should be evaluated consistently. Do not hide an HTTP authorization failure inside a successful tools/call JSON-RPC result.\n\nThe 2026-07-28 specification hardens authorization. Clients validate the iss parameter in authorization responses according to RFC 9207 to prevent authorization-server mix-up. Credentials are bound to the issuing issuer. Client application_type must match desktop/native or web behavior where registration is used. Client ID Metadata Documents (CIMD) are the direction for client identity; Dynamic Client Registration remains for compatibility but is formally deprecated for new deployments. Keep PKCE S256, state validation, redirect URI validation and resource indicators.\n\nThe protocol is stateless, but authorization still applies to every HTTP request. Do not assume a previous request authenticated a later one. Authenticate before routing to tool handlers. Gate at server/transport middleware and optionally apply per-tool scopes: public tools can remain public, while sensitive tools require orders:read or refund:write. Scope checks do not replace business authorization: the handler must still verify the user may access that particular order in that tenant.\n\nNever pass an MCP access token through to a downstream API unless it was explicitly issued for that downstream audience. Use token exchange or a separately scoped credential when delegation is required. Do not put tokens in model context, prompts, tool arguments, logs or traces. Redact Authorization headers and secrets. Validate Origin/Host to defend against DNS rebinding, configure CORS narrowly, limit request size, rate-limit by identity and tenant, and treat server tool results as untrusted content.\n\nA high-impact write tool needs defense in depth: authenticated token, required scope, tenant/resource authorization, idempotency, audit and human approval where policy requires it. OAuth answers who the caller is and what broad scope was delegated; application policy answers whether this user may perform this exact action on this exact record now.",
-  "mentalModel":"Discover PRM → identify authorization server → OAuth code + PKCE → resource-bound token → verify JWT/issuer/audience/time → enforce scope → enforce tenant/business policy → audit.",
-  "limitations":["A valid JWT is not proof that the user may access every resource in its tenant.","Scopes are coarse permissions; object-level authorization remains necessary.","A compromised authorization server or signing key can undermine token trust.","Stateless protocol requests require authentication on every request; do not rely on a prior call.","Step-up authorization and token refresh must preserve issuer/resource binding.","Per-tool authorization is complex; public/private tool boundaries must be explicit and tested."],
-  "everydayAnalogy":"An MCP server is like a secure office building. The identity provider issues an access badge; the protected-resource directory tells visitors which security office issues badges; the building checks the badge issuer, expiry and building name, then checks room-specific permissions. A badge for another building or a badge without access to the finance room is not enough.",
-  "mathMadeSimple":"A token has iss=https://auth.example.com, aud=https://mcp.example.com/mcp, exp=200 and scope=orders:read. At time=100 it is valid for order lookup if the tool requires orders:read. It cannot call issue_refund requiring refund:write: the correct response is 403 insufficient_scope, not 401. A token with aud=https://other.example.com is 401 invalid_token even if issuer and signature are correct. At time=201, exp=200 is expired and also returns 401.",
-  "productionImpact":"Production MCP authorization needs RFC 9728 PRM, RFC 8414/OIDC discovery, OAuth authorization code + PKCE, resource indicators, JWT/JWKS or introspection verification, issuer/audience/time validation, RFC 9207 iss validation, issuer-bound credentials, scope step-up, 401/403 correctness, DNS-rebinding protection, CORS, token redaction and per-tenant object authorization."
- },
- "useCase":{
-  "scenario":"A remote MCP server exposes a public health tool, a protected order lookup and a high-impact refund tool. The client discovers PRM, obtains a token for the MCP resource, and invokes only the tools allowed by the token scopes and tenant policy.",
-  "actors":["MCP host/client","Protected MCP resource server","Authorization server","JWKS/introspection verifier","HTTP authorization middleware","Tool policy gateway","Tenant-scoped domain service","Audit collector"],
-  "inputs":["Canonical MCP resource URI","PRM and authorization server metadata","Bearer token and verified claims","Required per-method/per-tool scopes","Authenticated subject and tenant context"],
-  "constraints":["MCP server validates tokens but does not issue them.","Token issuer and audience must match the configured resource.","Every stateless request is authenticated independently.","401 and 403 have distinct meanings and challenges.","Object-level tenant policy is checked after token scope.","Tokens never enter model context or downstream APIs by default."],
-  "outputs":["401 invalid_token or 403 insufficient_scope challenge","Verified request context with subject, issuer and scopes","Authorized tool result or denial","Audit event with redacted identity metadata"],
-  "successMetric":"No protected MCP operation executes without a valid resource-bound token, sufficient scope and tenant/object authorization."
- },
- "architecture":{
-  "diagram":"content/topics/mcp-security/authorization-flow.mmd",
-  "components":["MCP host/client","Protected Resource Metadata endpoint","Authorization server metadata","OAuth code + PKCE client","Token verifier (JWKS/introspection)","HTTP auth middleware","Scope policy","Tenant/object authorization","Tool handler and audit"],
-  "dataFlow":[{"from":"Client","to":"MCP endpoint","payload":"request without Bearer token","purpose":"Receive 401 challenge with PRM location."},{"from":"Client","to":"PRM endpoint","payload":"GET public protected-resource metadata","purpose":"Discover resource and authorization issuer."},{"from":"Client","to":"Authorization server","payload":"authorization code + PKCE + resource indicator","purpose":"Authenticate user and obtain resource-bound token."},{"from":"Client","to":"MCP endpoint","payload":"Bearer token + stateless MCP request","purpose":"Retry protected request."},{"from":"HTTP middleware","to":"Token verifier","payload":"JWT/JWKS or introspection result","purpose":"Validate signature, issuer, audience and time claims."},{"from":"Scope policy","to":"Tool handler","payload":"subject + granted scopes + tenant context","purpose":"Enforce method/tool and object-level authorization."}],
-  "trustBoundaries":["Authorization server is separate from MCP resource server.","PRM metadata is public configuration; access tokens are secret.","Token verifier must validate signature, iss, aud, exp and nbf.","Host injects authenticated tenant; model arguments cannot select tenant.","Logs/traces redact tokens, codes, PKCE verifiers and sensitive claims.","Downstream services receive separately scoped credentials, not the MCP bearer token."],
-  "failurePaths":["No token or invalid token: HTTP 401 invalid_token with PRM challenge.","Valid token but missing scope: HTTP 403 insufficient_scope and step-up path.","Issuer mix-up: reject authorization response when iss differs from expected issuer.","Wrong audience: reject token even if signature is valid.","Cross-tenant object ID: deny at domain gateway despite broad orders:read scope.","JWKS/introspection unavailable: fail closed or return controlled 503; never accept unverified token.","Token leaked in trace: revoke/rotate and remediate redaction pipeline."]
- },
- "visual":{
-  "kind":"animation",
-  "fixture":"examples/stage-07/fixtures/mcp-security.json",
-  "steps":[{"label":"Challenge","explanation":"Protected MCP endpoint returns 401 with PRM location.","expectedState":"invalid_token + metadata URL"},{"label":"Discover","explanation":"Client learns resource and authorization server metadata.","expectedState":"issuer + resource + scopes"},{"label":"Authorize","explanation":"User authenticates with authorization code and PKCE for this resource.","expectedState":"resource-bound access token"},{"label":"Verify","explanation":"Server validates signature, issuer, audience, time and scope.","expectedState":"401 / 403 / authorized"},{"label":"Enforce","explanation":"Tenant and object policy runs before tool handler; audit is redacted.","expectedState":"authorized result or denial"}],
-  "accessibility":["HTTP status, token claims and scope decisions are shown as text.","Security failures include explicit reason and remediation.","No secret token values are displayed in the visualizer."],
-  "animation":{
-   "objective":"Trace an OAuth-protected stateless MCP request from 401 challenge through token validation and per-tool authorization.",
-   "stages":[{"step":1,"title":"Challenge","narration":"Client calls a protected tool without a token; server returns HTTP 401 with a PRM URL.","input":"tools/call issue_refund; no Authorization header","transformation":"resource server emits Bearer challenge","output":"401 invalid_token; PRM discoverable","visualState":"No handler executed"},{"step":2,"title":"Discover issuer","narration":"Client reads RFC 9728 PRM and authorization server metadata.","input":"resource=https://mcp.example.com/mcp","transformation":"discover issuer + supported scopes + endpoints","output":"issuer=https://auth.example.com; scopes=orders:read,refund:write","visualState":"Public metadata, no secret"},{"step":3,"title":"Obtain token","narration":"User completes authorization code + PKCE with a resource indicator; client validates state and iss.","input":"resource-bound OAuth request; PKCE S256","transformation":"authorization server authenticates and issues token","output":"iss=auth.example.com; aud=mcp.example.com; scope=orders:read","visualState":"Token bound to issuer and resource"},{"step":4,"title":"Verify and step up","narration":"Server verifies JWT and claims. An order lookup passes; a refund without refund:write receives 403.","input":"signature + iss + aud + exp + nbf + scopes","transformation":"JWT/JWKS verifier + scope policy","output":"lookup=200; refund=403 insufficient_scope","visualState":"Broad token is not enough for refund"},{"step":5,"title":"Authorize object and audit","narration":"Domain gateway checks tenant/order ownership, then records a redacted audit event.","input":"subject=user-1; tenant=tenant-a; order=ORD-7","transformation":"object policy + idempotency + HITL if write","output":"authorized read or denied write; token redacted","visualState":"No token leakage; policy enforced"}],
-   "controls":[{"name":"token_audience_matches","min":0,"max":1,"defaultValue":1,"effect":"0 simulates a token issued for another API and returns 401."},{"name":"token_issuer_matches","min":0,"max":1,"defaultValue":1,"effect":"0 simulates issuer mismatch or authorization-server mix-up."},{"name":"scope_granted","min":0,"max":1,"defaultValue":1,"effect":"0 returns 403 insufficient_scope."},{"name":"tenant_matches","min":0,"max":1,"defaultValue":1,"effect":"0 denies object access after token verification."}],
-   "playback":{"play":true,"pause":true,"reset":true,"stepForward":true,"stepBackward":true,"adjustableSpeed":true},
-   "accessibilitySummary":"Five stages show PRM discovery, OAuth resource binding, issuer/audience/time claims, 401 versus 403, tenant authorization and redacted audit as text."
-  }
- },
- "workedExample":{
-  "problem":"Decide whether a token may call lookup_order or issue_refund on a stateless MCP server.",
-  "input":"iss=https://auth.example.com; aud=https://mcp.example.com/mcp; exp=200; now=100; scopes={orders:read}.",
-  "steps":[{"operation":"Resource validation","reasoning":"Token signature is verified by the trusted JWKS verifier and issuer/audience match this MCP resource.","result":"signature=valid; iss=valid; aud=valid"},{"operation":"Time validation","reasoning":"Current time 100 is before expiry 200 and after nbf.","result":"time_claims=valid"},{"operation":"Order lookup","reasoning":"lookup_order requires orders:read, which the token contains.","result":"HTTP 200; tool may continue to tenant/object authorization"},{"operation":"Refund attempt","reasoning":"issue_refund requires refund:write, which is missing.","result":"HTTP 403; insufficient_scope; step-up required"},{"operation":"Object check","reasoning":"Even with orders:read, order ownership must match the authenticated tenant.","result":"tenant/object policy enforced separately"}],
-  "expectedOutput":"The token can pass coarse authorization for order lookup, receives 403 for refund, and still requires object-level tenant validation."
- },
- "implementations":[{"language":"python","role":"from-scratch","path":"examples/stage-07/mcp_authorization.py","runCommand":"python examples/stage-07/mcp_authorization.py","testsPath":"examples/stage-07/test_mcp_authorization.py","expectedResult":"A deterministic policy model validates issuer, audience, expiry, not-before, scopes, scope hierarchy and authorization response issuer."},{"language":"python","role":"production","path":"examples/stage-07/mcp_authorization_production.py","runCommand":"python -m unittest discover -s examples/stage-07 -p 'test_mcp_authorization_production.py' -v","testsPath":"examples/stage-07/test_mcp_authorization_production.py","expectedResult":"HTTP boundary adapter delegates JWT/JWKS or introspection verification to a trusted verifier, then returns 401/403 and injects verified identity context."}],
- "failures":[{"name":"Wrong resource audience","symptom":"A token for another API is accepted by the MCP server.","rootCause":"Verifier checks signature but not aud against canonical MCP resource URI.","recovery":"Validate exact resource audience and issuer on every request.","regressionTest":"Use valid signature with wrong aud and assert 401."},{"name":"Authorization server mix-up","symptom":"Client redeems an authorization code at the wrong issuer.","rootCause":"Client ignores or fails to validate RFC 9207 iss response parameter.","recovery":"Bind authorization transaction to expected issuer and validate returned iss.","regressionTest":"Return mismatched issuer and assert authorization flow aborts."},{"name":"Scope confused with object authorization","symptom":"Token with orders:read accesses another tenant's order.","rootCause":"Application assumes broad scope proves record ownership.","recovery":"Check tenant and object permissions in domain service using verified subject.","regressionTest":"Same scope, different tenant resource ID is denied."},{"name":"401 and 403 reversed","symptom":"Valid token missing a scope receives invalid_token or malformed tool result.","rootCause":"Authentication and authorization failures are conflated.","recovery":"Use 401 for missing/invalid credentials and 403 for insufficient scope.","regressionTest":"Expired token yields 401; valid low-scope token yields 403."},{"name":"Token passthrough","symptom":"MCP bearer token is forwarded to a downstream API with a different audience.","rootCause":"Host treats access token as a universal credential.","recovery":"Use token exchange or a separate least-privilege downstream credential.","regressionTest":"Assert downstream adapter never receives incoming MCP bearer token."},{"name":"Secrets in traces","symptom":"Bearer tokens, authorization codes or PKCE verifiers appear in logs.","rootCause":"HTTP headers and auth callback parameters are captured without redaction.","recovery":"Redact Authorization, code, state and verifier before trace export; rotate leaked secrets.","regressionTest":"Inject sentinel token and assert absent from exported trace."}],
- "practice":{
-  "guided":"Inspect a token's iss, aud, exp, nbf and scopes. Predict whether the result is 401, 403 or authorized before considering tenant/object checks.",
-  "independent":"Implement OAuth resource-server middleware that verifies tokens through a trusted verifier and enforces per-tool scope policy.",
-  "realWorld":"Protect a remote MCP server with an existing identity provider. Publish PRM metadata, require resource-bound access tokens, enforce read/write scopes and audit tenant-scoped tool calls.",
-  "expertExtension":"Add issuer discovery caching, JWKS rotation, token revocation/introspection, RFC 9207 mix-up defense, CIMD, scope step-up, per-tool auth, CORS/Origin/Host checks, DPoP or mTLS where supported, and secret redaction.",
-  "guidedExercise":{"title":"Implement resource-bound token validation","instructions":"Reject a token if issuer, audience or expiry is wrong. Then verify that the requested tool's scope is present.","starterCode":"def authorize(claims, expected_issuer, expected_audience, required_scope, now):\n    # validate iss, aud, exp and nbf\n    # check required scope\n    # return verified subject or an HTTP-style error\n    raise NotImplementedError","solutionCode":"def authorize(claims, expected_issuer, expected_audience, required_scope, now):\n    if claims.get('iss') != expected_issuer: return 401\n    if claims.get('aud') != expected_audience: return 401\n    if now >= claims.get('exp', 0) or now < claims.get('nbf', 0): return 401\n    if required_scope not in claims.get('scope', '').split(): return 403\n    return {'status': 200, 'subject': claims['sub']}","unitTests":"assert authorize(valid_claims, issuer, audience, 'orders:read', 100)['status'] == 200\nassert authorize(valid_claims, issuer, 'other-resource', 'orders:read', 100) == 401"},
-  "miniAppIntegration":{"projectGoal":"Build an OAuth authorization inspector for a stateless MCP server with per-tool scopes and tenant checks.","steps":["Publish a sample RFC 9728 PRM document for the MCP resource.","Configure an external authorization server issuer and resource-bound audience.","Simulate valid, expired, wrong-issuer and wrong-audience tokens.","Call public health, protected lookup_order and protected issue_refund tools.","Verify missing token returns 401 and insufficient scope returns 403.","Simulate RFC 9207 issuer mismatch and issuer-bound credential lookup.","Inject cross-tenant object IDs and confirm domain authorization blocks them.","Inspect redacted traces and verify no bearer token is exported."]},
-  "scenarioQuiz":[{"question":"A JWT signature is valid but aud names another API. What response?", "options":["200","403 insufficient_scope","401 invalid_token","Retry the tool"],"correctIndex":2,"explanation":"The token was not issued for this MCP resource; audience mismatch makes it invalid."},{"question":"A valid token lacks refund:write. What response?", "options":["401 invalid_token","403 insufficient_scope","200 with warning","JSON-RPC success"],"correctIndex":1,"explanation":"The caller is authenticated but lacks the required permission."},{"question":"Who issues the access token?", "options":["MCP resource server","Authorization server / identity provider","Tool handler","MCP client"],"correctIndex":1,"explanation":"The MCP server is a resource server and validates tokens; it does not issue them."},{"question":"Does orders:read authorize every order ID?", "options":["Yes, across tenants","Yes, if token is unexpired","No, object-level tenant authorization is still required","Only for public resources"],"correctIndex":2,"explanation":"Scopes are coarse permissions; the domain layer must still enforce resource ownership."}]},
- "assessment":{"rubric":[{"criterion":"OAuth roles and PRM discovery","weight":20,"evidence":"Separate authorization server from MCP resource server and explain RFC 9728 metadata."},{"criterion":"Token validation","weight":25,"evidence":"Verify signature, issuer, audience, expiry, not-before and issuer-bound credential storage."},{"criterion":"Scope and HTTP semantics","weight":20,"evidence":"Correct 401/403, scope hierarchy and step-up behavior."},{"criterion":"Tenant and transport security","weight":20,"evidence":"Object-level authorization, header/Origin protections and no token passthrough."},{"criterion":"Audit and secret hygiene","weight":15,"evidence":"Sensitive credentials are redacted and failures are traceable."}],"passThreshold":80,"evidence":["Both Python suites pass.","Wrong issuer/audience/expiry are rejected.","Missing scopes return 403 while invalid credentials return 401.","Cross-tenant object access is denied.","Token secrets are not logged or forwarded."]},
- "references":[{"title":"MCP 2026-07-28 specification release and authorization hardening","url":"https://blog.modelcontextprotocol.io/posts/2026-07-28/","sourceType":"official-docs","checkedOn":"2026-11-21"},{"title":"MCP authorization server guidance","url":"https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization","sourceType":"official-docs","checkedOn":"2026-11-21"},{"title":"MCP Python SDK authorization guide","url":"https://py.sdk.modelcontextprotocol.io/run/authorization/","sourceType":"official-docs","checkedOn":"2026-11-21"},{"title":"MCP authorization hardening migration notes","url":"https://ts.sdk.modelcontextprotocol.io/v2/migration/support-2026-07-28","sourceType":"official-docs","checkedOn":"2026-11-21"}],
- "codeWalkthrough":[{"lines":"aud == canonical_mcp_resource_uri","explanation":"A token's audience must identify this resource server; a valid signature for another API is insufficient."},{"lines":"iss == configured_authorization_server","explanation":"Issuer validation prevents tokens from unrelated identity systems and supports credential binding."},{"lines":"401 invalid_token vs 403 insufficient_scope","explanation":"Authentication failures and authorization failures have different HTTP semantics and client recovery paths."},{"lines":"required_scope ⊆ effective_scopes","explanation":"Apply explicit scope hierarchy and step-up behavior consistently for every protected method/tool."},{"lines":"tenant/object authorization after scope","explanation":"Broad token scopes do not replace per-record ownership checks in the domain service."}]
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "mcp-security",
+    "title": "MCP authorization and security",
+    "stage": 7,
+    "estimatedMinutes": 240
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Explain the MCP server as an OAuth 2.1 resource server, separate from the authorization server.",
+      "Implement Protected Resource Metadata discovery and validate issuer, audience, expiry, signature and scopes.",
+      "Distinguish 401 invalid_token from 403 insufficient_scope and implement scope step-up.",
+      "Apply RFC 9207 issuer validation, issuer-bound credentials and current client registration guidance.",
+      "Secure stateless requests, per-tool authorization, tenant context, transport headers and tool outputs."
+    ],
+    "prerequisites": [
+      "Stage 7 Topics 1–2: stateless MCP and primitive semantics",
+      "OAuth 2.1, JWT/JWKS, OIDC discovery, HTTP middleware and RBAC"
+    ],
+    "glossary": [
+      {
+        "term": "Resource server",
+        "definition": "The MCP server that validates access tokens and enforces access to its protected resource; it does not issue tokens."
+      },
+      {
+        "term": "Authorization server",
+        "definition": "The external identity/authorization system that authenticates users and issues access tokens."
+      },
+      {
+        "term": "Protected Resource Metadata (PRM)",
+        "definition": "RFC 9728 metadata describing an MCP resource and the authorization servers that protect it."
+      },
+      {
+        "term": "Audience",
+        "definition": "The resource identifier the access token was issued for; an MCP server must reject tokens intended for another resource."
+      },
+      {
+        "term": "Scope",
+        "definition": "A delegated permission such as orders:read or refund:write."
+      },
+      {
+        "term": "Step-up authorization",
+        "definition": "A new authorization round when a requested operation needs scopes not present in the current token."
+      },
+      {
+        "term": "Issuer mix-up",
+        "definition": "An OAuth attack where a client is tricked into sending an authorization code or token to the wrong authorization server."
+      },
+      {
+        "term": "CIMD",
+        "definition": "Client ID Metadata Documents: a URL-based client identity approach favored by the current MCP authorization guidance over new Dynamic Client Registration deployments."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "An MCP server can expose tools that read private records or trigger real-world side effects. A valid JSON-RPC request is not proof that the caller is authenticated or authorized. Security must be enforced at the HTTP/resource boundary, bound to the correct resource audience and issuer, and checked again against per-tool scopes and tenant policy.",
+    "plainLanguage": "Separate the authorization server from the MCP resource server. The authorization server authenticates the user and issues an access token. The MCP server is a resource server: it verifies the token and enforces access. It does not mint tokens or act as a generic token broker. The host obtains a token for the specific MCP resource and sends it as a Bearer token over a protected HTTP transport.\n\nWhen a client first encounters a protected MCP server, it can receive HTTP 401 with a WWW-Authenticate challenge pointing to Protected Resource Metadata. The PRM document (RFC 9728) identifies the canonical resource URI, authorization server issuer(s) and supported scopes. The client then discovers authorization server metadata (RFC 8414 or OIDC discovery), performs the authorization code flow with PKCE, requests a resource-bound token and retries the MCP request. PRM is public bootstrap metadata; it is not a secret and should be reachable without a token.\n\nThe resource server validates the access token cryptographically using a trusted JWT/JWKS or introspection verifier. Validate signature and allowed algorithm, issuer (iss), audience (aud), expiry (exp), not-before (nbf) and required scopes. A token from the right issuer but for another audience is still invalid. Bind stored credentials to the issuer that minted them and to the intended resource; do not reuse a token across MCP servers or authorization servers.\n\nUse HTTP status semantics correctly. Missing, expired, malformed or wrong-audience credentials produce 401 invalid_token and a WWW-Authenticate challenge that points to PRM. A valid token lacking a required scope produces 403 insufficient_scope, optionally identifying the required scopes so the client can perform step-up authorization. Scope hierarchies should be evaluated consistently. Do not hide an HTTP authorization failure inside a successful tools/call JSON-RPC result.\n\nThe 2026-07-28 specification hardens authorization. Clients validate the iss parameter in authorization responses according to RFC 9207 to prevent authorization-server mix-up. Credentials are bound to the issuing issuer. Client application_type must match desktop/native or web behavior where registration is used. Client ID Metadata Documents (CIMD) are the direction for client identity; Dynamic Client Registration remains for compatibility but is formally deprecated for new deployments. Keep PKCE S256, state validation, redirect URI validation and resource indicators.\n\nThe protocol is stateless, but authorization still applies to every HTTP request. Do not assume a previous request authenticated a later one. Authenticate before routing to tool handlers. Gate at server/transport middleware and optionally apply per-tool scopes: public tools can remain public, while sensitive tools require orders:read or refund:write. Scope checks do not replace business authorization: the handler must still verify the user may access that particular order in that tenant.\n\nNever pass an MCP access token through to a downstream API unless it was explicitly issued for that downstream audience. Use token exchange or a separately scoped credential when delegation is required. Do not put tokens in model context, prompts, tool arguments, logs or traces. Redact Authorization headers and secrets. Validate Origin/Host to defend against DNS rebinding, configure CORS narrowly, limit request size, rate-limit by identity and tenant, and treat server tool results as untrusted content.\n\nA high-impact write tool needs defense in depth: authenticated token, required scope, tenant/resource authorization, idempotency, audit and human approval where policy requires it. OAuth answers who the caller is and what broad scope was delegated; application policy answers whether this user may perform this exact action on this exact record now.",
+    "mentalModel": "Discover PRM → identify authorization server → OAuth code + PKCE → resource-bound token → verify JWT/issuer/audience/time → enforce scope → enforce tenant/business policy → audit.",
+    "limitations": [
+      "A valid JWT is not proof that the user may access every resource in its tenant.",
+      "Scopes are coarse permissions; object-level authorization remains necessary.",
+      "A compromised authorization server or signing key can undermine token trust.",
+      "Stateless protocol requests require authentication on every request; do not rely on a prior call.",
+      "Step-up authorization and token refresh must preserve issuer/resource binding.",
+      "Per-tool authorization is complex; public/private tool boundaries must be explicit and tested."
+    ],
+    "everydayAnalogy": "An MCP server is like a secure office building. The identity provider issues an access badge; the protected-resource directory tells visitors which security office issues badges; the building checks the badge issuer, expiry and building name, then checks room-specific permissions. A badge for another building or a badge without access to the finance room is not enough.",
+    "mathMadeSimple": "A token has iss=https://auth.example.com, aud=https://mcp.example.com/mcp, exp=200 and scope=orders:read. At time=100 it is valid for order lookup if the tool requires orders:read. It cannot call issue_refund requiring refund:write: the correct response is 403 insufficient_scope, not 401. A token with aud=https://other.example.com is 401 invalid_token even if issuer and signature are correct. At time=201, exp=200 is expired and also returns 401.",
+    "productionImpact": "Production MCP authorization needs RFC 9728 PRM, RFC 8414/OIDC discovery, OAuth authorization code + PKCE, resource indicators, JWT/JWKS or introspection verification, issuer/audience/time validation, RFC 9207 iss validation, issuer-bound credentials, scope step-up, 401/403 correctness, DNS-rebinding protection, CORS, token redaction and per-tenant object authorization."
+  },
+  "useCase": {
+    "scenario": "A remote MCP server exposes a public health tool, a protected order lookup and a high-impact refund tool. The client discovers PRM, obtains a token for the MCP resource, and invokes only the tools allowed by the token scopes and tenant policy.",
+    "actors": [
+      "MCP host/client",
+      "Protected MCP resource server",
+      "Authorization server",
+      "JWKS/introspection verifier",
+      "HTTP authorization middleware",
+      "Tool policy gateway",
+      "Tenant-scoped domain service",
+      "Audit collector"
+    ],
+    "inputs": [
+      "Canonical MCP resource URI",
+      "PRM and authorization server metadata",
+      "Bearer token and verified claims",
+      "Required per-method/per-tool scopes",
+      "Authenticated subject and tenant context"
+    ],
+    "constraints": [
+      "MCP server validates tokens but does not issue them.",
+      "Token issuer and audience must match the configured resource.",
+      "Every stateless request is authenticated independently.",
+      "401 and 403 have distinct meanings and challenges.",
+      "Object-level tenant policy is checked after token scope.",
+      "Tokens never enter model context or downstream APIs by default."
+    ],
+    "outputs": [
+      "401 invalid_token or 403 insufficient_scope challenge",
+      "Verified request context with subject, issuer and scopes",
+      "Authorized tool result or denial",
+      "Audit event with redacted identity metadata"
+    ],
+    "successMetric": "No protected MCP operation executes without a valid resource-bound token, sufficient scope and tenant/object authorization."
+  },
+  "architecture": {
+    "diagram": "content/topics/mcp-security/authorization-flow.mmd",
+    "components": [
+      "MCP host/client",
+      "Protected Resource Metadata endpoint",
+      "Authorization server metadata",
+      "OAuth code + PKCE client",
+      "Token verifier (JWKS/introspection)",
+      "HTTP auth middleware",
+      "Scope policy",
+      "Tenant/object authorization",
+      "Tool handler and audit"
+    ],
+    "dataFlow": [
+      {
+        "from": "Client",
+        "to": "MCP endpoint",
+        "payload": "request without Bearer token",
+        "purpose": "Receive 401 challenge with PRM location."
+      },
+      {
+        "from": "Client",
+        "to": "PRM endpoint",
+        "payload": "GET public protected-resource metadata",
+        "purpose": "Discover resource and authorization issuer."
+      },
+      {
+        "from": "Client",
+        "to": "Authorization server",
+        "payload": "authorization code + PKCE + resource indicator",
+        "purpose": "Authenticate user and obtain resource-bound token."
+      },
+      {
+        "from": "Client",
+        "to": "MCP endpoint",
+        "payload": "Bearer token + stateless MCP request",
+        "purpose": "Retry protected request."
+      },
+      {
+        "from": "HTTP middleware",
+        "to": "Token verifier",
+        "payload": "JWT/JWKS or introspection result",
+        "purpose": "Validate signature, issuer, audience and time claims."
+      },
+      {
+        "from": "Scope policy",
+        "to": "Tool handler",
+        "payload": "subject + granted scopes + tenant context",
+        "purpose": "Enforce method/tool and object-level authorization."
+      }
+    ],
+    "trustBoundaries": [
+      "Authorization server is separate from MCP resource server.",
+      "PRM metadata is public configuration; access tokens are secret.",
+      "Token verifier must validate signature, iss, aud, exp and nbf.",
+      "Host injects authenticated tenant; model arguments cannot select tenant.",
+      "Logs/traces redact tokens, codes, PKCE verifiers and sensitive claims.",
+      "Downstream services receive separately scoped credentials, not the MCP bearer token."
+    ],
+    "failurePaths": [
+      "No token or invalid token: HTTP 401 invalid_token with PRM challenge.",
+      "Valid token but missing scope: HTTP 403 insufficient_scope and step-up path.",
+      "Issuer mix-up: reject authorization response when iss differs from expected issuer.",
+      "Wrong audience: reject token even if signature is valid.",
+      "Cross-tenant object ID: deny at domain gateway despite broad orders:read scope.",
+      "JWKS/introspection unavailable: fail closed or return controlled 503; never accept unverified token.",
+      "Token leaked in trace: revoke/rotate and remediate redaction pipeline."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-07/fixtures/mcp-security.json",
+    "steps": [
+      {
+        "label": "Challenge",
+        "explanation": "Protected MCP endpoint returns 401 with PRM location.",
+        "expectedState": "invalid_token + metadata URL"
+      },
+      {
+        "label": "Discover",
+        "explanation": "Client learns resource and authorization server metadata.",
+        "expectedState": "issuer + resource + scopes"
+      },
+      {
+        "label": "Authorize",
+        "explanation": "User authenticates with authorization code and PKCE for this resource.",
+        "expectedState": "resource-bound access token"
+      },
+      {
+        "label": "Verify",
+        "explanation": "Server validates signature, issuer, audience, time and scope.",
+        "expectedState": "401 / 403 / authorized"
+      },
+      {
+        "label": "Enforce",
+        "explanation": "Tenant and object policy runs before tool handler; audit is redacted.",
+        "expectedState": "authorized result or denial"
+      }
+    ],
+    "accessibility": [
+      "HTTP status, token claims and scope decisions are shown as text.",
+      "Security failures include explicit reason and remediation.",
+      "No secret token values are displayed in the visualizer."
+    ],
+    "animation": {
+      "objective": "Trace an OAuth-protected stateless MCP request from 401 challenge through token validation and per-tool authorization.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Challenge",
+          "narration": "Client calls a protected tool without a token; server returns HTTP 401 with a PRM URL.",
+          "input": "tools/call issue_refund; no Authorization header",
+          "transformation": "resource server emits Bearer challenge",
+          "output": "401 invalid_token; PRM discoverable",
+          "visualState": "No handler executed"
+        },
+        {
+          "step": 2,
+          "title": "Discover issuer",
+          "narration": "Client reads RFC 9728 PRM and authorization server metadata.",
+          "input": "resource=https://mcp.example.com/mcp",
+          "transformation": "discover issuer + supported scopes + endpoints",
+          "output": "issuer=https://auth.example.com; scopes=orders:read,refund:write",
+          "visualState": "Public metadata, no secret"
+        },
+        {
+          "step": 3,
+          "title": "Obtain token",
+          "narration": "User completes authorization code + PKCE with a resource indicator; client validates state and iss.",
+          "input": "resource-bound OAuth request; PKCE S256",
+          "transformation": "authorization server authenticates and issues token",
+          "output": "iss=auth.example.com; aud=mcp.example.com; scope=orders:read",
+          "visualState": "Token bound to issuer and resource"
+        },
+        {
+          "step": 4,
+          "title": "Verify and step up",
+          "narration": "Server verifies JWT and claims. An order lookup passes; a refund without refund:write receives 403.",
+          "input": "signature + iss + aud + exp + nbf + scopes",
+          "transformation": "JWT/JWKS verifier + scope policy",
+          "output": "lookup=200; refund=403 insufficient_scope",
+          "visualState": "Broad token is not enough for refund"
+        },
+        {
+          "step": 5,
+          "title": "Authorize object and audit",
+          "narration": "Domain gateway checks tenant/order ownership, then records a redacted audit event.",
+          "input": "subject=user-1; tenant=tenant-a; order=ORD-7",
+          "transformation": "object policy + idempotency + HITL if write",
+          "output": "authorized read or denied write; token redacted",
+          "visualState": "No token leakage; policy enforced"
+        }
+      ],
+      "controls": [
+        {
+          "name": "token_audience_matches",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "0 simulates a token issued for another API and returns 401."
+        },
+        {
+          "name": "token_issuer_matches",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "0 simulates issuer mismatch or authorization-server mix-up."
+        },
+        {
+          "name": "scope_granted",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "0 returns 403 insufficient_scope."
+        },
+        {
+          "name": "tenant_matches",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "0 denies object access after token verification."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Five stages show PRM discovery, OAuth resource binding, issuer/audience/time claims, 401 versus 403, tenant authorization and redacted audit as text."
+    }
+  },
+  "workedExample": {
+    "problem": "Decide whether a token may call lookup_order or issue_refund on a stateless MCP server.",
+    "input": "iss=https://auth.example.com; aud=https://mcp.example.com/mcp; exp=200; now=100; scopes={orders:read}.",
+    "steps": [
+      {
+        "operation": "Resource validation",
+        "reasoning": "Token signature is verified by the trusted JWKS verifier and issuer/audience match this MCP resource.",
+        "result": "signature=valid; iss=valid; aud=valid"
+      },
+      {
+        "operation": "Time validation",
+        "reasoning": "Current time 100 is before expiry 200 and after nbf.",
+        "result": "time_claims=valid"
+      },
+      {
+        "operation": "Order lookup",
+        "reasoning": "lookup_order requires orders:read, which the token contains.",
+        "result": "HTTP 200; tool may continue to tenant/object authorization"
+      },
+      {
+        "operation": "Refund attempt",
+        "reasoning": "issue_refund requires refund:write, which is missing.",
+        "result": "HTTP 403; insufficient_scope; step-up required"
+      },
+      {
+        "operation": "Object check",
+        "reasoning": "Even with orders:read, order ownership must match the authenticated tenant.",
+        "result": "tenant/object policy enforced separately"
+      }
+    ],
+    "expectedOutput": "The token can pass coarse authorization for order lookup, receives 403 for refund, and still requires object-level tenant validation."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-07/mcp_authorization.py",
+      "runCommand": "python examples/stage-07/mcp_authorization.py",
+      "testsPath": "examples/stage-07/test_mcp_authorization.py",
+      "expectedResult": "A deterministic policy model validates issuer, audience, expiry, not-before, scopes, scope hierarchy and authorization response issuer."
+    },
+    {
+      "language": "python",
+      "role": "production",
+      "path": "examples/stage-07/mcp_authorization_production.py",
+      "runCommand": "python -m unittest discover -s examples/stage-07 -p 'test_mcp_authorization_production.py' -v",
+      "testsPath": "examples/stage-07/test_mcp_authorization_production.py",
+      "expectedResult": "HTTP boundary adapter delegates JWT/JWKS or introspection verification to a trusted verifier, then returns 401/403 and injects verified identity context."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Wrong resource audience",
+      "symptom": "A token for another API is accepted by the MCP server.",
+      "rootCause": "Verifier checks signature but not aud against canonical MCP resource URI.",
+      "recovery": "Validate exact resource audience and issuer on every request.",
+      "regressionTest": "Use valid signature with wrong aud and assert 401."
+    },
+    {
+      "name": "Authorization server mix-up",
+      "symptom": "Client redeems an authorization code at the wrong issuer.",
+      "rootCause": "Client ignores or fails to validate RFC 9207 iss response parameter.",
+      "recovery": "Bind authorization transaction to expected issuer and validate returned iss.",
+      "regressionTest": "Return mismatched issuer and assert authorization flow aborts."
+    },
+    {
+      "name": "Scope confused with object authorization",
+      "symptom": "Token with orders:read accesses another tenant's order.",
+      "rootCause": "Application assumes broad scope proves record ownership.",
+      "recovery": "Check tenant and object permissions in domain service using verified subject.",
+      "regressionTest": "Same scope, different tenant resource ID is denied."
+    },
+    {
+      "name": "401 and 403 reversed",
+      "symptom": "Valid token missing a scope receives invalid_token or malformed tool result.",
+      "rootCause": "Authentication and authorization failures are conflated.",
+      "recovery": "Use 401 for missing/invalid credentials and 403 for insufficient scope.",
+      "regressionTest": "Expired token yields 401; valid low-scope token yields 403."
+    },
+    {
+      "name": "Token passthrough",
+      "symptom": "MCP bearer token is forwarded to a downstream API with a different audience.",
+      "rootCause": "Host treats access token as a universal credential.",
+      "recovery": "Use token exchange or a separate least-privilege downstream credential.",
+      "regressionTest": "Assert downstream adapter never receives incoming MCP bearer token."
+    },
+    {
+      "name": "Secrets in traces",
+      "symptom": "Bearer tokens, authorization codes or PKCE verifiers appear in logs.",
+      "rootCause": "HTTP headers and auth callback parameters are captured without redaction.",
+      "recovery": "Redact Authorization, code, state and verifier before trace export; rotate leaked secrets.",
+      "regressionTest": "Inject sentinel token and assert absent from exported trace."
+    }
+  ],
+  "practice": {
+    "guided": "Inspect a token's iss, aud, exp, nbf and scopes. Predict whether the result is 401, 403 or authorized before considering tenant/object checks.",
+    "independent": "Implement OAuth resource-server middleware that verifies tokens through a trusted verifier and enforces per-tool scope policy.",
+    "realWorld": "Protect a remote MCP server with an existing identity provider. Publish PRM metadata, require resource-bound access tokens, enforce read/write scopes and audit tenant-scoped tool calls.",
+    "expertExtension": "Add issuer discovery caching, JWKS rotation, token revocation/introspection, RFC 9207 mix-up defense, CIMD, scope step-up, per-tool auth, CORS/Origin/Host checks, DPoP or mTLS where supported, and secret redaction.",
+    "guidedExercise": {
+      "title": "Implement resource-bound token validation",
+      "instructions": "Reject a token if issuer, audience or expiry is wrong. Then verify that the requested tool's scope is present.",
+      "starterCode": "def authorize(claims, expected_issuer, expected_audience, required_scope, now):\n    # validate iss, aud, exp and nbf\n    # check required scope\n    # return verified subject or an HTTP-style error\n    raise NotImplementedError",
+      "solutionCode": "def authorize(claims, expected_issuer, expected_audience, required_scope, now):\n    if claims.get('iss') != expected_issuer: return 401\n    if claims.get('aud') != expected_audience: return 401\n    if now >= claims.get('exp', 0) or now < claims.get('nbf', 0): return 401\n    if required_scope not in claims.get('scope', '').split(): return 403\n    return {'status': 200, 'subject': claims['sub']}",
+      "unitTests": "assert authorize(valid_claims, issuer, audience, 'orders:read', 100)['status'] == 200\nassert authorize(valid_claims, issuer, 'other-resource', 'orders:read', 100) == 401"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build an OAuth authorization inspector for a stateless MCP server with per-tool scopes and tenant checks.",
+      "steps": [
+        "Publish a sample RFC 9728 PRM document for the MCP resource.",
+        "Configure an external authorization server issuer and resource-bound audience.",
+        "Simulate valid, expired, wrong-issuer and wrong-audience tokens.",
+        "Call public health, protected lookup_order and protected issue_refund tools.",
+        "Verify missing token returns 401 and insufficient scope returns 403.",
+        "Simulate RFC 9207 issuer mismatch and issuer-bound credential lookup.",
+        "Inject cross-tenant object IDs and confirm domain authorization blocks them.",
+        "Inspect redacted traces and verify no bearer token is exported."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "A JWT signature is valid but aud names another API. What response?",
+        "options": [
+          "401 Unauthorized",
+          "403 insufficient_scope",
+          "401 invalid_token",
+          "Retry the tool"
+        ],
+        "correctIndex": 2,
+        "explanation": "The token was not issued for this MCP resource; audience mismatch makes it invalid."
+      },
+      {
+        "question": "A valid token lacks refund:write. What response?",
+        "options": [
+          "401 invalid_token",
+          "403 insufficient_scope",
+          "200 with warning",
+          "JSON-RPC success"
+        ],
+        "correctIndex": 1,
+        "explanation": "The caller is authenticated but lacks the required permission."
+      },
+      {
+        "question": "Who issues the access token?",
+        "options": [
+          "MCP resource server",
+          "Authorization server / identity provider",
+          "Tool handler",
+          "MCP client"
+        ],
+        "correctIndex": 1,
+        "explanation": "The MCP server is a resource server and validates tokens; it does not issue them."
+      },
+      {
+        "question": "Does orders:read authorize every order ID?",
+        "options": [
+          "Yes, across tenants",
+          "Yes, if token is unexpired",
+          "No, object-level tenant authorization is still required",
+          "Only for public resources"
+        ],
+        "correctIndex": 2,
+        "explanation": "Scopes are coarse permissions; the domain layer must still enforce resource ownership."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "OAuth roles and PRM discovery",
+        "weight": 20,
+        "evidence": "Separate authorization server from MCP resource server and explain RFC 9728 metadata."
+      },
+      {
+        "criterion": "Token validation",
+        "weight": 25,
+        "evidence": "Verify signature, issuer, audience, expiry, not-before and issuer-bound credential storage."
+      },
+      {
+        "criterion": "Scope and HTTP semantics",
+        "weight": 20,
+        "evidence": "Correct 401/403, scope hierarchy and step-up behavior."
+      },
+      {
+        "criterion": "Tenant and transport security",
+        "weight": 20,
+        "evidence": "Object-level authorization, header/Origin protections and no token passthrough."
+      },
+      {
+        "criterion": "Audit and secret hygiene",
+        "weight": 15,
+        "evidence": "Sensitive credentials are redacted and failures are traceable."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Both Python suites pass.",
+      "Wrong issuer/audience/expiry are rejected.",
+      "Missing scopes return 403 while invalid credentials return 401.",
+      "Cross-tenant object access is denied.",
+      "Token secrets are not logged or forwarded."
+    ]
+  },
+  "references": [
+    {
+      "title": "MCP 2026-07-28 specification release and authorization hardening",
+      "url": "https://blog.modelcontextprotocol.io/posts/2026-07-28/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "MCP authorization server guidance",
+      "url": "https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "MCP Python SDK authorization guide",
+      "url": "https://py.sdk.modelcontextprotocol.io/run/authorization/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "MCP authorization hardening migration notes",
+      "url": "https://ts.sdk.modelcontextprotocol.io/v2/migration/support-2026-07-28",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "aud == canonical_mcp_resource_uri",
+      "explanation": "A token's audience must identify this resource server; a valid signature for another API is insufficient."
+    },
+    {
+      "lines": "iss == configured_authorization_server",
+      "explanation": "Issuer validation prevents tokens from unrelated identity systems and supports credential binding."
+    },
+    {
+      "lines": "401 invalid_token vs 403 insufficient_scope",
+      "explanation": "Authentication failures and authorization failures have different HTTP semantics and client recovery paths."
+    },
+    {
+      "lines": "required_scope ⊆ effective_scopes",
+      "explanation": "Apply explicit scope hierarchy and step-up behavior consistently for every protected method/tool."
+    },
+    {
+      "lines": "tenant/object authorization after scope",
+      "explanation": "Broad token scopes do not replace per-record ownership checks in the domain service."
+    }
+  ]
 }
