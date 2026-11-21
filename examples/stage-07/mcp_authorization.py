@@ -19,7 +19,7 @@ class MCPResourcePolicy:
   self.resource_uri=resource_uri;self.issuer=issuer;self.required_scopes=required_scopes
   self.public_tools=set(public_tools or [])
   self.scope_implications=scope_implications or {}
-  self.resource_metadata={"resource":resource_uri,"authorization_servers":[issuer],"scopes_supported":sorted(set(required_scopes.values()))}
+  self.resource_metadata={"resource":resource_uri,"authorization_servers":[issuer],"scopes_supported":sorted({scope for values in required_scopes.values() for scope in values})}
  def _effective_scopes(self,scopes):
   effective=set(scopes)
   changed=True
@@ -30,7 +30,7 @@ class MCPResourcePolicy:
      before=len(effective);effective.update(children);changed|=len(effective)>before
   return effective
  def authorize(self,method,tool_name,token,now):
-  key=tool_name if method=="tools/call" else method
+  key=f"{method}:{tool_name}" if method=="tools/call" else method
   if method=="tools/call" and tool_name in self.public_tools:return {"subject":"anonymous","scopes":set()}
   required=self.required_scopes.get(key,self.required_scopes.get(method,set()))
   if token is None:
