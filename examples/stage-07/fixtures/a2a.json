@@ -1,0 +1,78 @@
+{
+  "scenario": "Orchestrator delegates a refund review to an independent specialist",
+  "protocolVersion": "1.0.0",
+  "agentCard": {
+    "name": "Refund specialist",
+    "url": "https://agents.example.com/a2a",
+    "interfaces": [
+      {
+        "transport": "JSONRPC",
+        "url": "https://agents.example.com/a2a",
+        "protocolVersion": "1.0.0"
+      }
+    ],
+    "capabilities": {
+      "streaming": true,
+      "pushNotifications": false
+    },
+    "skills": [
+      "refund-review"
+    ],
+    "securitySchemes": [
+      "bearer"
+    ]
+  },
+  "request": {
+    "tenantId": "tenant-a",
+    "contextId": "ctx-9",
+    "taskId": "task-42",
+    "orderId": "ORD-7",
+    "refundAmount": 12500
+  },
+  "expectedLifecycle": [
+    "submitted",
+    "working",
+    "completed"
+  ],
+  "artifact": {
+    "artifactId": "artifact-7",
+    "mimeType": "application/json",
+    "provenance": [
+      "orders/ORD-7",
+      "policy/refunds-v3"
+    ],
+    "approvalRequired": true
+  },
+  "events": [
+    {
+      "sequence": 1,
+      "type": "status",
+      "status": "submitted"
+    },
+    {
+      "sequence": 2,
+      "type": "status",
+      "status": "working"
+    },
+    {
+      "sequence": 3,
+      "type": "artifact",
+      "artifactId": "artifact-7"
+    },
+    {
+      "sequence": 4,
+      "type": "status",
+      "status": "completed"
+    }
+  ],
+  "failureInjection": [
+    "spoofed Agent Card",
+    "unsupported protocol version",
+    "cross-tenant task lookup",
+    "wrong context ID",
+    "invalid MIME type",
+    "stream disconnect",
+    "duplicate push event",
+    "private callback URL"
+  ]
+}
