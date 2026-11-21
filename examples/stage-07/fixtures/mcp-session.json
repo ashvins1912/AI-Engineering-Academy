@@ -1,0 +1,37 @@
+{
+  "scenario": "MCP host connects to a tools server and discovers one read-only order tool",
+  "protocolVersion": "2025-06-18",
+  "client": {
+    "name": "academy-host",
+    "version": "1.0.0"
+  },
+  "server": {
+    "name": "academy-tools",
+    "version": "1.0.0"
+  },
+  "lifecycle": [
+    "initialize",
+    "notifications/initialized",
+    "tools/list",
+    "tools/call",
+    "shutdown"
+  ],
+  "capabilities": {
+    "tools": {
+      "listChanged": false
+    }
+  },
+  "tool": {
+    "name": "lookup_order",
+    "arguments": {
+      "order_id": "ORD-7"
+    },
+    "requiredConsent": true
+  },
+  "trustBoundaries": [
+    "host owns user consent",
+    "client owns protocol session",
+    "server validates tool schema",
+    "domain gateway owns tenant authorization"
+  ]
+}
