@@ -1,0 +1,605 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "prompt-injection",
+    "title": "Prompt Injection and Data Exfiltration — secure RAG and agent boundaries",
+    "stage": 10,
+    "estimatedMinutes": 300
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Distinguish direct prompt injection, indirect injection, retrieval poisoning and tool-output injection across an AI request lifecycle.",
+      "Explain why system prompts, refusal wording and model self-restraint are not authorization or confidentiality boundaries.",
+      "Design server-side policy checks that separate trusted instructions, untrusted evidence and tool capabilities.",
+      "Prevent sensitive data exposure through least-privilege retrieval, output controls, tool authorization and secret isolation.",
+      "Build adversarial regression tests using harmless canary values and controlled mock tools.",
+      "Trace security decisions with privacy-safe audit evidence without logging secrets or raw sensitive prompts."
+    ],
+    "prerequisites": [
+      "RAG retrieval, embeddings, context construction and agent tool calling",
+      "Python, HTTP APIs, authentication, authorization and data classification"
+    ],
+    "glossary": [
+      {
+        "term": "Direct injection",
+        "definition": "An attacker places adversarial instructions directly in the user's message to influence model behavior."
+      },
+      {
+        "term": "Indirect injection",
+        "definition": "Malicious instructions arrive inside retrieved documents, web pages, emails or tool outputs."
+      },
+      {
+        "term": "Retrieval poisoning",
+        "definition": "An attacker alters or inserts corpus content so retrieval returns misleading or malicious evidence."
+      },
+      {
+        "term": "Trust boundary",
+        "definition": "A security-enforced separation between data or actions with different levels of authority."
+      },
+      {
+        "term": "Taint label",
+        "definition": "Metadata marking content as untrusted so downstream components cannot treat it as policy or authority."
+      },
+      {
+        "term": "Capability",
+        "definition": "A narrowly scoped permission to perform a specific action on a specific resource."
+      },
+      {
+        "term": "Data exfiltration",
+        "definition": "Unauthorized movement or disclosure of protected information to a user or external destination."
+      },
+      {
+        "term": "Canary secret",
+        "definition": "A harmless synthetic marker used to detect accidental disclosure during controlled security tests."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "LLMs interpret text but do not inherently know which text has authority. User messages, retrieved pages and tool outputs can contain instructions that conflict with system policy or attempt to expose sensitive data.",
+    "plainLanguage": "Prompt injection is a confused-deputy problem at the language boundary. A model receives many strings in one context window: trusted application instructions, user requests, retrieved documents, tool output and conversation history. If the application simply concatenates them, malicious text in a document can look like an instruction. A model may follow it even when the document is only supposed to provide evidence.\n\nDirect injection arrives in the user message. Indirect injection arrives through a source the user asks the assistant to read: a PDF, web page, ticket, code comment or tool response. Retrieval poisoning changes the corpus so a malicious or misleading chunk is likely to be retrieved. Tool-output injection is the same risk after a tool call: output is data, not authority.\n\nThere is no reliable magic phrase that makes a model immune. Delimiters, instruction hierarchy, classifiers and model training can reduce risk, but the security boundary must be outside the model. Keep credentials and secrets out of model context. Authenticate the caller, authorize every retrieval and tool action in server code, restrict the model to a small set of capabilities, validate arguments, enforce tenant and resource scope, and require human approval for consequential actions.\n\nTreat retrieved content as untrusted evidence. Preserve provenance and trust labels, isolate it from trusted instructions, and tell the model to summarize evidence rather than execute embedded commands. This is defense in depth, not a substitute for policy enforcement. A retrieved document cannot grant access to another document or request a tool action on its own.\n\nPrevent exfiltration by minimizing what the model can see. Retrieve only records the authenticated principal may access; remove secrets and unnecessary personal data before context construction; use synthetic canaries in tests; and apply output controls for sensitive fields. Do not rely on a regex over generated text as the only defense. If a tool returns protected data, authorization and redaction must happen before the model sees it.\n\nTest the complete flow. Inject harmless malicious strings into user input, retrieved content and tool output. Verify the application does not change permissions, call an unauthorized tool, expose a canary or cross tenant boundaries. Record policy decision IDs and redacted reason codes, not the secret itself. Re-run the regression suite whenever prompts, retrievers, models, tools or data sources change.",
+    "mentalModel": "Authenticate caller → authorize retrieval → label untrusted evidence → construct bounded context → propose tool action → server-side capability check → execute least-privilege tool → redact output → audit decision.",
+    "limitations": [
+      "Pattern matching and classifiers are incomplete; attackers can paraphrase, obfuscate or encode malicious instructions.",
+      "Model refusals are probabilistic and cannot replace server-side access control.",
+      "A secure prompt cannot compensate for retrieving data the caller is not authorized to see.",
+      "Output filters can miss transformed or indirect disclosure; minimize sensitive context first.",
+      "Human approval is useful for high-impact actions but does not make unsafe tool permissions acceptable.",
+      "The local simulator validates policy wiring, not the behavior of every hosted model or real document parser."
+    ],
+    "everydayAnalogy": "A mailroom clerk may read a letter that says 'unlock the vault', but the letter is not an access badge. The clerk can summarize the letter; only the building's access-control system can authorize entry.",
+    "mathMadeSimple": "If a retrieval query returns 8 chunks and each chunk is 500 tokens, the model receives 4,000 evidence tokens. If only 3 chunks are needed and each is permission-checked and redacted first, the context is 1,500 tokens. Reducing unnecessary context by 62.5% also reduces the amount of untrusted content and sensitive data exposed to the model.",
+    "productionImpact": "Keep secrets outside model context, enforce retrieval and tool authorization in deterministic server code, carry provenance and trust labels, minimize evidence, validate outputs and test adversarial cases with harmless canaries."
+  },
+  "useCase": {
+    "scenario": "Build a document assistant that retrieves tenant-scoped evidence and can call a read-only mock report tool. Malicious instructions embedded in a document or tool response must never expand permissions or expose a synthetic secret canary.",
+    "actors": [
+      "Authenticated user",
+      "API gateway",
+      "Tenant-aware retriever",
+      "Context builder",
+      "LLM adapter (mocked)",
+      "Capability policy engine",
+      "Read-only report tool",
+      "Redacted audit logger"
+    ],
+    "inputs": [
+      "User identity and tenant ID",
+      "Document chunks with provenance and trust labels",
+      "Harmless direct and indirect injection strings",
+      "Synthetic canary secret stored outside model context",
+      "Requested tool name, verb and resource",
+      "Server-side capability allowlist"
+    ],
+    "constraints": [
+      "Never put production credentials or real secrets in prompts or fixtures.",
+      "Retrieved content and tool output are always untrusted data.",
+      "Every retrieval and tool call is authorized server-side for principal, tenant, verb and resource.",
+      "The model cannot grant itself capabilities or change policy.",
+      "Unauthorized requests are denied before tool execution.",
+      "Audit output contains reason codes and identifiers, not secret values."
+    ],
+    "outputs": [
+      "Policy decision for retrieval and tool actions",
+      "Safe answer grounded in authorized evidence",
+      "Denied action trace for injection attempts",
+      "Canary non-disclosure assertion",
+      "Privacy-safe audit record"
+    ],
+    "successMetric": "All adversarial fixtures preserve tenant boundaries, deny unauthorized actions before execution, and keep the canary absent from model-visible and user-visible output."
+  },
+  "architecture": {
+    "diagram": "content/topics/prompt-injection/trust-boundary-flow.mmd",
+    "components": [
+      "Identity and tenant authenticator",
+      "Permission-aware retriever",
+      "Provenance and taint labeler",
+      "Context minimizer and redactor",
+      "LLM reasoning adapter",
+      "Server-side capability policy",
+      "Isolated read-only tool executor",
+      "Output classifier and redactor",
+      "Privacy-safe security audit"
+    ],
+    "dataFlow": [
+      {
+        "from": "User",
+        "to": "Authenticator",
+        "payload": "identity token and request",
+        "purpose": "Establish principal and tenant from verified identity."
+      },
+      {
+        "from": "Authenticator",
+        "to": "Retriever",
+        "payload": "principal and tenant scope",
+        "purpose": "Fetch only evidence the caller is allowed to access."
+      },
+      {
+        "from": "Retriever",
+        "to": "Context builder",
+        "payload": "authorized chunks with provenance",
+        "purpose": "Preserve source identity and mark content untrusted."
+      },
+      {
+        "from": "Context builder",
+        "to": "LLM",
+        "payload": "minimal evidence and trusted task instructions",
+        "purpose": "Separate instructions from evidence and omit secrets."
+      },
+      {
+        "from": "LLM",
+        "to": "Policy engine",
+        "payload": "proposed structured tool action",
+        "purpose": "Treat model output as an untrusted request, not an authorization decision."
+      },
+      {
+        "from": "Policy engine",
+        "to": "Tool executor",
+        "payload": "approved scoped capability",
+        "purpose": "Execute only an allowlisted action with validated arguments."
+      },
+      {
+        "from": "Tool executor",
+        "to": "Output guard",
+        "payload": "tool result with classification",
+        "purpose": "Redact protected values before model or user exposure."
+      },
+      {
+        "from": "Policy engine",
+        "to": "Audit",
+        "payload": "decision ID and reason code",
+        "purpose": "Record evidence without logging secret content."
+      }
+    ],
+    "trustBoundaries": [
+      "The identity provider and server policy are authoritative; model-generated claims are not.",
+      "Retrieved documents, web pages and tool outputs are untrusted data regardless of source format.",
+      "Secrets are stored outside prompts and are never included in model-visible context.",
+      "Tool credentials are scoped per capability and tenant, not shared with the model.",
+      "Audit logs are access-controlled and redact raw prompt content and protected values."
+    ],
+    "failurePaths": [
+      "Invalid identity or tenant context: deny before retrieval.",
+      "Unauthorized document: omit it and record a scoped denial, never rely on model refusal.",
+      "Injection string in evidence: preserve untrusted label and do not execute embedded instruction.",
+      "Model proposes an unapproved tool or resource: deny before tool invocation.",
+      "Tool returns a classified secret: redact before model-visible or user-visible output.",
+      "Audit sink is unavailable: fail closed for high-impact actions and emit a safe operational alert."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-10/prompt-injection/security-scenario.json",
+    "steps": [
+      {
+        "label": "Authenticate",
+        "explanation": "Verify principal and tenant before any retrieval or tool access.",
+        "expectedState": "identity=verified"
+      },
+      {
+        "label": "Retrieve safely",
+        "explanation": "Apply tenant permissions and preserve document provenance and trust labels.",
+        "expectedState": "evidence=authorized_untrusted"
+      },
+      {
+        "label": "Build context",
+        "explanation": "Minimize evidence and exclude secrets before sending text to the model.",
+        "expectedState": "secret_in_context=false"
+      },
+      {
+        "label": "Inspect proposed action",
+        "explanation": "Treat model output as a request and check the capability in server code.",
+        "expectedState": "tool=authorized_or_denied"
+      },
+      {
+        "label": "Redact response",
+        "explanation": "Apply data classification and output controls before disclosure.",
+        "expectedState": "canary_exposed=false"
+      },
+      {
+        "label": "Audit decision",
+        "explanation": "Record decision IDs and reason codes without storing protected content.",
+        "expectedState": "audit=redacted"
+      }
+    ],
+    "accessibility": [
+      "Every stage includes a text description and expected state.",
+      "Trust labels and policy decisions are expressed in text, not color alone.",
+      "The canary test result can be read without animation."
+    ],
+    "animation": {
+      "objective": "Trace a malicious instruction through retrieval and tool proposal while server-side policy prevents privilege expansion and secret disclosure.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Verify identity",
+          "narration": "The application derives principal and tenant from a verified identity.",
+          "input": "principal=user-17; tenant=tenant-a",
+          "transformation": "validate token and session",
+          "output": "identity=verified",
+          "visualState": "Authenticated request"
+        },
+        {
+          "step": 2,
+          "title": "Retrieve evidence",
+          "narration": "The retriever returns only permitted chunks and marks them as untrusted evidence.",
+          "input": "document=doc-4; trust=untrusted",
+          "transformation": "tenant and ACL filter",
+          "output": "evidence=authorized",
+          "visualState": "Scoped evidence"
+        },
+        {
+          "step": 3,
+          "title": "Minimize context",
+          "narration": "The context builder removes secrets and labels evidence as data, not policy.",
+          "input": "chunks=8; tokens=4000",
+          "transformation": "select 3 chunks and redact",
+          "output": "tokens=1500; canary=absent",
+          "visualState": "Bounded context"
+        },
+        {
+          "step": 4,
+          "title": "Model proposes action",
+          "narration": "An injected document asks for a protected report; the model output is only a proposal.",
+          "input": "tool=read_report; resource=tenant-b/report-9",
+          "transformation": "server-side capability check",
+          "output": "decision=deny",
+          "visualState": "Unauthorized action blocked"
+        },
+        {
+          "step": 5,
+          "title": "Protect output",
+          "narration": "Any classified tool value is redacted before it can reach the model or user.",
+          "input": "classification=restricted",
+          "transformation": "redaction and allowlist",
+          "output": "canary_exposed=false",
+          "visualState": "Safe response"
+        },
+        {
+          "step": 6,
+          "title": "Record evidence",
+          "narration": "The audit event stores a reason code and decision ID without secret content.",
+          "input": "reason=TENANT_SCOPE_DENIED",
+          "transformation": "redacted audit append",
+          "output": "audit=complete",
+          "visualState": "Privacy-safe trace"
+        }
+      ],
+      "controls": [
+        {
+          "name": "retrieved_chunks",
+          "min": 1,
+          "max": 12,
+          "defaultValue": 8,
+          "effect": "More retrieved chunks increase context size and untrusted content exposure."
+        },
+        {
+          "name": "selected_chunks",
+          "min": 1,
+          "max": 8,
+          "defaultValue": 3,
+          "effect": "Context minimization reduces unnecessary evidence passed to the model."
+        },
+        {
+          "name": "tool_scope_level",
+          "min": 0,
+          "max": 3,
+          "defaultValue": 1,
+          "effect": "Higher scope represents broader capability; policy should grant only the minimum required level."
+        },
+        {
+          "name": "output_redaction",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "A value of 1 enables the output redaction gate for classified fields."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Text reports authenticated principal and tenant, evidence trust label, context size, capability decision, canary disclosure status and redacted audit reason."
+    }
+  },
+  "workedExample": {
+    "problem": "A tenant-A user asks for a report. A retrieved tenant-A document contains an instruction to read tenant-B's report and print a synthetic canary secret.",
+    "input": "Caller scope: tenant-A/read:report-4. Proposed tool request: tenant-B/read:report-9. Canary: CANARY-DO-NOT-DISCLOSE-7F3A.",
+    "steps": [
+      {
+        "operation": "Authenticate caller",
+        "reasoning": "Derive principal and tenant from verified identity, not from prompt text.",
+        "result": "principal=user-17; tenant=tenant-A"
+      },
+      {
+        "operation": "Authorize retrieval",
+        "reasoning": "Filter document IDs by tenant-A and user read permissions.",
+        "result": "Only tenant-A evidence is returned"
+      },
+      {
+        "operation": "Label evidence",
+        "reasoning": "The malicious sentence remains untrusted document content; it does not become system policy.",
+        "result": "trust_label=untrusted"
+      },
+      {
+        "operation": "Check tool proposal",
+        "reasoning": "Policy checks principal, tenant, verb and resource before invoking the tool.",
+        "result": "tenant-B read denied; tool invocation count=0"
+      },
+      {
+        "operation": "Check disclosure",
+        "reasoning": "The canary is not inserted into model context and output guard blocks classified values.",
+        "result": "canary_exposed=false"
+      },
+      {
+        "operation": "Audit",
+        "reasoning": "Store decision ID and reason code without recording the canary value.",
+        "result": "audit_reason=TENANT_SCOPE_DENIED"
+      }
+    ],
+    "expectedOutput": "The assistant answers only from authorized tenant-A evidence. The cross-tenant tool request is denied before execution, and the synthetic canary never appears in model-visible or user-visible output."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-10/prompt-injection/security_boundary.py",
+      "runCommand": "python examples/stage-10/prompt-injection/security_boundary.py --scenario examples/stage-10/prompt-injection/security-scenario.json",
+      "testsPath": "examples/stage-10/test_prompt_injection.py",
+      "expectedResult": "A deterministic policy simulation shows untrusted evidence, tenant-scoped capabilities, secret minimization and redacted audit decisions."
+    },
+    {
+      "language": "python",
+      "role": "production",
+      "path": "examples/stage-10/prompt-injection/README.md",
+      "runCommand": "python -m unittest discover -s examples/stage-10 -p 'test_*.py' -v",
+      "testsPath": "examples/stage-10/test_prompt_injection.py",
+      "expectedResult": "A defensive design runbook and regression suite covering direct/indirect injection, retrieval permissions, tool authorization, output redaction and audit privacy."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Retrieved instruction treated as authority",
+      "symptom": "The assistant follows a command embedded in a PDF or web page.",
+      "rootCause": "The application concatenates trusted instructions and untrusted evidence without a clear boundary.",
+      "recovery": "Preserve provenance and taint labels; treat retrieved text as evidence and enforce actions outside the model.",
+      "regressionTest": "A malicious retrieved chunk cannot change server-side policy."
+    },
+    {
+      "name": "Cross-tenant retrieval",
+      "symptom": "A user receives a document from another tenant.",
+      "rootCause": "The retriever trusts model-generated tenant filters or applies ACL checks after context construction.",
+      "recovery": "Derive tenant from verified identity and filter before returning any chunk.",
+      "regressionTest": "Cross-tenant document is absent from retrieval results and context."
+    },
+    {
+      "name": "Unauthorized tool execution",
+      "symptom": "The model invokes a report or export tool outside the user's permission.",
+      "rootCause": "Tool invocation is treated as approved because the model proposed it.",
+      "recovery": "Validate principal, verb, resource and tenant in server-side policy before tool execution.",
+      "regressionTest": "Denied capability produces zero tool calls."
+    },
+    {
+      "name": "Secret included in context",
+      "symptom": "A canary or credential appears in model input or generated output.",
+      "rootCause": "Sensitive configuration or unrestricted tool output is passed directly to the model.",
+      "recovery": "Keep secrets outside context; classify and redact tool results before model exposure.",
+      "regressionTest": "Canary is absent from serialized model context and user response."
+    },
+    {
+      "name": "Output-only filtering",
+      "symptom": "Sensitive content influences reasoning even though the final answer is redacted.",
+      "rootCause": "The application exposes secrets to the model and relies only on final output filtering.",
+      "recovery": "Minimize and redact data before context construction; retain output guard as defense in depth.",
+      "regressionTest": "Restricted value is removed before the LLM adapter is called."
+    },
+    {
+      "name": "Sensitive audit logging",
+      "symptom": "Raw prompts or secret values appear in logs.",
+      "rootCause": "Debug telemetry records full request and tool payloads.",
+      "recovery": "Log decision IDs, source IDs and reason codes; redact content and restrict audit access.",
+      "regressionTest": "Audit serialization never contains the synthetic canary."
+    }
+  ],
+  "practice": {
+    "guided": "Run the fixture with an injected instruction in retrieved content. Inspect the trust label, denied tool request and canary absence assertions.",
+    "independent": "Add a new tool capability and prove the default is deny. Add a second tenant and test retrieval isolation at the retriever boundary.",
+    "realWorld": "Threat-model a production RAG assistant across identity, retrieval, context construction, model output, tool execution and audit logging.",
+    "expertExtension": "Add document provenance verification, parser sandboxing, policy decision points, human approval for high-impact actions, and adversarial test generation with a harmless synthetic canary corpus.",
+    "guidedExercise": {
+      "title": "Deny a cross-tenant tool request",
+      "instructions": "Implement a server-side policy that allows only read_report on the caller's own tenant and denies all other resources before invoking the mock tool.",
+      "starterCode": "def authorize(principal, action):\n    raise NotImplementedError",
+      "solutionCode": "def authorize(principal, action):\n    return (action['tool'] == 'read_report'\n            and action['verb'] == 'read'\n            and action['tenant_id'] == principal['tenant_id']\n            and action['resource_id'] in principal['allowed_resources'])",
+      "unitTests": "principal = {'tenant_id': 'tenant-a', 'allowed_resources': ['report-4']}\nassert authorize(principal, {'tool':'read_report','verb':'read','tenant_id':'tenant-a','resource_id':'report-4'})\nassert not authorize(principal, {'tool':'read_report','verb':'read','tenant_id':'tenant-b','resource_id':'report-9'})"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build a security boundary workbench for a multi-tenant RAG assistant using harmless adversarial fixtures.",
+      "steps": [
+        "Authenticate a principal and derive tenant scope server-side.",
+        "Load documents with provenance and untrusted labels.",
+        "Inject direct, indirect and tool-output instruction strings.",
+        "Construct minimal context while excluding synthetic secrets.",
+        "Submit proposed tool calls to a server-side capability policy.",
+        "Verify denied actions invoke no tool and cannot cross tenant boundaries.",
+        "Redact output and persist privacy-safe decision evidence."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "Why is a retrieved document not allowed to change system policy?",
+        "options": [
+          "It is untrusted evidence",
+          "It is always encrypted",
+          "It has higher priority",
+          "It was vector searched"
+        ],
+        "correctIndex": 0,
+        "explanation": "Retrieved content is data from an untrusted source and cannot grant authority."
+      },
+      {
+        "question": "Where should tool authorization be enforced?",
+        "options": [
+          "Server-side policy",
+          "Prompt wording",
+          "Retrieved document",
+          "Model confidence"
+        ],
+        "correctIndex": 0,
+        "explanation": "A deterministic server-side policy checks principal, verb, resource and tenant before execution."
+      },
+      {
+        "question": "What is the safest place for production credentials?",
+        "options": [
+          "Outside model context",
+          "Inside system prompt",
+          "In retrieved chunks",
+          "In chat history"
+        ],
+        "correctIndex": 0,
+        "explanation": "Secrets should not be placed in prompts or model-visible context."
+      },
+      {
+        "question": "What should happen when a user requests another tenant's report?",
+        "options": [
+          "Deny before tool call",
+          "Ask model to decide",
+          "Return cached result",
+          "Retry with admin role"
+        ],
+        "correctIndex": 0,
+        "explanation": "The server enforces tenant scope before any tool invocation."
+      },
+      {
+        "question": "What should audit logs store for an injection denial?",
+        "options": [
+          "Reason code and ID",
+          "Full secret payload",
+          "Raw credentials",
+          "Entire document text"
+        ],
+        "correctIndex": 0,
+        "explanation": "Record enough evidence to investigate without storing protected content."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Threat model and trust boundaries",
+        "weight": 20,
+        "evidence": "Identifies direct, indirect, retrieval and tool-output injection paths."
+      },
+      {
+        "criterion": "Permission-aware retrieval",
+        "weight": 20,
+        "evidence": "Derives tenant from identity and filters before context construction."
+      },
+      {
+        "criterion": "Server-side tool authorization",
+        "weight": 25,
+        "evidence": "Checks principal, verb, resource and tenant before execution."
+      },
+      {
+        "criterion": "Secret minimization and output safety",
+        "weight": 20,
+        "evidence": "Keeps secrets outside model context and proves canary non-disclosure."
+      },
+      {
+        "criterion": "Adversarial regression and audit privacy",
+        "weight": 15,
+        "evidence": "Tests malicious fixtures and logs only privacy-safe decision evidence."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Direct and indirect injection fixtures remain untrusted data.",
+      "Cross-tenant retrieval returns no unauthorized chunks.",
+      "Unauthorized tool request results in zero tool invocations.",
+      "Synthetic canary is absent from model context and user output.",
+      "Audit log contains reason code but no protected value."
+    ]
+  },
+  "references": [
+    {
+      "title": "OWASP Top 10 for LLM Applications — Prompt Injection",
+      "url": "https://genai.owasp.org/llmrisk/llm01-prompt-injection/",
+      "sourceType": "standard",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "OWASP Top 10 for LLM Applications — Sensitive Information Disclosure",
+      "url": "https://genai.owasp.org/llmrisk/llm02-sensitive-information-disclosure/",
+      "sourceType": "standard",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "OWASP LLM Prompt Injection Prevention Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/LLM_Prompt_Injection_Prevention_Cheat_Sheet.html",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "NIST AI Risk Management Framework",
+      "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+      "sourceType": "standard",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "MITRE ATLAS — Adversarial Threat Landscape for AI Systems",
+      "url": "https://atlas.mitre.org/",
+      "sourceType": "standard",
+      "checkedOn": "2026-11-22"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "principal = verify_identity(token)",
+      "explanation": "The authenticated principal and tenant come from verified identity, never from user prompt text."
+    },
+    {
+      "lines": "chunks = retriever.search(query, tenant_id=principal.tenant_id, acl=principal.permissions)",
+      "explanation": "Authorization happens before document content is returned to the context builder."
+    },
+    {
+      "lines": "context = redact_and_minimize(label_untrusted(chunks))",
+      "explanation": "Retrieved content remains data and sensitive fields are removed before model exposure."
+    },
+    {
+      "lines": "decision = policy.authorize(principal, tool, verb, resource, tenant)",
+      "explanation": "The model proposes an action; server-side policy makes the authorization decision."
+    },
+    {
+      "lines": "if not decision.allowed: deny_without_tool_call()",
+      "explanation": "A denied capability must not invoke the tool or partially execute side effects."
+    },
+    {
+      "lines": "audit.append(decision_id, reason_code, source_ids)",
+      "explanation": "Record enough for investigation while keeping secrets and raw sensitive content out of logs."
+    }
+  ]
+}
