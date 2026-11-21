@@ -228,9 +228,9 @@
       }
     ],
     "accessibility": [
-      "Task state and context IDs are labeled as text.",
-      "Streaming events are listed with event type and sequence.",
-      "Artifact name, MIME type and validation status are explicit."
+      "Current stage, model version, prompt version and production alias version are exposed as text.",
+      "Every quality, compatibility, approval and canary control has a visible label and current value.",
+      "Gate outcomes use explicit text such as pass, blocked, promoted and rolled back; color is never the only signal."
     ],
     "animation": {
       "objective": "Promote a model/prompt release bundle only after provenance, compatibility, quality and approval gates pass; then demonstrate safe alias rollback.",
@@ -414,6 +414,20 @@
       "rootCause": "Rollback moves individual artifacts instead of whole release bundle.",
       "recovery": "Rollback the full bundle and verify runtime compatibility.",
       "regressionTest": "Rollback target must include all required bundle components."
+    },
+    {
+      "name": "Unauthorized release manager",
+      "symptom": "A researcher or unrelated service moves the production alias.",
+      "rootCause": "Promotion and rollback accept an actor identity without checking a server-derived role allow-list.",
+      "recovery": "Derive role membership from authenticated server identity and enforce it inside the registry service.",
+      "regressionTest": "A non-release-manager actor is rejected for both promotion and rollback."
+    },
+    {
+      "name": "Invalid evaluation score or missing evidence",
+      "symptom": "A malformed quality score or empty evaluation reference is accepted into a release bundle.",
+      "rootCause": "Bundle creation does not validate metric bounds or evidence identity.",
+      "recovery": "Require a non-empty immutable evaluation report hash and a normalized score between zero and one.",
+      "regressionTest": "Scores outside [0,1] and missing evaluation evidence are rejected."
     }
   ],
   "practice": {
@@ -553,6 +567,10 @@
   ],
   "codeWalkthrough": [
     {
+      "lines": "if actor not in server_derived_release_manager_roles: deny()",
+      "explanation": "The registry must enforce authorization at the write boundary; a client-provided role or UI toggle is not an authorization source."
+    },
+    {
       "lines": "model_digest = sha256(model_artifact_bytes)",
       "explanation": "A version points to immutable bytes and a content digest."
     },
@@ -571,6 +589,10 @@
     {
       "lines": "rollback(alias, previous_bundle_id)",
       "explanation": "Rollback changes the pointer and preserves all version and audit history."
+    },
+    {
+      "lines": "0.0 <= quality_score <= 1.0 and evaluation_hash != ''",
+      "explanation": "Normalize evaluation scores and bind the exact evaluation evidence into the release manifest before approval."
     }
   ]
 }
