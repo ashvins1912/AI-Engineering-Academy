@@ -1,0 +1,16 @@
+flowchart TD
+ C[Business command] --> DB[Business state + outbox transaction]
+ DB --> O[Outbox publisher]
+ O --> B[Broker partition by aggregate]
+ B --> W[Bounded consumer worker]
+ W --> V[Validate schema + tenant + aggregate version]
+ V --> I{Inbox event ID already processed?}
+ I -->|Yes| A[Ack duplicate]
+ I -->|No| P[Apply local projection + inbox in one transaction]
+ P --> A2[Ack after commit]
+ V -->|Transient failure| R[Backoff + retry]
+ R -->|Attempts exhausted| D[Dead-letter queue]
+ H[Webhook ingress] --> S[Verify HMAC + timestamp + replay key]
+ S --> C
+ T[Scheduler] --> J[Deterministic scheduled event key]
+ J --> O
