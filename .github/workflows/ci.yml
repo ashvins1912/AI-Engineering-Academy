@@ -60,6 +60,10 @@ jobs:
       - run: python -m unittest discover -s examples/stage-09 -p 'test_*.py' -v
       - run: python -m unittest discover -s examples/stage-10 -p 'test_*.py' -v
       - run: python -m unittest discover -s examples/stage-11 -p 'test_*.py' -v
+      - run: python examples/stage-11/capstone-design/architecture_gate.py
+      - run: python examples/stage-11/capstone-build/capstone_app.py
+      - run: python examples/stage-11/capstone-delivery/release_gate.py
+      - run: python examples/stage-11/capstone_acceptance.py
       - run: python -m unittest discover -s content/examples/tests -v
       - run: python -m pip install pytest fastapi==0.115.12 python-multipart==0.0.20 starlette==0.46.2 httpx==0.28.1 pydantic-settings==2.9.1 "PyJWT[crypto]" "SQLAlchemy[asyncio]==2.0.41" asyncpg==0.30.0 pgvector==0.4.1 pypdf==5.6.1 python-docx==1.1.2 pytesseract==0.3.13 pdf2image==1.17.0 Pillow==11.2.1
       - name: Apply isolated test database migrations
