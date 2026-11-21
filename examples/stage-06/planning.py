@@ -35,7 +35,6 @@ def execute_plan(tasks,fail_task=None,max_tasks=10):
         selected=max(ready,key=lambda key:(priority_score(by_id[key]),key)); status[selected]='running'
         failed=selected==fail_task; status[selected]='failed' if failed else 'succeeded'
         trace.append({'task':selected,'status':status[selected],'score':round(priority_score(by_id[selected]),2),'outcome':'simulated stockout' if failed else by_id[selected]['acceptance']}); executed+=1
-        if failed: break
     changed=True
     while changed:
         changed=False
