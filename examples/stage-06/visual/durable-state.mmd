@@ -1,0 +1,20 @@
+flowchart TD
+  A[Workflow command] --> B{Valid transition?}
+  B -- No --> X[Reject and audit]
+  B -- Yes --> C[Claim lease and fencing token]
+  C --> D[Execute idempotent side effect]
+  D --> E{Outcome known?}
+  E -- No --> R[Reconcile by stable operation key]
+  R --> D
+  E -- Yes --> F[Append event and checkpoint atomically]
+  F --> G{Approval required?}
+  G -- Yes --> H[Persist human interrupt]
+  H --> I{Authorized and current?}
+  I -- No --> X
+  I -- Yes --> J[Resume workflow]
+  G -- No --> J
+  J --> K{More work?}
+  K -- Yes --> C
+  K -- No --> L[Completed]
+  C --> S[Lease expires / worker crashes]
+  S --> C

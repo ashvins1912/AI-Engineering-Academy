@@ -1,0 +1,25 @@
+{
+  "workflowId": "ORD-1042",
+  "initialState": "CREATED",
+  "initialVersion": 0,
+  "workerA": {
+    "id": "worker-A",
+    "fence": 7
+  },
+  "workerB": {
+    "id": "worker-B",
+    "fence": 8
+  },
+  "leaseSeconds": 30,
+  "idempotencyKey": "pay:ORD-1042:v1",
+  "providerResult": {
+    "status": "CHARGED",
+    "chargeId": "ch_1042"
+  },
+  "crashWindow": "Provider accepted payment; process died before checkpoint update.",
+  "expected": {
+    "providerCharges": 1,
+    "finalState": "COMPLETED",
+    "finalVersion": 5
+  }
+}
