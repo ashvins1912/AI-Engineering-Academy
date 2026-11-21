@@ -1,0 +1,576 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "registry",
+    "title": "Model and prompt registry — versioning, approval and rollback",
+    "stage": 9,
+    "estimatedMinutes": 240
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Design immutable model and prompt versions with provenance and content digests.",
+      "Separate experiment tracking, artifact storage, model registry and prompt registry responsibilities.",
+      "Promote candidates through policy gates, human approval and compatibility checks.",
+      "Manage aliases such as candidate, staging, production and champion without mutating versions.",
+      "Build atomic release bundles that bind model, prompt, tokenizer, tool schema and evaluation report.",
+      "Rollback by moving aliases to a known-good version while preserving complete audit history."
+    ],
+    "prerequisites": [
+      "Stage 9 Topic 1 experiment tracking",
+      "Model artifacts, prompt templates, evaluation metrics, Git and CI/CD basics"
+    ],
+    "glossary": [
+      {
+        "term": "Model registry",
+        "definition": "A governed catalog of immutable model versions, provenance, metadata and deployment aliases."
+      },
+      {
+        "term": "Prompt registry",
+        "definition": "A versioned catalog of prompt templates, variable schemas, model compatibility and evaluation evidence."
+      },
+      {
+        "term": "Artifact digest",
+        "definition": "A cryptographic hash identifying exact model or prompt bytes."
+      },
+      {
+        "term": "Alias",
+        "definition": "A mutable pointer such as staging or production that resolves to one immutable version."
+      },
+      {
+        "term": "Promotion",
+        "definition": "A controlled alias update after required automated and human gates pass."
+      },
+      {
+        "term": "Release bundle",
+        "definition": "A compatible, immutable set of model, prompt, tokenizer, tool schema, configuration and evaluation artifacts."
+      },
+      {
+        "term": "Provenance",
+        "definition": "Evidence linking a release to source run, dataset, code commit, build and evaluation."
+      },
+      {
+        "term": "Rollback",
+        "definition": "Moving an alias back to a previously approved immutable version, not editing the current version."
+      },
+      {
+        "term": "Model signature",
+        "definition": "The declared input/output schema and constraints for a model artifact."
+      },
+      {
+        "term": "Deprecation",
+        "definition": "A lifecycle state that blocks new use while preserving existing references and audit history."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "A model file in object storage is not a release process. Teams need to know exactly which weights, prompt, tokenizer, tool schema, configuration and evaluation report are running in production. They must prevent unreviewed changes, promote compatible candidates and recover quickly without overwriting history.",
+    "plainLanguage": "Experiment tracking answers how a model was trained. Artifact storage holds the bytes. A model registry governs named model versions, provenance, signatures, tags, approval and deployment aliases. A prompt registry does the same for prompt templates and their variable schemas. Keep these responsibilities separate so a training run does not automatically become a production release.\n\nTreat every model version as immutable. Record model name, semantic or monotonic version, artifact URI, SHA-256 digest, source run ID, code commit, dataset snapshot, framework/runtime, input/output signature, license, security scan and evaluation report. If weights change, register a new version. Never replace bytes behind an existing version number.\n\nPrompt versions also need immutable identity. Record template bytes/hash, prompt variables and types, system/developer/user message structure, model compatibility, tool schema versions, safety policy version, token budget, owner and evaluation results. A one-word prompt edit can change behavior; create a new prompt version and rerun the evaluation suite.\n\nAliases are mutable pointers to immutable versions. Typical aliases include candidate, staging, production and champion. Deployments resolve an alias at startup or through a controlled refresh mechanism. Store alias history with who changed it, when, why and the previous target. Avoid hard-coding a version in many services or changing the artifact behind an alias invisibly.\n\nPromotion is a policy decision. A candidate may require evaluation thresholds, safety checks, artifact integrity, provenance completeness, compatibility tests, vulnerability scans, cost/latency limits and human approval. A passed accuracy score alone is insufficient. A model with better quality but incompatible tokenizer or tool schema must not be promoted.\n\nBuild a release bundle to prevent model/prompt drift. Bind the model digest, prompt version, tokenizer version, inference configuration, tool schemas, retrieval index contract, safety policy and evaluation report into one canonical manifest. Hash and sign the manifest. The serving system verifies the bundle before loading it.\n\nModel compatibility is more than architecture name. Check framework/runtime version, tokenizer vocabulary, input schema, output schema, quantization format, hardware requirements, embedding dimension, tool schema and prompt variable contract. A prompt can reference a tool that the deployed agent does not expose; a model can emit a different JSON schema than the API expects.\n\nRollback should be fast and non-destructive. Move production alias to the previous known-good release bundle, verify health and keep the failed version for analysis. Do not delete or rewrite it. If the old model requires a matching prompt or tokenizer, roll back the complete bundle rather than only the weights.\n\nRegistry permissions should be role-based. Researchers can register candidates; evaluators can attach results; reviewers can approve; release managers can move production aliases; services can resolve approved aliases. Separate approval from promotion when the same person should not self-approve a high-impact release.\n\nLifecycle management includes candidate, approved, staging, production, deprecated, archived and quarantined states. Quarantine versions with compromised provenance or security findings. Deprecation should block new deployments but preserve running references until migration completes. Retention and deletion must respect legal, privacy and reproducibility requirements.\n\nConnect the registry to CI/CD. A build creates a candidate, signs and stores its artifacts, runs evaluation, attaches evidence, requests approval, promotes staging, performs smoke/canary checks and finally moves production alias. Every step is idempotent and auditable. Deployment strategies are covered separately; this topic focuses on release identity and governance.",
+    "mentalModel": "Register immutable artifacts → verify provenance/signatures/compatibility → evaluate → approve → create release bundle → move alias → verify → rollback alias if needed.",
+    "limitations": [
+      "A registry does not guarantee model quality; evaluation and production monitoring are separate controls.",
+      "Aliases are mutable and require audit, cache invalidation and atomic update semantics.",
+      "Model and prompt compatibility must be tested as a bundle, not inferred from matching names.",
+      "Artifact hashes verify integrity, not trust; signatures and provenance validation are also needed.",
+      "Rollback may require compatible runtime, tokenizer, schema and infrastructure still being available.",
+      "Registry state alone cannot prove which version a serving process loaded; runtime attestation/telemetry is required."
+    ],
+    "everydayAnalogy": "A pharmacy keeps each medicine batch sealed and numbered. A pharmacist checks the batch, expiry, prescription and approval before placing it on the shelf. If a batch is recalled, the shelf label is moved back to a previous approved batch; the original batch record is never rewritten.",
+    "mathMadeSimple": "Production alias points to model v12 + prompt v8. A candidate v13 + prompt v9 passes quality gates but fails tool-schema compatibility. Promotion must stop. After compatibility is fixed, a new release bundle is created and production alias moves atomically. If canary errors rise from 0.5% to 4%, rollback points to the previous bundle without modifying v13.",
+    "productionImpact": "Production registries require immutable artifact digests, signed release manifests, provenance, model signatures, prompt schemas, compatibility matrices, approval policy, atomic alias updates, rollback history, role separation and runtime version telemetry."
+  },
+  "useCase": {
+    "scenario": "A team promotes a customer-support LLM update. The candidate model, prompt template, tokenizer, tool schemas and safety policy are packaged into one release bundle. CI attaches evaluation and security evidence; a reviewer approves staging; the release manager moves production alias after smoke tests.",
+    "actors": [
+      "Experiment tracker",
+      "Artifact store",
+      "Model registry",
+      "Prompt registry",
+      "Evaluation pipeline",
+      "Security scanner",
+      "Release bundle builder",
+      "Reviewer",
+      "Release manager",
+      "Serving runtime"
+    ],
+    "inputs": [
+      "Model artifact and SHA-256",
+      "Source run and dataset provenance",
+      "Prompt template/version and variable schema",
+      "Tokenizer/runtime/tool schema versions",
+      "Evaluation report and safety scan",
+      "Human approval and release policy"
+    ],
+    "constraints": [
+      "Versions are immutable after registration.",
+      "Every release has complete provenance and verified digests.",
+      "Model/prompt/tool/tokenizer compatibility is checked.",
+      "Promotion requires independent evidence and authorized approval.",
+      "Alias updates are atomic and audited.",
+      "Rollback moves the full release bundle to a known-good target."
+    ],
+    "outputs": [
+      "Registered model and prompt versions",
+      "Signed release manifest",
+      "Staging/production alias history",
+      "Approval and promotion audit",
+      "Rollback target and recovery evidence",
+      "Runtime-resolved release identity"
+    ],
+    "successMetric": "Every serving instance can identify and verify the exact approved model/prompt release bundle, and rollback restores a compatible known-good bundle without losing history."
+  },
+  "architecture": {
+    "diagram": "content/topics/registry/model-prompt-registry.mmd",
+    "components": [
+      "Model artifact registry",
+      "Prompt template registry",
+      "Immutable object store",
+      "Provenance verifier",
+      "Artifact signature verifier",
+      "Model/prompt compatibility validator",
+      "Evaluation evidence store",
+      "Approval workflow",
+      "Release bundle manifest builder",
+      "Alias pointer store",
+      "RBAC and audit service",
+      "Serving runtime resolver"
+    ],
+    "dataFlow": [
+      {
+        "from": "Training run",
+        "to": "Model registry",
+        "payload": "artifact URI + digest + source run + signature",
+        "purpose": "Register immutable model version."
+      },
+      {
+        "from": "Prompt authoring",
+        "to": "Prompt registry",
+        "payload": "template + variables + tool schema + digest",
+        "purpose": "Register immutable prompt version."
+      },
+      {
+        "from": "Model registry",
+        "to": "Compatibility validator",
+        "payload": "model signature + runtime requirements",
+        "purpose": "Validate serving compatibility."
+      },
+      {
+        "from": "Prompt registry",
+        "to": "Compatibility validator",
+        "payload": "prompt variables + model/tool contracts",
+        "purpose": "Validate prompt and tool compatibility."
+      },
+      {
+        "from": "Evaluation pipeline",
+        "to": "Release bundle builder",
+        "payload": "quality/safety/cost report hashes",
+        "purpose": "Attach evidence to exact artifacts."
+      },
+      {
+        "from": "Approval workflow",
+        "to": "Alias store",
+        "payload": "approved bundle ID + reviewer + policy",
+        "purpose": "Atomically promote approved release."
+      },
+      {
+        "from": "Serving runtime",
+        "to": "Alias resolver",
+        "payload": "production alias + bundle digest",
+        "purpose": "Load and attest exact release identity."
+      }
+    ],
+    "trustBoundaries": [
+      "Only authorized roles can register, approve or promote versions.",
+      "Artifacts are immutable and verified by digest/signature before use.",
+      "Prompt templates and metadata are treated as code and reviewed for injection/secret risks.",
+      "Release bundles bind model, prompt, tools, tokenizer and policy versions.",
+      "Serving runtime resolves approved aliases and emits loaded version/digest telemetry."
+    ],
+    "failurePaths": [
+      "Artifact digest mismatch: quarantine version and block promotion.",
+      "Missing provenance: candidate remains unapproved.",
+      "Prompt variable/tool schema mismatch: compatibility gate fails.",
+      "Quality/safety gate fails: candidate cannot move to staging/production.",
+      "Unauthorized alias update: RBAC denies and records audit event.",
+      "Alias update race: compare-and-swap version prevents lost update.",
+      "Production regression: alias rolls back to previous compatible bundle.",
+      "Deprecated version still referenced: preserve runtime compatibility until migration completes."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-09/fixtures/model-prompt-registry.json",
+    "steps": [
+      {
+        "label": "Register",
+        "explanation": "Register immutable model and prompt versions with digests and provenance.",
+        "expectedState": "candidate versions stored"
+      },
+      {
+        "label": "Validate",
+        "explanation": "Check artifact integrity, signatures, schemas and compatibility.",
+        "expectedState": "compatibility pass"
+      },
+      {
+        "label": "Approve",
+        "explanation": "Attach evaluation evidence and authenticated approval.",
+        "expectedState": "approved release bundle"
+      },
+      {
+        "label": "Promote",
+        "explanation": "Move staging then production aliases atomically.",
+        "expectedState": "production resolves bundle v13/p9"
+      },
+      {
+        "label": "Rollback",
+        "explanation": "Move alias back to previous known-good compatible bundle.",
+        "expectedState": "production restored"
+      }
+    ],
+    "accessibility": [
+      "Task state and context IDs are labeled as text.",
+      "Streaming events are listed with event type and sequence.",
+      "Artifact name, MIME type and validation status are explicit."
+    ],
+    "animation": {
+      "objective": "Promote a model/prompt release bundle only after provenance, compatibility, quality and approval gates pass; then demonstrate safe alias rollback.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Register immutable versions",
+          "narration": "Store model weights and prompt template as immutable versions with content digests.",
+          "input": "model=v13; prompt=p9; digests=sha256",
+          "transformation": "register model + prompt + source run provenance",
+          "output": "candidate=model-v13; prompt-p9",
+          "visualState": "Candidate versions created"
+        },
+        {
+          "step": 2,
+          "title": "Validate compatibility",
+          "narration": "Check model signature, tokenizer, prompt variables, tool schemas and runtime requirements.",
+          "input": "model signature + prompt schema + tools v4",
+          "transformation": "compatibility matrix + artifact hash verification",
+          "output": "compatibility=pass; integrity=verified",
+          "visualState": "Release contract valid"
+        },
+        {
+          "step": 3,
+          "title": "Approve release bundle",
+          "narration": "Evaluation and safety evidence are attached; authorized reviewer approves exact manifest hash.",
+          "input": "quality=0.94; safety=pass; manifest_hash=H1",
+          "transformation": "policy gate + human approval bound to H1",
+          "output": "bundle=release-13; approval=approved",
+          "visualState": "Approved immutable bundle"
+        },
+        {
+          "step": 4,
+          "title": "Promote alias",
+          "narration": "Move staging and production aliases to the approved bundle using compare-and-swap.",
+          "input": "production=release-12; target=release-13",
+          "transformation": "atomic alias update + audit event",
+          "output": "production=release-13; alias_version=8",
+          "visualState": "Production resolves new bundle"
+        },
+        {
+          "step": 5,
+          "title": "Rollback safely",
+          "narration": "Canary regression triggers alias rollback to the previous compatible release bundle.",
+          "input": "error_rate=4%; threshold=1%; prior=release-12",
+          "transformation": "authorized alias rollback + health verification",
+          "output": "production=release-12; history preserved",
+          "visualState": "Known-good release restored"
+        }
+      ],
+      "controls": [
+        {
+          "name": "quality_score",
+          "min": 0,
+          "max": 100,
+          "defaultValue": 94,
+          "effect": "Quality gate requires at least 90."
+        },
+        {
+          "name": "compatibility_pass",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "Promotion is blocked when model/prompt/tool contracts mismatch."
+        },
+        {
+          "name": "approval_granted",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "Promotion requires explicit reviewer approval."
+        },
+        {
+          "name": "canary_error_rate",
+          "min": 0,
+          "max": 10,
+          "defaultValue": 4,
+          "effect": "Error rate above 1% triggers rollback in this simulation."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Every stage exposes model/prompt versions, digests, compatibility result, quality score, approval identity, alias version and rollback target."
+    }
+  },
+  "workedExample": {
+    "problem": "Promote a candidate model and prompt, then roll back when canary errors rise.",
+    "input": "Current production bundle=release-12 (model v12, prompt p8). Candidate=model v13, prompt p9; quality=0.94; compatibility initially passes; reviewer approves.",
+    "steps": [
+      {
+        "operation": "Register candidate",
+        "reasoning": "Register model and prompt as immutable versions with source run, code commit and SHA-256 digests.",
+        "result": "model-v13 and prompt-p9 registered"
+      },
+      {
+        "operation": "Build release bundle",
+        "reasoning": "Bind model, prompt, tokenizer, tool schema, safety policy and evaluation report hashes.",
+        "result": "bundle=release-13; manifest_hash=H1"
+      },
+      {
+        "operation": "Approve and promote",
+        "reasoning": "Reviewer approves exact manifest H1; release manager atomically moves staging then production alias.",
+        "result": "production=release-13; alias_version=8"
+      },
+      {
+        "operation": "Detect regression",
+        "reasoning": "Canary error rate reaches 4%, exceeding the 1% threshold.",
+        "result": "rollback_triggered=true"
+      },
+      {
+        "operation": "Rollback alias",
+        "reasoning": "Move production alias to prior compatible release-12 and verify health; retain failed release for analysis.",
+        "result": "production=release-12; release-13 retained"
+      }
+    ],
+    "expectedOutput": "Production resolves the previous approved bundle; no model or prompt version is overwritten and all promotion/rollback actions are audited."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-09/model_registry.py",
+      "runCommand": "python examples/stage-09/model_registry.py",
+      "testsPath": "examples/stage-09/test_model_registry.py",
+      "expectedResult": "Immutable model/prompt versions, compatibility gates, approval, release bundles, alias promotion and rollback."
+    },
+    {
+      "language": "python",
+      "role": "production",
+      "path": "examples/stage-09/model_registry_production.py",
+      "runCommand": "python -m unittest discover -s examples/stage-09 -p 'test_model_registry_production.py' -v",
+      "testsPath": "examples/stage-09/test_model_registry_production.py",
+      "expectedResult": "SQLite tenant-scoped model/prompt registry with digests, provenance, approval, atomic alias history and rollback."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Mutable model version",
+      "symptom": "The same model version resolves to different weights over time.",
+      "rootCause": "Artifact bytes overwritten behind a stable version name.",
+      "recovery": "Immutable version plus content digest; register a new version for changed bytes.",
+      "regressionTest": "Re-register same name/version with different digest is rejected."
+    },
+    {
+      "name": "Prompt/model incompatibility",
+      "symptom": "New prompt calls unavailable tools or sends wrong input schema.",
+      "rootCause": "Prompt and model/tool schemas promoted independently.",
+      "recovery": "Promote one release bundle with compatibility validation.",
+      "regressionTest": "Tool schema mismatch blocks bundle creation."
+    },
+    {
+      "name": "Missing provenance",
+      "symptom": "Candidate cannot be traced to training data or code.",
+      "rootCause": "Registry accepts artifact without source run, dataset and commit metadata.",
+      "recovery": "Require provenance fields before approval.",
+      "regressionTest": "Missing source run or dataset hash leaves candidate unpromotable."
+    },
+    {
+      "name": "Self-approval",
+      "symptom": "Same actor registers and approves a high-impact production release.",
+      "rootCause": "No role separation or approval policy.",
+      "recovery": "Require independent authorized reviewer and release manager.",
+      "regressionTest": "Creator cannot approve own candidate under separation-of-duties policy."
+    },
+    {
+      "name": "Alias race",
+      "symptom": "Concurrent release managers overwrite a newer production alias.",
+      "rootCause": "Alias update has no expected version/CAS check.",
+      "recovery": "Atomic compare-and-swap and audit history.",
+      "regressionTest": "Stale expected alias version is rejected."
+    },
+    {
+      "name": "Unsafe rollback",
+      "symptom": "Model weights revert but prompt/tokenizer remain incompatible.",
+      "rootCause": "Rollback moves individual artifacts instead of whole release bundle.",
+      "recovery": "Rollback the full bundle and verify runtime compatibility.",
+      "regressionTest": "Rollback target must include all required bundle components."
+    }
+  ],
+  "practice": {
+    "guided": "Define a model version, prompt version and release bundle manifest. List the evidence required before promotion.",
+    "independent": "Implement immutable model/prompt registration, digest verification, compatibility gates, approval binding, alias promotion and rollback.",
+    "realWorld": "Build a registry release workflow that promotes a customer-support model/prompt pair from candidate to staging to production and safely rolls back.",
+    "expertExtension": "Integrate MLflow Model Registry or W&B Artifacts, signed OCI/model manifests, RBAC, canary health signals, deprecation windows and runtime version attestation.",
+    "guidedExercise": {
+      "title": "Promote an approved release bundle",
+      "instructions": "Move an alias only when quality, compatibility and approval all pass; retain previous alias history.",
+      "starterCode": "def can_promote(quality, compatible, approved, threshold=0.90):\n    # require all promotion gates\n    raise NotImplementedError",
+      "solutionCode": "def can_promote(quality, compatible, approved, threshold=0.90):\n    return quality >= threshold and compatible is True and approved is True",
+      "unitTests": "assert can_promote(0.94, True, True)\nassert not can_promote(0.89, True, True)\nassert not can_promote(0.95, False, True)\nassert not can_promote(0.95, True, False)"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build a model/prompt registry console with immutable versions, release bundles, approvals and alias history.",
+      "steps": [
+        "Register model and prompt versions with artifact/template digests.",
+        "Attach training run, dataset and evaluation provenance.",
+        "Validate model signature, prompt variables, tokenizer and tool schema.",
+        "Create release bundle manifest and calculate its digest.",
+        "Request reviewer approval bound to exact manifest hash.",
+        "Promote staging and production aliases using expected alias version.",
+        "Inject canary regression and roll back the full release bundle.",
+        "Inspect audit trail, deprecation state and runtime-resolved digest."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "What should happen when model weights change?",
+        "options": [
+          "Overwrite existing model version",
+          "Register a new immutable version and digest",
+          "Only update production alias",
+          "Change prompt description"
+        ],
+        "correctIndex": 1,
+        "explanation": "Model versions are immutable; changed bytes require a new version and provenance."
+      },
+      {
+        "question": "Why bundle model and prompt versions together?",
+        "options": [
+          "To reduce UI clicks",
+          "To validate model, prompt, tokenizer and tool compatibility as one release",
+          "To avoid evaluation",
+          "To make prompts mutable"
+        ],
+        "correctIndex": 1,
+        "explanation": "The runtime contract spans model, prompt, tokenizer, tools and policy."
+      },
+      {
+        "question": "What is the safest rollback operation?",
+        "options": [
+          "Edit model weights in place",
+          "Move production alias to previous approved release bundle",
+          "Delete failed release",
+          "Rollback only prompt"
+        ],
+        "correctIndex": 1,
+        "explanation": "Rollback moves the alias to a known-good compatible bundle while preserving history."
+      },
+      {
+        "question": "Who should approve a high-impact release?",
+        "options": [
+          "The registering process automatically",
+          "An authorized independent reviewer under separation of duties",
+          "Any logged-in user",
+          "The model itself"
+        ],
+        "correctIndex": 1,
+        "explanation": "Independent approval and role separation prevent self-approval and unauthorized promotion."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Immutable version and provenance",
+        "weight": 20,
+        "evidence": "Model/prompt versions include digests, source run, dataset and code lineage."
+      },
+      {
+        "criterion": "Compatibility and release bundle",
+        "weight": 25,
+        "evidence": "Model, prompt, tokenizer, tools and safety policy are bound and validated."
+      },
+      {
+        "criterion": "Approval and RBAC",
+        "weight": 20,
+        "evidence": "Promotion requires authorized independent approval."
+      },
+      {
+        "criterion": "Alias promotion and rollback",
+        "weight": 25,
+        "evidence": "Atomic alias update, expected version and full-bundle rollback are tested."
+      },
+      {
+        "criterion": "Audit and runtime identity",
+        "weight": 10,
+        "evidence": "Alias history and loaded release digest are observable."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Both Python suites pass.",
+      "Versions cannot be overwritten.",
+      "Compatibility mismatch blocks promotion.",
+      "Approval is bound to exact bundle manifest.",
+      "Rollback restores complete prior bundle and preserves audit history."
+    ]
+  },
+  "references": [
+    {
+      "title": "MLflow Model Registry documentation",
+      "url": "https://mlflow.org/docs/latest/ml/model-registry/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "Weights & Biases Artifacts documentation",
+      "url": "https://docs.wandb.ai/guides/artifacts/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "Hugging Face Hub — Model cards",
+      "url": "https://huggingface.co/docs/hub/model-cards",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "SLSA provenance specification",
+      "url": "https://slsa.dev/spec/v1.1/provenance",
+      "sourceType": "standard",
+      "checkedOn": "2026-11-21"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "model_digest = sha256(model_artifact_bytes)",
+      "explanation": "A version points to immutable bytes and a content digest."
+    },
+    {
+      "lines": "release = {model, prompt, tokenizer, tools, policy, eval}",
+      "explanation": "The bundle captures the complete serving contract, not only weights."
+    },
+    {
+      "lines": "promote(alias, bundle_id, expected_alias_version)",
+      "explanation": "Compare-and-swap prevents concurrent promotion races."
+    },
+    {
+      "lines": "approval.payload_hash == release_manifest_hash",
+      "explanation": "Approval authorizes the exact release manifest that was reviewed."
+    },
+    {
+      "lines": "rollback(alias, previous_bundle_id)",
+      "explanation": "Rollback changes the pointer and preserves all version and audit history."
+    }
+  ]
+}
