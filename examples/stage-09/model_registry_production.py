@@ -76,15 +76,24 @@ class ModelPromptRegistry:
         self.db.execute("INSERT INTO registry_audit(tenant_id,event_type,entity_id,payload_json,created_at) VALUES(?,?,?,?,?)",(tenant,"prompt_registered",f"{name}:{version}",json.dumps({"digest":digest}),self.clock()))
         return {"version":version,"digest":digest,"duplicate":False}
     def build_bundle(self,tenant,bundle_id,model_ref,prompt_ref,evaluation_hash,quality_score):
+        if not tenant or not bundle_id or not evaluation_hash:
+            raise ValueError("tenant, bundle ID and evaluation evidence hash are required")
+        if not 0.0 <= quality_score <= 1.0:
+            raise ValueError("quality score must be between 0 and 1")
         model=self.db.execute("SELECT * FROM registry_models WHERE tenant_id=? AND name=? AND version=?",(tenant,*model_ref)).fetchone()
         prompt=self.db.execute("SELECT * FROM registry_prompts WHERE tenant_id=? AND name=? AND version=?",(tenant,*prompt_ref)).fetchone()
         if not model or not prompt:raise KeyError("model or prompt version not found")
         if (model["model_family"],model["tokenizer_version"],model["tool_schema_version"])!=(prompt["model_family"],prompt["tokenizer_version"],prompt["tool_schema_version"]):
             raise PromotionDenied("model/prompt compatibility mismatch")
-        manifest={"model":{"name":model["name"],"version":model["version"],"digest":model["digest"]},
-          "prompt":{"name":prompt["name"],"version":prompt["version"],"digest":prompt["digest"]},
+        manifest={"model":{"name":model["name"],"version":model["version"],"digest":model["digest"],
+              "artifact_uri":model["artifact_uri"],"source_run":model["source_run"],
+              "dataset_hash":model["dataset_hash"],"code_commit":model["code_commit"],
+              "family":model["model_family"],"input_schema":json.loads(model["input_schema_json"]),
+              "output_schema":json.loads(model["output_schema_json"])},
+          "prompt":{"name":prompt["name"],"version":prompt["version"],"digest":prompt["digest"],
+              "variables":json.loads(prompt["variables_json"]),"safety_policy":prompt["safety_policy"]},
           "tokenizer":model["tokenizer_version"],"tool_schema":model["tool_schema_version"],
-          "safety_policy":prompt["safety_policy"],"evaluation_hash":evaluation_hash}
+          "evaluation_hash":evaluation_hash,"quality_score":quality_score}
         manifest_json=json.dumps(manifest,sort_keys=True);manifest_hash=sha256(manifest_json)
         creators=sorted({model["creator"],prompt["creator"]})
         prior=self.db.execute("SELECT * FROM release_bundles WHERE tenant_id=? AND bundle_id=?",(tenant,bundle_id)).fetchone()
@@ -112,7 +121,9 @@ class ModelPromptRegistry:
     def _alias_history(self,tenant,alias,action,bundle_id,previous,version,actor):
         row=self.db.execute("SELECT COALESCE(MAX(sequence),0)+1 n FROM alias_history WHERE tenant_id=? AND alias=?",(tenant,alias)).fetchone()
         self.db.execute("INSERT INTO alias_history VALUES(?,?,?,?,?,?,?,?,?)",(tenant,alias,row["n"],action,bundle_id,previous,version,actor,self.clock()))
-    def promote(self,tenant,alias,bundle_id,expected_alias_version,actor,threshold=0.90):
+    def promote(self,tenant,alias,bundle_id,expected_alias_version,actor,allowed_promoters,threshold=0.90):
+        if actor not in set(allowed_promoters):
+            raise PromotionDenied("authorized release-manager role required")
         self.db.execute("BEGIN IMMEDIATE")
         try:
             bundle=self.db.execute("SELECT * FROM release_bundles WHERE tenant_id=? AND bundle_id=?",(tenant,bundle_id)).fetchone()
@@ -134,7 +145,9 @@ class ModelPromptRegistry:
             self.db.execute("COMMIT");return {"alias":alias,"bundle_id":bundle_id,"version":version,"previous_bundle_id":previous}
         except Exception:
             self.db.execute("ROLLBACK");raise
-    def rollback(self,tenant,alias,expected_alias_version,actor):
+    def rollback(self,tenant,alias,expected_alias_version,actor,allowed_promoters):
+        if actor not in set(allowed_promoters):
+            raise PromotionDenied("authorized release-manager role required")
         self.db.execute("BEGIN IMMEDIATE")
         try:
             current=self.db.execute("SELECT * FROM release_aliases WHERE tenant_id=? AND alias=?",(tenant,alias)).fetchone()
