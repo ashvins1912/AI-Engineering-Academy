@@ -104,6 +104,7 @@ resource "aws_security_group_rule" "tasks_from_alb" {
 resource "aws_security_group" "endpoints" {
   name   = "${var.project_name}-${var.environment}-endpoints"
   vpc_id = aws_vpc.main.id
+  egress = []
   ingress {
     from_port       = 443
     to_port         = 443
