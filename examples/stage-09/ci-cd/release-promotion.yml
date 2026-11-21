@@ -1,0 +1,40 @@
+# Teaching template only. It is not installed as an active workflow and is not executed by this lesson.
+# Promotion must reference a previously validated immutable image digest.
+name: gated-release-promotion-template
+on:
+  workflow_dispatch:
+    inputs:
+      promote:
+        description: Explicitly authorize a promotion run
+        required: true
+        type: boolean
+        default: false
+      image_digest:
+        description: Previously scanned and signed sha256 digest
+        required: true
+        type: string
+      target:
+        description: Target environment
+        required: true
+        type: choice
+        options: [staging, production]
+permissions:
+  contents: read
+jobs:
+  promotion-gate:
+    if: inputs.promote == true
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.target }}
+    steps:
+      - name: Require immutable digest
+        env:
+          IMAGE_DIGEST: ${{ inputs.image_digest }}
+        run: |
+          case "$IMAGE_DIGEST" in
+            sha256:????????????????????????????????????????????????????????????????) ;;
+            *) echo "Expected immutable sha256 image digest" >&2; exit 1 ;;
+          esac
+      - name: Require external release evidence
+        run: |
+          echo "Verify signed provenance, SBOM, vulnerability policy, evaluation report and approval records."
+          echo "This template intentionally does not deploy or mutate infrastructure."
