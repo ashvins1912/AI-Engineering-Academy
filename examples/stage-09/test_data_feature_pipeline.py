@@ -33,6 +33,8 @@ class PipelineTests(unittest.TestCase):
   m=build_manifest(self.rows,self.contract,{"field":"age"},"v1","abc",17)
   n=build_manifest(self.rows,self.contract,{"field":"age"},"v2","abc",17)
   self.assertNotEqual(m["manifest_hash"],n["manifest_hash"])
+  changed=build_manifest(self.rows,self.contract,{"field":"age","mean":99},"v1","abc",17)
+  self.assertNotEqual(m["manifest_hash"],changed["manifest_hash"])
  def test_boolean_is_not_integer(self):
   bad=[{**self.rows[0],"id":True}]
   self.assertFalse(validate_rows(bad,self.contract).passed)
