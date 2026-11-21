@@ -6,9 +6,11 @@ class MCPLifecycleTests(unittest.TestCase):
  def test_discover_and_stateless_metadata(self):
   result=self.client.discover()
   self.assertEqual(result["protocolVersions"],[PROTOCOL_VERSION])
+  self.assertEqual(result["resultType"],"complete")
   self.assertIn("tools",result["capabilities"])
   tools=self.client.list_tools()
   self.assertEqual(tools["tools"][0]["name"],"lookup_order")
+  self.assertEqual(tools["resultType"],"complete")
   self.assertEqual(tools["cacheScope"],"private")
  def test_every_request_carries_protocol_metadata(self):
   response=self.client.list_tools()
