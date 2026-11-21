@@ -1,5 +1,5 @@
 """MCP reliability primitives: redacted traces, metrics, retry policy and circuit breaker."""
-import hashlib,json
+import hashlib,json,math
 SECRET_PARTS=("authorization","token","secret","password","cookie","verifier","auth_code","access_key")
 
 def redact(value):
@@ -27,7 +27,7 @@ class MCPMetrics:
   row=self.samples.get(method,{"count":0,"errors":0,"latencies":[]});values=sorted(row["latencies"])
   def percentile(p):
    if not values:return 0
-   return values[min(len(values)-1,max(0,int((len(values)-1)*p)))]
+   return values[min(len(values)-1,max(0,math.ceil(len(values)*p)-1))]
   return {"count":row["count"],"errors":row["errors"],"p50_ms":percentile(.5),"p95_ms":percentile(.95)}
 
 RETRYABLE={429,502,503,504}
