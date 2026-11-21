@@ -1,0 +1,592 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "cicd",
+    "title": "CI/CD Pipelines — quality gates, immutable releases and rollback",
+    "stage": 9,
+    "estimatedMinutes": 240
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Design CI pipelines that validate code, data, model, prompt and container artifacts before release.",
+      "Build once and promote the same immutable image digest through environments.",
+      "Separate test, build, signing, approval and deployment identities using least privilege.",
+      "Define security, quality, latency, cost and compatibility gates for AI releases.",
+      "Implement sequential environment promotion with idempotency, audit events and canary rollback.",
+      "Explain branch protection, artifact retention, environment approvals, provenance and release evidence."
+    ],
+    "prerequisites": [
+      "Git, branches, pull requests and automated tests",
+      "Docker image build and supply-chain security",
+      "Stage 9 Topics 1–5: experiment tracking, model registry, evaluation CI, data pipelines and containers"
+    ],
+    "glossary": [
+      {
+        "term": "CI",
+        "definition": "Continuous Integration: automatically validate changes through builds, tests, static analysis and policy gates."
+      },
+      {
+        "term": "CD",
+        "definition": "Continuous Delivery/Deployment: package and promote validated artifacts; deployment applies them to an environment."
+      },
+      {
+        "term": "Artifact",
+        "definition": "A versioned build output such as a container image, model, prompt bundle, dataset manifest or SBOM."
+      },
+      {
+        "term": "Immutable digest",
+        "definition": "A content-addressed artifact identifier that pins exact bytes, unlike a mutable tag."
+      },
+      {
+        "term": "Build provenance",
+        "definition": "Evidence describing source, builder identity, workflow, dependencies and parameters used to create an artifact."
+      },
+      {
+        "term": "SBOM",
+        "definition": "Software Bill of Materials listing packages and components in a release artifact."
+      },
+      {
+        "term": "Quality gate",
+        "definition": "A measurable rule that must pass before an artifact can advance to the next release stage."
+      },
+      {
+        "term": "Environment protection",
+        "definition": "Repository-hosted controls such as required reviewers, wait timers and deployment branch restrictions."
+      },
+      {
+        "term": "Canary release",
+        "definition": "Expose a small percentage of traffic to a candidate, compare health/SLOs and increase or roll back."
+      },
+      {
+        "term": "Blue-green release",
+        "definition": "Maintain two production environments and switch traffic after the inactive environment passes checks."
+      },
+      {
+        "term": "Rollback",
+        "definition": "Restore a previously validated artifact/configuration when the candidate violates a release or runtime policy."
+      },
+      {
+        "term": "SLSA provenance",
+        "definition": "A structured assurance framework for describing and strengthening software build integrity."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "Passing unit tests is not enough to release an AI service. A model can be accurate but unsafe, an image can contain a vulnerable dependency, a prompt can break structured output, a dataset can be incompatible, and a deployment can exceed latency or cost budgets. CI/CD connects all these checks into a controlled release process.",
+    "plainLanguage": "CI starts when code or a pull request changes. A strong pipeline checks formatting and types, runs unit and integration tests, validates data contracts, evaluates prompts/models against a fixed golden set, checks security and licensing, builds a container, generates an SBOM, scans the image and records provenance. A failed required gate blocks the candidate. Do not allow a workflow to silently skip a check because an optional secret or external service is unavailable.\n\nBuild once, promote many. Build the container and model/prompt bundle once from a known commit and record immutable digests. Development, staging and production should receive the same artifact bytes. Rebuilding separately for each environment means different dependencies, timestamps or build arguments can produce different artifacts even when the tag looks the same. Keep environment-specific configuration outside the image and bind it to a versioned release record.\n\nA release candidate is more than an image tag. It includes source commit, image digest, model and prompt versions, dataset manifest, evaluation report, SBOM, vulnerability report, signature and build provenance. A promotion gate checks that these records agree and are approved. For an AI workload, also check quality, safety, p95 latency, error rate, cost per successful task and feature/schema compatibility.\n\nUse least-privilege workflow permissions. Pull-request CI normally needs read-only repository access. Package publication needs package-write permission only in the release job. Signing should use a dedicated identity and short-lived OIDC credentials rather than long-lived private keys in repository secrets. A deploy identity should be separate from a build identity. Avoid checking out untrusted fork code in a privileged job that has secrets or write permissions.\n\nPromotion should be sequential and explicit. Development proves the artifact can run. Staging proves compatibility with production-like configuration and data. Production requires an independent approver and a measured rollout. GitHub Environments can enforce reviewer approval and branch restrictions, but application policy must still validate who is allowed to promote which release. Approval must bind to the exact digest and release metadata, not merely a branch name.\n\nCanary rollout exposes a small traffic slice, such as 1–5%, and watches task success, safety violations, error rate, p95/p99 latency, saturation and cost. Increase traffic only when thresholds hold for a sufficient window and sample size. If an SLO is breached, stop the rollout and restore the previous known-good digest. Rollback should restore all coupled components: application image, model, prompt, feature definitions, retrieval index version and configuration. Record the failed release and reason in an append-only audit trail.\n\nA CI/CD system should be idempotent and recoverable. Retrying a release event must not create duplicate deployments or overwrite a previous artifact. Use a stable release ID and idempotency key. Store immutable release records, approvals and audit events. Keep artifacts long enough to reproduce and roll back supported releases. A green pipeline is evidence that gates passed; it is not a guarantee that production will remain healthy. Runtime observability and incident response remain essential.",
+    "mentalModel": "Commit → tests + data/model eval + security → build once → SBOM + signature + provenance → immutable candidate → dev → staging approval → production canary → promote or rollback.",
+    "limitations": [
+      "A green CI run does not prove runtime behavior under all workloads.",
+      "Golden-set evaluations can be overfit; maintain representative, versioned and independently reviewed data.",
+      "Vulnerability scanners do not prove exploitability or absence of vulnerabilities.",
+      "A signature proves artifact identity/attestation under a trust policy, not that the model is safe or accurate.",
+      "Canary metrics need sufficient traffic and time; low-volume services require careful statistical interpretation.",
+      "Rollback may require coordinated schema, feature, index and database compatibility rather than switching only an image."
+    ],
+    "everydayAnalogy": "A pharmaceutical batch cannot be shipped just because the factory machine ran. It needs batch records, lab results, packaging inspection, independent release approval, traceability and a recall plan. CI/CD applies the same idea to software and AI artifacts.",
+    "mathMadeSimple": "Suppose a canary receives 5% of 20,000 requests: 1,000 candidate requests. If 30 fail, observed error rate is 3%, above a 2% budget, so halt and roll back. For latency, compare candidate p95=920 ms with the release limit 800 ms. Do not average away a breached slice or combine unrelated cohorts; compare like-for-like traffic and account for sample size and confidence.",
+    "productionImpact": "Immutable artifacts and provenance support audits; evaluation/security gates block unsafe candidates; independent approvals reduce privilege risk; canaries detect regressions before full traffic; coordinated rollback restores a known-good system state."
+  },
+  "useCase": {
+    "scenario": "A pull request changes an inference API. CI validates Python, contract tests and a golden evaluation, builds one image, generates SBOM and scans it. A release candidate is promoted to dev, staging and production using the same digest. A 5% production canary breaches the error budget, so the pipeline restores the previous image/model/prompt bundle and records the reason.",
+    "actors": [
+      "Developer",
+      "GitHub Actions",
+      "Test and evaluation runners",
+      "Container builder",
+      "SBOM and scanner",
+      "Signing identity",
+      "Artifact registry",
+      "Release manager",
+      "Production approver",
+      "Runtime metrics and rollback controller"
+    ],
+    "inputs": [
+      "Commit SHA and pull request",
+      "Test and golden evaluation results",
+      "Container image and model/prompt digests",
+      "SBOM, vulnerability report and provenance",
+      "Release thresholds and approval policy",
+      "Canary SLO observations"
+    ],
+    "constraints": [
+      "Pull-request jobs use read-only permissions by default.",
+      "Release artifact is built once and referenced by immutable digest.",
+      "Promotion requires signed provenance and quality/security evidence.",
+      "Staging and production approvals are independent.",
+      "Canary must meet error, latency, safety and cost budgets.",
+      "Rollback restores the complete compatible release bundle."
+    ],
+    "outputs": [
+      "Validated release candidate",
+      "Immutable image digest and SBOM",
+      "Promotion audit records",
+      "Canary decision",
+      "Rollback event and restored release identity"
+    ],
+    "successMetric": "Every production release can be traced to a source commit and verified artifact digest; an injected canary regression automatically halts promotion and restores the previous known-good release."
+  },
+  "architecture": {
+    "diagram": "content/topics/cicd/cicd-release-gates.mmd",
+    "components": [
+      "Source control and branch protection",
+      "CI test and evaluation matrix",
+      "Container and model artifact builder",
+      "SBOM/scanner/provenance signer",
+      "Immutable artifact registry",
+      "Release candidate catalog",
+      "Environment approval gates",
+      "Canary analysis",
+      "Rollback controller",
+      "Audit event store"
+    ],
+    "dataFlow": [
+      {
+        "from": "Pull request",
+        "to": "CI test matrix",
+        "payload": "commit SHA + changed paths",
+        "purpose": "Run unit, integration, type, security, data and AI evaluation tests."
+      },
+      {
+        "from": "CI test matrix",
+        "to": "Artifact builder",
+        "payload": "validated source revision",
+        "purpose": "Build one candidate image and bundle."
+      },
+      {
+        "from": "Artifact builder",
+        "to": "Supply-chain evidence",
+        "payload": "immutable image digest",
+        "purpose": "Generate SBOM, scan and sign provenance."
+      },
+      {
+        "from": "Supply-chain evidence",
+        "to": "Release catalog",
+        "payload": "digest + evaluation + data/model references",
+        "purpose": "Register immutable release candidate."
+      },
+      {
+        "from": "Release catalog",
+        "to": "Environment gate",
+        "payload": "release ID + approval",
+        "purpose": "Promote exact artifact through dev and staging."
+      },
+      {
+        "from": "Environment gate",
+        "to": "Canary",
+        "payload": "production digest + traffic slice",
+        "purpose": "Observe quality, safety, latency, error and cost."
+      },
+      {
+        "from": "Canary",
+        "to": "Promote or rollback",
+        "payload": "SLO decision",
+        "purpose": "Increase traffic or restore previous known-good bundle."
+      }
+    ],
+    "trustBoundaries": [
+      "Fork PRs and user-controlled workflow inputs are untrusted.",
+      "Workflow token permissions are scoped per job and environment.",
+      "Build identity, package publisher, signer and deployment identity are separated.",
+      "Approvals are bound to immutable release ID and digest.",
+      "Artifact registry and audit log enforce immutability and retention.",
+      "Runtime telemetry is authenticated and sampled without leaking user payloads."
+    ],
+    "failurePaths": [
+      "Unit or AI evaluation failure: stop before image publication.",
+      "Critical vulnerability: block release and require patched rebuild or reviewed exception.",
+      "Artifact tag drift: reject tag-only release and require digest.",
+      "Approval replay or stale release: bind approval to release ID, digest and environment.",
+      "Canary SLO breach: halt traffic ramp and restore prior release bundle.",
+      "Partial rollback: verify model/prompt/feature/index compatibility and restore coordinated versions.",
+      "Workflow compromise: revoke identity, rotate credentials, audit published digests and rebuild from trusted source."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-09/fixtures/cicd-release.json",
+    "steps": [
+      {
+        "label": "Validate",
+        "explanation": "Run source tests, data checks, AI evaluation and security policy.",
+        "expectedState": "tests=passed; evaluation=passed; scan=passed"
+      },
+      {
+        "label": "Build once",
+        "explanation": "Build one image and bind SBOM, provenance and signature to its digest.",
+        "expectedState": "candidate=sha256:digest"
+      },
+      {
+        "label": "Promote",
+        "explanation": "Move the same digest through dev and staging with environment-specific approvals.",
+        "expectedState": "dev=approved; staging=approved"
+      },
+      {
+        "label": "Canary",
+        "explanation": "Send a small traffic slice and compare quality and SLO metrics.",
+        "expectedState": "traffic=5%; error_rate=0.3%"
+      },
+      {
+        "label": "Rollback or expand",
+        "explanation": "A breached gate restores the previous known-good release; a healthy canary can expand.",
+        "expectedState": "decision=rollback; previous_digest=restored"
+      }
+    ],
+    "accessibility": [
+      "Each pipeline stage has a textual explanation and release state.",
+      "The visualizer exposes thresholds, traffic percentage and decision reason.",
+      "All controls are keyboard accessible."
+    ],
+    "animation": {
+      "objective": "Simulate a gated release from commit to production canary and inject failures to test rollback.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Validate candidate",
+          "narration": "Run source, data, model, prompt and security checks against the same candidate commit.",
+          "input": "commit=abc123; golden_set=2026-11",
+          "transformation": "unit + integration + eval + vulnerability policy",
+          "output": "tests=pass; quality=.96; critical_cve=0",
+          "visualState": "Candidate meets quality gates"
+        },
+        {
+          "step": 2,
+          "title": "Build and attest",
+          "narration": "Build once and bind SBOM, signature and provenance to the immutable image digest.",
+          "input": "source=abc123; image=sha256:111...",
+          "transformation": "SBOM + scan + signature + provenance",
+          "output": "digest=immutable; attestation=verified",
+          "visualState": "Release candidate registered"
+        },
+        {
+          "step": 3,
+          "title": "Promote sequentially",
+          "narration": "Promote the same digest through dev and staging using separate approval roles.",
+          "input": "release=r1; env=dev→staging",
+          "transformation": "role check + idempotency key + audit event",
+          "output": "dev=promoted; staging=promoted",
+          "visualState": "Staging approved"
+        },
+        {
+          "step": 4,
+          "title": "Run canary",
+          "narration": "Expose 5% of traffic and evaluate error rate and p95 latency against budgets.",
+          "input": "traffic=5%; requests=1000; errors=30",
+          "transformation": "error_rate=30/1000=3%; threshold=2%",
+          "output": "decision=rollback; latency=920ms",
+          "visualState": "Canary gate breached"
+        },
+        {
+          "step": 5,
+          "title": "Restore known-good release",
+          "narration": "Stop rollout and restore the previous digest and compatible model/prompt bundle.",
+          "input": "failed=r2; previous_good=r1",
+          "transformation": "switch alias + record rollback event",
+          "output": "active_release=r1; audit_hash=sha256",
+          "visualState": "Rollback complete"
+        }
+      ],
+      "controls": [
+        {
+          "name": "test_gate",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "0 blocks the candidate before artifact publication."
+        },
+        {
+          "name": "critical_vulnerabilities",
+          "min": 0,
+          "max": 5,
+          "defaultValue": 0,
+          "effect": "Any critical finding blocks promotion."
+        },
+        {
+          "name": "canary_traffic_percent",
+          "min": 1,
+          "max": 50,
+          "defaultValue": 5,
+          "effect": "Controls candidate request sample size."
+        },
+        {
+          "name": "canary_error_rate_percent",
+          "min": 0,
+          "max": 10,
+          "defaultValue": 3,
+          "effect": "Compare against the 2% error budget and trigger rollback when exceeded."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "The release stage, active digest, approval role, traffic share, error rate, threshold and rollback target are rendered as readable text."
+    }
+  },
+  "workedExample": {
+    "problem": "Promote release r1 through environments and simulate a failed production canary.",
+    "input": "Candidate passes tests, signature, provenance, scan, quality=.96, p95=350ms and cost=$0.25/1k. Production canary sees 30 errors in 1,000 requests.",
+    "steps": [
+      {
+        "operation": "Validate",
+        "reasoning": "All release evidence meets configured policy thresholds.",
+        "result": "tests=pass; critical=0; quality=.96"
+      },
+      {
+        "operation": "Register artifact",
+        "reasoning": "Bind one image digest and SBOM to release r1.",
+        "result": "image=sha256:111...; sbom=sha256:bbb..."
+      },
+      {
+        "operation": "Promote dev and staging",
+        "reasoning": "Require engineer and release-manager roles, respectively.",
+        "result": "dev=r1; staging=r1"
+      },
+      {
+        "operation": "Evaluate canary",
+        "reasoning": "30/1000 = 3%, above the 2% error budget; p95 is 920ms above 800ms.",
+        "result": "decision=rollback"
+      },
+      {
+        "operation": "Restore previous good",
+        "reasoning": "Switch production alias to r0 and append a rollback event.",
+        "result": "production=r0; audit_event=rollback"
+      }
+    ],
+    "expectedOutput": "The release is stopped at 5% traffic and production returns to the previous known-good digest."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-09/release_pipeline.py",
+      "runCommand": "python examples/stage-09/release_pipeline.py",
+      "testsPath": "examples/stage-09/test_release_pipeline.py",
+      "expectedResult": "Deterministic release candidate gates, role-bound environment promotion, idempotency, canary analysis and rollback."
+    },
+    {
+      "language": "shell",
+      "role": "production",
+      "path": "examples/stage-09/ci-cd/ci.yml",
+      "runCommand": "Review the workflow; it is a teaching template and is not active in this repository.",
+      "testsPath": "examples/stage-09/ci-cd/README.md",
+      "expectedResult": "GitHub Actions pipeline that tests, builds one image, smoke tests it, generates SBOM, scans and stores evidence without deployment."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Tests pass but AI quality regresses",
+      "symptom": "Application deploys with a prompt/model change that lowers task success or safety.",
+      "rootCause": "Pipeline only tests application code and omits golden-set evaluation.",
+      "recovery": "Make model/prompt evaluation a required release check and bind its report to candidate digest.",
+      "regressionTest": "Inject a quality score below floor and assert promotion is denied."
+    },
+    {
+      "name": "Build once, deploy different bytes",
+      "symptom": "Staging and production tags resolve to different images.",
+      "rootCause": "Pipeline rebuilds per environment or promotes mutable tags.",
+      "recovery": "Build once, record immutable digest and promote that digest unchanged.",
+      "regressionTest": "Reject tag-only candidates and assert digest remains identical across environments."
+    },
+    {
+      "name": "Privileged pull request workflow",
+      "symptom": "Untrusted fork code can access package-write token or signing credentials.",
+      "rootCause": "Secrets and write permissions are exposed to pull-request jobs.",
+      "recovery": "Use read-only PR permissions and separate protected release jobs with short-lived identity.",
+      "regressionTest": "Static policy test checks PR workflow permissions and job separation."
+    },
+    {
+      "name": "Approval replay",
+      "symptom": "An old approval is reused for a new image or different environment.",
+      "rootCause": "Approval is not bound to release ID, digest, target and expiry.",
+      "recovery": "Bind approval to immutable candidate metadata and enforce one-use idempotent promotion.",
+      "regressionTest": "Attempt to promote changed digest with same release ID and reject."
+    },
+    {
+      "name": "Canary regression ignored",
+      "symptom": "Traffic ramp continues while error rate or p95 breaches SLO.",
+      "rootCause": "No automated canary analysis or thresholds are too broad.",
+      "recovery": "Stop ramp on breached error/latency/safety/cost policy and restore previous release.",
+      "regressionTest": "Inject 3% errors against 2% threshold and assert rollback."
+    },
+    {
+      "name": "Partial rollback",
+      "symptom": "Image rolls back but model, prompt or feature schema remains incompatible.",
+      "rootCause": "Release record versions only the application container.",
+      "recovery": "Promote and rollback a complete release bundle with compatibility metadata.",
+      "regressionTest": "Reject a rollback bundle whose model or feature versions are incompatible."
+    }
+  ],
+  "practice": {
+    "guided": "Draw a pipeline with PR validation, artifact build, SBOM/signing, staging approval, canary and rollback. Label each identity and permission boundary.",
+    "independent": "Implement immutable candidate registration, release gates, environment approvals, idempotent promotion and canary rollback.",
+    "realWorld": "Create a GitHub Actions release workflow for an AI inference service that promotes one digest across dev/staging/production and records all evidence.",
+    "expertExtension": "Add OIDC keyless signing, SLSA provenance, policy-as-code, model/prompt/data bundle compatibility, statistical canary analysis, progressive delivery and automated rollback with audit export.",
+    "guidedExercise": {
+      "title": "Implement a canary rollback decision",
+      "instructions": "Compare observed error rate and p95 latency with release budgets. Restore the previous digest when either limit is breached.",
+      "starterCode": "def canary_decision(error_rate, p95_ms, error_budget, latency_limit):\n    # Return 'continue' or 'rollback'\n    raise NotImplementedError",
+      "solutionCode": "def canary_decision(error_rate, p95_ms, error_budget, latency_limit):\n    if error_rate > error_budget or p95_ms > latency_limit:\n        return 'rollback'\n    return 'continue'",
+      "unitTests": "assert canary_decision(.01, 500, .02, 800) == 'continue'\nassert canary_decision(.03, 500, .02, 800) == 'rollback'\nassert canary_decision(.01, 900, .02, 800) == 'rollback'"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build a release dashboard with artifact evidence, approvals, canary telemetry and rollback history.",
+      "steps": [
+        "Register a release candidate with commit, image digest and SBOM digest.",
+        "Attach test, golden evaluation, vulnerability, signature and provenance results.",
+        "Attempt promotion with missing evidence and inspect blocked reason.",
+        "Promote candidate to dev and staging using separate roles.",
+        "Replay the same idempotency key and verify no duplicate event is created.",
+        "Expose 5% canary traffic and inject error-rate and p95 regressions.",
+        "Rollback to previous good digest and verify audit trail hash.",
+        "Confirm model, prompt, dataset and feature references remain compatible after rollback."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "Why should one image digest be promoted through environments?",
+        "options": [
+          "It makes environments identical by magic",
+          "It guarantees the same artifact bytes are tested and released",
+          "It avoids testing staging",
+          "It removes the need for approvals"
+        ],
+        "correctIndex": 1,
+        "explanation": "Build once and promote the same immutable digest to avoid environment rebuild drift."
+      },
+      {
+        "question": "What permissions should ordinary pull-request CI have?",
+        "options": [
+          "Repository admin and package write",
+          "Read-only by default, with separate protected release permissions",
+          "Production deploy secrets",
+          "Cloud owner credentials"
+        ],
+        "correctIndex": 1,
+        "explanation": "Untrusted pull request code should not receive privileged release credentials."
+      },
+      {
+        "question": "A 5% canary has a 3% error rate against a 2% budget. What should happen?",
+        "options": [
+          "Increase to 100%",
+          "Ignore because only 5% traffic is affected",
+          "Stop the rollout and restore the previous known-good release",
+          "Rebuild with latest tag"
+        ],
+        "correctIndex": 2,
+        "explanation": "A canary gate should halt and rollback when an agreed SLO is breached."
+      },
+      {
+        "question": "What should an AI release bundle pin?",
+        "options": [
+          "Only the container tag",
+          "Image, model, prompt, feature/data and configuration versions with provenance",
+          "Only the branch name",
+          "Only the evaluation score"
+        ],
+        "correctIndex": 1,
+        "explanation": "Rollback and compatibility require coordinated version references across coupled artifacts."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "CI validation and AI quality gates",
+        "weight": 20,
+        "evidence": "Tests, data contracts, golden evaluation and security checks are required."
+      },
+      {
+        "criterion": "Immutable artifact and provenance",
+        "weight": 20,
+        "evidence": "Build once, digest, SBOM, signature and source provenance are bound."
+      },
+      {
+        "criterion": "Least-privilege workflow design",
+        "weight": 20,
+        "evidence": "PR, publisher, signer and deploy identities have separated permissions."
+      },
+      {
+        "criterion": "Promotion and approval",
+        "weight": 20,
+        "evidence": "Sequential environment gates require role-specific approval and idempotency."
+      },
+      {
+        "criterion": "Canary and rollback",
+        "weight": 20,
+        "evidence": "SLO breach halts ramp and restores complete known-good bundle."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Release policy unit tests pass.",
+      "Candidate cannot promote with missing or failed evidence.",
+      "Promotion is sequential, role-bound and idempotent.",
+      "Canary failure restores previous release.",
+      "CI workflow sample does not deploy or publish by default."
+    ]
+  },
+  "references": [
+    {
+      "title": "GitHub Actions security hardening",
+      "url": "https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "GitHub Actions deployment environments",
+      "url": "https://docs.github.com/en/actions/deployment/targeting-different-environments/using-environments-for-deployment",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "SLSA provenance",
+      "url": "https://slsa.dev/spec/v1.1/provenance",
+      "sourceType": "standard",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "Sigstore Cosign documentation",
+      "url": "https://docs.sigstore.dev/cosign/signing/overview/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "OpenTelemetry semantic conventions",
+      "url": "https://opentelemetry.io/docs/specs/semconv/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "candidate = Candidate(commit_sha, image_digest, sbom_digest, ...)",
+      "explanation": "A release candidate binds source and immutable artifacts to test, security and AI evaluation evidence."
+    },
+    {
+      "lines": "reasons = pipeline.gate(candidate)",
+      "explanation": "A release gate aggregates all failed policy reasons. Promotion is denied if tests, security, quality, latency or cost do not pass."
+    },
+    {
+      "lines": "promote(release_id, target, actor, role, idempotency_key)",
+      "explanation": "Promotion checks candidate identity, target environment, role and replay protection before changing the environment alias."
+    },
+    {
+      "lines": "evaluate_canary(error_rate, p95_latency_ms)",
+      "explanation": "Canary metrics are compared with explicit budgets. A breach restores the previous known-good release."
+    },
+    {
+      "lines": "image: academy-inference:ci; push: false",
+      "explanation": "The sample workflow builds and scans a candidate without publishing or deploying it. A separate protected release workflow should handle promotion."
+    },
+    {
+      "lines": "environment: staging / production",
+      "explanation": "Repository environment protection can require reviewers and restrict branches, but the release service must still validate digest-bound approval."
+    }
+  ]
+}
