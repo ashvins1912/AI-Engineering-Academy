@@ -13,6 +13,11 @@ class DurableWorkflowTests(unittest.TestCase):
   w=ReplayWorkflow("loan-42");w.schedule_activity("charge",{"amount":100},"k1");w.complete_activity("charge","k1",{"provider":"p1"})
   with self.assertRaises(DurableWorkflowError):w.schedule_activity("charge",{"amount":100},"k2")
   with self.assertRaises(DurableWorkflowError):w.complete_activity("charge","k1",{"provider":"p2"})
+ def test_failed_activity_can_retry_with_same_key(self):
+  w=ReplayWorkflow("loan-42");w.schedule_activity("credit",{"id":"A1"},"k1");w.fail_activity("credit","provider timeout")
+  retry=w.schedule_activity("credit",{"id":"A1"},"k1")
+  self.assertTrue(retry["dispatch"])
+  self.assertEqual(w.state["activities"]["credit"]["attempt"],2)
  def test_duplicate_signal_is_deduplicated(self):
   w=ReplayWorkflow("loan-42")
   self.assertFalse(w.signal("approval-1",{"approved":True})["duplicate"])
