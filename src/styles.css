@@ -976,3 +976,27 @@
 .ibm-acp-gates p span{font:10px 'DM Mono';color:#dce5ff;min-width:30px}
 .ibm-acp-gates small{font-size:10px;color:#899bb8}
 @media(max-width:760px){.ibm-acp-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.ibm-acp-controls{grid-template-columns:1fr}.ibm-acp-mapping>div{grid-template-columns:1fr 18px 1fr}}
+
+/* Stage 7 Topic 8 — Agent Client Protocol workbench */
+.client-acp-capabilities{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:14px 0}
+.client-acp-capabilities>div{display:grid;gap:6px;min-width:0;border:1px solid #293750;border-radius:10px;background:#101a2b;padding:11px}
+.client-acp-capabilities strong{display:flex;align-items:center;gap:7px;font-size:11px;color:#e0e7f7}
+.client-acp-capabilities span{font:10px 'DM Mono';color:#96a8c6;overflow-wrap:anywhere}
+.client-acp-events{display:grid;gap:7px;border:1px solid #293750;border-radius:12px;background:#0e1728;padding:13px;margin:14px 0}
+.client-acp-events>strong{font-size:12px;color:#e0e7f7;margin-bottom:3px}
+.client-acp-events>div{display:grid;grid-template-columns:25px minmax(110px,1fr) minmax(0,1fr);gap:9px;align-items:center;padding:8px;border-radius:7px;background:#101a2b;color:#8192ae}
+.client-acp-events>div.active{background:#1b2a45;color:#dbe5ff}
+.client-acp-events small,.client-acp-events code{font:10px 'DM Mono';overflow-wrap:anywhere}
+.client-acp-events span{font-size:10px;overflow-wrap:anywhere}
+.client-acp-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;border:1px solid #293750;border-radius:12px;padding:14px;margin:14px 0}
+.client-acp-controls label{display:flex;justify-content:space-between;align-items:center;gap:10px;color:#aab8d0;font-size:11px}
+.client-acp-controls label b{font:10px 'DM Mono';color:#dce5ff}
+.client-acp-controls input{accent-color:#91a2ff}
+.client-acp-controls select{background:#111b2d;color:#e0e7f7;border:1px solid #405171;border-radius:7px;padding:7px}
+.client-acp-permission{display:grid;gap:8px;border:1px solid #293750;border-radius:12px;background:#101a2b;padding:13px;margin:14px 0}
+.client-acp-permission strong{display:flex;align-items:center;gap:7px;color:#e0e7f7;font-size:12px}
+.client-acp-permission p{margin:0;color:#aab8d0;font-size:11px}
+.client-acp-permission code{font:10px 'DM Mono';color:#dce5ff}
+.client-acp-permission>span{font-size:11px;color:#dce5ff}
+.client-acp-permission small{font-size:10px;color:#899bb8}
+@media(max-width:760px){.client-acp-capabilities{grid-template-columns:1fr}.client-acp-controls{grid-template-columns:1fr}.client-acp-events>div{grid-template-columns:20px 1fr}.client-acp-events span{grid-column:2}}
