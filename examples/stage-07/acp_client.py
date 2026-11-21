@@ -164,9 +164,7 @@ class ACPConnection:
         session = self._session(session_id)
         if not self.client_capabilities.get("fs", {}).get("writeTextFile", False):
             raise PermissionError("client did not advertise fs.writeTextFile")
-        target = PurePosixPath(path)
-        if not target.is_absolute() or not any(str(target).startswith(root.rstrip("/") + "/") or str(target) == root for root in session["roots"]):
-            raise PermissionError("path is outside negotiated workspace roots")
+        target = self._workspace_path(path, session["roots"])
         workspace_files[str(target)] = content
         return {"written":True,"path":str(target)}
 
@@ -174,8 +172,7 @@ class ACPConnection:
         session = self._session(session_id)
         if not self.client_capabilities.get("terminal", False):
             raise PermissionError("client did not advertise terminal capability")
-        if not PurePosixPath(cwd).is_absolute():
-            raise ValueError("terminal cwd must be absolute")
+        cwd = str(self._workspace_path(cwd, session["roots"]))
         session.setdefault("terminals", {})[terminal_id] = {"command":command,"cwd":cwd,"cancelSupported":True,"exitStatus":None}
         return {"terminalId":terminal_id,"command":command,"cwd":cwd}
 
