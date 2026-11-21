@@ -1,0 +1,18 @@
+flowchart LR
+ subgraph Local[Local development]
+  H1[Host process] -->|stdin/stdout JSONL| S1[STDIO MCP server]
+  S1 --> D1[Domain tools]
+ end
+ subgraph Remote[Remote deployment]
+  C[Remote MCP client] -->|HTTPS POST /mcp| TLS[TLS edge proxy]
+  TLS --> V[Host + Origin + size + header validation]
+  V --> O[OAuth middleware]
+  O --> LB[Load balancer]
+  LB --> R1[Stateless replica A]
+  LB --> R2[Stateless replica B]
+  LB --> R3[Stateless replica C]
+  R1 --> G[Domain policy gateway]
+  R2 --> G
+  R3 --> G
+  G --> DB[(Durable state + audit)]
+ end

@@ -1,0 +1,42 @@
+{
+  "scenario": "Deploy a stateless MCP server behind a load balancer with safe Streamable HTTP and local STDIO options",
+  "protocolVersion": "2026-07-28",
+  "transports": [
+    "stdio",
+    "streamable-http"
+  ],
+  "http": {
+    "endpoint": "/mcp",
+    "allowedHosts": [
+      "mcp.example.com"
+    ],
+    "allowedOrigins": [
+      "https://app.example.com"
+    ],
+    "methods": [
+      "POST",
+      "OPTIONS"
+    ],
+    "headers": [
+      "Authorization",
+      "Content-Type",
+      "Mcp-Method",
+      "Mcp-Name"
+    ],
+    "maxBodyBytes": 65536
+  },
+  "deployment": {
+    "replicas": 3,
+    "stickySessions": false,
+    "sharedProtocolSessionStore": false
+  },
+  "security": [
+    "TLS",
+    "Origin/Host validation",
+    "DNS rebinding defense",
+    "OAuth middleware",
+    "rate limits",
+    "body size limits",
+    "redacted logs"
+  ]
+}
