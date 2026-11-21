@@ -11,7 +11,9 @@ class IACTemplateTests(unittest.TestCase):
  def test_only_approved_secret_arn_is_injected(self):
   main=(IAC/"main.tf").read_text();variables=(IAC/"variables.tf").read_text()
   self.assertIn("var.app_secret_arn",main)
-  self.assertIn("secretsmanager:GetSecretValue",main)\n  self.assertIn("role = aws_iam_role.execution.id",main)\n  self.assertIn("valueFrom = var.app_secret_arn",main)
+  self.assertIn("secretsmanager:GetSecretValue",main)
+  self.assertIn("role = aws_iam_role.execution.id",main)
+  self.assertIn("valueFrom = var.app_secret_arn",main)
   self.assertNotIn("secret_value",variables)
   self.assertNotIn("password =",variables.lower())
  def test_image_is_digest_pinned_and_ecr_tags_immutable(self):
