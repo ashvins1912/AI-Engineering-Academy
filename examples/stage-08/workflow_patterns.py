@@ -94,12 +94,15 @@ def run_saga(steps):
     for step in steps:
         try:
             result=step["run"]()
-            completed.append({"name":step["name"],"result":result,"compensate":step.get("compensate")})
+            completed.append({"name":step["name"],"result":result,"compensate":step.get("compensate"),"side_effect":step.get("side_effect",True)})
         except Exception as exc:
             compensation_errors=[]
             for item in reversed(completed):
                 compensate=item["compensate"]
-                if not compensate:continue
+                if not compensate:
+                    if item["side_effect"]:
+                        compensation_errors.append({"step":item["name"],"error":"missing compensating action"})
+                    continue
                 try:compensate(item["result"])
                 except Exception as compensation_error:
                     compensation_errors.append({"step":item["name"],"error":str(compensation_error)})
