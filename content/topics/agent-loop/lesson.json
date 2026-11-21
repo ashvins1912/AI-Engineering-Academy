@@ -6,7 +6,7 @@
     "stage": 6,
     "estimatedMinutes": 95
   },
-  "state": "tested",
+  "state": "visualized",
   "learning": {
     "outcomes": [
       "Explain how an agent repeatedly observes state, chooses a bounded action, inspects the result and decides whether to continue or stop.",
