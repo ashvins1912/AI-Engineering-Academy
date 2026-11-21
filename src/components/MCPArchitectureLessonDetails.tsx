@@ -1,5 +1,5 @@
 import {useState} from 'react'
-import {BookOpen,Bug,Code2,Lightbulb,Target,ShieldCheck} from 'lucide-react'
+import {BookOpen,Bug,Code2,Lightbulb,Target} from 'lucide-react'
 import lesson from '../../content/topics/mcp-architecture/lesson.json'
 export default function MCPArchitectureLessonDetails(){
  const [answers,setAnswers]=useState<Record<number,number>>({})
