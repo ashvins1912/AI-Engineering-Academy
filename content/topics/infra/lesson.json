@@ -562,7 +562,7 @@
   ],
   "codeWalkthrough": [
     {
-      "lines": "required_providers { aws = { source = \"hashicorp/aws\"; version = \"~> 5.80\" } }",
+      "lines": "required_providers.aws.source = \"hashicorp/aws\" and version = \"~> 5.80\"",
       "explanation": "Pin provider compatibility and commit the lockfile so provider upgrades are reviewed."
     },
     {
