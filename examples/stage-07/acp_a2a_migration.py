@@ -13,6 +13,7 @@ EVENT_MAP = {
     "completed": ("status", "completed"),
     "failed": ("status", "failed"),
     "canceled": ("status", "canceled"),
+    "result": ("artifact", "artifactUpdate"),
 }
 
 @dataclass
@@ -65,6 +66,11 @@ def translate_legacy_event(event, task_id, sequence):
     event_type, state = EVENT_MAP[event["type"]]
     if event_type == "status":
         return {"sequence": sequence, "statusUpdate": {"taskId": task_id, "status": state}}
+    if event_type == "artifact":
+        artifact = event.get("artifact")
+        if not isinstance(artifact, dict) or not artifact.get("artifactId") or not artifact.get("parts"):
+            raise ValueError("legacy result event needs a typed artifact")
+        return {"sequence": sequence, "artifactUpdate": {"taskId": task_id, "artifact": artifact}}
     raise AssertionError("unsupported mapping type")
 
 def compare_parity(legacy, migrated):
