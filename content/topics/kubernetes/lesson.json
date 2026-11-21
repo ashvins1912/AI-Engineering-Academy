@@ -508,10 +508,10 @@
       {
         "question": "A Pod requests 6 GiB and a node has 16 GiB allocatable. How many identical Pods fit by memory request alone?",
         "options": [
-          "One",
-          "Two",
-          "Three",
-          "Six"
+          "One Pod",
+          "Two Pods",
+          "Three Pods",
+          "Six Pods"
         ],
         "correctIndex": 1,
         "explanation": "floor(16/6) = 2. The remaining 4 GiB cannot satisfy another 6 GiB request; other resources and system overhead can reduce placement further."
