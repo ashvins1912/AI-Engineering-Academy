@@ -37,7 +37,7 @@ def safe_metadata(value):
     if isinstance(value,dict):
         result={}
         for key,item in value.items():
-            if key.lower() in forbidden:raise ExperimentError("sensitive metadata key rejected")
+            if any(secret in key.lower() for secret in forbidden):raise ExperimentError("sensitive metadata key rejected")
             result[key]=safe_metadata(item)
         return result
     if isinstance(value,list):return [safe_metadata(x) for x in value]
@@ -62,6 +62,7 @@ class LocalTracker:
         if run["status"]!="running":raise ExperimentError("run is not active")
         if not isinstance(value,(int,float)) or not math.isfinite(value):raise ExperimentError("metric must be finite numeric")
         history=run["metrics"].setdefault(key,[])
+        if not isinstance(step,int) or step<0:raise ExperimentError("metric step must be a non-negative integer")
         if history and step<=history[-1]["step"]:raise ExperimentError("metric steps must increase")
         history.append({"step":step,"value":float(value)})
     def log_artifact(self,run_id,name,content,media_type="application/octet-stream"):
@@ -84,9 +85,16 @@ def sigmoid(value):
         z=math.exp(-value);return 1/(1+z)
     z=math.exp(value);return z/(1+z)
 
-def train_logistic_regression(records,seed=42,learning_rate=0.1,epochs=12):
-    rows=list(records);random.Random(seed).shuffle(rows)
-    split=max(1,int(len(rows)*0.75));train=rows[:split];validation=rows[split:] or rows[-1:]
+def train_logistic_regression(records,seed=42,learning_rate=0.1,epochs=12,train_ids=None,validation_ids=None):
+    rows=list(records)
+    if train_ids is not None and validation_ids is not None:
+        by_id={row['id']:row for row in rows}
+        validate_splits(train_ids,validation_ids,[],by_id)
+        train=[by_id[item] for item in train_ids];validation=[by_id[item] for item in validation_ids]
+        if not train or not validation:raise ExperimentError('train and validation splits must be non-empty')
+    else:
+        random.Random(seed).shuffle(rows)
+        split=max(1,int(len(rows)*0.75));train=rows[:split];validation=rows[split:] or rows[-1:]
     weight=0.0;bias=0.0;history=[]
     for epoch in range(1,epochs+1):
         grad_w=0.0;grad_b=0.0;loss=0.0
@@ -108,7 +116,7 @@ def demo():
     splits={"train":[str(i) for i in range(8)],"validation":["8","9"],"test":["10","11"]}
     manifest=DatasetManifest.create("sentiment-toy","v1",records,splits,{"x":"float","y":"binary"})
     tracker=LocalTracker();tracker.start_run("sentiment","run-1",{"git_commit":"8f3a","seed":42},manifest,"accuracy-v1")
-    result=train_logistic_regression(records)
+    result=train_logistic_regression(records,train_ids=splits["train"],validation_ids=splits["validation"])
     tracker.log_param("learning_rate",0.1)
     for item in result["history"]:
         tracker.log_metric("validation_accuracy",item["validation_accuracy"],item["epoch"])
