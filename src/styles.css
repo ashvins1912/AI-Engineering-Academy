@@ -1026,3 +1026,33 @@
 .tool-integration-backoff span{display:grid;gap:4px;border:1px solid #293750;border-radius:8px;background:#0e1728;padding:8px;color:#9aabc7;font-size:10px}
 .tool-integration-backoff b{font:10px 'DM Mono';color:#dce5ff}
 @media(max-width:760px){.tool-integration-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.tool-integration-controls{grid-template-columns:1fr}}
+
+/* Stage 8 Topic 1 — workflow patterns workbench */
+.workflow-node-board{display:grid;gap:10px;border:1px solid #293750;border-radius:12px;background:#0e1728;padding:13px;margin:14px 0}
+.workflow-node-board>div:first-child{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.workflow-node-board>div:first-child strong{display:flex;align-items:center;gap:7px;color:#e0e7f7;font-size:12px}
+.workflow-node-board>div:first-child span{font:10px 'DM Mono';color:#899bb8}
+.workflow-node-list{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px}
+.workflow-node-list article{display:grid;gap:5px;min-width:0;border:1px solid #293750;border-radius:8px;background:#101a2b;padding:8px}
+.workflow-node-list small{font:9px 'DM Mono';color:#8395b4}
+.workflow-node-list strong{font-size:10px;color:#dce5ff;overflow-wrap:anywhere}
+.workflow-node-list span{font:9px 'DM Mono';color:#96a8c6;overflow-wrap:anywhere}
+.workflow-node-list article.completed{border-color:#527a70;background:#12251f}
+.workflow-node-list article.failed{border-color:#8a5555;background:#2a171b}
+.workflow-node-list article.pending{opacity:.65}
+.workflow-pattern-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:14px 0}
+.workflow-pattern-metrics article{display:grid;gap:5px;min-width:0;border:1px solid #293750;border-radius:10px;background:#101a2b;padding:11px}
+.workflow-pattern-metrics small{font:9px 'DM Mono';color:#8e9fba}
+.workflow-pattern-metrics strong{font:600 17px 'Space Grotesk';color:#e2e9ff;overflow-wrap:anywhere}
+.workflow-pattern-metrics span{font-size:10px;color:#94a7c5}
+.workflow-pattern-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;border:1px solid #293750;border-radius:12px;padding:14px;margin:14px 0}
+.workflow-pattern-controls label{display:flex;justify-content:space-between;align-items:center;gap:10px;color:#aab8d0;font-size:11px}
+.workflow-pattern-controls label span{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.workflow-pattern-controls b{font:10px 'DM Mono';color:#dce5ff}
+.workflow-pattern-controls input{accent-color:#91a2ff}
+.workflow-compensation{display:grid;gap:8px;border:1px solid #293750;border-radius:12px;background:#101a2b;padding:13px;margin:14px 0}
+.workflow-compensation>strong{display:flex;align-items:center;gap:7px;color:#e0e7f7;font-size:12px}
+.workflow-compensation>div{display:flex;gap:10px;align-items:center;padding:7px;border-radius:7px;background:#0e1728;color:#aab8d0;font-size:11px}
+.workflow-compensation small{font:10px 'DM Mono';color:#899bb8}
+.workflow-compensation p{display:flex;align-items:center;gap:7px;margin:0;color:#aab8d0;font-size:10px}
+@media(max-width:760px){.workflow-node-board>div:first-child{align-items:flex-start;flex-direction:column}.workflow-node-list{grid-template-columns:repeat(2,minmax(0,1fr))}.workflow-pattern-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.workflow-pattern-controls{grid-template-columns:1fr}}
