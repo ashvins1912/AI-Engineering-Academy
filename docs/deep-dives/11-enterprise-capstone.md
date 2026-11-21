@@ -47,6 +47,10 @@ Operate with user-centered SLO dashboards, traces, redacted logs, actionable ale
 - Rollback restores a known-good release and compatible artifacts.
 - Cost and latency remain inside documented budgets under a representative load test.
 
+## Mastery defense
+
+Use the [Stage 11 Mastery Defense](11-enterprise-capstone-defense.md) for the 20-minute live demo, technical defense questions, 36-point rubric and incident drill.
+
 ## Integrated acceptance command
 
 Run the local cross-topic capstone acceptance and all Stage 11 tests:
