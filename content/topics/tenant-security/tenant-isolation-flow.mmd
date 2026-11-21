@@ -1,0 +1,17 @@
+flowchart TD
+  A[Verified identity] --> B[Membership resolver]
+  B --> C[Immutable tenant context]
+  C --> D[Application service]
+  D --> E[DB transaction + RLS]
+  D --> F[Vector query: tenant filter before top-k]
+  D --> G[Cache key includes tenant]
+  D --> H[Server-owned object reference]
+  D --> I[Queue: actor + tenant + resource]
+  I --> J[Worker revalidates membership and ownership]
+  E --> K[Redacted audit]
+  F --> K
+  G --> K
+  H --> K
+  J --> K
+  X[Untrusted tenant field / forged job] -. reject .-> B
+  X -. reject .-> J
