@@ -1,0 +1,15 @@
+flowchart TD
+ O[Orchestrator agent] --> D[Discover trusted Agent Card]
+ D --> V{Version + interface + auth valid?}
+ V -->|No| X[Reject before sending private context]
+ V -->|Yes| M[message/send with contextId]
+ M --> T[Remote task store]
+ T --> W[Specialist task worker]
+ W --> C[Specialist-owned MCP tools]
+ C --> W
+ W --> A[Typed artifact store]
+ W --> E[Status and artifact events]
+ E --> S[SSE stream or authenticated push]
+ S --> R[Orchestrator validates task/context + artifact]
+ R --> P[Provenance + tenant policy + audit]
+ P --> F[Delegation complete]
