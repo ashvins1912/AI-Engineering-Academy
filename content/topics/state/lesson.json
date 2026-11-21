@@ -508,7 +508,7 @@
     {
       "title": "Transactional outbox pattern",
       "url": "https://microservices.io/patterns/data/transactional-outbox.html",
-      "sourceType": "technical-reference",
+      "sourceType": "official-docs",
       "checkedOn": "2026-11-21"
     }
   ],
