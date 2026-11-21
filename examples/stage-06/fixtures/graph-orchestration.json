@@ -1,0 +1,37 @@
+{
+  "scenario": "Invoice support graph with conditional route and resumable checkpoint",
+  "threadId": "support-thread-42",
+  "tenantId": "academy-demo",
+  "question": "Where can I download my invoice?",
+  "nodes": [
+    "classify",
+    "billing",
+    "general",
+    "finish"
+  ],
+  "entry": "classify",
+  "routes": {
+    "billing": "billing",
+    "general": "general"
+  },
+  "expectedPath": [
+    "classify",
+    "billing",
+    "finish"
+  ],
+  "checkpoint": {
+    "version": 2,
+    "nextNode": "billing",
+    "status": "running"
+  },
+  "limits": {
+    "maxSteps": 8
+  },
+  "failureInjection": [
+    "unknown route",
+    "missing edge",
+    "node exception",
+    "step limit",
+    "stale checkpoint version"
+  ]
+}
