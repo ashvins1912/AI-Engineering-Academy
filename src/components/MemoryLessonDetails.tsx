@@ -1,5 +1,5 @@
 import {useState} from 'react'
-import {BookOpen,Bug,Code2,Lightbulb,Target,ShieldCheck} from 'lucide-react'
+import {BookOpen,Code2,Lightbulb,Target,ShieldCheck} from 'lucide-react'
 import lesson from '../../content/topics/memory/lesson.json'
 export default function MemoryLessonDetails(){
  const [answers,setAnswers]=useState<Record<number,number>>({}),[checked,setChecked]=useState(false),quiz=lesson.practice.scenarioQuiz,score=quiz.filter((q,i)=>answers[i]===q.correctIndex).length
