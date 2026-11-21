@@ -724,3 +724,44 @@
 .graph-pause-toggle{display:flex!important;align-items:center;gap:8px}
 .graph-pause-toggle input{accent-color:#91a2ff}
 @media(max-width:760px){.graph-node-track{align-items:flex-start;overflow-x:auto}.graph-node-track>div{min-width:65px}.graph-controls{grid-template-columns:1fr}.graph-state-title{align-items:flex-start;flex-direction:column}}
+
+/* Stage 6 Topic 8 — agent framework comparison workbench */
+.framework-task{display:grid;gap:6px;border:1px solid #293750;border-radius:11px;background:#0e1728;padding:13px;margin:14px 0}
+.framework-task strong{font-size:12px;color:#e0e7f7}
+.framework-task span{font-size:12px;color:#b2bfd6;line-height:1.5}
+.framework-task small{font:10px 'DM Mono';color:#8e9fba;overflow-wrap:anywhere}
+.framework-select{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end}
+.framework-select label{display:grid;gap:7px;color:#aab8d0;font-size:12px}
+.framework-select select{background:#111b2d;color:#e0e7f7;border:1px solid #405171;border-radius:7px;padding:9px;min-width:0}
+.framework-score{display:grid;gap:4px;text-align:right}
+.framework-score small{font:9px 'DM Mono';color:#8e9fba}
+.framework-score strong{font:600 21px 'Space Grotesk';color:#e5ebff}
+.framework-score span{font-size:10px;color:#a0b1cc}
+.framework-score-bars{display:grid;gap:9px;border:1px solid #293750;border-radius:11px;padding:13px;margin:14px 0;background:#101a2b}
+.framework-score-bars>div{display:grid;grid-template-columns:110px 1fr 34px;gap:9px;align-items:center}
+.framework-score-bars span{font-size:11px;color:#aab8d0}
+.framework-score-bars>div>div{height:7px;border-radius:9px;background:#283750;overflow:hidden}
+.framework-score-bars i{display:block;height:100%;border-radius:9px;background:#8298e8}
+.framework-score-bars b{font:10px 'DM Mono';color:#dce5ff;text-align:right}
+.framework-fit{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+.framework-fit article{border:1px solid #293750;border-radius:10px;padding:12px;background:#101a2b}
+.framework-fit small{font:9px 'DM Mono';color:#8e9fba}
+.framework-fit strong{display:block;font-size:12px;color:#e0e7f7;margin:7px 0}
+.framework-fit p{font-size:11px;line-height:1.5;color:#a1b0c9;margin:0}
+.framework-controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;border:1px solid #293750;border-radius:11px;padding:13px;margin:14px 0}
+.framework-controls label{display:grid;gap:7px;font-size:11px;color:#aab8d0}
+.framework-controls label span{display:flex;justify-content:space-between;gap:7px}
+.framework-controls b{font:10px 'DM Mono';color:#dce5ff}
+.framework-controls input{width:100%;accent-color:#91a2ff}
+.framework-candidates{display:grid;gap:6px;margin:14px 0}
+.framework-candidates>strong{font-size:12px;color:#dfe7fa;margin-bottom:3px}
+.framework-candidates button{display:grid;grid-template-columns:1fr auto;gap:3px 8px;text-align:left;border:1px solid #293750;border-radius:8px;padding:10px;background:#101a2b;color:#dfe7fa;cursor:pointer}
+.framework-candidates button.active{border-color:#7188cb;background:#182642}
+.framework-candidates button span{font-size:12px;font-weight:600}
+.framework-candidates button small{font-size:10px;color:#97a8c4}
+.framework-candidates button svg{grid-column:2;grid-row:1/3;align-self:center}
+.framework-gates{border:1px solid #34435f;border-radius:11px;padding:13px;background:#111b2d}
+.framework-gates>strong{display:flex;align-items:center;gap:7px;color:#e0e7f7;font-size:12px;margin-bottom:8px}
+.framework-gates p{display:flex;align-items:flex-start;gap:7px;font-size:11px;color:#aab8d0;line-height:1.5;margin:7px 0}
+.framework-gates p svg{flex:none;margin-top:2px}
+@media(max-width:760px){.framework-select{grid-template-columns:1fr}.framework-score{text-align:left}.framework-fit{grid-template-columns:1fr}.framework-controls{grid-template-columns:1fr}.framework-score-bars>div{grid-template-columns:90px 1fr 30px}}
