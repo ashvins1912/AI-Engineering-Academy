@@ -1,0 +1,9 @@
+flowchart TD
+ G[Goal: fulfil ORD-1042] --> V[Validate order · 2m]
+ V --> R[Reserve inventory · 3m]
+ V --> P[Authorize payment · 2m]
+ R --> S[Book shipment · 4m]
+ P --> S
+ S --> N[Notify customer · 1m]
+ R -. stockout .-> X[Block shipment and notification]
+ X -.-> N

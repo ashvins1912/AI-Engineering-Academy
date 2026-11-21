@@ -1,0 +1,494 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "planning",
+    "title": "Planning and task decomposition",
+    "stage": 6,
+    "estimatedMinutes": 120
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Decompose broad goals into atomic tasks with inputs, outputs and acceptance criteria.",
+      "Represent prerequisites as a directed acyclic graph and compute a valid topological order.",
+      "Prioritize only tasks whose dependencies have succeeded, using transparent scoring.",
+      "Replan safely after task failure, changed constraints or exhausted execution budgets."
+    ],
+    "prerequisites": [
+      "Python lists, dictionaries, functions and exceptions",
+      "Basic arithmetic and graph intuition",
+      "Stage 6 Topic 1: agent loop and control flow"
+    ],
+    "glossary": [
+      {
+        "term": "Task decomposition",
+        "definition": "Breaking a broad objective into small units with explicit completion conditions."
+      },
+      {
+        "term": "Dependency",
+        "definition": "A prerequisite relationship that prevents a task from starting until another task succeeds."
+      },
+      {
+        "term": "DAG",
+        "definition": "A directed acyclic graph whose arrows show dependencies and contain no directed cycle."
+      },
+      {
+        "term": "Topological order",
+        "definition": "An ordering where every prerequisite appears before the task that depends on it."
+      },
+      {
+        "term": "Replanning",
+        "definition": "Recomputing safe remaining work after a failure or new external information."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "A request such as fulfil this order is too broad to execute as one opaque action. An agent must identify atomic tasks, prerequisites, independent work, time and cost limits, and safe recovery when a task fails. A flat checklist hides dependencies and can allow unsafe actions.",
+    "plainLanguage": "Task decomposition turns a large goal into smaller tasks. Each task has one purpose, clear inputs, an observable output and a completion test. Fulfilling an order may require validating the order, reserving inventory, authorizing payment, booking shipment and notifying the customer.\n\nSome tasks can run independently after a prerequisite. Inventory reservation and payment authorization can both start after order validation. Shipment booking must wait for both. This is a dependency graph: an arrow A → B means B cannot start until A succeeds.\n\nA directed acyclic graph (DAG) has no circular prerequisites. A topological sort produces an order that respects every dependency. Among tasks that are ready at the same time, a priority score can choose what to do first. Priority never overrides a dependency: a high-priority task remains blocked until its prerequisites succeed.\n\nA plan is a hypothesis, not a guarantee. If inventory reservation fails, shipment booking and customer notification must not run. The planner marks descendants blocked, preserves completed work and replans only safe remaining work. It must not replay completed side effects or invent a result.\n\nThe agent loop from Topic 1 can ask a planner for a task graph, execute one ready task, record its outcome and replan when state changes. Keep planning separate from execution: the planner proposes structure, while the executor enforces permissions, dependencies, budgets and actual outcomes.",
+    "mentalModel": "Goal → atomic tasks → dependency DAG → ready set → priority choice → bounded execution → observe outcome → replan. Dependencies define what is legal; priority defines what is preferable among legal choices.",
+    "limitations": [
+      "A DAG cannot represent a genuine cyclic business rule; requirements must be redesigned or modelled as a state machine.",
+      "A topological order is not an optimal schedule when resource capacity, deadlines and durations interact.",
+      "Priority scores encode assumptions and can starve low-scoring tasks without fairness or aging.",
+      "A timeout does not prove a remote side effect failed; retries require idempotency and reconciliation.",
+      "Plans become stale when inventory, permissions or external service state changes."
+    ],
+    "everydayAnalogy": "Think of preparing a trip. You can pack bags and check weather independently, but you cannot board before tickets are confirmed and everyone reaches the station. Arrows show prerequisites; a delay forces you to update the remaining plan without repeating completed work.",
+    "mathMadeSimple": "Order tasks: validate=2m; reserve stock=3m; authorize payment=2m; book shipment=4m; notify=1m. Reserve and payment both depend on validation; shipment depends on both; notification depends on shipment. With one worker, total work is 2+3+2+4+1=12 minutes. With unlimited workers, the critical path is 2+max(3,2)+4+1=10 minutes. A priority score value×urgency÷effort chooses only among ready tasks.",
+    "productionImpact": "A planner that ignores dependencies can ship unpaid orders, notify before shipment exists or reserve stock twice. Production plans need typed task schemas, DAG cycle checks, acceptance criteria, tenant/resource authorization, deadlines, task and token budgets, bounded concurrency, durable state, idempotent side effects, failure propagation, audit traces and versioned replanning."
+  },
+  "useCase": {
+    "scenario": "An ecommerce order service fulfils ORD-1042 by validating the order, reserving stock, authorizing payment, booking shipment and notifying the customer. The planner respects prerequisites, estimates work and blocks downstream tasks when inventory reservation fails.",
+    "actors": [
+      "Order orchestration service",
+      "Planning component",
+      "Inventory service",
+      "Payment service",
+      "Shipping adapter",
+      "Notification service"
+    ],
+    "inputs": [
+      "Order ORD-1042 with two units of SKU-7",
+      "Inventory and payment outcomes",
+      "Task estimates, urgency and value",
+      "Maximum task count"
+    ],
+    "constraints": [
+      "Shipment requires successful stock reservation and payment authorization.",
+      "Notification requires a booked shipment.",
+      "Only allow-listed task handlers may execute.",
+      "A failed prerequisite blocks descendants."
+    ],
+    "outputs": [
+      "Validated task DAG and execution order",
+      "Per-task pending, ready, succeeded, failed or blocked status",
+      "Auditable trace and safe replan decision"
+    ],
+    "successMetric": "Happy path completes all five tasks in dependency-safe order; stockout path never books shipment or sends a shipped notification."
+  },
+  "architecture": {
+    "diagram": "examples/stage-06/visual/planning-dag.mmd",
+    "components": [
+      "Goal interpreter",
+      "Task decomposer",
+      "DAG validator",
+      "Ready queue and priority policy",
+      "Bounded task executor",
+      "Durable task state and trace",
+      "Failure propagation and replanner"
+    ],
+    "dataFlow": [
+      {
+        "from": "User goal",
+        "to": "Task decomposer",
+        "payload": "goal and order ID",
+        "purpose": "Create atomic tasks and acceptance criteria"
+      },
+      {
+        "from": "Task decomposer",
+        "to": "DAG validator",
+        "payload": "task IDs and dependency edges",
+        "purpose": "Reject unknown dependencies and cycles"
+      },
+      {
+        "from": "DAG validator",
+        "to": "Ready queue",
+        "payload": "validated DAG",
+        "purpose": "Expose tasks whose prerequisites succeeded"
+      },
+      {
+        "from": "Ready queue",
+        "to": "Task executor",
+        "payload": "ready task and budget",
+        "purpose": "Run an allow-listed handler within limits"
+      },
+      {
+        "from": "Task executor",
+        "to": "State and trace",
+        "payload": "result, duration and status",
+        "purpose": "Persist evidence and update dependent tasks"
+      },
+      {
+        "from": "State and trace",
+        "to": "Replanner",
+        "payload": "failure or changed external state",
+        "purpose": "Block unsafe descendants and rebuild remaining work"
+      }
+    ],
+    "trustBoundaries": [
+      "LLM-generated task descriptions and edges are proposals, not authority.",
+      "The server validates task IDs, dependencies, schemas, budgets and tenant ownership.",
+      "Handlers independently authorize inventory, payment and shipment operations.",
+      "Tool outputs cannot expand the task or permission allow-list."
+    ],
+    "failurePaths": [
+      "Cycles and unknown dependencies are rejected before execution.",
+      "Failed inventory reservation blocks shipment and notification descendants.",
+      "Task-budget exhaustion returns an explicit incomplete status.",
+      "Side-effecting timeout requires idempotency and reconciliation before retry."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-06/fixtures/planning.json",
+    "steps": [
+      {
+        "label": "Decompose the goal",
+        "explanation": "Turn fulfil order ORD-1042 into five atomic tasks with acceptance conditions.",
+        "expectedState": "Five unique tasks exist; none has executed."
+      },
+      {
+        "label": "Build dependency graph",
+        "explanation": "Validate directed edges and reject cycles before execution.",
+        "expectedState": "Shipment waits for stock and payment; notification waits for shipment."
+      },
+      {
+        "label": "Choose ready work",
+        "explanation": "Only validation is initially ready. After it succeeds, stock and payment become ready.",
+        "expectedState": "Every selected task has all prerequisites succeeded."
+      },
+      {
+        "label": "Execute and observe",
+        "explanation": "Run bounded handlers and update task state from actual outcomes.",
+        "expectedState": "Successful tasks are persisted and descendants become eligible."
+      },
+      {
+        "label": "Fail and replan",
+        "explanation": "A stockout blocks shipment and notification while preserving completed payment authorization.",
+        "expectedState": "No shipment or shipped notification runs after stockout."
+      }
+    ],
+    "accessibility": [
+      "Every graph node has a text label, dependency list and status; color is not the only status signal.",
+      "Previous, next, play, pause and reset controls are keyboard operable.",
+      "A numbered text trace conveys all state transitions without motion."
+    ],
+    "animation": {
+      "objective": "Animate the same deterministic order-fulfilment DAG used by the runnable examples.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Decompose the goal",
+          "narration": "Create five tasks, each with estimate, value, urgency, dependencies and acceptance condition.",
+          "input": "goal=fulfil ORD-1042; task_count=5",
+          "transformation": "Create unique task records and validate required fields",
+          "output": "validate, reserve, authorize, ship, notify",
+          "visualState": "Five task cards appear with estimates and dependency labels"
+        },
+        {
+          "step": 2,
+          "title": "Validate the dependency DAG",
+          "narration": "Shipment needs both stock and payment; notification needs shipment.",
+          "input": "validate→reserve; validate→authorize; reserve→ship; authorize→ship; ship→notify",
+          "transformation": "Check dependency IDs and detect cycles",
+          "output": "DAG valid; ready={validate_order}",
+          "visualState": "Arrows connect tasks; only validation is ready"
+        },
+        {
+          "step": 3,
+          "title": "Prioritize legal work",
+          "narration": "After validation, reserve and authorize are ready. Score=(value×urgency)/effort gives 9 and 8.",
+          "input": "reserve=(9×3)/3; authorize=(8×2)/2",
+          "transformation": "Rank only the ready set by score",
+          "output": "reserve_inventory selected; authorize_payment remains ready",
+          "visualState": "Ready queue shows scores; blocked tasks remain disabled"
+        },
+        {
+          "step": 4,
+          "title": "Complete the happy path",
+          "narration": "After both prerequisites succeed, shipment becomes ready; notification waits for shipment.",
+          "input": "validate=success; reserve=success; authorize=success",
+          "transformation": "Update dependency counts; execute shipment and notification",
+          "output": "all five tasks succeeded; serial=12m; critical_path=10m",
+          "visualState": "All nodes show success"
+        },
+        {
+          "step": 5,
+          "title": "Inject stockout and replan",
+          "narration": "Inventory fails. Shipment and notification are blocked; payment success is preserved.",
+          "input": "reserve_inventory=failed; authorize_payment=succeeded",
+          "transformation": "Propagate blocked state to descendants",
+          "output": "ship=blocked; notify=blocked; status=needs_intervention",
+          "visualState": "Failed node and blocked descendants are explicitly labeled"
+        }
+      ],
+      "controls": [
+        {
+          "name": "max_tasks",
+          "min": 1,
+          "max": 10,
+          "defaultValue": 5,
+          "effect": "A budget below five leaves the plan incomplete."
+        },
+        {
+          "name": "simulate_stockout",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 0,
+          "effect": "When enabled, inventory fails and shipment plus notification become blocked."
+        },
+        {
+          "name": "urgency_weight",
+          "min": 1,
+          "max": 5,
+          "defaultValue": 3,
+          "effect": "Changes priority among ready tasks only; dependencies remain mandatory."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Five numbered stages expose exact dependencies, score arithmetic, schedule calculations and failure statuses as text. The graph is supplementary; every decision is understandable without color or motion."
+    }
+  },
+  "workedExample": {
+    "problem": "Build a dependency-safe plan for ORD-1042 and compare serial duration with the critical path.",
+    "input": "validate=2m; reserve=3m; authorize=2m; ship=4m; notify=1m. validate→reserve, validate→authorize, reserve→ship, authorize→ship, ship→notify.",
+    "steps": [
+      {
+        "operation": "Define task acceptance",
+        "reasoning": "Every task needs an observable result before dependants can rely on it.",
+        "result": "Validate order; reserve two units; authorize payment; obtain AWB; send shipment reference."
+      },
+      {
+        "operation": "Compute the ready set",
+        "reasoning": "Only tasks with zero unfinished prerequisites can execute.",
+        "result": "Initially {validate_order}; after validation {reserve_inventory, authorize_payment}."
+      },
+      {
+        "operation": "Prioritize ready work",
+        "reasoning": "reserve=(9×3)/3=9; authorize=(8×2)/2=8. Both are ready, so reserve is selected first.",
+        "result": "Priority chooses among ready tasks; it never unblocks shipment."
+      },
+      {
+        "operation": "Calculate schedule bounds",
+        "reasoning": "Serial execution adds all durations. Parallel execution follows the longer prerequisite branch.",
+        "result": "Serial=12m; critical path=2+max(3,2)+4+1=10m."
+      },
+      {
+        "operation": "Inject stockout",
+        "reasoning": "A failed prerequisite blocks all descendants. Payment success is preserved.",
+        "result": "reserve=failed; ship=blocked; notify=blocked; needs_intervention."
+      }
+    ],
+    "expectedOutput": "Happy path completes all five tasks. Serial duration is 12 minutes and ideal critical-path duration is 10 minutes. Stockout blocks shipment and notification."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-06/planning.py",
+      "runCommand": "python examples/stage-06/planning.py",
+      "testsPath": "examples/stage-06/test_planning.py",
+      "expectedResult": "Deterministic topological order; cycle, unknown dependency and stockout tests pass."
+    },
+    {
+      "language": "python",
+      "role": "production",
+      "path": "examples/stage-06/planning_production.py",
+      "runCommand": "python -m unittest discover -s examples/stage-06 -p 'test_planning_production.py' -v",
+      "testsPath": "examples/stage-06/test_planning_production.py",
+      "expectedResult": "Allow-listed execution enforces dependencies, task budgets, failure propagation and idempotency keys."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Circular dependency",
+      "symptom": "No task becomes ready and planning stalls.",
+      "rootCause": "Requirements introduced a cycle such as reserve→ship→reserve.",
+      "recovery": "Reject before execution, report the cycle and redesign the dependency or use an explicit state machine.",
+      "regressionTest": "Create a three-node cycle and assert validation fails before any handler runs."
+    },
+    {
+      "name": "Premature dependent execution",
+      "symptom": "Shipment runs before inventory or payment succeeds.",
+      "rootCause": "Executor trusted a flat priority list instead of rechecking prerequisite states.",
+      "recovery": "Recompute readiness from persisted state immediately before dispatch.",
+      "regressionTest": "Attempt shipment while one prerequisite is pending and assert its handler is not invoked."
+    },
+    {
+      "name": "Failure treated as completion",
+      "symptom": "Customer receives a shipped notification after stock reservation failed.",
+      "rootCause": "Downstream failure propagation was omitted.",
+      "recovery": "Mark descendants blocked with upstream reason and require explicit recovery.",
+      "regressionTest": "Inject stockout and assert shipment and notification handlers are never called."
+    },
+    {
+      "name": "Duplicate side effect after timeout",
+      "symptom": "Inventory is reserved twice after retry.",
+      "rootCause": "Planner treated timeout as proof the remote operation did not happen.",
+      "recovery": "Use idempotency key and reconcile remote reservation state before retry.",
+      "regressionTest": "Call fake reservation twice with same key and assert one reservation."
+    }
+  ],
+  "practice": {
+    "guided": "Draw the five-task DAG, compute the initial ready set and explain why shipment cannot start after validation alone.",
+    "independent": "Implement a topological sorter with duplicate-ID, unknown-edge and cycle checks.",
+    "realWorld": "Design a refund plan: verify order, inspect return, calculate refund, approve policy, issue payment and notify. Identify human approval gates.",
+    "expertExtension": "Add resource capacity, deadlines, critical-path slack, fairness and versioned replanning; explain why greedy priority is not globally optimal.",
+    "guidedExercise": {
+      "title": "Implement a dependency-aware planner",
+      "instructions": "Complete topological ordering. Reject unknown dependencies and cycles; never select a task before its prerequisites.",
+      "starterCode": "from collections import defaultdict, deque\n\ndef topological_order(tasks):\n    # TODO: index task IDs and build indegrees\n    # TODO: create dependency adjacency lists\n    # TODO: pop zero-indegree tasks and release dependants\n    # TODO: reject a cycle if not every task was emitted\n    raise NotImplementedError",
+      "solutionCode": "from collections import defaultdict, deque\n\ndef topological_order(tasks):\n    by_id = {task['id']: task for task in tasks}\n    if len(by_id) != len(tasks): raise ValueError('duplicate task id')\n    indegree = {key: 0 for key in by_id}; children = defaultdict(list)\n    for task in tasks:\n        for dep in task['depends_on']:\n            if dep not in by_id: raise ValueError(f'unknown dependency: {dep}')\n            children[dep].append(task['id']); indegree[task['id']] += 1\n    ready = deque(sorted(key for key, degree in indegree.items() if degree == 0)); order=[]\n    while ready:\n        node=ready.popleft(); order.append(node)\n        for child in sorted(children[node]):\n            indegree[child]-=1\n            if indegree[child]==0: ready.append(child)\n    if len(order)!=len(tasks): raise ValueError('dependency cycle detected')\n    return order",
+      "unitTests": "assert topological_order([{'id':'a','depends_on':[]},{'id':'b','depends_on':['a']}]) == ['a','b']\ntry: topological_order([{'id':'a','depends_on':['b']},{'id':'b','depends_on':['a']}])\nexcept ValueError as error: assert 'cycle' in str(error)\nelse: raise AssertionError('cycle must fail')"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build an order-planning panel with task DAG, ready queue, execution status, critical path and stockout recovery.",
+      "steps": [
+        "Render task nodes, estimates and prerequisite lists from fixture.",
+        "Validate IDs and edges before showing an executable plan.",
+        "Display ready tasks and priority scores; keep blocked tasks disabled.",
+        "Execute one task and append its result to the trace.",
+        "Inject stockout, block descendants and preserve completed side effects.",
+        "Test happy path, cycle rejection and no downstream execution after failure."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "Reserve and payment are ready. Shipment has the highest priority but is still blocked. What should planner do?",
+        "options": [
+          "Run shipment because score is highest",
+          "Choose only among ready tasks",
+          "Ignore dependency edges",
+          "Mark shipment successful"
+        ],
+        "correctIndex": 1,
+        "explanation": "Priority is applied only inside the ready set. Dependencies are correctness constraints."
+      },
+      {
+        "question": "A cycle is found before execution. What is safest?",
+        "options": [
+          "Run alphabetically",
+          "Silently delete an edge",
+          "Reject and report the cycle",
+          "Execute until stalled"
+        ],
+        "correctIndex": 2,
+        "explanation": "A cycle has no valid topological order. Silently deleting an edge changes business semantics."
+      },
+      {
+        "question": "Inventory fails after payment succeeds. What is correct?",
+        "options": [
+          "Book shipment anyway",
+          "Repeat payment automatically",
+          "Block shipment and notification; preserve payment success for reconciliation",
+          "Return completed"
+        ],
+        "correctIndex": 2,
+        "explanation": "All prerequisites must succeed. Completed side effects are preserved and reconciled, not replayed."
+      },
+      {
+        "question": "Reservation API times out. What does that mean?",
+        "options": [
+          "Reservation definitely failed",
+          "Reservation definitely succeeded",
+          "Outcome unknown; reconcile with idempotency key before retry",
+          "Retry forever"
+        ],
+        "correctIndex": 2,
+        "explanation": "A caller timeout does not prove a remote side effect was cancelled."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Decompose goal into atomic tasks with acceptance criteria",
+        "weight": 20,
+        "evidence": "Reviewed task specification"
+      },
+      {
+        "criterion": "Build and validate a dependency DAG",
+        "weight": 25,
+        "evidence": "Passing topological-sort tests including cycle and unknown edge"
+      },
+      {
+        "criterion": "Calculate priority and critical path",
+        "weight": 20,
+        "evidence": "Correct hand-worked scores and schedule arithmetic"
+      },
+      {
+        "criterion": "Implement bounded execution and safe replanning",
+        "weight": 25,
+        "evidence": "Happy path and injected failure regression tests"
+      },
+      {
+        "criterion": "Explain production recovery risks",
+        "weight": 10,
+        "evidence": "Failure analysis with idempotency and audit plan"
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Passing from-scratch and production tests",
+      "Cycle, unknown dependency and blocked-descendant tests",
+      "Correct serial and critical-path calculations",
+      "Trace proving no dependent handler ran before prerequisites succeeded"
+    ]
+  },
+  "references": [
+    {
+      "title": "Python graphlib.TopologicalSorter documentation",
+      "url": "https://docs.python.org/3/library/graphlib.html",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21",
+      "version": "Python 3.11+"
+    },
+    {
+      "title": "NetworkX topological sort documentation",
+      "url": "https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.dag.topological_sort.html",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "A Note on Two Problems in Connexion with Graphs (Kahn, 1962)",
+      "url": "https://doi.org/10.1002/j.1538-7305.1962.tb03988.x",
+      "sourceType": "paper",
+      "checkedOn": "2026-11-21"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "indegree[task_id] = len(task['dependsOn'])",
+      "explanation": "Indegree counts unfinished prerequisites. A zero count makes a task eligible for the ready queue."
+    },
+    {
+      "lines": "ready = sorted(task_id for task_id, degree in indegree.items() if degree == 0)",
+      "explanation": "Only tasks with no prerequisites are initially ready. A priority policy can reorder this ready set, never blocked tasks."
+    },
+    {
+      "lines": "indegree[child] -= 1",
+      "explanation": "When a prerequisite succeeds, each dependent loses one outstanding dependency and becomes ready only at zero."
+    },
+    {
+      "lines": "if len(order) != len(tasks): raise ValueError('dependency cycle detected')",
+      "explanation": "If Kahn's algorithm cannot emit every node, a cycle remains. Fail before dispatching any task."
+    }
+  ]
+}

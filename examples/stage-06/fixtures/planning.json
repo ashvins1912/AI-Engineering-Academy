@@ -1,0 +1,69 @@
+{
+  "goal": "Fulfil order ORD-1042",
+  "orderId": "ORD-1042",
+  "tasks": [
+    {
+      "id": "validate_order",
+      "title": "Validate order",
+      "durationMinutes": 2,
+      "value": 7,
+      "urgency": 2,
+      "effort": 2,
+      "dependsOn": [],
+      "acceptance": "Order exists and is payable"
+    },
+    {
+      "id": "reserve_inventory",
+      "title": "Reserve inventory",
+      "durationMinutes": 3,
+      "value": 9,
+      "urgency": 3,
+      "effort": 3,
+      "dependsOn": [
+        "validate_order"
+      ],
+      "acceptance": "Two units of SKU-7 are reserved"
+    },
+    {
+      "id": "authorize_payment",
+      "title": "Authorize payment",
+      "durationMinutes": 2,
+      "value": 8,
+      "urgency": 2,
+      "effort": 2,
+      "dependsOn": [
+        "validate_order"
+      ],
+      "acceptance": "Payment is approved"
+    },
+    {
+      "id": "book_shipment",
+      "title": "Book shipment",
+      "durationMinutes": 4,
+      "value": 10,
+      "urgency": 3,
+      "effort": 4,
+      "dependsOn": [
+        "reserve_inventory",
+        "authorize_payment"
+      ],
+      "acceptance": "Carrier returns an AWB"
+    },
+    {
+      "id": "notify_customer",
+      "title": "Notify customer",
+      "durationMinutes": 1,
+      "value": 5,
+      "urgency": 2,
+      "effort": 1,
+      "dependsOn": [
+        "book_shipment"
+      ],
+      "acceptance": "Customer receives shipment reference"
+    }
+  ],
+  "priorityFormula": "value * urgency / effort",
+  "maxTasks": 5,
+  "expectedSerialMinutes": 12,
+  "expectedCriticalPathMinutes": 10
+}
