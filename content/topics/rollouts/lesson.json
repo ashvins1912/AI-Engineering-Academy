@@ -1,0 +1,592 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "rollouts",
+    "title": "Deployment Strategies for AI Services — blue-green, canary, shadow, A/B and rollback",
+    "stage": 9,
+    "estimatedMinutes": 300
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Compare rolling, blue-green, canary, shadow and A/B deployment strategies by risk, cost, reversibility and measurement needs.",
+      "Design progressive traffic shifts with explicit health, latency, error-rate and model-quality guardrails.",
+      "Implement deterministic promotion and rollback decisions that preserve the last known-good release.",
+      "Separate shadow evaluation from user-visible responses and prevent mirrored requests from causing side effects.",
+      "Use stable cohort assignment, release metadata and compatibility checks for model, prompt and index versions.",
+      "Build a release evidence record that supports audit, incident response and reproducible rollback."
+    ],
+    "prerequisites": [
+      "Stage 9 CI/CD, Kubernetes, model registry and serving fundamentals",
+      "Python, HTTP routing, percentiles, basic statistics and feature flags"
+    ],
+    "glossary": [
+      {
+        "term": "Blue-green",
+        "definition": "Two complete environments run side by side and traffic switches atomically after validation."
+      },
+      {
+        "term": "Canary",
+        "definition": "A small share of real user traffic reaches a candidate release before wider promotion."
+      },
+      {
+        "term": "Shadow",
+        "definition": "A copy of production requests is evaluated by a candidate while only the stable release responds to users."
+      },
+      {
+        "term": "A/B test",
+        "definition": "Users are assigned to stable cohorts so competing variants can be compared on predefined outcomes."
+      },
+      {
+        "term": "Traffic weight",
+        "definition": "The configured fraction of eligible requests routed to a release version."
+      },
+      {
+        "term": "Rollback",
+        "definition": "A controlled return to a previously verified release when guardrails fail."
+      },
+      {
+        "term": "Release manifest",
+        "definition": "An immutable record binding model, prompt, index, runtime, data and configuration versions."
+      },
+      {
+        "term": "Guardrail",
+        "definition": "A measurable condition that must remain within a declared bound before promotion continues."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "A new model can pass unit tests and still harm production through latency, quality, cost, safety or compatibility regressions. Deployment strategy limits exposure while evidence is collected and makes recovery deterministic.",
+    "plainLanguage": "A deployment is not just copying a new model to servers. It is a controlled change in which users, requests and data are exposed to a new release. Rolling deployment replaces instances gradually; it is simple but old and new versions coexist. Blue-green keeps two complete environments and changes the traffic pointer after the green environment is ready. Canary sends a small share of real requests to the candidate, measures outcomes, then increases the share only when every guardrail passes. Shadow duplicates requests to the candidate but returns only the stable model's response. A/B assigns stable cohorts to variants for a planned experiment.\n\nFor AI services, a release is a bundle: model weights and tokenizer, prompt template, retrieval index/schema, tool policy, runtime, safety configuration and evaluation evidence. A model-only rollback can be unsafe if the prompt or index has already changed. Record the complete bundle and verify compatibility before promotion.\n\nDefine thresholds before deployment. For example, a 10% canary may continue only if p95 latency is at most 2 seconds, error rate remains under its limit, and task quality drops by no more than 5% relative to the baseline. Compare equivalent cohorts and sufficient sample sizes; avoid making a decision from one noisy request. If a guardrail fails, stop increasing traffic, restore the last known-good release, and preserve the evidence.\n\nShadow traffic must be isolated: do not send duplicate payment, email, write or tool actions. Redact sensitive data, enforce tenant permissions, cap candidate resources and record that shadow output is non-user-facing. A/B assignment should be deterministic for the same subject so a user does not bounce between variants. Experiments need a hypothesis, primary metric, guardrails, sample-size plan and end date.\n\nA rollout controller should be idempotent. Repeated promotion commands must not create duplicate releases; rollback must target a known immutable artifact. Health checks alone are insufficient: combine infrastructure health, request latency, error rate, model quality, safety outcomes and cost.",
+    "mentalModel": "Build immutable release bundle → validate compatibility → deploy candidate → route a bounded cohort → observe guardrails → promote one step or rollback → record final evidence.",
+    "limitations": [
+      "Canary metrics can be misleading when traffic is low, cohorts differ or the evaluation set is not representative.",
+      "Blue-green may require nearly double serving capacity while both environments are ready.",
+      "Shadow traffic consumes compute and can leak sensitive inputs unless redaction and access controls are applied.",
+      "A/B testing requires statistical discipline and can be invalidated by cohort contamination or repeated peeking.",
+      "Rollback is not automatically safe when schemas, indexes, prompts or external side effects are not backward compatible.",
+      "A local deterministic simulator demonstrates policy logic but does not replace production telemetry or a traffic router."
+    ],
+    "everydayAnalogy": "Treat a release like opening a renovated bridge: inspect the new bridge first, send a small controlled flow across it, measure safety and congestion, then redirect everyone—or close it and return to the old bridge.",
+    "mathMadeSimple": "If baseline task quality is 0.90 and candidate quality is 0.855, relative quality drop = (0.90 − 0.855) / 0.90 × 100 = 5%. A 5% maximum-drop guardrail is exactly at its boundary. If p95 latency is 2.1 seconds against a 2.0-second limit, promotion must stop even when quality passes.",
+    "productionImpact": "Use immutable multi-component release manifests, progressive traffic weights, predeclared quality/latency/error/cost guardrails, safe shadow isolation, deterministic cohorts and tested rollback paths."
+  },
+  "useCase": {
+    "scenario": "Promote a candidate inference bundle from staging to production with 10%, 25%, 50% and 100% canary steps; automatically stop and restore the previous release when latency or quality exceeds policy.",
+    "actors": [
+      "Release controller",
+      "Model registry",
+      "Traffic router",
+      "Stable inference service",
+      "Candidate inference service",
+      "Evaluation and telemetry pipeline",
+      "On-call operator"
+    ],
+    "inputs": [
+      "Stable release manifest and candidate manifest",
+      "Traffic weights 10%, 25%, 50%, 100%",
+      "p95 latency limit 2,000 ms",
+      "Maximum relative quality drop 5%",
+      "Error-rate and safety guardrails",
+      "Cohort, sample count and observation window"
+    ],
+    "constraints": [
+      "Candidate artifacts and dependencies are immutable and version-pinned.",
+      "Do not promote until compatibility, security and evaluation checks pass.",
+      "A failed guardrail stops traffic increase and restores last known-good release.",
+      "Shadow requests cannot trigger writes or external side effects.",
+      "A/B cohorts remain stable and are isolated by tenant and experiment.",
+      "No cloud account, paid router, production traffic or external endpoint is required for the lab."
+    ],
+    "outputs": [
+      "Promotion or rollback decision with reasons",
+      "Traffic weight history and last known-good release",
+      "Guardrail measurements and sample metadata",
+      "Audit record linking all release component versions",
+      "Negative tests proving unsafe promotion is blocked"
+    ],
+    "successMetric": "Every simulated failure blocks promotion, restores the known-good bundle, and leaves an auditable release decision; healthy canaries reach 100%."
+  },
+  "architecture": {
+    "diagram": "content/topics/rollouts/release-traffic-flow.mmd",
+    "components": [
+      "Artifact and release manifest registry",
+      "Pre-deployment compatibility gate",
+      "Stable and candidate environments",
+      "Traffic router and cohort selector",
+      "Canary guardrail evaluator",
+      "Shadow request sanitizer and sink",
+      "Promotion/rollback controller",
+      "Immutable audit log"
+    ],
+    "dataFlow": [
+      {
+        "from": "Registry",
+        "to": "Preflight",
+        "payload": "immutable release manifest",
+        "purpose": "Verify provenance, compatibility and policy before deployment."
+      },
+      {
+        "from": "Preflight",
+        "to": "Candidate",
+        "payload": "approved bundle",
+        "purpose": "Start candidate without shifting user traffic."
+      },
+      {
+        "from": "Router",
+        "to": "Stable and candidate",
+        "payload": "weighted requests",
+        "purpose": "Apply bounded progressive traffic weights."
+      },
+      {
+        "from": "Telemetry",
+        "to": "Guardrail evaluator",
+        "payload": "latency, errors, quality, safety and cost",
+        "purpose": "Compare candidate against baseline over a declared window."
+      },
+      {
+        "from": "Guardrail evaluator",
+        "to": "Controller",
+        "payload": "pass/fail and evidence",
+        "purpose": "Promote one step or trigger rollback."
+      },
+      {
+        "from": "Controller",
+        "to": "Router",
+        "payload": "new weight or stable pointer",
+        "purpose": "Change exposure atomically and idempotently."
+      },
+      {
+        "from": "Controller",
+        "to": "Audit log",
+        "payload": "decision and release hashes",
+        "purpose": "Preserve reproducible evidence."
+      }
+    ],
+    "trustBoundaries": [
+      "Only the release controller can change production traffic weights.",
+      "Candidate artifacts are verified by digest and provenance, never mutable tags.",
+      "Shadow payloads are redacted and candidate tools run with read-only permissions.",
+      "Tenant identity and experiment cohort are enforced at the router.",
+      "Audit events contain release IDs and metrics, not raw prompts or secrets."
+    ],
+    "failurePaths": [
+      "Candidate readiness fails: keep stable traffic at 100%.",
+      "Latency, error, quality or safety guardrail fails: stop progression and roll back.",
+      "Release manifest is incompatible with index or prompt schema: block before routing.",
+      "Telemetry is missing or stale: fail closed and do not promote.",
+      "Rollback artifact is unavailable: block rollout at preflight and alert operator.",
+      "Shadow side effect is detected: disable mirroring and isolate candidate credentials."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-09/rollouts/rollout-scenario.json",
+    "steps": [
+      {
+        "label": "Build release",
+        "explanation": "Bind model, prompt, index, runtime and policy into an immutable release manifest.",
+        "expectedState": "candidate=verified"
+      },
+      {
+        "label": "Preflight",
+        "explanation": "Check compatibility, evaluation, security and rollback artifact availability.",
+        "expectedState": "preflight=pass"
+      },
+      {
+        "label": "Canary 10%",
+        "explanation": "Route a small share to the candidate and collect comparable measurements.",
+        "expectedState": "candidate_weight=10"
+      },
+      {
+        "label": "Evaluate guardrails",
+        "explanation": "Compare p95, error rate, quality and safety against predeclared limits.",
+        "expectedState": "guardrails=pass_or_fail"
+      },
+      {
+        "label": "Promote or rollback",
+        "explanation": "Increase traffic only on a pass; restore stable release on any failure.",
+        "expectedState": "traffic=next_step_or_stable"
+      },
+      {
+        "label": "Audit",
+        "explanation": "Persist release IDs, weights, metrics, decisions and rollback evidence.",
+        "expectedState": "audit=complete"
+      }
+    ],
+    "accessibility": [
+      "Every rollout stage has a text explanation, input and expected state.",
+      "Numeric controls expose units and guardrail thresholds.",
+      "The decision output is available as text without color or animation."
+    ],
+    "animation": {
+      "objective": "Adjust canary traffic, latency and quality to see when a release advances or automatically rolls back.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Prepare candidate",
+          "narration": "The release bundle is immutable and passes compatibility and security preflight.",
+          "input": "stable=v17; candidate=v18",
+          "transformation": "verify manifests and evidence",
+          "output": "preflight=pass",
+          "visualState": "Candidate ready"
+        },
+        {
+          "step": 2,
+          "title": "Route ten percent",
+          "narration": "A small share of eligible requests reaches the candidate.",
+          "input": "candidate_weight=10%",
+          "transformation": "split traffic by configured weight",
+          "output": "stable=90%; candidate=10%",
+          "visualState": "Limited exposure"
+        },
+        {
+          "step": 3,
+          "title": "Measure candidate",
+          "narration": "Collect equivalent cohort metrics over the observation window.",
+          "input": "p95=1800ms; quality=0.88",
+          "transformation": "compare against baseline and limits",
+          "output": "latency_pass; quality_pass",
+          "visualState": "Guardrails pass"
+        },
+        {
+          "step": 4,
+          "title": "Increase exposure",
+          "narration": "A healthy canary moves to the next configured traffic step.",
+          "input": "weight=10%; next=25%",
+          "transformation": "promote one step",
+          "output": "candidate_weight=25%",
+          "visualState": "Progressive rollout"
+        },
+        {
+          "step": 5,
+          "title": "Inject regression",
+          "narration": "A latency or quality breach blocks further promotion and triggers rollback.",
+          "input": "p95=2300ms; limit=2000ms",
+          "transformation": "fail closed and restore previous release",
+          "output": "candidate_weight=0%; stable=100%",
+          "visualState": "Automatic rollback"
+        },
+        {
+          "step": 6,
+          "title": "Record evidence",
+          "narration": "Persist the release hashes, measurements and final decision for audit.",
+          "input": "decision=rollback",
+          "transformation": "append immutable audit record",
+          "output": "audit=complete",
+          "visualState": "Auditable result"
+        }
+      ],
+      "controls": [
+        {
+          "name": "canary_weight_percent",
+          "min": 0,
+          "max": 100,
+          "defaultValue": 10,
+          "effect": "Changes the candidate share; a safe controller advances only through configured steps."
+        },
+        {
+          "name": "candidate_p95_ms",
+          "min": 100,
+          "max": 5000,
+          "defaultValue": 1800,
+          "effect": "Promotion stops when candidate p95 exceeds the latency threshold."
+        },
+        {
+          "name": "candidate_quality",
+          "min": 0.5,
+          "max": 1,
+          "defaultValue": 0.88,
+          "effect": "Lower quality can trigger rollback relative to the stable baseline."
+        },
+        {
+          "name": "quality_drop_limit_percent",
+          "min": 0,
+          "max": 20,
+          "defaultValue": 5,
+          "effect": "Defines the maximum permitted relative quality regression."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Text output reports traffic weights, p95 latency, baseline and candidate quality, each guardrail result, the selected action and final release."
+    }
+  },
+  "workedExample": {
+    "problem": "Decide whether a 10% canary should progress when the stable model has quality 0.90 and p95 latency 1,700 ms.",
+    "input": "Candidate quality 0.855; candidate p95 1,900 ms; maximum quality drop 5%; maximum p95 2,000 ms.",
+    "steps": [
+      {
+        "operation": "Calculate quality drop",
+        "reasoning": "(0.90 − 0.855) / 0.90 × 100.",
+        "result": "5.0% — exactly at the allowed boundary"
+      },
+      {
+        "operation": "Check latency",
+        "reasoning": "Compare candidate p95 1,900 ms with 2,000 ms limit.",
+        "result": "Pass — 100 ms headroom"
+      },
+      {
+        "operation": "Combine guardrails",
+        "reasoning": "Both quality and latency must pass; one pass cannot compensate for another failure.",
+        "result": "Pass — canary may advance one step"
+      },
+      {
+        "operation": "Inject latency regression",
+        "reasoning": "Change candidate p95 to 2,100 ms while quality remains unchanged.",
+        "result": "Fail — stop rollout and restore stable release"
+      },
+      {
+        "operation": "Preserve evidence",
+        "reasoning": "Record candidate hash, weights, metric window and rollback target.",
+        "result": "Auditable rollback decision"
+      }
+    ],
+    "expectedOutput": "At 1,900 ms and 5% quality drop, the 10% canary may advance. At 2,100 ms it must roll back even though quality still passes."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-09/rollouts/rollout_policy.py",
+      "runCommand": "python examples/stage-09/rollouts/rollout_policy.py --scenario examples/stage-09/rollouts/rollout-scenario.json",
+      "testsPath": "examples/stage-09/test_rollouts.py",
+      "expectedResult": "Deterministic policy simulator reports canary progression, rollback, blue-green switching, shadow isolation and stable A/B assignment."
+    },
+    {
+      "language": "python",
+      "role": "production",
+      "path": "examples/stage-09/rollouts/README.md",
+      "runCommand": "python -m unittest discover -s examples/stage-09 -p 'test_rollouts.py' -v",
+      "testsPath": "examples/stage-09/test_rollouts.py",
+      "expectedResult": "Production runbook defines release manifest, progressive traffic, observability guardrails, approvals, rollback and post-release evidence without provisioning infrastructure."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Quality regression hidden by aggregate",
+      "symptom": "Global quality looks healthy while one tenant or task class degrades.",
+      "rootCause": "Metrics are aggregated across incompatible cohorts.",
+      "recovery": "Segment by tenant, task and model route; define minimum sample sizes.",
+      "regressionTest": "A tenant-specific quality breach blocks promotion."
+    },
+    {
+      "name": "Latency tail breach",
+      "symptom": "Average latency passes but p95 or p99 exceeds SLO.",
+      "rootCause": "Promotion uses mean latency and ignores tail behavior.",
+      "recovery": "Gate on percentile and error budgets over a fixed observation window.",
+      "regressionTest": "p95 above threshold forces rollback."
+    },
+    {
+      "name": "Shadow side effects",
+      "symptom": "Mirrored requests send duplicate emails or mutate customer data.",
+      "rootCause": "Candidate uses production write-capable tools.",
+      "recovery": "Use read-only credentials, isolated sinks and explicit side-effect suppression.",
+      "regressionTest": "Shadow execution cannot invoke a write tool."
+    },
+    {
+      "name": "Incompatible rollback",
+      "symptom": "Previous model cannot read the newly migrated index or schema.",
+      "rootCause": "Model, prompt and index are promoted independently.",
+      "recovery": "Version the complete bundle and require backward-compatible migrations.",
+      "regressionTest": "Incompatible manifest is rejected before traffic shift."
+    },
+    {
+      "name": "Unstable A/B cohorts",
+      "symptom": "The same user alternates between variants across requests.",
+      "rootCause": "Random per-request assignment or mutable bucketing salt.",
+      "recovery": "Use stable subject hashing and pin experiment configuration.",
+      "regressionTest": "Repeated assignment for a user is deterministic."
+    },
+    {
+      "name": "Telemetry gap",
+      "symptom": "Candidate appears healthy because measurements stop arriving.",
+      "rootCause": "Missing or stale telemetry is treated as zero errors.",
+      "recovery": "Fail closed, stop promotion and alert the operator.",
+      "regressionTest": "Stale or missing evidence cannot promote."
+    }
+  ],
+  "practice": {
+    "guided": "Run the supplied 10% canary fixture. Change p95 to 2,100 ms, rerun and inspect the rollback decision.",
+    "independent": "Add an error-rate guardrail and a minimum sample-count requirement. Ensure missing evidence fails closed.",
+    "realWorld": "Design a release policy for a model, prompt and retrieval-index bundle. Specify ownership, observation windows, approval and rollback.",
+    "expertExtension": "Add sequential hypothesis testing, per-tenant fairness, cost guardrails, delayed labels and a staged index migration protocol.",
+    "guidedExercise": {
+      "title": "Build a fail-closed canary gate",
+      "instructions": "Implement a decision function that advances only when latency and relative quality-drop limits pass and telemetry has sufficient samples.",
+      "starterCode": "def canary_decision(metrics, policy):\n    raise NotImplementedError",
+      "solutionCode": "def canary_decision(metrics, policy):\n    if metrics['samples'] < policy['min_samples']:\n        return 'hold'\n    quality_drop = max(0, (metrics['baseline_quality'] - metrics['candidate_quality']) / metrics['baseline_quality'] * 100)\n    if metrics['candidate_p95_ms'] > policy['max_p95_ms'] or quality_drop > policy['max_quality_drop_percent']:\n        return 'rollback'\n    return 'promote_one_step'",
+      "unitTests": "assert canary_decision({'samples':100,'baseline_quality':.90,'candidate_quality':.88,'candidate_p95_ms':1800},{'min_samples':50,'max_p95_ms':2000,'max_quality_drop_percent':5}) == 'promote_one_step'\nassert canary_decision({'samples':100,'baseline_quality':.90,'candidate_quality':.80,'candidate_p95_ms':1800},{'min_samples':50,'max_p95_ms':2000,'max_quality_drop_percent':5}) == 'rollback'"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build a release workbench that simulates deployment strategies and stores evidence for every promotion or rollback.",
+      "steps": [
+        "Create immutable stable and candidate release manifests.",
+        "Run preflight compatibility and evaluation checks.",
+        "Simulate blue-green, rolling, canary, shadow and A/B routing.",
+        "Inject latency, quality, error, telemetry and compatibility failures.",
+        "Evaluate guardrails and preserve last known-good release.",
+        "Export traffic history, metric windows and audit decision.",
+        "Add a post-release verification and rollback drill."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "Which strategy returns only the stable model response while evaluating a candidate?",
+        "options": [
+          "Shadow traffic",
+          "Blue-green switch",
+          "Canary promotion",
+          "A/B assignment"
+        ],
+        "correctIndex": 0,
+        "explanation": "Shadow mirrors requests to the candidate but the stable version remains user-facing."
+      },
+      {
+        "question": "What should happen when candidate p95 exceeds the declared SLO?",
+        "options": [
+          "Stop and roll back",
+          "Increase traffic share",
+          "Ignore the tail",
+          "Disable telemetry"
+        ],
+        "correctIndex": 0,
+        "explanation": "A guardrail breach stops promotion and restores the last known-good release."
+      },
+      {
+        "question": "Why version model, prompt and index together?",
+        "options": [
+          "Rollback compatibility",
+          "Reduce tokenization",
+          "Increase batch size",
+          "Avoid evaluation"
+        ],
+        "correctIndex": 0,
+        "explanation": "The previous model may be incompatible with a new prompt or index schema."
+      },
+      {
+        "question": "How should A/B cohorts be assigned?",
+        "options": [
+          "Stable subject hashing",
+          "Random on every request",
+          "Global round robin",
+          "Based on latency"
+        ],
+        "correctIndex": 0,
+        "explanation": "Stable assignment keeps a subject in the same experiment variant."
+      },
+      {
+        "question": "What if rollout telemetry is missing or stale?",
+        "options": [
+          "Fail closed and hold",
+          "Assume zero errors",
+          "Promote immediately",
+          "Double candidate weight"
+        ],
+        "correctIndex": 0,
+        "explanation": "Absence of evidence is not evidence of health; do not promote."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Deployment strategy trade-offs",
+        "weight": 20,
+        "evidence": "Selects strategy based on exposure, capacity, experiment and reversibility."
+      },
+      {
+        "criterion": "Canary guardrail mathematics",
+        "weight": 20,
+        "evidence": "Calculates relative quality drop and evaluates latency/error limits correctly."
+      },
+      {
+        "criterion": "Rollback and release integrity",
+        "weight": 25,
+        "evidence": "Preserves immutable bundle and restores last known-good release on failure."
+      },
+      {
+        "criterion": "Shadow and A/B safety",
+        "weight": 20,
+        "evidence": "Prevents side effects and keeps deterministic isolated cohorts."
+      },
+      {
+        "criterion": "Evidence and operational readiness",
+        "weight": 15,
+        "evidence": "Produces audit record, observation windows, sample size and rollback drill."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "A healthy canary advances only one configured step.",
+      "Latency and quality regressions block promotion and restore stable traffic.",
+      "Shadow execution cannot cause external writes.",
+      "A/B assignment is deterministic.",
+      "Missing telemetry or incompatible manifests fail closed."
+    ]
+  },
+  "references": [
+    {
+      "title": "Kubernetes Deployments — rolling updates and rollback",
+      "url": "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "Argo Rollouts documentation",
+      "url": "https://argo-rollouts.readthedocs.io/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "Flagger progressive delivery documentation",
+      "url": "https://docs.flagger.app/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "AWS Prescriptive Guidance — blue/green deployments",
+      "url": "https://docs.aws.amazon.com/prescriptive-guidance/latest/strategy-blue-green-deployments/welcome.html",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "Google SRE Workbook — canarying releases",
+      "url": "https://sre.google/workbook/canarying-releases/",
+      "sourceType": "book",
+      "checkedOn": "2026-11-22"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "quality_drop = max(0, (baseline - candidate) / baseline * 100)",
+      "explanation": "Compute relative regression rather than subtracting raw scores."
+    },
+    {
+      "lines": "if samples < minimum_samples: return HOLD",
+      "explanation": "Insufficient evidence must not be interpreted as a healthy candidate."
+    },
+    {
+      "lines": "if p95 > latency_limit or quality_drop > quality_limit: rollback()",
+      "explanation": "Any mandatory guardrail can stop the rollout."
+    },
+    {
+      "lines": "candidate_weight = next(configured_steps)",
+      "explanation": "Advance through explicit weights rather than jumping directly to 100%."
+    },
+    {
+      "lines": "stable_release = previous_good_manifest",
+      "explanation": "Rollback the entire compatible release bundle, not just model weights."
+    },
+    {
+      "lines": "audit.append(release_hash, weight, metrics, decision)",
+      "explanation": "Keep a durable, privacy-safe record of why promotion or rollback occurred."
+    }
+  ]
+}
