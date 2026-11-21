@@ -11,9 +11,9 @@ STOP=threading.Event()
 def load_model(path=MODEL_PATH):
  with open(path,encoding="utf-8") as f: model=json.load(f)
  weights=model.get("weights");bias=model.get("bias")
- if not isinstance(weights,list) or not weights or not all(isinstance(x,(int,float)) for x in weights):
+ if not isinstance(weights,list) or not weights or not all(isinstance(x,(int,float)) and not isinstance(x,bool) for x in weights):
   raise ValueError("model weights must be a non-empty numeric array")
- if not isinstance(bias,(int,float)): raise ValueError("model bias must be numeric")
+ if not isinstance(bias,(int,float)) or isinstance(bias,bool): raise ValueError("model bias must be numeric")
  return {"weights":[float(x) for x in weights],"bias":float(bias),"sha256":hashlib.sha256(json.dumps(model,sort_keys=True).encode()).hexdigest()}
 
 def predict(features,model):
