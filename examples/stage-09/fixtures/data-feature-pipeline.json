@@ -1,0 +1,57 @@
+{
+  "scenario": "Customer churn feature pipeline",
+  "sourceVersion": "customers-v3",
+  "codeRevision": "git:abc123",
+  "splitSeed": 17,
+  "contract": [
+    {
+      "field": "customer_id",
+      "type": "integer",
+      "unique": true
+    },
+    {
+      "field": "tenure_months",
+      "type": "integer",
+      "min": 0,
+      "max": 600
+    },
+    {
+      "field": "monthly_spend",
+      "type": "number",
+      "min": 0
+    },
+    {
+      "field": "churned",
+      "type": "integer",
+      "allowed": [
+        0,
+        1
+      ]
+    }
+  ],
+  "stages": [
+    "ingest",
+    "validate",
+    "deduplicate",
+    "split",
+    "fit-transform-train-only",
+    "transform-holdout",
+    "profile-drift",
+    "publish-manifest"
+  ],
+  "failureInjection": [
+    "missing required column",
+    "duplicate entity key",
+    "label leakage",
+    "train/test contamination",
+    "distribution drift",
+    "schema version mismatch"
+  ],
+  "expected": {
+    "validation": "passed",
+    "trainRows": 80,
+    "testRows": 20,
+    "splitSeed": 17,
+    "featureFitScope": "train-only"
+  }
+}
