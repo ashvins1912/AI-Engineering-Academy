@@ -16,24 +16,24 @@ class ExperimentTrackingTests(unittest.TestCase):
   other=DatasetManifest.create("toy","v2",changed,self.splits,{"x":"float","y":"binary"})
   self.assertNotEqual(self.manifest.content_hash,other.content_hash)
  def test_params_are_immutable(self):
-  self.tracker.log_param("learning_rate",0.01)
-  with self.assertRaises(ExperimentError):self.tracker.log_param("learning_rate",0.02)
+  self.tracker.log_param("run-1","learning_rate",0.01)
+  with self.assertRaises(ExperimentError):self.tracker.log_param("run-1","learning_rate",0.02)
  def test_metric_history_requires_increasing_steps(self):
-  self.tracker.log_metric("val_accuracy",0.8,1);self.tracker.log_metric("val_accuracy",0.9,2)
-  with self.assertRaises(ExperimentError):self.tracker.log_metric("val_accuracy",0.7,2)
+  self.tracker.log_metric("run-1","val_accuracy",0.8,1);self.tracker.log_metric("run-1","val_accuracy",0.9,2)
+  with self.assertRaises(ExperimentError):self.tracker.log_metric("run-1","val_accuracy",0.7,2)
  def test_artifact_sha256_and_size(self):
-  artifact=self.tracker.log_artifact("model.bin",b"model-bytes")
+  artifact=self.tracker.log_artifact("run-1","model.bin",b"model-bytes")
   # log_artifact stores metadata in the run record
   record=self.tracker.runs["run-1"]["artifacts"]["model.bin"]
   self.assertEqual(record["size"],11);self.assertEqual(len(record["sha256"]),64)
  def test_run_comparison_requires_same_dataset_and_protocol(self):
-  self.tracker.log_metric("accuracy",0.9,1);self.tracker.finish_run("run-1")
+  self.tracker.log_metric("run-1","accuracy",0.9,1);self.tracker.finish_run("run-1")
   self.tracker.start_run("demo","run-2",{"git_commit":"def"},self.manifest,"accuracy-v1")
-  self.tracker.log_metric("accuracy",0.92,1)
+  self.tracker.log_metric("run-2","accuracy",0.92,1)
   self.assertAlmostEqual(self.tracker.compare("run-1","run-2","accuracy")["delta"],0.02)
   other=DatasetManifest.create("toy","v2",[{**self.records[0],"x":123}],{"train":["0"],"validation":[],"test":[]},{"x":"float"})
   self.tracker.start_run("demo","run-3",{},other,"accuracy-v1")
-  self.tracker.log_metric("accuracy",0.99,1)
+  self.tracker.log_metric("run-3","accuracy",0.99,1)
   with self.assertRaises(ExperimentError):self.tracker.compare("run-1","run-3","accuracy")
  def test_secret_metadata_is_rejected(self):
   with self.assertRaises(ExperimentError):safe_metadata({"nested":{"access_token":"do-not-log"}})
