@@ -1,0 +1,21 @@
+sequenceDiagram
+ participant U as User
+ participant H as AI Host
+ participant C as MCP Client
+ participant S as MCP Server
+ participant G as Domain Tool Gateway
+ U->>H: Request task
+ H->>C: Provide task + trusted user context
+ opt Optional discovery
+  C->>S: server/discover + request _meta
+  S-->>C: versions + capabilities + serverInfo
+ end
+ C->>S: tools/list + per-request _meta + Mcp-Method
+ S-->>C: tools + input schemas + ttlMs + cacheScope
+ H->>H: Check consent + scopes + tenant policy
+ C->>S: tools/call + _meta + Mcp-Method + Mcp-Name
+ S->>G: Validate schema + invoke scoped domain handler
+ G-->>S: Result
+ S-->>C: resultType + content + serverInfo metadata
+ C-->>H: Untrusted tool content
+ H->>H: Validate and sanitize result
