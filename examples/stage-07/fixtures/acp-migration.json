@@ -1,0 +1,55 @@
+{
+  "scenario": "Migrate a legacy IBM ACP refund review to A2A 1.0.0",
+  "protocol": "ibm-acp-legacy",
+  "legacyRequest": {
+    "tenantId": "tenant-a",
+    "sessionId": "ses-9",
+    "runId": "run-42",
+    "mode": "async",
+    "parts": [
+      {
+        "kind": "text",
+        "text": "Review refund ORD-7"
+      }
+    ]
+  },
+  "target": {
+    "protocolVersion": "1.0.0",
+    "contextId": "ctx-9",
+    "taskId": "task-42",
+    "executionMode": "task"
+  },
+  "legacyEvents": [
+    "accepted",
+    "working",
+    "result"
+  ],
+  "targetEvents": [
+    "submitted",
+    "working",
+    "artifactUpdate",
+    "completed"
+  ],
+  "canary": {
+    "weeklyRuns": 10000,
+    "percent": 5,
+    "parityRate": 99.6,
+    "criticalSecurityFailures": 0,
+    "duplicateSideEffects": 0
+  },
+  "hardGates": [
+    "authenticated tenant parity",
+    "no duplicate write-side effects",
+    "ordered status/artifact events",
+    "no cross-tenant access",
+    "artifact provenance preserved"
+  ],
+  "failures": [
+    "unknown legacy field",
+    "session/task mismatch",
+    "SSE event reordering",
+    "duplicate refund on dual-run",
+    "A2A protocol version mismatch",
+    "rollback switch"
+  ]
+}
