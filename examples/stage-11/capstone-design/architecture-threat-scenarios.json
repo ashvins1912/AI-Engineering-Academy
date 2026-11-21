@@ -1,0 +1,109 @@
+{
+  "platform": "Multi-tenant enterprise knowledge and operations platform",
+  "components": [
+    {
+      "name": "api-gateway",
+      "kind": "api_gateway",
+      "zone": "edge",
+      "controls": [
+        "authentication",
+        "request_validation",
+        "rate_limit",
+        "trace_correlation"
+      ]
+    },
+    {
+      "name": "identity",
+      "kind": "identity",
+      "zone": "identity",
+      "controls": [
+        "verified_subject",
+        "membership_check",
+        "role_resolution",
+        "audit"
+      ]
+    },
+    {
+      "name": "retrieval",
+      "kind": "retrieval",
+      "zone": "application",
+      "controls": [
+        "tenant_filter",
+        "acl_filter",
+        "source_provenance",
+        "citation_verification"
+      ]
+    },
+    {
+      "name": "tool-gateway",
+      "kind": "tool_gateway",
+      "zone": "privileged",
+      "controls": [
+        "capability_allowlist",
+        "resource_scope",
+        "idempotency",
+        "approval_gate"
+      ]
+    }
+  ],
+  "flows": [
+    {
+      "name": "gateway-identity",
+      "source": "api-gateway",
+      "destination": "identity",
+      "crossesTrustBoundary": true,
+      "encrypted": true,
+      "authenticated": true,
+      "tenantContext": true,
+      "authorizationChecked": true
+    },
+    {
+      "name": "identity-retrieval",
+      "source": "identity",
+      "destination": "retrieval",
+      "crossesTrustBoundary": true,
+      "encrypted": true,
+      "authenticated": true,
+      "tenantContext": true,
+      "authorizationChecked": true
+    }
+  ],
+  "threats": [
+    {
+      "id": "TM-01",
+      "stride": "INFORMATION_DISCLOSURE",
+      "asset": "tenant documents",
+      "attackPath": "missing tenant/ACL filter exposes cross-tenant chunk",
+      "likelihood": 4,
+      "impact": 5,
+      "score": 20,
+      "mitigations": [
+        "PostgreSQL RLS",
+        "vector ACL filter",
+        "tenant-aware cache"
+      ],
+      "tests": [
+        "cross-tenant negative test"
+      ],
+      "residualOwner": "security-owner"
+    },
+    {
+      "id": "TM-02",
+      "stride": "ELEVATION_OF_PRIVILEGE",
+      "asset": "order mutation tool",
+      "attackPath": "prompt injection persuades agent to execute mutation",
+      "likelihood": 3,
+      "impact": 5,
+      "score": 15,
+      "mitigations": [
+        "tool capability policy",
+        "human approval",
+        "idempotency"
+      ],
+      "tests": [
+        "unauthorized tool call denied"
+      ],
+      "residualOwner": "agent-platform-owner"
+    }
+  ]
+}
