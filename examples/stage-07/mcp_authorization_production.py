@@ -6,6 +6,9 @@ class MCPHTTPAuthorization:
   self.policy=MCPResourcePolicy(resource_uri,issuer,required_scopes,public_tools,scope_implications)
   self.token_verifier=token_verifier
  def authorize_request(self,headers,method,tool_name,now):
+  if method=="tools/call" and tool_name in self.policy.public_tools:
+   context=self.policy.authorize(method,tool_name,None,now)
+   return {"status":200,"context":context}
   auth=headers.get("Authorization","")
   if not auth.startswith("Bearer "):
    return {"status":401,"error":"invalid_token","www_authenticate":f'Bearer resource_metadata="{self.policy.resource_uri}/.well-known/oauth-protected-resource"'}
