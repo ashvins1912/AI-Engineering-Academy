@@ -6,6 +6,13 @@ Design, implement and operate a multi-tenant knowledge and agent platform with e
 ### Architecture and threat model
 Gather functional/non-functional requirements, users, data classes, trust boundaries, scale assumptions and SLOs. Draw context/container/component/data-flow diagrams. Record ADRs for storage, retrieval, model, orchestration and deployment choices. Threat-model tenant escape, prompt injection, tool abuse, data exfiltration, supply-chain compromise and provider outage. Define mitigations and residual risks.
 
+### Architecture and threat model
+Gather functional and non-functional requirements, user journeys, data classes, workload assumptions, retention/residency constraints and measurable SLO/quality/cost objectives. Produce system-context, container, component, deployment and data-flow views; label trust boundaries, identity propagation and data egress. Record ADRs for storage/RLS, vector isolation, model/provider, orchestration, MCP/A2A, queues, deployment and observability. Each ADR must include context, alternatives, decision, consequences and revisit triggers.
+
+Threat-model with STRIDE and AI-specific abuse cases: tenant escape, prompt injection, retrieval poisoning, data exfiltration, unsafe tool execution, agent loop abuse, model/dependency compromise, forged queue context and denial of wallet. Each threat needs an asset, actor, entry point, attack path, likelihood/impact, preventive/detective/recovery controls, negative test evidence and residual-risk owner. Critical tenant-isolation or authorization failures are stop-ship conditions.
+
+**Architecture acceptance gate:** every sensitive flow must be encrypted, authenticated, tenant-scoped and authorized; model output cannot grant permissions; mutating tools require policy and approval; async jobs require tenant context and idempotency; release artifacts require provenance and rollback compatibility.
+
 ### Build RAG and agent services
 Implement document ingestion, parsing/OCR, provenance, chunking, embeddings, hybrid retrieval, reranking, grounded answer generation and citations. Add a bounded agent with typed tools, explicit authorization, durable state and approval for mutations. Build API contracts, schema validation, idempotency and integration tests. Keep model-generated plans separate from server-side policy.
 
