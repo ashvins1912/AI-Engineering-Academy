@@ -1,9 +1,23 @@
+import importlib.util
+from pathlib import Path
+import sys
 import unittest
 
-from tenant_security.policy_engine import (
-    Job, Principal, Record, TenantCache, TenantStore, TenantVectorIndex,
-    TransactionTenantContext, object_key, verify_job,
-)
+MODULE_PATH = Path(__file__).parent / "tenant-security" / "policy_engine.py"
+spec = importlib.util.spec_from_file_location("tenant_security_policy_engine", MODULE_PATH)
+policy = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = policy
+spec.loader.exec_module(policy)
+
+Job = policy.Job
+Principal = policy.Principal
+Record = policy.Record
+TenantCache = policy.TenantCache
+TenantStore = policy.TenantStore
+TenantVectorIndex = policy.TenantVectorIndex
+TransactionTenantContext = policy.TransactionTenantContext
+object_key = policy.object_key
+verify_job = policy.verify_job
 
 
 class TenantSecurityTests(unittest.TestCase):
