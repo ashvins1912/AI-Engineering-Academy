@@ -27,9 +27,9 @@ def validate_result(result,request,tools,max_tool_calls=4):
     for call in result.tool_calls:
         if call.name not in ALLOWED_TOOLS or call.name not in tools: raise PermissionError("tool is not allow-listed")
         if call.arguments.get("tenant_id")!=request["tenant_id"]: raise PermissionError("tenant scope mismatch")
+    if not result.answer.strip(): raise ValueError("empty answer")
     if request.get("intent")=="refund" and request.get("amount",0)>=10000 and not result.approval_required:
         raise PermissionError("high-value refund requires human approval")
-    if not result.answer.strip(): raise ValueError("empty answer")
     return {"answer":result.answer,"tool_calls":[c.name for c in result.tool_calls],"citations":result.citations,"approval_required":result.approval_required}
 
 class ReferenceAdapter:
