@@ -44,7 +44,7 @@ export default function AgentLoopVisualizer() {
       <div className="agent-loop-stage-title"><span>{String(step + 1).padStart(2, '0')}</span><div><h4>{current.title}</h4><p>{current.narration}</p></div></div>
       <div className="agent-loop-values">
         <div><small>INPUT</small><code>{current.input}</code></div>
-        <div><small>TRANSFORMATION</small><code>{step === 3 ? `80 × (1 − ${discountPercent}/100) = ${finalPrice.toFixed(2)}` : current.transform}</code></div>
+        <div><small>TRANSFORMATION</small><code>{step === 3 ? `80 × (1 − ${discountPercent}/100) = ${finalPrice.toFixed(2)}` : current.transformation}</code></div>
         <div><small>OUTPUT</small><code>{step === 3 ? (canComplete ? `status=completed; final_price=₹${finalPrice.toFixed(2)}; tool_calls=2` : catalogTimedOut ? `status=tool_timeout; final_price=not available; timeout_ms=${timeoutMs}` : 'status=step_limit; final_price=not available; only one tool call allowed') : step === 2 ? (catalogTimedOut ? `status=tool_timeout; timeout_ms=${timeoutMs}; product observation unavailable` : `product.unit_price=₹80; remaining_steps=${Math.max(0, maxSteps - 1)}`) : current.output}</code></div>
       </div>
       <div className="agent-loop-state"><span className="state-pulse"/>{step === 2 && catalogTimedOut ? `Catalog tool exceeded the ${timeoutMs} ms timeout; no observation was appended.` : step === 3 && !canComplete ? (catalogTimedOut ? 'The catalog observation is missing after timeout; the agent cannot calculate a price.' : 'Budget exhausted before the second tool: task remains incomplete.')  : current.visualState}</div>
