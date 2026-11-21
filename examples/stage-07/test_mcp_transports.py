@@ -3,7 +3,7 @@ from mcp_transports import StreamableHTTPGateway,TransportError,parse_stdio_line
 from mcp_lifecycle import build_demo_server, MCPServer, Tool, PROTOCOL_VERSION,META_PROTOCOL,META_CAPABILITIES
 
 def message(method="tools/list",params=None):
- p=dict(params or {});p["_meta"]={META_PROTOCOL:PROTOCOL_VERSION,META_CAPS:{}}
+ p=dict(params or {});p["_meta"]={META_PROTOCOL:PROTOCOL_VERSION,META_CAPABILITIES:{}}
  return {"jsonrpc":"2.0","id":1,"method":method,"params":p}
 
 class TransportTests(unittest.TestCase):
