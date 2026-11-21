@@ -1,5 +1,6 @@
-import json, unittest
+import json, sys, unittest
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent / 'serving'))
 from simulator import AdmissionController, Request, kv_cache_bytes_per_token, estimate_kv_cache_bytes, simulate
 
 class ServingTests(unittest.TestCase):
