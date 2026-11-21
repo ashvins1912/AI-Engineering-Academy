@@ -64,6 +64,25 @@ function validateTopic(topic, label) {
 
   const rubricWeight = (topic.assessment?.rubric ?? []).reduce((sum, item) => sum + item.weight, 0)
   if (rubricWeight !== 100) errors.push(`${label}: assessment rubric weights must total 100 (found ${rubricWeight})`)
+
+  const roles = new Set((topic.implementations ?? []).map(item => item.role))
+  if (!roles.has('from-scratch') || !roles.has('production')) {
+    errors.push(`${label}: include both from-scratch and production implementations`)
+  }
+  const animation = topic.visual?.animation
+  if (animation) {
+    const steps = animation.stages ?? []
+    if (steps.length < 3) errors.push(`${label}: animation must contain at least three synchronized stages`)
+    for (const [index, control] of (animation.controls ?? []).entries()) {
+      if (!(control.min <= control.defaultValue && control.defaultValue <= control.max)) {
+        errors.push(`${label}: animation control ${index + 1} default must be within its bounds`)
+      }
+    }
+    const playback = animation.playback ?? {}
+    for (const capability of ['play', 'pause', 'reset', 'stepForward', 'stepBackward', 'adjustableSpeed']) {
+      if (playback[capability] !== true) errors.push(`${label}: animation playback must support ${capability}`)
+    }
+  }
   return errors
 }
 
