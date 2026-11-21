@@ -1,0 +1,15 @@
+flowchart TD
+  A[Verified tenant + task] --> B[Budget admission]
+  B --> C[Quality-aware model router]
+  C --> D{Authorized cache hit?}
+  D -->|Yes| E[Fresh tenant/version cache]
+  D -->|No| F[Model + retrieval + tools]
+  F --> G[Usage meter: all attempts]
+  E --> G
+  G --> H[Task outcome ledger]
+  H --> I[Cost per successful task]
+  I --> J[FinOps analytics + alerts]
+  J --> B
+  K[Token caps + retry budget] --> B
+  K --> F
+  L[Untrusted prompt stuffing] -. deny .-> B
