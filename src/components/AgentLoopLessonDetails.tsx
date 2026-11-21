@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BookOpen, Bug, CheckCircle2, Code2, Lightbulb, Target } from 'lucide-react'
+import { BookOpen, Bug, Code2, Lightbulb, Target } from 'lucide-react'
 import lesson from '../../content/topics/agent-loop/lesson.json'
 
 export default function AgentLoopLessonDetails() {
