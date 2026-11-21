@@ -70,6 +70,7 @@ class WorkflowJournal:
                     raise WorkflowConflict("step already committed with a different key or result")
                 self.db.execute("COMMIT")
                 return {"duplicate":True,"run":self.get_run(tenant_id,run_id)}
+            if run["state"]!="running":raise WorkflowConflict("workflow is not accepting new steps")
             if run["version"]!=expected_version:raise WorkflowConflict("workflow version conflict")
             now=self.clock()
             self.db.execute("INSERT INTO workflow_steps VALUES(?,?,?,?,?,?,?,?,?)",
@@ -115,7 +116,13 @@ class WorkflowJournal:
         self.db.execute("BEGIN IMMEDIATE")
         try:
             run=self._run(tenant_id,run_id)
+            if run["state"]!="running":raise WorkflowConflict("workflow is already terminal")
             if run["version"]!=expected_version:raise WorkflowConflict("workflow version conflict")
+            steps=list(self.db.execute("SELECT state,compensation_state FROM workflow_steps WHERE run_id=?",(run_id,)))
+            if state=="completed" and any(step["state"]!="completed" for step in steps):
+                raise WorkflowConflict("cannot complete while a step is unfinished")
+            if state=="compensated" and any(step["compensation_state"] not in {"compensated","not_required"} for step in steps):
+                raise WorkflowConflict("cannot claim compensation while a step is pending or failed")
             now=self.clock()
             cursor=self.db.execute("UPDATE workflow_runs SET state=?,version=?,updated_at=? WHERE run_id=? AND tenant_id=? AND version=?",
                 (state,expected_version+1,now,run_id,tenant_id,expected_version))
