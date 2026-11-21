@@ -26,7 +26,7 @@ class PipelineTests(unittest.TestCase):
   ref=[0,1,2,3,4,5,6,7,8,9]
   self.assertAlmostEqual(population_stability_index(ref,ref),0)
   self.assertGreater(population_stability_index(ref,[30,31,32,33,34,35,36,37,38,39]),0)
- def test_manifest_changes_with_code_and_source(self):
+ def test_drift_values_below_reference_minimum_use_first_bin(self):\n  score=population_stability_index([10,11,12,13,14,15,16,17,18,19],[-10,-9,-8,-7,-6,-5,-4,-3,-2,-1])\n  self.assertGreater(score,0)\n def test_manifest_changes_with_code_and_source(self):
   m=build_manifest(self.rows,self.contract,{"field":"age"},"v1","abc",17)
   n=build_manifest(self.rows,self.contract,{"field":"age"},"v2","abc",17)
   self.assertNotEqual(m["manifest_hash"],n["manifest_hash"])
