@@ -1,0 +1,18 @@
+flowchart TD
+  U[Tenant member] --> API[API + schema validation]
+  API --> IAM[Membership + tenant context]
+  IAM --> ING[Ingestion + provenance]
+  ING --> DOC[(Document store)]
+  ING --> IDX[(Tenant/ACL retrieval index)]
+  IAM --> RAG[RAG query service]
+  RAG --> IDX
+  RAG --> CV[Citation verifier]
+  CV --> ANS[Cited answer or abstention]
+  IAM --> AG[Agent planner: proposal only]
+  AG --> PG[Tool policy + approval]
+  PG --> IDEM[Idempotency ledger]
+  IDEM --> TOOL[Tool executor]
+  API --> OBS[Redacted audit + trace + cost]
+  RAG --> OBS
+  PG --> OBS
+  X[Untrusted retrieved text / model output] -. cannot authorize .-> PG
