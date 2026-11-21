@@ -1,0 +1,16 @@
+flowchart TD
+  A[Authenticated request] --> B[Identity and tenant verifier]
+  B --> C[Retriever]
+  C --> D[Provenance and taint wrapper]
+  P[Trusted policy registry] --> E[LLM orchestrator]
+  D --> E
+  E --> F[Untrusted tool proposal]
+  F --> G{Server policy}
+  G -->|scope + tenant + resource pass| H[Narrow read-only tool]
+  G -->|deny| I[Safe denial]
+  H --> J[Output validation and citation ACL]
+  I --> J
+  J --> K[Redacted response]
+  J --> L[Privacy-safe audit]
+  X[Poisoned document] -. untrusted instructions .-> D
+  S[Synthetic canary secret] -. never enters model context .-> M[Secret boundary]
