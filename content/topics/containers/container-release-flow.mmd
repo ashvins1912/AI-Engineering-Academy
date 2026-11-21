@@ -1,0 +1,12 @@
+flowchart TD
+ A[Source + pinned dependencies] --> B[Build context + dockerignore]
+ B --> C[Builder stage]
+ C --> D[Minimal runtime stage]
+ D --> E[SBOM + vulnerability scan]
+ E --> F[Sign immutable image digest]
+ F --> G[Registry]
+ G --> H[Non-root container runtime]
+ H --> I[Model artifact verification]
+ I --> J[Readiness healthy]
+ J --> K[Serve inference traffic]
+ K --> L[SIGTERM: unready + drain + exit]

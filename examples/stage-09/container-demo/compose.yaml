@@ -1,0 +1,22 @@
+services:
+  inference:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: academy-inference:local
+    ports:
+      - "8080:8080"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: 256m
+    cpus: 0.50
+    restart: unless-stopped
+    environment:
+      PORT: "8080"
+      MAX_BODY_BYTES: "16384"
