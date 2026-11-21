@@ -366,7 +366,7 @@
       "expectedResult": "A minimal inference API with model validation, bounded request body, liveness/readiness and SIGTERM shutdown."
     },
     {
-      "language": "docker",
+      "language": "other",
       "role": "production",
       "path": "examples/stage-09/container-demo/Dockerfile",
       "runCommand": "cd examples/stage-09/container-demo && docker build -t academy-inference:local . && docker compose up",
