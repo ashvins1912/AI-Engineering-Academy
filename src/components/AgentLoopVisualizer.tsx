@@ -16,7 +16,9 @@ export default function AgentLoopVisualizer() {
   const [timeoutMs, setTimeoutMs] = useState(2000)
   const [discountPercent, setDiscountPercent] = useState(10)
   const finalPrice = useMemo(() => 80 * (1 - discountPercent / 100), [discountPercent])
-  const canComplete = maxSteps >= 2
+  const simulatedCatalogLatencyMs = 400
+  const catalogTimedOut = timeoutMs < simulatedCatalogLatencyMs
+  const canComplete = maxSteps >= 2 && !catalogTimedOut
   const current = stages[step]
 
   useEffect(() => {
@@ -44,9 +46,9 @@ export default function AgentLoopVisualizer() {
       <div className="agent-loop-values">
         <div><small>INPUT</small><code>{current.input}</code></div>
         <div><small>TRANSFORMATION</small><code>{step === 3 ? `80 × (1 − ${discountPercent}/100) = ${finalPrice.toFixed(2)}` : current.transform}</code></div>
-        <div><small>OUTPUT</small><code>{step === 3 ? (canComplete ? `status=completed; final_price=₹${finalPrice.toFixed(2)}; tool_calls=2` : 'status=step_limit; final_price=not available; only one tool call allowed') : step === 2 ? `product.unit_price=₹80; remaining_steps=${Math.max(0, maxSteps - 1)}` : current.output}</code></div>
+        <div><small>OUTPUT</small><code>{step === 3 ? (canComplete ? `status=completed; final_price=₹${finalPrice.toFixed(2)}; tool_calls=2` : 'status=step_limit; final_price=not available; only one tool call allowed') : step === 2 ? (catalogTimedOut ? `status=tool_timeout; timeout_ms=${timeoutMs}; product observation unavailable` : `product.unit_price=₹80; remaining_steps=${Math.max(0, maxSteps - 1)}`) : current.output}</code></div>
       </div>
-      <div className="agent-loop-state"><span className="state-pulse"/>{step === 3 && !canComplete ? 'Budget exhausted before the second tool: task remains incomplete.' : current.state}</div>
+      <div className="agent-loop-state"><span className="state-pulse"/>{step === 2 && catalogTimedOut ? `Catalog tool exceeded the ${timeoutMs} ms timeout; no observation was appended.` : step === 3 && !canComplete ? (catalogTimedOut ? 'The catalog observation is missing after timeout; the agent cannot calculate a price.' : 'Budget exhausted before the second tool: task remains incomplete.') : current.state}</div>
     </div>
     <div className="agent-loop-controls">
       <button onClick={previous} disabled={step === 0}><ArrowLeft size={14}/>Back</button>
