@@ -1,0 +1,20 @@
+flowchart TD
+ H[AI host + policy] --> T[Tool registry]
+ H --> R[Resource registry]
+ H --> P[Prompt registry]
+ T --> TL[tools/list + input schemas]
+ TL --> TC[tools/call]
+ TC --> G[Consent + scope + domain validation]
+ G --> X[Action result]
+ R --> RL[resources/list]
+ R --> RT[resources/templates/list]
+ RL --> RR[resources/read]
+ RT --> RR
+ RR --> RG[Tenant + URI authorization]
+ RG --> D[Read-only context]
+ P --> PL[prompts/list]
+ PL --> PG[prompts/get + validated arguments]
+ PG --> M[Reusable messages]
+ X --> C[Validate output + cache hints]
+ D --> C
+ M --> C
