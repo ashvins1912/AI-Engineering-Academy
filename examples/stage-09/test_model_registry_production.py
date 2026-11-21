@@ -23,7 +23,7 @@ class ModelPromptRegistryTests(unittest.TestCase):
   with self.assertRaises(PromotionDenied):self.store.promote("tenant-a","production","low",0,"release-manager",{"release-manager"})
   self.bundle("good");self.approve("good")
   self.assertEqual(self.store.promote("tenant-a","production","good",0,"release-manager",{"release-manager"})["bundle_id"],"good")
-  with self.assertRaises(RegistryConflict):self.store.approve("tenant-a","good","researcher",{"researcher"})
+  with self.assertRaises(PromotionDenied):self.store.approve("tenant-a","good","researcher",{"researcher"})
  def test_alias_cas_and_full_bundle_rollback(self):
   self.bundle("release-1");self.approve("release-1");self.store.promote("tenant-a","production","release-1",0,"release-manager",{"release-manager"})
   self.store.register_model("tenant-a","support","v2",b"weights-v2","s3://model/v2","run-2","data-h2","commit-b","support-llm","tok-1","tools-1",{"input":"text"},{"output":"json"},"researcher")
