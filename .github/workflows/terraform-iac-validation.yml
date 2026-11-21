@@ -22,6 +22,9 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.9.8"
+      - name: Show formatting diff for review
+        working-directory: examples/stage-09/iac/aws-inference
+        run: terraform fmt -diff -recursive || true
       - name: Format check
         working-directory: examples/stage-09/iac/aws-inference
         run: terraform fmt -check -recursive
