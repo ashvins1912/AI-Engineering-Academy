@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "1.1.0",
   "topic": {
     "id": "attention-score-example",
     "title": "Attention score walkthrough",
@@ -34,7 +34,10 @@
     "mentalModel": "Score relevance first, turn scores into weights, then use those weights to combine value vectors.",
     "limitations": [
       "Attention weights are not a complete explanation of model behavior."
-    ]
+    ],
+    "everydayAnalogy": "A classroom discussion works like attention: each student asks a question, listens for classmates whose notes match it, then combines the useful notes. Queries are questions, keys are matching labels, values are the notes, and attention weights decide how much each note contributes.",
+    "mathMadeSimple": "For q=[1,0], k1=[1,0], k2=[0,1], the dot scores are [1,0]. With key dimension 2, divide by √2 to get [0.7071,0]. Softmax gives about [0.6698,0.3302]. Combining v1=[2,0] and v2=[0,4] gives [1.3395,1.3210].",
+    "productionImpact": "Incorrect masking can leak future tokens during training; unstable softmax can produce NaN values; wrong tensor shapes can crash inference. Attention also has quadratic sequence-length cost in its standard form, so long contexts increase memory, latency and serving cost."
   },
   "useCase": {
     "scenario": "A decoder model processes a sentence and uses earlier tokens to build the next token representation.",
@@ -101,7 +104,64 @@
     "accessibility": [
       "Every step has a text explanation.",
       "The visual supports keyboard step navigation."
-    ]
+    ],
+    "animation": {
+      "objective": "Trace the same two-key attention fixture through scoring, normalization and weighted value aggregation.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Compare query and keys",
+          "narration": "Each key is compared with the query using a dot product. The first key aligns perfectly; the second does not.",
+          "input": "q=[1,0]; k1=[1,0]; k2=[0,1]",
+          "transformation": "Dot products [1,0], then scale by √2",
+          "output": "scores=[0.7071,0.0000]",
+          "visualState": "Two score bars show key 1 higher than key 2"
+        },
+        {
+          "step": 2,
+          "title": "Normalize scores",
+          "narration": "Softmax converts scores into positive weights that add up to one.",
+          "input": "scores=[0.7071,0.0000]",
+          "transformation": "Exponentiate after max subtraction, then divide by the sum",
+          "output": "weights=[0.6698,0.3302]",
+          "visualState": "A probability bar allocates 66.98% to value 1 and 33.02% to value 2"
+        },
+        {
+          "step": 3,
+          "title": "Combine value vectors",
+          "narration": "Each value is multiplied by its attention weight, then the weighted vectors are added.",
+          "input": "v1=[2,0]; v2=[0,4]; weights=[0.6698,0.3302]",
+          "transformation": "0.6698×v1 + 0.3302×v2",
+          "output": "output=[1.3395,1.3210]",
+          "visualState": "Two weighted vector contributions merge into one context vector"
+        }
+      ],
+      "controls": [
+        {
+          "name": "temperature",
+          "min": 0.1,
+          "max": 2,
+          "defaultValue": 1,
+          "effect": "Lower values sharpen the weight distribution; higher values make it more uniform. This is an educational control over score sharpness."
+        },
+        {
+          "name": "keyAlignment",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "Reduce the first key alignment to shift attention away from value 1 and observe the output vector change."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Every animation frame has a matching text narration, explicit input and output values, and keyboard-accessible previous and next controls. Reduced-motion mode must retain the same numerical step sequence without animated movement."
+    }
   },
   "workedExample": {
     "problem": "Combine two value vectors using a query and two keys.",
@@ -126,7 +186,16 @@
       "path": "content/examples/attention.py",
       "runCommand": "python content/examples/attention.py",
       "testsPath": "content/examples/tests/test_attention.py",
-      "expectedResult": "weights≈[0.6697615493,0.3302384507]; output≈[1.3395230986,1.3209538028]"
+      "expectedResult": "weights≈[0.6697615493,0.3302384507]; output≈[1.3395230986,1.3209538028]",
+      "role": "from-scratch"
+    },
+    {
+      "language": "python",
+      "role": "production",
+      "path": "content/examples/attention_production.py",
+      "runCommand": "python content/examples/attention_production.py",
+      "testsPath": "content/examples/tests/test_attention.py",
+      "expectedResult": "Stable scaled attention weights and context vector match the deterministic fixture."
     }
   ],
   "failures": [
