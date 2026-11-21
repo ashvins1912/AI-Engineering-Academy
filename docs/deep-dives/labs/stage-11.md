@@ -40,19 +40,21 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## capstone-delivery — Deploy and operate
 
-**Implementation task:** Release through CI gates, staged rollout, SLO monitoring and a rollback exercise.
+**Implementation task:** Create an immutable release manifest for code/image/model/prompt/index/schema, run CI/security/evaluation/SBOM/provenance gates, apply compatible expand/backfill/switch/drain/contract migrations, deploy a canary, and promote or roll back the complete compatible bundle using reliability, quality and cost thresholds.
 
-**Worked fixture:** Candidate release has evaluation report; previous release is known-good and artifacts are versioned.
+**Worked fixture:** Candidate release passes CI but a 2,000-request canary has 20 failures (1%) against a 0.5% error threshold; p95, quality and cost pass. Previous release and backup snapshot are available.
 
-**Expected result:** Promotion occurs only after gates; rollback restores compatible model, prompt and index versions.
+**Expected result:** Candidate is not promoted; traffic returns to the previous signed compatible release bundle; data, tenant integrity, quality and SLO checks pass; rollback evidence is recorded.
 
-**Verification tests:** Test failed migration, canary regression, backup restore and rollback compatibility.
+**Verification tests:** Run `python -m unittest discover -s examples/stage-11 -p 'test_*.py' -v`. Test immutable digests, required evidence, rollback bundle, canary error/latency/quality/cost/sample-size gates, migration compatibility, contract drain and backup restore/RPO/RTO.
 
-**Debugging checklist:** Reduce the example to the smallest failing input; inspect identity, permissions, data flow and intermediate state; reproduce the failure with a test; change one variable at a time and retain a regression test.
+**Debugging checklist:** Inspect exact manifest digests and evidence references; verify signature/provenance; compare schema and old/new application compatibility; confirm canary sample size and thresholds; inspect model/index/prompt compatibility; verify rollback target and backup restore/tenant integrity; ensure missing telemetry blocks promotion.
 
-**Interview checks:** What must a release manifest contain to make rollback reproducible?
+**Interview checks:** Why deploy by digest? Why is expand/contract safer than destructive schema changes? Which AI-specific signals belong in canary analysis? What must a rollback bundle include? Why does a green backup job not prove recoverability?
 
-**Submission evidence:** Include implementation and architecture artifacts, a successful run, positive and negative tests, a short failure analysis, and a 3–5 sentence explanation of the operational trade-off.
+**Submission evidence:** Include signed release manifest, CI gate report, migration plan, canary decision, rollback demonstration, backup restore report, SLO dashboard definitions and on-call runbooks.
+
+---
 
 ## Stage completion evidence
 
