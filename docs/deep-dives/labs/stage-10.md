@@ -76,19 +76,19 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## tracing — Tracing and telemetry
 
-**Implementation task:** Trace one request across API, retrieval, model and tool spans with redaction.
+**Implementation task:** Instrument a RAG-agent request across gateway, retrieval, model generation, tool execution, queue and worker boundaries. Propagate W3C trace context, validate parent/child spans, separate metrics/logs/traces, sanitize attributes and sample errors/latency outliers.
 
-**Worked fixture:** One request has a retrieval timeout and two model spans; correlation ID req-42.
+**Worked fixture:** A 3,200 ms request has retrieval, model and tool spans with overlapping intervals; model generation returns an error; queue wait is measured separately; prompt and credential values appear in untrusted attributes.
 
-**Expected result:** Trace shows parent/child timing and failure; sensitive values are redacted.
+**Expected result:** The trace graph is correlated, root duration is 3,200 ms (not the sum of overlapping child spans), the model error and slow operation are visible, queue wait is separate, and sensitive fields are removed before export.
 
-**Verification tests:** Test missing spans, high-cardinality labels and sampling behavior.
+**Verification tests:** Run `python -m unittest discover -s examples/stage-10 -p 'test_*.py' -v`. Test missing parents, duplicate/mixed IDs, cycles, impossible timing, latency summaries, W3C traceparent parsing, sampling, metric label allowlists and sensitive-attribute removal.
 
-**Debugging checklist:** Reduce the example to the smallest failing input; inspect identity, permissions, data flow and intermediate state; reproduce the failure with a test; change one variable at a time and retain a regression test.
+**Debugging checklist:** Inspect traceparent extraction/injection; verify parent IDs and queue propagation; compare root and child intervals; separate queue wait from worker execution; inspect retry/cancellation spans; audit attribute allowlists and metric labels; check sampling decisions, exporter queue depth and collector drops.
 
-**Interview checks:** Which data belongs in metrics, logs and traces respectively?
+**Interview checks:** When should you use a metric, log or trace? Why can child span durations overlap? What crosses a queue boundary? How do head and tail sampling differ? Why are raw IDs and prompts unsafe metric labels?
 
-**Submission evidence:** Include implementation and architecture artifacts, a successful run, positive and negative tests, a short failure analysis, and a 3–5 sentence explanation of the operational trade-off.
+**Submission evidence:** Include a distributed trace diagram, synthetic trace fixture, graph validator, safe attribute policy, positive and negative tests, latency diagnosis and a short explanation of telemetry privacy/cardinality trade-offs.
 
 ---
 

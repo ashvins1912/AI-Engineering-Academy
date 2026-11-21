@@ -1,0 +1,16 @@
+flowchart TD
+  A[Gateway: extract or create trace] --> B[Root request span]
+  B --> C[Retrieval spans]
+  B --> D[Model generation + streaming]
+  B --> E[Tool call spans]
+  B --> F[Queue producer context]
+  F --> G[Worker consumer span]
+  C --> H[Redaction + attribute allowlist]
+  D --> H
+  E --> H
+  G --> H
+  H --> I[Collector: batch + head/tail sampling]
+  I --> J[Traces backend]
+  I --> K[Metrics backend]
+  I --> L[Structured logs]
+  X[Prompt / token / raw user ID] -. drop or redact .-> H
