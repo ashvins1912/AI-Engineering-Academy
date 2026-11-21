@@ -68,6 +68,9 @@ def test_ingestion_job_claim_retry_dead_letter_replay_and_retention_lifecycle():
 
             async with sessions() as session:
                 replayed = await replay_dead_job(session, tenant_id, job_id)
+                # replay_dead_job commits; restore transaction-local RLS context
+                # before modifying the returned ORM object in the new transaction.
+                await set_tenant_context(session, str(tenant_id))
                 assert replayed.status == "queued"
                 assert replayed.attempts == 0
                 replayed.status = "dead"

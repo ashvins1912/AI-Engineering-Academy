@@ -1,125 +1,838 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ashvins1912.github.io/AI-Engineering-Academy/schemas/topic.schema.json",
-  "title": "AI Engineering Academy topic contract",
-  "description": "A topic is not complete until it includes explanations, reproducible implementation evidence, visuals, failure practice, assessment and primary references.",
+  "title": "AI Engineering Academy topic contract v1.1",
+  "description": "A topic is complete only with beginner-first explanations, numerical walkthroughs, reproducible implementations, synchronized interactive animation, failure practice, assessment and primary references.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "topic", "state", "learning", "explanation", "useCase", "architecture", "visual", "workedExample", "implementations", "failures", "practice", "assessment", "references"],
+  "required": [
+    "schemaVersion",
+    "topic",
+    "state",
+    "learning",
+    "explanation",
+    "useCase",
+    "architecture",
+    "visual",
+    "workedExample",
+    "implementations",
+    "failures",
+    "practice",
+    "assessment",
+    "references",
+    "codeWalkthrough"
+  ],
   "properties": {
-    "schemaVersion": { "const": "1.0.0" },
+    "schemaVersion": {
+      "const": "1.1.0"
+    },
     "topic": {
-      "type": "object", "additionalProperties": false,
-      "required": ["id", "title", "stage", "estimatedMinutes"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "stage",
+        "estimatedMinutes"
+      ],
       "properties": {
-        "id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
-        "title": { "type": "string", "minLength": 4 },
-        "stage": { "type": "integer", "minimum": 1, "maximum": 11 },
-        "estimatedMinutes": { "type": "integer", "minimum": 10, "maximum": 600 }
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 4
+        },
+        "stage": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 11
+        },
+        "estimatedMinutes": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 600
+        }
       }
     },
-    "state": { "enum": ["outline", "explained", "worked-example", "runnable", "tested", "visualized", "reviewed", "pilot-validated", "mastered"] },
+    "state": {
+      "enum": [
+        "outline",
+        "explained",
+        "worked-example",
+        "runnable",
+        "tested",
+        "visualized",
+        "reviewed",
+        "pilot-validated",
+        "mastered"
+      ]
+    },
     "learning": {
-      "type": "object", "additionalProperties": false,
-      "required": ["outcomes", "prerequisites", "glossary"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "outcomes",
+        "prerequisites",
+        "glossary"
+      ],
       "properties": {
-        "outcomes": { "type": "array", "minItems": 3, "items": { "type": "string", "minLength": 12 } },
-        "prerequisites": { "type": "array", "items": { "type": "string", "minLength": 3 } },
-        "glossary": { "type": "array", "minItems": 2, "items": { "type": "object", "required": ["term", "definition"], "properties": { "term": { "type": "string", "minLength": 2 }, "definition": { "type": "string", "minLength": 12 } }, "additionalProperties": false } }
+        "outcomes": {
+          "type": "array",
+          "minItems": 3,
+          "items": {
+            "type": "string",
+            "minLength": 12
+          }
+        },
+        "prerequisites": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 3
+          }
+        },
+        "glossary": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": [
+              "term",
+              "definition"
+            ],
+            "properties": {
+              "term": {
+                "type": "string",
+                "minLength": 2
+              },
+              "definition": {
+                "type": "string",
+                "minLength": 12
+              }
+            },
+            "additionalProperties": false
+          }
+        }
       }
     },
     "explanation": {
-      "type": "object", "additionalProperties": false,
-      "required": ["problem", "plainLanguage", "mentalModel", "limitations"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "problem",
+        "plainLanguage",
+        "mentalModel",
+        "limitations",
+        "everydayAnalogy",
+        "mathMadeSimple",
+        "productionImpact"
+      ],
       "properties": {
-        "problem": { "type": "string", "minLength": 30 },
-        "plainLanguage": { "type": "string", "minLength": 80 },
-        "mentalModel": { "type": "string", "minLength": 40 },
-        "limitations": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 15 } }
+        "problem": {
+          "type": "string",
+          "minLength": 30
+        },
+        "plainLanguage": {
+          "type": "string",
+          "minLength": 80
+        },
+        "mentalModel": {
+          "type": "string",
+          "minLength": 40
+        },
+        "limitations": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 15
+          }
+        },
+        "everydayAnalogy": {
+          "type": "string",
+          "minLength": 40
+        },
+        "mathMadeSimple": {
+          "type": "string",
+          "minLength": 40
+        },
+        "productionImpact": {
+          "type": "string",
+          "minLength": 40
+        }
       }
     },
     "useCase": {
-      "type": "object", "additionalProperties": false,
-      "required": ["scenario", "actors", "inputs", "constraints", "outputs", "successMetric"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scenario",
+        "actors",
+        "inputs",
+        "constraints",
+        "outputs",
+        "successMetric"
+      ],
       "properties": {
-        "scenario": { "type": "string", "minLength": 40 },
-        "actors": { "type": "array", "minItems": 1, "items": { "type": "string" } },
-        "inputs": { "type": "array", "minItems": 1, "items": { "type": "string" } },
-        "constraints": { "type": "array", "minItems": 1, "items": { "type": "string" } },
-        "outputs": { "type": "array", "minItems": 1, "items": { "type": "string" } },
-        "successMetric": { "type": "string", "minLength": 12 }
+        "scenario": {
+          "type": "string",
+          "minLength": 40
+        },
+        "actors": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "inputs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "constraints": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "outputs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "successMetric": {
+          "type": "string",
+          "minLength": 12
+        }
       }
     },
     "architecture": {
-      "type": "object", "additionalProperties": false,
-      "required": ["diagram", "components", "dataFlow", "trustBoundaries", "failurePaths"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "diagram",
+        "components",
+        "dataFlow",
+        "trustBoundaries",
+        "failurePaths"
+      ],
       "properties": {
-        "diagram": { "type": "string", "minLength": 20 },
-        "components": { "type": "array", "minItems": 2, "items": { "type": "string", "minLength": 3 } },
-        "dataFlow": { "type": "array", "minItems": 2, "items": { "type": "object", "required": ["from", "to", "payload", "purpose"], "properties": { "from": { "type": "string" }, "to": { "type": "string" }, "payload": { "type": "string" }, "purpose": { "type": "string" } }, "additionalProperties": false } },
-        "trustBoundaries": { "type": "array", "items": { "type": "string" } },
-        "failurePaths": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+        "diagram": {
+          "type": "string",
+          "minLength": 20
+        },
+        "components": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "string",
+            "minLength": 3
+          }
+        },
+        "dataFlow": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": [
+              "from",
+              "to",
+              "payload",
+              "purpose"
+            ],
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              },
+              "payload": {
+                "type": "string"
+              },
+              "purpose": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "trustBoundaries": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "failurePaths": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        }
       }
     },
     "visual": {
-      "type": "object", "additionalProperties": false,
-      "required": ["kind", "fixture", "steps", "accessibility"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "fixture",
+        "steps",
+        "accessibility",
+        "animation"
+      ],
       "properties": {
-        "kind": { "enum": ["static", "interactive", "animation"] },
-        "fixture": { "type": "string", "minLength": 3 },
-        "steps": { "type": "array", "minItems": 2, "items": { "type": "object", "required": ["label", "explanation", "expectedState"], "properties": { "label": { "type": "string" }, "explanation": { "type": "string" }, "expectedState": { "type": "string" } }, "additionalProperties": false } },
-        "accessibility": { "type": "array", "minItems": 2, "items": { "type": "string" } }
+        "kind": {
+          "enum": [
+            "static",
+            "interactive",
+            "animation"
+          ]
+        },
+        "fixture": {
+          "type": "string",
+          "minLength": 3
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": [
+              "label",
+              "explanation",
+              "expectedState"
+            ],
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "explanation": {
+                "type": "string"
+              },
+              "expectedState": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "accessibility": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "string"
+          }
+        },
+        "animation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "objective",
+            "stages",
+            "controls",
+            "playback",
+            "accessibilitySummary"
+          ],
+          "properties": {
+            "objective": {
+              "type": "string",
+              "minLength": 20
+            },
+            "stages": {
+              "type": "array",
+              "minItems": 3,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "step",
+                  "title",
+                  "narration",
+                  "input",
+                  "transformation",
+                  "output",
+                  "visualState"
+                ],
+                "properties": {
+                  "step": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 3
+                  },
+                  "narration": {
+                    "type": "string",
+                    "minLength": 15
+                  },
+                  "input": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "transformation": {
+                    "type": "string",
+                    "minLength": 5
+                  },
+                  "output": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "visualState": {
+                    "type": "string",
+                    "minLength": 5
+                  }
+                }
+              }
+            },
+            "controls": {
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name",
+                  "min",
+                  "max",
+                  "defaultValue",
+                  "effect"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2
+                  },
+                  "min": {
+                    "type": "number"
+                  },
+                  "max": {
+                    "type": "number"
+                  },
+                  "defaultValue": {
+                    "type": "number"
+                  },
+                  "effect": {
+                    "type": "string",
+                    "minLength": 10
+                  }
+                }
+              }
+            },
+            "playback": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "play",
+                "pause",
+                "reset",
+                "stepForward",
+                "stepBackward",
+                "adjustableSpeed"
+              ],
+              "properties": {
+                "play": {
+                  "const": true
+                },
+                "pause": {
+                  "const": true
+                },
+                "reset": {
+                  "const": true
+                },
+                "stepForward": {
+                  "const": true
+                },
+                "stepBackward": {
+                  "const": true
+                },
+                "adjustableSpeed": {
+                  "const": true
+                }
+              }
+            },
+            "accessibilitySummary": {
+              "type": "string",
+              "minLength": 30
+            }
+          }
+        }
       }
     },
     "workedExample": {
-      "type": "object", "additionalProperties": false,
-      "required": ["problem", "input", "steps", "expectedOutput"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "problem",
+        "input",
+        "steps",
+        "expectedOutput"
+      ],
       "properties": {
-        "problem": { "type": "string", "minLength": 20 },
-        "input": { "type": "string", "minLength": 2 },
-        "steps": { "type": "array", "minItems": 2, "items": { "type": "object", "required": ["operation", "reasoning", "result"], "properties": { "operation": { "type": "string" }, "reasoning": { "type": "string" }, "result": { "type": "string" } }, "additionalProperties": false } },
-        "expectedOutput": { "type": "string", "minLength": 2 }
+        "problem": {
+          "type": "string",
+          "minLength": 20
+        },
+        "input": {
+          "type": "string",
+          "minLength": 2
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": [
+              "operation",
+              "reasoning",
+              "result"
+            ],
+            "properties": {
+              "operation": {
+                "type": "string"
+              },
+              "reasoning": {
+                "type": "string"
+              },
+              "result": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "expectedOutput": {
+          "type": "string",
+          "minLength": 2
+        }
       }
     },
     "implementations": {
-      "type": "array", "minItems": 1,
-      "items": { "type": "object", "additionalProperties": false, "required": ["language", "path", "runCommand", "testsPath", "expectedResult"], "properties": {
-        "language": { "enum": ["python", "typescript", "javascript", "sql", "shell", "java", "other"] },
-        "path": { "type": "string", "minLength": 3 }, "runCommand": { "type": "string", "minLength": 2 },
-        "testsPath": { "type": "string", "minLength": 2 }, "expectedResult": { "type": "string", "minLength": 3 }
-      } }
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "language",
+          "path",
+          "runCommand",
+          "testsPath",
+          "expectedResult",
+          "role"
+        ],
+        "properties": {
+          "language": {
+            "enum": [
+              "python",
+              "typescript",
+              "javascript",
+              "sql",
+              "shell",
+              "java",
+              "other"
+            ]
+          },
+          "path": {
+            "type": "string",
+            "minLength": 3
+          },
+          "runCommand": {
+            "type": "string",
+            "minLength": 2
+          },
+          "testsPath": {
+            "type": "string",
+            "minLength": 2
+          },
+          "expectedResult": {
+            "type": "string",
+            "minLength": 3
+          },
+          "role": {
+            "enum": [
+              "from-scratch",
+              "production"
+            ]
+          }
+        }
+      }
     },
     "failures": {
-      "type": "array", "minItems": 3,
-      "items": { "type": "object", "additionalProperties": false, "required": ["name", "symptom", "rootCause", "recovery", "regressionTest"], "properties": {
-        "name": { "type": "string" }, "symptom": { "type": "string" }, "rootCause": { "type": "string" },
-        "recovery": { "type": "string" }, "regressionTest": { "type": "string" }
-      } }
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "symptom",
+          "rootCause",
+          "recovery",
+          "regressionTest"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "symptom": {
+            "type": "string"
+          },
+          "rootCause": {
+            "type": "string"
+          },
+          "recovery": {
+            "type": "string"
+          },
+          "regressionTest": {
+            "type": "string"
+          }
+        }
+      }
     },
     "practice": {
-      "type": "object", "additionalProperties": false,
-      "required": ["guided", "independent", "realWorld", "expertExtension"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "guided",
+        "independent",
+        "realWorld",
+        "expertExtension",
+        "guidedExercise",
+        "miniAppIntegration",
+        "scenarioQuiz"
+      ],
       "properties": {
-        "guided": { "type": "string", "minLength": 10 }, "independent": { "type": "string", "minLength": 10 },
-        "realWorld": { "type": "string", "minLength": 10 }, "expertExtension": { "type": "string", "minLength": 10 }
+        "guided": {
+          "type": "string",
+          "minLength": 10
+        },
+        "independent": {
+          "type": "string",
+          "minLength": 10
+        },
+        "realWorld": {
+          "type": "string",
+          "minLength": 10
+        },
+        "expertExtension": {
+          "type": "string",
+          "minLength": 10
+        },
+        "guidedExercise": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "title",
+            "instructions",
+            "starterCode",
+            "solutionCode",
+            "unitTests"
+          ],
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 4
+            },
+            "instructions": {
+              "type": "string",
+              "minLength": 30
+            },
+            "starterCode": {
+              "type": "string",
+              "minLength": 10
+            },
+            "solutionCode": {
+              "type": "string",
+              "minLength": 10
+            },
+            "unitTests": {
+              "type": "string",
+              "minLength": 10
+            }
+          }
+        },
+        "miniAppIntegration": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "projectGoal",
+            "steps"
+          ],
+          "properties": {
+            "projectGoal": {
+              "type": "string",
+              "minLength": 20
+            },
+            "steps": {
+              "type": "array",
+              "minItems": 3,
+              "items": {
+                "type": "string",
+                "minLength": 15
+              }
+            }
+          }
+        },
+        "scenarioQuiz": {
+          "type": "array",
+          "minItems": 3,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "question",
+              "options",
+              "correctIndex",
+              "explanation"
+            ],
+            "properties": {
+              "question": {
+                "type": "string",
+                "minLength": 20
+              },
+              "options": {
+                "type": "array",
+                "minItems": 3,
+                "items": {
+                  "type": "string",
+                  "minLength": 5
+                }
+              },
+              "correctIndex": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 3
+              },
+              "explanation": {
+                "type": "string",
+                "minLength": 30
+              }
+            }
+          }
+        }
       }
     },
     "assessment": {
-      "type": "object", "additionalProperties": false,
-      "required": ["rubric", "passThreshold", "evidence"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rubric",
+        "passThreshold",
+        "evidence"
+      ],
       "properties": {
-        "rubric": { "type": "array", "minItems": 4, "items": { "type": "object", "required": ["criterion", "weight", "evidence"], "properties": { "criterion": { "type": "string" }, "weight": { "type": "number", "minimum": 0, "maximum": 100 }, "evidence": { "type": "string" } }, "additionalProperties": false } },
-        "passThreshold": { "type": "number", "minimum": 0, "maximum": 100 },
-        "evidence": { "type": "array", "minItems": 2, "items": { "type": "string" } }
+        "rubric": {
+          "type": "array",
+          "minItems": 4,
+          "items": {
+            "type": "object",
+            "required": [
+              "criterion",
+              "weight",
+              "evidence"
+            ],
+            "properties": {
+              "criterion": {
+                "type": "string"
+              },
+              "weight": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "evidence": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "passThreshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "evidence": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "string"
+          }
+        }
       }
     },
     "references": {
-      "type": "array", "minItems": 2,
-      "items": { "type": "object", "additionalProperties": false, "required": ["title", "url", "sourceType", "checkedOn"], "properties": {
-        "title": { "type": "string", "minLength": 3 }, "url": { "type": "string", "format": "uri" },
-        "sourceType": { "enum": ["official-docs", "paper", "book", "course", "standard"] },
-        "checkedOn": { "type": "string", "format": "date" }, "version": { "type": "string" }
-      } }
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title",
+          "url",
+          "sourceType",
+          "checkedOn"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 3
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "sourceType": {
+            "enum": [
+              "official-docs",
+              "paper",
+              "book",
+              "course",
+              "standard"
+            ]
+          },
+          "checkedOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "version": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "codeWalkthrough": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "lines",
+          "explanation"
+        ],
+        "properties": {
+          "lines": {
+            "type": "string",
+            "minLength": 3
+          },
+          "explanation": {
+            "type": "string",
+            "minLength": 20
+          }
+        }
+      }
     }
   }
 }

@@ -1,0 +1,453 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "agent-loop",
+    "title": "Agent loop and control flow",
+    "stage": 6,
+    "estimatedMinutes": 95
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Explain how an agent repeatedly observes state, chooses a bounded action, inspects the result and decides whether to continue or stop.",
+      "Distinguish an agent loop from a deterministic workflow and identify where model decisions enter the control flow.",
+      "Implement a small tool-using loop with explicit state, an allow-listed tool registry and a maximum step budget.",
+      "Diagnose tool failures, malformed arguments, runaway loops and timeout behavior using reproducible tests."
+    ],
+    "prerequisites": [
+      "Python functions, dictionaries and exceptions",
+      "Basic JSON request and response shapes",
+      "HTTP request and response concepts are helpful but not required"
+    ],
+    "glossary": [
+      {
+        "term": "Agent loop",
+        "definition": "A repeated control cycle in which an agent observes state, selects an action, receives an observation and decides what to do next."
+      },
+      {
+        "term": "Tool",
+        "definition": "A bounded capability exposed to an agent through a defined name and validated argument schema."
+      },
+      {
+        "term": "Observation",
+        "definition": "The result returned by a tool or environment and added to the agent state for its next decision."
+      },
+      {
+        "term": "Stop condition",
+        "definition": "A rule that ends execution, such as a final answer, approval requirement, budget limit or unrecoverable error."
+      },
+      {
+        "term": "Trajectory",
+        "definition": "The ordered sequence of decisions, tool calls and observations produced during one agent run."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "A language model can describe a plan, but a useful agent must interact with changing external state. It needs a controlled way to call tools, inspect results, correct its next action and stop when the task is complete. Without an explicit loop, the application becomes a fragile chain of prompts or an unbounded sequence of tool calls.",
+    "plainLanguage": "Think of an agent as a careful assistant working through a request. First it reads the request and checks what it already knows. It chooses one action, such as looking up a product. The application validates that action and runs the tool. The result is shown back to the assistant as a new observation. The assistant then decides whether another action is needed or whether it has enough evidence to answer. This repeat-until-done behavior is the agent loop.\n\nA practical loop has five visible parts: state, decision, policy checks, tool execution and observation. State holds the user request and relevant results. A decision proposes either a tool call or a final answer. Policy checks verify the tool is allowed, arguments are valid and budgets remain. Tool execution happens outside the model. The observation is appended to the trajectory so the next decision can use it.\n\nThe model does not directly execute arbitrary code. It proposes a structured action; the host application remains responsible for authorization, validation, timeouts, retries and side effects. For a beginner exercise, a deterministic decision function is used instead of a real LLM so every transition can be tested without API keys. Later, a model-backed planner can replace that function while the safety boundary stays the same.\n\nA loop must have explicit termination conditions. It should stop when a valid final answer is produced, when a human approval is needed, when the step or tool-call budget is exhausted, or when a tool fails in a way that cannot safely be retried. The loop should return a trace that explains what happened rather than hiding its intermediate actions.",
+    "mentalModel": "A call-and-response cycle: observe the current state → propose one action → validate it → execute one bounded tool → append the observation → repeat or stop. The model proposes; the application disposes.",
+    "limitations": [
+      "A loop does not make a weak model a reliable planner; model decisions still require evaluation and guardrails.",
+      "A maximum step count limits runaway behavior but does not replace token, wall-clock, monetary or per-tool budgets.",
+      "A timeout limits how long the caller waits, but side-effecting tools must implement their own idempotency and cancellation behavior.",
+      "Tool output is untrusted data. It must not be treated as policy instructions or allowed to expand the tool permission set."
+    ],
+    "everydayAnalogy": "Imagine preparing a parcel. You check the order, look up the item, verify the price, apply a discount and then report the final amount. Each lookup gives you new information that changes the next step. You would not keep searching forever after the parcel is ready. The request is the task, the checklist is state, each lookup is a tool, the returned information is an observation, and the finished parcel is the stop condition.",
+    "mathMadeSimple": "Use a tiny task with two actions. The catalog tool returns a price of ₹80. A discount tool applies 10%, so the discount is 80 × 0.10 = ₹8 and the final price is 80 − 8 = ₹72. The agent trajectory has two tool steps: step 1 observes price=80; step 2 observes final_price=72. If max_steps=1, the loop must stop after the first observation and must not pretend the task is complete. A step budget is a counter: remaining_steps = max_steps − steps_used.",
+    "productionImpact": "An unbounded loop can repeatedly call paid tools, create duplicate orders or consume model tokens without completing the task. A missing allow-list can turn a model-generated tool name into an unauthorized action. Weak argument validation can pass malformed or cross-tenant identifiers into internal services. Production agents therefore need step and cost budgets, per-tool authorization, input/output validation, timeouts, idempotency for writes, trace IDs, audit logs and measurable task-success tests."
+  },
+  "useCase": {
+    "scenario": "A shopping assistant receives a request to find the current price of a known SKU and calculate a 10% discount. It first queries the catalog, inspects the returned price, then invokes a pure calculation tool and returns the result. The example keeps the planner deterministic so the control flow can be inspected without credentials.",
+    "actors": [
+      "User",
+      "Agent orchestrator",
+      "Decision provider",
+      "Allow-listed tool registry",
+      "Catalog service",
+      "Calculation tool"
+    ],
+    "inputs": [
+      "User request: find price for MUG-1 and apply a 10% discount",
+      "SKU MUG-1",
+      "Discount rate 0.10",
+      "Maximum step count 4"
+    ],
+    "constraints": [
+      "Only catalog_search and apply_discount are available in the beginner simulation",
+      "Each action must be validated before execution",
+      "The loop must stop after a final answer or the configured step budget",
+      "A failed lookup must not be converted into a fabricated price"
+    ],
+    "outputs": [
+      "Ordered tool trajectory",
+      "Observed catalog price of ₹80",
+      "Calculated discounted price of ₹72",
+      "Completion or explicit stop status"
+    ],
+    "successMetric": "For the deterministic fixture, the agent calls catalog_search then apply_discount exactly once, returns ₹72, and never exceeds four loop iterations."
+  },
+  "architecture": {
+    "diagram": "examples/stage-06/visual/agent-loop.mmd",
+    "components": [
+      "User request and run state",
+      "Decision provider or planner",
+      "Policy and tool allow-list",
+      "Tool executor with timeout",
+      "Observation and trajectory store",
+      "Stop and budget controller"
+    ],
+    "dataFlow": [
+      {
+        "from": "User request",
+        "to": "Run state",
+        "payload": "task text and run identifier",
+        "purpose": "Create a bounded execution context"
+      },
+      {
+        "from": "Run state",
+        "to": "Decision provider",
+        "payload": "request plus prior observations",
+        "purpose": "Choose the next tool action or final answer"
+      },
+      {
+        "from": "Decision provider",
+        "to": "Policy controller",
+        "payload": "structured action name and arguments",
+        "purpose": "Validate action type, permission and budget"
+      },
+      {
+        "from": "Policy controller",
+        "to": "Tool executor",
+        "payload": "validated tool call",
+        "purpose": "Run only an allow-listed capability"
+      },
+      {
+        "from": "Tool executor",
+        "to": "Observation store",
+        "payload": "structured tool result or controlled error",
+        "purpose": "Make the result available to the next decision"
+      },
+      {
+        "from": "Observation store",
+        "to": "Decision provider",
+        "payload": "updated trajectory",
+        "purpose": "Continue with new evidence or stop"
+      }
+    ],
+    "trustBoundaries": [
+      "The model or decision provider is untrusted and cannot execute tools directly.",
+      "Tool arguments are validated by the orchestrator before dispatch.",
+      "Tool results are untrusted observations and must not override application policy.",
+      "Side-effecting tools enforce authorization and idempotency at their own service boundary."
+    ],
+    "failurePaths": [
+      "Unknown tool name is denied before execution.",
+      "Malformed arguments are rejected before the tool receives them.",
+      "A slow tool times out and the run exits or follows a bounded recovery policy.",
+      "Step or tool-call budget exhaustion returns an explicit incomplete status.",
+      "Repeated side effects are prevented by idempotency keys inside the tool service."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-06/fixtures/agent-loop.json",
+    "steps": [
+      {
+        "label": "Read request and initialize state",
+        "explanation": "The orchestrator records the task, SKU, empty observations and execution budget.",
+        "expectedState": "product=null, discount=null, steps_used=0"
+      },
+      {
+        "label": "Choose and execute catalog lookup",
+        "explanation": "The planner selects catalog_search. The allow-list accepts it and the catalog returns unit_price=80.",
+        "expectedState": "product.unit_price=80 and one observation is in the trace"
+      },
+      {
+        "label": "Inspect result and calculate discount",
+        "explanation": "The planner sees the price and chooses apply_discount with rate 0.10. The calculation returns 72.",
+        "expectedState": "discount.final_price=72 and two observations are in the trace"
+      },
+      {
+        "label": "Stop and return result",
+        "explanation": "The state now contains the required result, so the agent returns instead of issuing another tool call.",
+        "expectedState": "status=completed and result.final_price=72"
+      }
+    ],
+    "accessibility": [
+      "Every animation frame exposes its input, transformation and output as selectable text.",
+      "Step navigation must work by keyboard and touch; reduced-motion mode changes no numerical result.",
+      "Color is never the only indicator of current action, success or failure."
+    ],
+    "animation": {
+      "objective": "Animate a real, deterministic agent trajectory and make every decision, policy check, tool result and stop condition visible.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Initialize state",
+          "narration": "The user request becomes the task state. No tools have run yet, and the step budget is four.",
+          "input": "request=MUG-1 price with 10% discount; remaining_steps=4",
+          "transformation": "Create state with empty product and discount observations",
+          "output": "product=null; discount=null; trace=[]",
+          "visualState": "State panel shows two empty observation slots and a budget counter at 4"
+        },
+        {
+          "step": 2,
+          "title": "Select catalog tool",
+          "narration": "Because no product is known, the planner proposes catalog_search. The allow-list checks the tool name before dispatch.",
+          "input": "product=null; proposed_tool=catalog_search",
+          "transformation": "Check tool is allow-listed and validate SKU argument",
+          "output": "catalog_search accepted; sku=MUG-1",
+          "visualState": "Decision arrow passes through the policy gate to the catalog tool"
+        },
+        {
+          "step": 3,
+          "title": "Append catalog observation",
+          "narration": "The catalog returns a unit price of 80. The observation is appended to the trajectory and becomes available to the next decision.",
+          "input": "catalog response={sku:MUG-1, unit_price:80}",
+          "transformation": "Store product observation and decrement remaining budget",
+          "output": "product.unit_price=80; remaining_steps=3",
+          "visualState": "First trace row appears and the product slot fills with ₹80"
+        },
+        {
+          "step": 4,
+          "title": "Calculate and stop",
+          "narration": "The next action applies a 10% discount. The calculation returns 72; the state is complete, so the loop stops.",
+          "input": "amount=80; rate=0.10",
+          "transformation": "80 × (1 − 0.10) = 72; evaluate completion condition",
+          "output": "status=completed; final_price=72; tool_calls=2",
+          "visualState": "Second trace row appears, final result shows ₹72 and the loop arrow is disabled"
+        }
+      ],
+      "controls": [
+        {
+          "name": "max_steps",
+          "min": 1,
+          "max": 8,
+          "defaultValue": 4,
+          "effect": "At 1 the loop stops after the catalog lookup and reports incomplete status; at 2 it can finish this two-tool task; higher values add safety headroom but do not replace other budgets."
+        },
+        {
+          "name": "tool_timeout_ms",
+          "min": 100,
+          "max": 5000,
+          "defaultValue": 2000,
+          "effect": "A low timeout can stop a slow service before it responds; a high timeout increases tail latency and ties up request capacity."
+        },
+        {
+          "name": "discount_percent",
+          "min": 0,
+          "max": 50,
+          "defaultValue": 10,
+          "effect": "Changing the rate changes the calculation output while leaving the tool sequence unchanged."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "The same state transitions are available in a numbered text transcript. Each step states the exact input and output. Keyboard users can move backward and forward; reduced-motion mode replaces movement with immediate state changes."
+    }
+  },
+  "workedExample": {
+    "problem": "Trace a request to find SKU MUG-1 and apply a 10% discount. Show every action, observation and stop decision.",
+    "input": "request='Find MUG-1 price and apply 10% discount'; catalog[MUG-1]=80; rate=0.10; max_steps=4",
+    "steps": [
+      {
+        "operation": "Initialize",
+        "reasoning": "The run begins with no observations, so the planner cannot calculate a discount yet.",
+        "result": "state={product:null, discount:null}; remaining_steps=4"
+      },
+      {
+        "operation": "Catalog lookup",
+        "reasoning": "The missing product price determines the next useful action. The orchestrator validates the tool name and SKU.",
+        "result": "observation={sku:'MUG-1', unit_price:80}; remaining_steps=3"
+      },
+      {
+        "operation": "Discount calculation",
+        "reasoning": "The product price is now known, so the planner selects the pure calculation tool.",
+        "result": "80 × (1 − 0.10) = 72; remaining_steps=2"
+      },
+      {
+        "operation": "Stop",
+        "reasoning": "The requested output is available. A further tool call would add cost without adding value.",
+        "result": "status=completed; final_price=72; tool_calls=2"
+      }
+    ],
+    "expectedOutput": "The agent returns a final discounted price of ₹72 with a two-step trace. With max_steps=1 it returns step_limit and no final price."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-06/agent_loop.py",
+      "runCommand": "python examples/stage-06/agent_loop.py",
+      "testsPath": "examples/stage-06/test_agent_loop.py",
+      "expectedResult": "Two tool actions produce final_price=72.0; step-limit and invalid-input tests pass."
+    },
+    {
+      "language": "python",
+      "role": "production",
+      "path": "examples/stage-06/agent_loop_production.py",
+      "runCommand": "python -m unittest discover -s examples/stage-06 -p 'test_agent_loop_production.py' -v",
+      "testsPath": "examples/stage-06/test_agent_loop_production.py",
+      "expectedResult": "Async orchestration enforces allow-listed tools, tool budgets and per-call timeouts."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Runaway agent loop",
+      "symptom": "The agent keeps calling tools after the task is effectively complete, increasing latency and cost.",
+      "rootCause": "There is no explicit final-state predicate or maximum step/tool-call budget.",
+      "recovery": "Add a clear completion condition, max_steps, max_tool_calls and wall-clock deadline; return an explicit incomplete status when a limit is reached.",
+      "regressionTest": "Set max_steps=1 for a two-tool task and assert that the loop stops without fabricating a final result."
+    },
+    {
+      "name": "Unauthorized tool selection",
+      "symptom": "A model-generated tool name reaches a privileged internal function or produces an unexpected action.",
+      "rootCause": "The orchestrator trusts the proposed tool name instead of checking a server-owned allow-list and user authorization.",
+      "recovery": "Resolve tool names only from a server-side registry, validate argument schemas and enforce authorization again inside the tool service.",
+      "regressionTest": "Propose delete_all when only catalog is registered and assert PermissionError before any tool invocation."
+    },
+    {
+      "name": "Tool timeout or duplicate side effect",
+      "symptom": "A tool call hangs, or a retry creates two orders/refunds even though the agent reports one action.",
+      "rootCause": "The orchestration layer has no timeout, and the side-effecting service does not enforce idempotency.",
+      "recovery": "Bound each call with a timeout and pass a stable idempotency key to the side-effecting service; do not assume caller timeout cancels remote work.",
+      "regressionTest": "Use a deliberately slow fake tool to assert timeout, then test repeated idempotency keys against a fake write service."
+    },
+    {
+      "name": "Malformed tool arguments",
+      "symptom": "A tool crashes on missing fields or receives an unexpected type.",
+      "rootCause": "The planner output is treated as trusted application input.",
+      "recovery": "Validate required keys, types, ranges and tenant scope before dispatch; reject unknown fields for sensitive operations.",
+      "regressionTest": "Send a catalog call with sku as an array and assert that validation rejects it before the tool runs."
+    }
+  ],
+  "practice": {
+    "guided": "Run the beginner implementation. Change max_steps from 4 to 1 and explain why the tool lookup occurs but the task cannot finish. Restore the budget and add a test for an unknown SKU.",
+    "independent": "Add a second catalog item and a currency conversion tool. Extend the state machine so the agent can look up an item, apply a discount and convert the result, while preserving a maximum of three tool calls.",
+    "realWorld": "Wrap a read-only order-status API as an allow-listed tool. Record a trace ID, validate the order identifier against the authenticated user's tenant, enforce a timeout and return a clear incomplete status when the tool is unavailable.",
+    "expertExtension": "Replace the deterministic planner with a model-backed decision provider. Keep tool execution outside the model, add per-tool authorization and idempotency, persist checkpoints, and evaluate task success, tool selection accuracy, cost and p95 latency on a fixed task set.",
+    "guidedExercise": {
+      "title": "Complete a bounded agent loop",
+      "instructions": "Implement the missing tool allow-list check and stop condition. The loop must stop after max_steps and must never call an unregistered tool.",
+      "starterCode": "def run(actions, tools, max_steps=3):\n    trace = []\n    for step, action in enumerate(actions[:max_steps], start=1):\n        # TODO: reject unknown tools before calling them\n        # TODO: append the observation to trace\n        pass\n    return trace",
+      "solutionCode": "def run(actions, tools, max_steps=3):\n    if max_steps < 1:\n        raise ValueError('max_steps must be positive')\n    trace = []\n    for step, action in enumerate(actions[:max_steps], start=1):\n        name = action['name']\n        if name not in tools:\n            raise PermissionError('tool is not allow-listed')\n        observation = tools[name](**action['arguments'])\n        trace.append({'step': step, 'tool': name, 'observation': observation})\n    return trace",
+      "unitTests": "assert len(run([{'name':'add','arguments':{'a':2,'b':3}}], {'add': lambda a,b:a+b})) == 1\ntry:\n    run([{'name':'delete_all','arguments':{}}], {})\n    raise AssertionError('unknown tool should be denied')\nexcept PermissionError:\n    pass\nassert len(run([{'name':'add','arguments':{'a':1,'b':1}}] * 4, {'add': lambda a,b:a+b}, max_steps=2)) == 2"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build an order-assistance agent that checks an order, calculates an eligible refund and asks for approval before any write action.",
+      "steps": [
+        "Expose a read-only order lookup tool with tenant-scoped authorization and typed arguments.",
+        "Add a pure refund-calculation tool; record observations and enforce step, tool-call, timeout and cost budgets.",
+        "Add a separate approval-gated refund tool with an idempotency key, audit record and tests for duplicate submissions."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "The model proposes a tool named issue_refund, but the user is not authorized to refund this order. Where should the request be rejected?",
+        "options": [
+          "At the server-side tool authorization boundary before execution",
+          "In the model system prompt only",
+          "After the refund is submitted",
+          "Only in the UI after displaying success"
+        ],
+        "correctIndex": 0,
+        "explanation": "Authorization belongs in trusted application/service code and must be checked before a side effect. Prompts and UI checks are not security boundaries."
+      },
+      {
+        "question": "A tool call times out, but the remote service may have completed the refund. What is the safest retry strategy?",
+        "options": [
+          "Retry immediately with a new request ID",
+          "Use the same idempotency key and reconcile the remote result",
+          "Assume the refund failed and submit again",
+          "Remove the timeout"
+        ],
+        "correctIndex": 1,
+        "explanation": "The same idempotency key lets the service deduplicate the operation. The caller should reconcile status rather than creating a second side effect."
+      },
+      {
+        "question": "The agent reaches its step budget before it has enough evidence to answer. What should it return?",
+        "options": [
+          "A fabricated best guess",
+          "A success response with partial data",
+          "An explicit incomplete or budget-exhausted status",
+          "An unlimited retry loop"
+        ],
+        "correctIndex": 2,
+        "explanation": "The system must be honest about incomplete work. An explicit stop status protects correctness, cost and observability."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Explain the observe-decide-act-observe cycle and identify host/model responsibilities",
+        "weight": 20,
+        "evidence": "Learner draws the loop and explains why the model cannot execute tools directly."
+      },
+      {
+        "criterion": "Trace the deterministic fixture with correct intermediate values",
+        "weight": 20,
+        "evidence": "Correct state after each tool call and final price of ₹72."
+      },
+      {
+        "criterion": "Implement a bounded tool loop with validation and stop conditions",
+        "weight": 30,
+        "evidence": "Runnable code and tests for completion, step limit and invalid input."
+      },
+      {
+        "criterion": "Diagnose a production failure and propose a regression test",
+        "weight": 20,
+        "evidence": "Root cause, recovery and executable regression test."
+      },
+      {
+        "criterion": "Explain latency, cost and security trade-offs",
+        "weight": 10,
+        "evidence": "Identifies timeout, tool-call budget, allow-list and idempotency boundaries."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Passing unit tests for normal, invalid and step-limit paths",
+      "A written trace of the fixture and explanation of the stop condition",
+      "A failure diagnosis with a regression test"
+    ]
+  },
+  "references": [
+    {
+      "title": "Building Effective Agents",
+      "url": "https://www.anthropic.com/engineering/building-effective-agents",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "OpenAI Agents SDK documentation",
+      "url": "https://openai.github.io/openai-agents-python/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "decision = await decide(messages)",
+      "explanation": "The decision provider sees the user request and the observations collected so far. In production this can call a model, but its output is only a proposal."
+    },
+    {
+      "lines": "if name not in tools: raise PermissionError(...)",
+      "explanation": "The tool registry is owned by the application. A model cannot invent a new capability or call a function just because it names it."
+    },
+    {
+      "lines": "observation = await asyncio.wait_for(tools[name](arguments), timeout=...)",
+      "explanation": "The orchestrator bounds how long it waits for the tool. A write tool must still enforce idempotency because a timeout does not prove the remote side effect did not happen."
+    },
+    {
+      "lines": "messages.append({role: 'tool', content: observation})",
+      "explanation": "The tool result becomes a new observation. The next planning step can now choose an action using updated evidence instead of repeating the same lookup."
+    }
+  ]
+}

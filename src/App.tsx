@@ -13,6 +13,8 @@ import Stage5MasteryLabs from './components/Stage5MasteryLabs'
 import LessonPractice from './components/LessonPractice'
 import ProductionLabs from './components/ProductionLabs'
 import AgenticInterviewStudio from './components/AgenticInterviewStudio'
+import AgentLoopVisualizer from './components/AgentLoopVisualizer'
+import AgentLoopLessonDetails from './components/AgentLoopLessonDetails'
 import ArchitectureFlow from './components/ArchitectureFlow'
 import StudentReflection from './components/StudentReflection'
 
@@ -32,6 +34,7 @@ export default function App() {
   const [showDeepLabs, setShowDeepLabs] = useState(false)
   const [showTransformerLabs, setShowTransformerLabs] = useState(false)
   const [showRAGLabs, setShowRAGLabs] = useState(false)
+  const [showAgentLoop, setShowAgentLoop] = useState(false)
 
   useEffect(() => { localStorage.setItem('ai-academy.completed.v1', JSON.stringify(completed)) }, [completed])
   useEffect(() => { localStorage.setItem('ai-academy.bookmarks.v1', JSON.stringify(bookmarks)) }, [bookmarks])
@@ -70,6 +73,8 @@ export default function App() {
         {active.id==='stage-4'&&showTransformerLabs&&<><Stage4MasteryLabs/><TransformerLabs/></>}
         {active.id==='stage-5'&&<div className="phase-lab-launch"><div><strong>Interactive RAG engineering workbench</strong><p>Experiment with ingestion, chunking, dense and sparse retrieval, reranking, GraphRAG, Visual RAG and evaluation metrics.</p></div><button className="lab-primary" onClick={()=>setShowRAGLabs(v=>!v)}>{showRAGLabs?'Hide RAG labs':'Open 12 mastery gates + 7 RAG workbenches'} <ChevronRight size={15}/></button></div>}
         {active.id==='stage-5'&&showRAGLabs&&<><Stage5MasteryLabs/><RAGLabs/></>}
+        {active.id==='stage-6'&&<div className="phase-lab-launch"><div><strong>Interactive agent control-flow lab</strong><p>Start Stage 6 with an animated, numerical tool-using agent. Inspect decisions, policy checks, observations, budgets and stop conditions.</p></div><button className="lab-primary" onClick={()=>setShowAgentLoop(v=>!v)}>{showAgentLoop?'Hide agent loop':'Open agent loop animation'} <ChevronRight size={15}/></button></div>}
+        {active.id==='stage-6'&&showAgentLoop&&<><AgentLoopVisualizer/><AgentLoopLessonDetails/></>}
         {active.modules.map((m,mi)=><article className="module" key={m.id}><button className="module-head" onClick={()=>setExpanded(v=>v.includes(m.id)?v.filter(x=>x!==m.id):[...v,m.id])}><div className="module-index">{String(mi+1).padStart(2,'0')}</div><div className="module-title"><h3>{m.title}</h3><p>{m.description}</p><span>{m.lessons.length} lessons · {m.lessons.filter(l=>completed.includes(l.id)).length} completed</span></div><ChevronRight className={expanded.includes(m.id)?'rotate':''} size={18}/></button>
           {expanded.includes(m.id)&&<div className="lesson-list">{m.lessons.map(l=><div className={`lesson ${completed.includes(l.id)?'lesson-complete':''}`} key={l.id}><button className={`check ${completed.includes(l.id)?'done':''}`} onClick={()=>toggle(l.id)} aria-label={completed.includes(l.id)?'Mark lesson incomplete':'Mark lesson complete'}>{completed.includes(l.id)?<CircleCheck size={18}/>:<span/>}</button><button className="lesson-open" onClick={()=>setSelectedLesson(l)}><div className="lesson-body"><strong>{l.title}</strong><p>{l.depth}</p><div className="lab"><Code2 size={13}/><span>LAB</span>{l.lab}</div></div></button><button className={`bookmark-btn ${bookmarks.includes(l.id)?'saved':''}`} onClick={()=>toggleBookmark(l.id)} aria-label={bookmarks.includes(l.id)?'Remove bookmark':'Bookmark lesson'}><Bookmark size={16} fill={bookmarks.includes(l.id)?'currentColor':'none'}/></button></div>)}</div>}
         </article>)}

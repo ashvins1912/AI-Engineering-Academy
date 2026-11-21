@@ -1,0 +1,11 @@
+flowchart TD
+    A[User request] --> B[Observe current state]
+    B --> C[Choose next action]
+    C --> D{Stop or use tool}
+    D -->|Tool| E[Validate tool and arguments]
+    E --> F[Execute bounded tool]
+    F --> G[Append observation]
+    G --> B
+    D -->|Final| H[Return answer]
+    C --> I[Check step and cost budget]
+    I -->|Exceeded| J[Stop safely]
