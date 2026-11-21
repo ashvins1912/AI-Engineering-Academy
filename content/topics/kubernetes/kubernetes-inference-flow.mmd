@@ -1,0 +1,22 @@
+flowchart LR
+  G[Git + immutable image digest] --> CI[CI manifest and policy checks]
+  CI --> API[Kubernetes API server]
+  API --> D[Deployment controller]
+  D --> RS[ReplicaSet]
+  RS --> S[Scheduler]
+  S --> N[Worker node with allocatable CPU / memory]
+  N --> K[Kubelet + container runtime]
+  K --> P[Pod: model API]
+  P --> SP[Startup probe]
+  SP --> RP[Readiness probe]
+  RP --> SV[Service endpoints]
+  SV --> I[Ingress / gateway]
+  P --> LP[Liveness probe]
+  M[Metrics pipeline] --> H[HPA]
+  H --> D
+  GPU[GPU device plugin] --> S
+  NP[NetworkPolicy + CNI] -. restricts .-> P
+  style P fill:#dbeafe,stroke:#2563eb
+  style SP fill:#dcfce7,stroke:#16a34a
+  style RP fill:#dcfce7,stroke:#16a34a
+  style LP fill:#fef3c7,stroke:#d97706
