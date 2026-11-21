@@ -1,0 +1,12 @@
+flowchart TD
+ E[Conversation and tool event] --> X[Candidate extractor]
+ X --> P{Consent, purpose and scope policy}
+ P -->|approved| DB[(Tenant-scoped memory store)]
+ P -->|rejected| R[Discard with reason]
+ Q[Current request + authenticated scope] --> F[Authorization and TTL filter]
+ DB --> F
+ F --> S[Relevance, reliability and recency ranker]
+ S --> B[Token-budgeted context assembler]
+ B --> L[Agent inference with source IDs]
+ DB --> T[TTL and deletion worker]
+ T --> D[Delete source, summaries, embeddings and caches]
