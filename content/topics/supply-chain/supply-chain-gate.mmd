@@ -1,0 +1,12 @@
+flowchart TD
+  A[Sources and registries] --> B[Immutable manifest + lockfiles]
+  B --> C[Isolated build runner]
+  C --> D[SBOM + AI artifact inventory]
+  D --> E[Digest verification]
+  E --> F[Signature identity verification]
+  F --> G[Provenance attestation verification]
+  G --> H[License + vulnerability policy]
+  H -->|All pass| I[Signed release manifest]
+  H -->|Mismatch / untrusted| J[Reject and quarantine]
+  H -->|Unknown license| K[Hold for review]
+  I --> L[Deploy by immutable digest]
