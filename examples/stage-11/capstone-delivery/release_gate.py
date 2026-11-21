@@ -57,6 +57,12 @@ class Decision:
 
 
 @dataclass(frozen=True)
+class GateDecision:
+    action: str
+    reason: str
+
+
+@dataclass(frozen=True)
 class Migration:
     name: str
     phase: str
@@ -131,32 +137,32 @@ def rollout(candidate: ReleaseBundle, current: ReleaseBundle, metrics: CanaryMet
     return Decision("PROMOTE", candidate.release_id, ())
 
 
-def validate_migration(migration: Migration) -> Decision:
+def validate_migration(migration: Migration) -> GateDecision:
     if migration.phase not in {"expand", "backfill", "switch", "drain", "contract"}:
-        return Decision("BLOCK", "UNKNOWN_MIGRATION_PHASE")
+        return GateDecision("BLOCK", "UNKNOWN_MIGRATION_PHASE")
     if migration.phase in {"expand", "backfill", "switch"} and not migration.backward_compatible:
-        return Decision("BLOCK", "MIGRATION_NOT_BACKWARD_COMPATIBLE")
+        return GateDecision("BLOCK", "MIGRATION_NOT_BACKWARD_COMPATIBLE")
     if migration.phase == "backfill" and not migration.data_verified:
-        return Decision("BLOCK", "BACKFILL_NOT_VERIFIED")
+        return GateDecision("BLOCK", "BACKFILL_NOT_VERIFIED")
     if migration.phase == "contract" and migration.old_instances_active:
-        return Decision("BLOCK", "OLD_INSTANCES_STILL_ACTIVE")
+        return GateDecision("BLOCK", "OLD_INSTANCES_STILL_ACTIVE")
     if migration.phase == "contract" and not migration.data_verified:
-        return Decision("BLOCK", "CONTRACT_REQUIRES_VERIFIED_DATA")
-    return Decision("ALLOW", "MIGRATION_PHASE_ALLOWED")
+        return GateDecision("BLOCK", "CONTRACT_REQUIRES_VERIFIED_DATA")
+    return GateDecision("ALLOW", "MIGRATION_PHASE_ALLOWED")
 
 
-def validate_backup(snapshot: BackupSnapshot, max_rpo_minutes: int, max_rto_minutes: int) -> Decision:
+def validate_backup(snapshot: BackupSnapshot, max_rpo_minutes: int, max_rto_minutes: int) -> GateDecision:
     if not snapshot.snapshot_id or not DIGEST.fullmatch(snapshot.digest):
-        return Decision("BLOCK", "BACKUP_ID_OR_DIGEST_INVALID")
+        return GateDecision("BLOCK", "BACKUP_ID_OR_DIGEST_INVALID")
     if not snapshot.restore_tested:
-        return Decision("BLOCK", "RESTORE_NOT_TESTED")
+        return GateDecision("BLOCK", "RESTORE_NOT_TESTED")
     if not snapshot.tenant_integrity_verified:
-        return Decision("BLOCK", "TENANT_INTEGRITY_FAILED")
+        return GateDecision("BLOCK", "TENANT_INTEGRITY_FAILED")
     if snapshot.rpo_minutes < 0 or snapshot.rto_minutes < 0:
-        return Decision("BLOCK", "INVALID_RECOVERY_OBJECTIVES")
+        return GateDecision("BLOCK", "INVALID_RECOVERY_OBJECTIVES")
     if snapshot.rpo_minutes > max_rpo_minutes or snapshot.rto_minutes > max_rto_minutes:
-        return Decision("BLOCK", "RECOVERY_OBJECTIVE_BREACHED")
-    return Decision("ALLOW", "BACKUP_RESTORE_VERIFIED")
+        return GateDecision("BLOCK", "RECOVERY_OBJECTIVE_BREACHED")
+    return GateDecision("ALLOW", "BACKUP_RESTORE_VERIFIED")
 
 
 def manifest_digest(bundle: ReleaseBundle) -> str:
