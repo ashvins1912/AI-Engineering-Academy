@@ -765,3 +765,25 @@
 .framework-gates p{display:flex;align-items:flex-start;gap:7px;font-size:11px;color:#aab8d0;line-height:1.5;margin:7px 0}
 .framework-gates p svg{flex:none;margin-top:2px}
 @media(max-width:760px){.framework-select{grid-template-columns:1fr}.framework-score{text-align:left}.framework-fit{grid-template-columns:1fr}.framework-controls{grid-template-columns:1fr}.framework-score-bars>div{grid-template-columns:90px 1fr 30px}}
+
+/* Stage 6 Topic 9 — agent evaluation and release gate workbench */
+.evaluation-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:15px 0}
+.evaluation-metrics article{min-width:0;border:1px solid #293750;border-radius:10px;padding:12px;background:#111b2d}
+.evaluation-metrics small,.evaluation-metrics strong,.evaluation-metrics span{display:block}
+.evaluation-metrics small{font:9px 'DM Mono';color:#8e9fba;letter-spacing:.7px}
+.evaluation-metrics strong{font:600 19px 'Space Grotesk';color:#e4ebff;margin:7px 0;overflow-wrap:anywhere}
+.evaluation-metrics span{font-size:10px;line-height:1.45;color:#9aabc6}
+.evaluation-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;border:1px solid #293750;border-radius:11px;padding:14px;margin:14px 0}
+.evaluation-controls label{display:grid;gap:8px;font-size:11px;color:#aab8d0}
+.evaluation-controls label span{display:flex;justify-content:space-between;gap:8px}
+.evaluation-controls b{font:10px 'DM Mono';color:#dce5ff}
+.evaluation-controls input[type=range]{width:100%;accent-color:#91a2ff}
+.evaluation-toggle{display:flex!important;align-items:center;gap:8px}
+.evaluation-toggle input{accent-color:#91a2ff}
+.evaluation-gates{display:grid;gap:7px;border:1px solid #34435f;border-radius:11px;padding:13px;background:#101a2b;margin:14px 0}
+.evaluation-gates>strong{display:flex;align-items:center;gap:7px;color:#e1e8fa;font-size:12px;margin-bottom:3px}
+.evaluation-gates>div{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid #293750;font-size:11px;color:#aab8d0}
+.evaluation-gates b{font:10px 'DM Mono'}
+.evaluation-gates b.pass{color:#a5d6ba}
+.evaluation-gates b.fail{color:#f0a0a0}
+@media(max-width:760px){.evaluation-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.evaluation-controls{grid-template-columns:1fr}}
