@@ -58,19 +58,19 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## supply-chain — AI supply-chain security
 
-**Implementation task:** Create an inventory of dependencies and model artifacts and verify hashes and licenses.
+**Implementation task:** Build an offline artifact policy gate for model weights, tokenizers, datasets, prompt bundles, containers and direct/transitive dependencies. Verify byte digests, trusted source, signer identity and provenance separately; generate an inventory; apply license and vulnerability policy; redact secrets from build logs.
 
-**Worked fixture:** Two model artifacts: one checksum mismatch and one unknown license.
+**Worked fixture:** A synthetic model's bytes differ from its reviewed SHA-256 digest; a tokenizer has an unknown license; a dependency has a critical vulnerability; a build log contains synthetic credential patterns.
 
-**Expected result:** Mismatched artifact is rejected; unknown license is held for review.
+**Expected result:** The tampered model is rejected, the unknown-license tokenizer is held for review, the critical dependency blocks release, secrets are detected/redacted, and no signed release manifest is produced.
 
-**Verification tests:** Test vulnerable dependency, altered model file and secret in build logs.
+**Verification tests:** Run `python -m unittest discover -s examples/stage-10 -p 'test_*.py' -v`. Test digest mismatch, empty artifact, untrusted source, invalid signature, missing provenance, unknown/prohibited license, vulnerable and unpinned dependencies, release-gate conjunction and secret redaction.
 
-**Debugging checklist:** Reduce the example to the smallest failing input; inspect identity, permissions, data flow and intermediate state; reproduce the failure with a test; change one variable at a time and retain a regression test.
+**Debugging checklist:** Trace immutable input manifest and digest; verify bytes from the actual artifact; inspect signer identity and revocation; compare attestation subject digest and builder; reconcile SBOM/model inventory with built outputs; inspect license decision and vulnerability severity; scan logs, caches and artifacts for credentials; verify the release uses the exact approved digest.
 
-**Interview checks:** What provenance should accompany a model or dataset artifact?
+**Interview checks:** What does a hash prove and not prove? How do signatures differ from provenance? Why are model/data inventories needed in addition to SBOMs? Why should unknown licenses be held? How can a build leak secrets? Why deploy by digest instead of mutable tag?
 
-**Submission evidence:** Include implementation and architecture artifacts, a successful run, positive and negative tests, a short failure analysis, and a 3–5 sentence explanation of the operational trade-off.
+**Submission evidence:** Include a supply-chain threat model, artifact inventory, deterministic verifier, positive and negative tests, license/vulnerability decision report, secret-scan evidence and a short explanation of the trust limits of hashes, signatures and attestations.
 
 ---
 

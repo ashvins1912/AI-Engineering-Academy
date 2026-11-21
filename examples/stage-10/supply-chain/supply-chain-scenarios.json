@@ -1,0 +1,73 @@
+{
+  "artifacts": [
+    {
+      "name": "model-v1",
+      "kind": "weights",
+      "content": "synthetic-model-weights-v1",
+      "sha256": "cef1c26752c9621b897302ebb87978b22c726fe349b707f42ce675a8b2a2e4cc",
+      "license": "Apache-2.0",
+      "source": "registry.example/model-team",
+      "signature": "verified",
+      "provenance": "verified",
+      "expected": "ALLOW"
+    },
+    {
+      "name": "tokenizer-v1",
+      "kind": "tokenizer",
+      "content": "synthetic-tokenizer-v1",
+      "sha256": "5f4f38e5058138b6585fb66935829e29a3b32f59781d0a4a47b82adc1bad9343",
+      "license": "UNKNOWN",
+      "source": "registry.example/model-team",
+      "signature": "verified",
+      "provenance": "verified",
+      "expected": "HOLD_LICENSE_REVIEW"
+    },
+    {
+      "name": "dataset-v1",
+      "kind": "dataset",
+      "content": "synthetic-training-dataset-v1",
+      "sha256": "3de389713c71e35cf63c967d425ae7add901e2c2e6423b08b1d5f98785864b47",
+      "license": "MIT",
+      "source": "registry.example/data-team",
+      "signature": "verified",
+      "provenance": "verified",
+      "expected": "ALLOW"
+    },
+    {
+      "name": "model-tampered",
+      "kind": "weights",
+      "content": "synthetic-model-weights-tampered",
+      "sha256": "cef1c26752c9621b897302ebb87978b22c726fe349b707f42ce675a8b2a2e4cc",
+      "license": "Apache-2.0",
+      "source": "registry.example/model-team",
+      "signature": "verified",
+      "provenance": "verified",
+      "expected": "REJECT_CHECKSUM_MISMATCH"
+    }
+  ],
+  "dependencies": [
+    {
+      "name": "numpy",
+      "version": "2.1.0",
+      "severity": "NONE",
+      "pinned": true,
+      "expected": "ALLOW"
+    },
+    {
+      "name": "fasttensor",
+      "version": "1.2.0",
+      "severity": "CRITICAL",
+      "vulnerability": "CVE-SYNTHETIC-1",
+      "pinned": true,
+      "expected": "REJECT"
+    },
+    {
+      "name": "unlocked-lib",
+      "version": null,
+      "severity": "NONE",
+      "pinned": false,
+      "expected": "HOLD"
+    }
+  ],
+  "logFixture": "build completed; synthetic token=ghp_REDACTEDFIXTURETOKEN123456789"
+}
