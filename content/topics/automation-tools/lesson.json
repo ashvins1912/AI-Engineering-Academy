@@ -1,0 +1,573 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "automation-tools",
+    "title": "Automation platform integration — n8n, API connectors and browser automation",
+    "stage": 8,
+    "estimatedMinutes": 240
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Design automation workflows in n8n using triggers, nodes, credentials, sub-workflows, error workflows and execution history.",
+      "Choose API connectors over browser automation when a stable authorized API exists.",
+      "Implement OAuth-scoped API connectors with pagination, rate limits, retries and secret references.",
+      "Build browser automation with isolated contexts, origin allowlists, accessibility-first locators and safe download handling.",
+      "Gate high-impact actions with authenticated, single-use human approval bound to the exact action.",
+      "Audit, replay and recover automation runs without duplicating side effects."
+    ],
+    "prerequisites": [
+      "Stage 8 Topics 1–3: workflow patterns, event-driven automation and durable workflow engines",
+      "OAuth2, REST APIs, browser DOM/accessibility, queues and approval policy"
+    ],
+    "glossary": [
+      {
+        "term": "Automation platform",
+        "definition": "A system that connects triggers, actions, data mapping and approvals into repeatable workflows."
+      },
+      {
+        "term": "Trigger",
+        "definition": "An event, schedule, webhook or manual input that starts a workflow."
+      },
+      {
+        "term": "Connector",
+        "definition": "A typed, authenticated integration exposing approved API actions and data schemas."
+      },
+      {
+        "term": "Credential reference",
+        "definition": "An opaque server-side handle to a secret; workflow history stores the handle, never the secret."
+      },
+      {
+        "term": "OAuth scope",
+        "definition": "A permission boundary restricting what an access token can do."
+      },
+      {
+        "term": "Browser context",
+        "definition": "An isolated browser session with its own cookies, storage and permissions."
+      },
+      {
+        "term": "Accessibility locator",
+        "definition": "A browser selector based on roles, labels and accessible names rather than fragile coordinates."
+      },
+      {
+        "term": "Approval binding",
+        "definition": "A human decision tied to an exact action, resource, payload hash, expiry and workflow version."
+      },
+      {
+        "term": "Execution replay",
+        "definition": "A controlled retry/resume of an automation run using stored step outcomes and idempotency keys."
+      },
+      {
+        "term": "Human-in-the-loop",
+        "definition": "A workflow pause requiring a verified person to review and approve a specific high-impact action."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "Automation platforms make it easy to connect SaaS apps, APIs, webhooks and browser actions. But convenience can hide broad credentials, duplicate triggers, unsafe browser access and irreversible actions. Production automation needs least privilege, deterministic workflow steps, isolated sessions, approval boundaries and an audit trail.",
+    "plainLanguage": "n8n models automation as a graph of trigger and action nodes. A webhook, schedule or app event starts an execution; nodes transform data and call services; sub-workflows reuse logic; error workflows handle failures; execution history helps inspect and retry. Use credentials stored in the platform's credential store, not hard-coded in node parameters. For higher throughput, understand queue mode, worker concurrency, execution retention and the database/Redis dependencies of the deployment.\n\nChoose the API before the browser. An API connector offers a typed contract, stable resource identifiers, structured errors, pagination and explicit OAuth scopes. A browser robot depends on UI layout, session state, selectors, page timing and anti-automation controls. Use browser automation only when the business action has no supported API or the UI itself is the required system of record.\n\nAn API connector should declare actions, argument/result schemas, OAuth grant, scopes, pagination, rate limit, timeout, retry classification and idempotency semantics. Use authorization-code flow with PKCE for user-delegated access where appropriate, or client credentials for service-to-service integrations. Store refresh/access tokens in a secret manager and pass opaque credential references to workers. Never ask the model to supply a bearer token or tenant ID.\n\nBrowser automation should use an isolated context per user/tenant/workflow, an explicit origin allowlist and a narrowly scoped session. Prefer Playwright locators by role, label and accessible name. Avoid coordinate-based clicks and arbitrary JavaScript evaluation. Validate every navigation, block untrusted redirects and local/private network destinations, constrain downloads to a sandbox, and do not expose cookies or page storage to model context.\n\nBrowser pages are untrusted input. A page can contain prompt injection telling an agent to exfiltrate credentials, change a payee or ignore approval policy. Treat page text and downloaded files as data, not instructions. The browser agent may propose an action, but server-side policy validates destination, account, amount and resource before execution.\n\nUse human approval for irreversible or high-impact operations: payment, refund, user invitation, production deployment, data deletion or external communication. Prepare a preview showing exact action, target, amount/content, side effects and source evidence. Bind approval to the canonical payload hash, user, tenant, workflow version and expiry. Any material change invalidates the approval. Record who approved and when; execute once with a stable idempotency key.\n\nAutomation retries need the same discipline as API tools. A webhook can be delivered twice, a browser click can succeed before a timeout, and a SaaS API may return 429. Use event IDs, idempotency keys, bounded retries, Retry-After, reconciliation and explicit unknown states. Do not blindly repeat a browser click after a timeout; inspect the target system to determine whether the action completed.\n\nUse n8n for visual orchestration and connectors where it fits; use a dedicated service for complex domain rules, durable application workflows or high-risk authorization. Keep business policy outside visual node expressions when it must be tested, reviewed and versioned. Use sub-workflows for reusable bounded operations, and centralize credentials and approval logic.\n\nOperational controls include connector health, OAuth expiry, webhook signature verification, execution concurrency, queue age, node-level latency, retries, browser screenshots/trace retention, download scanning, approval age, DLQ, cost and audit logs. Redact secrets and sensitive page content. Define who can edit workflows, publish them, change credentials and replay failed executions.",
+    "mentalModel": "Trigger → validate event → choose API connector first → map/validate data → browser only if necessary → approval for high-impact action → execute idempotently → audit/reconcile.",
+    "limitations": [
+      "Visual workflow graphs can hide complex business rules; extract critical policy into tested services.",
+      "Browser automation is inherently more brittle than a supported API and must be sandboxed.",
+      "OAuth scopes and credential references reduce exposure but do not replace resource-level authorization.",
+      "Human approval is valid only for the exact action reviewed; changed payloads require a new approval.",
+      "A successful browser click or HTTP response may not prove business completion; reconcile against the system of record.",
+      "n8n, Playwright and connector deployments have different hosting, credential and execution semantics; the examples are framework-neutral teaching adapters."
+    ],
+    "everydayAnalogy": "A travel coordinator uses an airline API to book a flight because it is structured and reliable. If a small hotel has no API, the coordinator may use its website in a separate browser session. Before charging a corporate card, the coordinator shows the exact itinerary and price to a manager for approval.",
+    "mathMadeSimple": "An automation has 6 nodes. If each node retries 3 times independently, a single execution can generate up to 18 attempts. A shared workflow budget of 8 attempts and a 90-second deadline bounds the blast radius. If an approval is bound to payload hash H1 and the amount changes, the new payload hash H2 must be rejected until a person approves H2.",
+    "productionImpact": "Production automation needs versioned workflow definitions, scoped OAuth, secret references, API-first integration, browser isolation, origin allowlists, accessibility locators, download controls, action-bound approvals, idempotency, reconciliation, audit and workflow-level concurrency/retry budgets."
+  },
+  "useCase": {
+    "scenario": "A document-review automation receives a signed upload webhook, stores the file, extracts metadata through a document API, opens a browser only to review a legacy portal record, then asks a manager to approve an external notification before sending it.",
+    "actors": [
+      "n8n trigger/workflow",
+      "Webhook signature gateway",
+      "Document API connector",
+      "Credential vault",
+      "Isolated Playwright worker",
+      "Policy/approval service",
+      "Manager",
+      "Notification API",
+      "Audit and execution journal"
+    ],
+    "inputs": [
+      "Signed document-upload event",
+      "Tenant and document identity",
+      "OAuth credential references",
+      "Legacy portal origin and accessible locators",
+      "Proposed notification content and recipient"
+    ],
+    "constraints": [
+      "Webhook signature and event ID are verified.",
+      "API connector is preferred for document metadata.",
+      "Browser origin is allowlisted and context is isolated.",
+      "Page content is untrusted and cannot override policy.",
+      "External notification requires approval bound to exact content and recipient.",
+      "Execution is idempotent and resumable."
+    ],
+    "outputs": [
+      "Extracted document metadata",
+      "Portal review evidence",
+      "Approved notification",
+      "Execution/audit record",
+      "Failure or approval-pending state"
+    ],
+    "successMetric": "Document review completes once, no credential crosses the browser/model boundary, and the external notification is sent only after an authenticated approval of the exact payload."
+  },
+  "architecture": {
+    "diagram": "content/topics/automation-tools/automation-platform-flow.mmd",
+    "components": [
+      "n8n trigger and workflow graph",
+      "Webhook signature verifier",
+      "Connector registry and schemas",
+      "OAuth credential vault",
+      "API adapter and rate limiter",
+      "Browser sandbox and origin policy",
+      "Accessibility locator engine",
+      "Download quarantine",
+      "Human approval service",
+      "Idempotency journal",
+      "Execution trace and audit"
+    ],
+    "dataFlow": [
+      {
+        "from": "Webhook trigger",
+        "to": "Signature verifier",
+        "payload": "raw body + signature + timestamp",
+        "purpose": "Authenticate event and prevent replay."
+      },
+      {
+        "from": "Signature verifier",
+        "to": "n8n workflow",
+        "payload": "validated tenant-bound event",
+        "purpose": "Start versioned automation."
+      },
+      {
+        "from": "n8n workflow",
+        "to": "API connector",
+        "payload": "typed action + credential reference",
+        "purpose": "Use supported structured API first."
+      },
+      {
+        "from": "API connector",
+        "to": "Browser worker",
+        "payload": "UI-only task + allowlisted origin",
+        "purpose": "Use isolated browser only when API is unavailable."
+      },
+      {
+        "from": "Browser worker",
+        "to": "Approval service",
+        "payload": "evidence + proposed action + payload hash",
+        "purpose": "Pause before irreversible action."
+      },
+      {
+        "from": "Approval service",
+        "to": "Notification connector",
+        "payload": "authenticated single-use approval",
+        "purpose": "Execute exact approved action idempotently."
+      },
+      {
+        "from": "Execution journal",
+        "to": "Audit",
+        "payload": "run/step IDs + redacted outcome",
+        "purpose": "Support replay, review and incident response."
+      }
+    ],
+    "trustBoundaries": [
+      "Credentials are stored in a vault; workflows and model context receive opaque references only.",
+      "Connector scopes and server-side policy enforce action/resource authorization.",
+      "Browser contexts are isolated and restricted to explicit HTTPS origins.",
+      "Page content, screenshots and downloads are untrusted data, not policy instructions.",
+      "Approval is bound to action hash, resource, tenant, approver and expiry.",
+      "Workflow editor, credential manager, publisher and replay operator roles are separate."
+    ],
+    "failurePaths": [
+      "Webhook replay: reject duplicate provider event ID and verify timestamp/signature.",
+      "OAuth expiry: refresh through credential vault or pause for reauthorization.",
+      "API 429: respect Retry-After and connector retry budget.",
+      "Browser redirect to untrusted origin: stop navigation and record security event.",
+      "Selector drift or MFA/CAPTCHA: pause and request human intervention; do not bypass controls.",
+      "Approval payload changed: invalidate approval and request new review.",
+      "Browser click timeout: reconcile target system before retry.",
+      "Workflow retry after notification success: replay idempotency result, do not send twice."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-08/fixtures/automation-platform.json",
+    "steps": [
+      {
+        "label": "Trigger",
+        "explanation": "Verify webhook and start a tenant-bound automation run.",
+        "expectedState": "event accepted once"
+      },
+      {
+        "label": "Connect",
+        "explanation": "Use scoped API connector and opaque credential reference.",
+        "expectedState": "API result validated"
+      },
+      {
+        "label": "Browse",
+        "explanation": "Use isolated browser only for a UI-only portal task.",
+        "expectedState": "origin and locators validated"
+      },
+      {
+        "label": "Approve",
+        "explanation": "Present exact action preview and bind human decision to payload hash.",
+        "expectedState": "single-use approval"
+      },
+      {
+        "label": "Execute and audit",
+        "explanation": "Send approved notification idempotently and persist execution evidence.",
+        "expectedState": "one audited effect"
+      }
+    ],
+    "accessibility": [
+      "Task state and context IDs are labeled as text.",
+      "Streaming events are listed with event type and sequence.",
+      "Artifact name, MIME type and validation status are explicit."
+    ],
+    "animation": {
+      "objective": "Walk a document review automation from signed webhook through API connector, isolated browser, human approval and idempotent notification.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Verify trigger",
+          "narration": "Webhook signature, timestamp and provider event ID are checked before a workflow starts.",
+          "input": "event=document.uploaded; tenant=tenant-a",
+          "transformation": "HMAC + freshness + event dedupe",
+          "output": "run_id=doc-42; accepted_once=true",
+          "visualState": "Trusted event trigger"
+        },
+        {
+          "step": 2,
+          "title": "Use API connector",
+          "narration": "Document metadata is fetched with a scoped OAuth credential reference.",
+          "input": "action=document.get; scope=documents:read",
+          "transformation": "resolve credential ref → authorize → API request",
+          "output": "metadata=validated; token=not exposed",
+          "visualState": "API-first integration"
+        },
+        {
+          "step": 3,
+          "title": "Use isolated browser",
+          "narration": "Legacy portal has no API; browser is limited to an allowlisted origin and accessible locator.",
+          "input": "origin=https://portal.example; role=button; name=Review",
+          "transformation": "isolated context + origin policy + locator check",
+          "output": "portal_status=reviewed; cookies=isolated",
+          "visualState": "Controlled browser action"
+        },
+        {
+          "step": 4,
+          "title": "Request approval",
+          "narration": "External notification preview is bound to recipient, content hash and workflow version.",
+          "input": "recipient=manager@example; payload_hash=H1",
+          "transformation": "request approval → authenticate approver → single-use decision",
+          "output": "approval=approved; hash=H1; expires=15m",
+          "visualState": "Human decision required"
+        },
+        {
+          "step": 5,
+          "title": "Execute and audit",
+          "narration": "Only the exact approved payload is sent; retry returns the stored result.",
+          "input": "approved_hash=H1; idempotency_key=doc-42:notify",
+          "transformation": "revalidate policy → connector send → persist result",
+          "output": "notification=sent_once; audit=recorded",
+          "visualState": "One auditable side effect"
+        }
+      ],
+      "controls": [
+        {
+          "name": "api_available",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "If no API exists, the workflow may use an allowlisted browser task."
+        },
+        {
+          "name": "browser_origin_allowed",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "Browser navigation is blocked when origin is not allowlisted."
+        },
+        {
+          "name": "approval_granted",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "High-impact notification executes only after explicit approval."
+        },
+        {
+          "name": "duplicate_trigger",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 0,
+          "effect": "Duplicate webhook event must not start a second logical run."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Every stage exposes trigger identity, connector scope, browser origin, locator, approval payload hash and final idempotency result."
+    }
+  },
+  "workedExample": {
+    "problem": "Review an uploaded contract and send a manager-approved notification using a legacy portal.",
+    "input": "event=document.uploaded; document=doc-42; portal origin allowlisted; notification recipient and body proposed.",
+    "steps": [
+      {
+        "operation": "Verify event",
+        "reasoning": "Check HMAC over raw body, timestamp window and unique provider event ID.",
+        "result": "event accepted once; run_id=doc-42"
+      },
+      {
+        "operation": "Fetch metadata",
+        "reasoning": "Use document API with documents:read scope and a server-side credential reference.",
+        "result": "metadata validated; access token never enters model context"
+      },
+      {
+        "operation": "Review legacy portal",
+        "reasoning": "Launch isolated browser context, verify HTTPS origin and use accessible role/name locator.",
+        "result": "portal status=reviewed; download remains sandboxed"
+      },
+      {
+        "operation": "Approval preview",
+        "reasoning": "Show exact recipient and notification content; bind decision to payload hash H1 and workflow version.",
+        "result": "approval=approved; hash=H1"
+      },
+      {
+        "operation": "Send and audit",
+        "reasoning": "Revalidate policy and execute with stable idempotency key; persist result and redacted audit.",
+        "result": "sent_once=true; duplicate_trigger_effect=0"
+      }
+    ],
+    "expectedOutput": "One manager-approved notification, no exposed credentials and a complete redacted execution trace."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-08/automation_tools.py",
+      "runCommand": "python examples/stage-08/automation_tools.py",
+      "testsPath": "examples/stage-08/test_automation_tools.py",
+      "expectedResult": "Connector registry, OAuth scope references, browser origin policy, action-bound approval and deterministic automation flow."
+    },
+    {
+      "language": "python",
+      "role": "production",
+      "path": "examples/stage-08/automation_tools_production.py",
+      "runCommand": "python -m unittest discover -s examples/stage-08 -p 'test_automation_tools_production.py' -v",
+      "testsPath": "examples/stage-08/test_automation_tools_production.py",
+      "expectedResult": "SQLite tenant-scoped automation runs, approval audit, payload binding, expiry, single-use decision and idempotent execution journal."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Overprivileged connector",
+      "symptom": "Workflow can read and write more SaaS data than required.",
+      "rootCause": "Broad OAuth scopes and shared credentials.",
+      "recovery": "Separate connector actions and least-privilege scopes; rotate credentials in vault.",
+      "regressionTest": "Read-only credential cannot invoke write action."
+    },
+    {
+      "name": "Browser origin escape",
+      "symptom": "Agent navigates from approved portal to attacker-controlled host.",
+      "rootCause": "No origin allowlist or redirect validation.",
+      "recovery": "Validate every navigation and redirect against HTTPS origin allowlist.",
+      "regressionTest": "Cross-origin redirect is blocked before request."
+    },
+    {
+      "name": "Prompt injection in page",
+      "symptom": "Page text asks agent to disclose tokens or bypass approval.",
+      "rootCause": "Browser content is treated as trusted instructions.",
+      "recovery": "Treat page content as untrusted data and enforce server-side policy.",
+      "regressionTest": "Malicious page content cannot change credential or approval policy."
+    },
+    {
+      "name": "Selector drift",
+      "symptom": "Browser clicks the wrong button after UI redesign.",
+      "rootCause": "Fragile coordinate/CSS selector without accessible name validation.",
+      "recovery": "Use role/label locators, assert target text and pause on ambiguity.",
+      "regressionTest": "Two matching buttons cause safe failure rather than arbitrary click."
+    },
+    {
+      "name": "Approval replay or mutation",
+      "symptom": "Old approval authorizes a changed recipient or amount.",
+      "rootCause": "Approval not bound to payload hash, resource and expiry.",
+      "recovery": "Single-use approval bound to exact canonical action and workflow version.",
+      "regressionTest": "Changed payload hash and expired approval are rejected."
+    },
+    {
+      "name": "Duplicate webhook or browser action",
+      "symptom": "Notification is sent twice after timeout or duplicate event.",
+      "rootCause": "No event inbox/idempotency ledger and blind retry.",
+      "recovery": "Use event ID and stable action key; reconcile system of record.",
+      "regressionTest": "Duplicate trigger and repeated action return prior result."
+    }
+  ],
+  "practice": {
+    "guided": "Given an automation requirement, decide whether to use an API connector or browser. Define OAuth scope, browser origin and approval boundary.",
+    "independent": "Implement a connector registry, credential references, isolated browser adapter, approval gate and idempotent execution journal.",
+    "realWorld": "Build a document-review automation using n8n-like triggers, a document API, Playwright for a legacy portal and a manager approval before sending external email.",
+    "expertExtension": "Add OAuth PKCE token refresh, n8n queue-mode workers, Playwright trace retention, download malware scanning, approval delegation, connector health and audited DLQ replay.",
+    "guidedExercise": {
+      "title": "Bind approval to the exact action",
+      "instructions": "Reject an approval when the payload hash differs, the approver is not authorized, or the decision has expired or was already used.",
+      "starterCode": "def authorize_action(approval, payload_hash, approver, now):\n    # verify exact payload and approver\n    # check expiry and single-use state\n    raise NotImplementedError",
+      "solutionCode": "def authorize_action(approval, payload_hash, approver, now):\n    if approval['payload_hash'] != payload_hash: raise PermissionError('payload changed')\n    if approver not in approval['allowed_approvers']: raise PermissionError('approver denied')\n    if now >= approval['expires_at'] or approval['used']: raise PermissionError('approval expired or replayed')\n    approval['used'] = True\n    return True",
+      "unitTests": "approval={'payload_hash':'H1','allowed_approvers':['manager-1'],'expires_at':100,'used':False}\nassert authorize_action(approval,'H1','manager-1',50)\nassert approval['used']"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build a document review automation console with connector, browser, approval and audit panels.",
+      "steps": [
+        "Receive and validate a signed document.uploaded webhook.",
+        "Select API connector first and resolve an opaque credential reference.",
+        "Inspect scopes and reject unauthorized connector actions.",
+        "Run a browser-only portal review inside an isolated allowlisted context.",
+        "Inject malicious page content and cross-origin redirect attempts.",
+        "Preview the exact notification and create a hash-bound approval request.",
+        "Test expired, changed-payload and replayed approvals.",
+        "Execute once with an idempotency key and inspect redacted audit history."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "A SaaS product has a stable supported API. What should automation use first?",
+        "options": [
+          "Coordinate-based browser clicks",
+          "API connector with least-privilege scope",
+          "Copy browser cookies into prompt",
+          "Unrestricted JavaScript"
+        ],
+        "correctIndex": 1,
+        "explanation": "A typed API is generally more stable, testable and auditable than browser automation."
+      },
+      {
+        "question": "A page contains instructions to reveal the OAuth token. What should the browser agent do?",
+        "options": [
+          "Follow page instructions",
+          "Treat page text as untrusted data and ignore policy overrides",
+          "Copy token into screenshot",
+          "Disable approval"
+        ],
+        "correctIndex": 1,
+        "explanation": "Browser content is untrusted input and cannot override server-side security policy."
+      },
+      {
+        "question": "What must a high-impact approval bind to?",
+        "options": [
+          "Workflow name only",
+          "Exact action, resource, payload hash, approver and expiry",
+          "Current browser URL only",
+          "Model confidence"
+        ],
+        "correctIndex": 1,
+        "explanation": "Approval must authorize the exact operation reviewed and expire/replay safely."
+      },
+      {
+        "question": "A browser click times out after submitting a payment. What is safest?",
+        "options": [
+          "Click again immediately",
+          "Reconcile against system of record using same operation key",
+          "Generate a new operation key",
+          "Assume it failed"
+        ],
+        "correctIndex": 1,
+        "explanation": "Timeout is ambiguous; inspect provider state before repeating a side effect."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Platform and connector selection",
+        "weight": 20,
+        "evidence": "API-first selection and correct n8n/browser use are justified."
+      },
+      {
+        "criterion": "Credential and browser boundaries",
+        "weight": 20,
+        "evidence": "Least-privilege OAuth scopes, opaque secrets and isolated allowlisted browser context."
+      },
+      {
+        "criterion": "Human approval correctness",
+        "weight": 25,
+        "evidence": "Approval binds exact payload, resource, approver, expiry and single use."
+      },
+      {
+        "criterion": "Idempotency and recovery",
+        "weight": 20,
+        "evidence": "Duplicate triggers and ambiguous browser/API outcomes do not repeat side effects."
+      },
+      {
+        "criterion": "Audit and operations",
+        "weight": 15,
+        "evidence": "Run/step traces, redaction, connector health and replay controls are documented."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Both Python suites pass.",
+      "API scope and browser origin violations are blocked.",
+      "Changed/expired/replayed approvals are rejected.",
+      "Duplicate event/action is idempotent.",
+      "Secrets and browser storage are never exposed in logs/model context."
+    ]
+  },
+  "references": [
+    {
+      "title": "n8n documentation — Workflows",
+      "url": "https://docs.n8n.io/workflows/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "n8n documentation — Credentials",
+      "url": "https://docs.n8n.io/credentials/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "Playwright documentation — Locators",
+      "url": "https://playwright.dev/docs/locators",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "RFC 6749 — OAuth 2.0 Authorization Framework",
+      "url": "https://www.rfc-editor.org/rfc/rfc6749",
+      "sourceType": "standard",
+      "checkedOn": "2026-11-21"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "connector.execute(action, args, credential_ref, scopes)",
+      "explanation": "Resolve server-side credentials and verify the exact OAuth scope before provider invocation."
+    },
+    {
+      "lines": "browser.navigate(url) only if origin in allowlist",
+      "explanation": "Every redirect and download is checked against browser sandbox policy."
+    },
+    {
+      "lines": "locator.get_by_role('button', name='Review')",
+      "explanation": "Accessible locators are more robust than coordinates and ambiguous selectors fail closed."
+    },
+    {
+      "lines": "approval.payload_hash == canonical_hash(action)",
+      "explanation": "A human decision authorizes only the exact operation and content reviewed."
+    },
+    {
+      "lines": "idempotency_key = run_id + ':' + action_id",
+      "explanation": "A retry reuses the same logical operation identity and reconciles ambiguous outcomes."
+    }
+  ]
+}
