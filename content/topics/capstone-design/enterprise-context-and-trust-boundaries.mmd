@@ -1,0 +1,22 @@
+flowchart TD
+  U[Tenant users] --> G[API gateway]
+  G --> I[Identity + membership]
+  G --> ING[Ingestion workers]
+  ING --> O[(Object store)]
+  ING --> DB[(PostgreSQL + RLS)]
+  ING --> V[(Vector index)]
+  G --> R[RAG query service]
+  R --> V
+  R --> M[Model gateway]
+  R --> A[Agent orchestrator]
+  A --> P[Tool policy + approval]
+  P --> T[MCP tools]
+  A --> S[A2A specialists]
+  Q[Queue + workers] --> ING
+  Q --> A
+  G --> OBS[Audit + observability]
+  R --> OBS
+  A --> OBS
+  CI[CI/CD + artifact registry] --> DEP[Deployment controller]
+  DEP --> G
+  X[Untrusted retrieved content / model output] -. no authority .-> P
