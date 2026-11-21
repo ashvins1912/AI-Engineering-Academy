@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import agentLoopLesson from '../../content/topics/agent-loop/lesson.json'
+import agentLoopFixture from '../../examples/stage-06/fixtures/agent-loop.json'
 import { ArrowLeft, ArrowRight, Pause, Play, RotateCcw, ShieldCheck, Timer } from 'lucide-react'
 
 const animation = agentLoopLesson.visual.animation
 const stages = animation.stages
+const unitPrice = agentLoopFixture.unitPrice
+const simulatedCatalogLatencyMs = agentLoopFixture.simulatedCatalogLatencyMs
 const initialControl = (name: string, fallback: number) =>
   animation.controls.find(control => control.name === name)?.defaultValue ?? fallback
 
@@ -14,8 +17,7 @@ export default function AgentLoopVisualizer() {
   const [maxSteps, setMaxSteps] = useState(() => initialControl('max_steps', 4))
   const [timeoutMs, setTimeoutMs] = useState(() => initialControl('tool_timeout_ms', 2000))
   const [discountPercent, setDiscountPercent] = useState(() => initialControl('discount_percent', 10))
-  const finalPrice = useMemo(() => 80 * (1 - discountPercent / 100), [discountPercent])
-  const simulatedCatalogLatencyMs = 400
+  const finalPrice = useMemo(() => unitPrice * (1 - discountPercent / 100), [discountPercent])
   const catalogTimedOut = timeoutMs < simulatedCatalogLatencyMs
   const canComplete = maxSteps >= 2 && !catalogTimedOut
   const current = stages[step]
@@ -44,8 +46,8 @@ export default function AgentLoopVisualizer() {
       <div className="agent-loop-stage-title"><span>{String(step + 1).padStart(2, '0')}</span><div><h4>{current.title}</h4><p>{current.narration}</p></div></div>
       <div className="agent-loop-values">
         <div><small>INPUT</small><code>{current.input}</code></div>
-        <div><small>TRANSFORMATION</small><code>{step === 3 ? `80 × (1 − ${discountPercent}/100) = ${finalPrice.toFixed(2)}` : current.transformation}</code></div>
-        <div><small>OUTPUT</small><code>{step === 3 ? (canComplete ? `status=completed; final_price=₹${finalPrice.toFixed(2)}; tool_calls=2` : catalogTimedOut ? `status=tool_timeout; final_price=not available; timeout_ms=${timeoutMs}` : 'status=step_limit; final_price=not available; only one tool call allowed') : step === 2 ? (catalogTimedOut ? `status=tool_timeout; timeout_ms=${timeoutMs}; product observation unavailable` : `product.unit_price=₹80; remaining_steps=${Math.max(0, maxSteps - 1)}`) : current.output}</code></div>
+        <div><small>TRANSFORMATION</small><code>{step === 3 ? `${unitPrice} × (1 − ${discountPercent}/100) = ${finalPrice.toFixed(2)}` : current.transformation}</code></div>
+        <div><small>OUTPUT</small><code>{step === 3 ? (canComplete ? `status=completed; final_price=₹${finalPrice.toFixed(2)}; tool_calls=2` : catalogTimedOut ? `status=tool_timeout; final_price=not available; timeout_ms=${timeoutMs}` : 'status=step_limit; final_price=not available; only one tool call allowed') : step === 2 ? (catalogTimedOut ? `status=tool_timeout; timeout_ms=${timeoutMs}; product observation unavailable` : `product.unit_price=₹${unitPrice}; remaining_steps=${Math.max(0, maxSteps - 1)}`) : current.output}</code></div>
       </div>
       <div className="agent-loop-state"><span className="state-pulse"/>{step === 2 && catalogTimedOut ? `Catalog tool exceeded the ${timeoutMs} ms timeout; no observation was appended.` : step === 3 && !canComplete ? (catalogTimedOut ? 'The catalog observation is missing after timeout; the agent cannot calculate a price.' : 'Budget exhausted before the second tool: task remains incomplete.')  : current.visualState}</div>
     </div>
@@ -59,7 +61,7 @@ export default function AgentLoopVisualizer() {
     <div className="agent-loop-parameters">
       <label><span>Maximum steps <strong>{maxSteps}</strong></span><input type="range" min="1" max="8" value={maxSteps} onChange={event => setMaxSteps(Number(event.target.value))}/><small>At 1, the agent cannot complete this two-tool task. More steps add headroom, not unlimited permission.</small></label>
       <label><span>Tool timeout <strong>{timeoutMs} ms</strong></span><input type="range" min="100" max="5000" step="100" value={timeoutMs} onChange={event => setTimeoutMs(Number(event.target.value))}/><small><Timer size={12}/> Affects the waiting budget; a remote side effect still needs service-side idempotency.</small></label>
-      <label><span>Discount rate <strong>{discountPercent}%</strong></span><input type="range" min="0" max="50" value={discountPercent} onChange={event => setDiscountPercent(Number(event.target.value))}/><small>₹80 × (1 − {discountPercent}/100) = <b>₹{finalPrice.toFixed(2)}</b></small></label>
+      <label><span>Discount rate <strong>{discountPercent}%</strong></span><input type="range" min="0" max="50" value={discountPercent} onChange={event => setDiscountPercent(Number(event.target.value))}/><small>₹{unitPrice} × (1 − {discountPercent}/100) = <b>₹{finalPrice.toFixed(2)}</b></small></label>
     </div>
     <p className="agent-loop-footnote">Educational simulation: the planner is deterministic so you can inspect control flow without an API key. In production, a model may propose actions, but the application still validates permissions, schemas, budgets and tool results.</p>
   </section>
