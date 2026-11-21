@@ -361,7 +361,7 @@
     {
       "language": "shell",
       "role": "from-scratch",
-      "path": "examples/stage-09/iac/aws-inference/README.md",
+      "path": "examples/stage-09/iac/README.md",
       "runCommand": "cd examples/stage-09/iac/aws-inference && terraform fmt -check -recursive && terraform init -backend=false && terraform validate",
       "testsPath": "examples/stage-09/test_iac_template.py",
       "expectedResult": "Static validation of Terraform module without cloud credentials or apply."
