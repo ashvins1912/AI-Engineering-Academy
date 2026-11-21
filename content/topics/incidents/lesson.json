@@ -1,0 +1,619 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "incidents",
+    "title": "Incident Response and Recovery — operate AI systems safely under failure",
+    "stage": 10,
+    "estimatedMinutes": 390
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Classify AI incidents by user impact, security/privacy exposure, scope, persistence and recoverability.",
+      "Run a structured incident lifecycle from detection and triage through containment, eradication, recovery and blameless review.",
+      "Select safe containment actions for prompt injection, tenant isolation breaches, compromised artifacts, unsafe tools, provider outages and runaway cost.",
+      "Preserve trustworthy, privacy-aware evidence with timestamps, immutable identifiers, digests, access controls and chain-of-custody records.",
+      "Restore from a known-good immutable release, rotate credentials, validate data integrity and use staged recovery with SLO/quality guardrails.",
+      "Write actionable postmortems and run deterministic tabletop/failure-injection exercises with owners, deadlines and verification evidence."
+    ],
+    "prerequisites": [
+      "Stage 10 Topics 1–3 security boundaries",
+      "Stage 10 Topics 4–5 supply chain and tracing",
+      "Stage 10 Topics 6–7 SLOs, reliability and cost controls",
+      "Basic deployment rollback, access control and operational monitoring"
+    ],
+    "glossary": [
+      {
+        "term": "Incident",
+        "definition": "An unplanned event that causes or threatens user impact, security/privacy harm, data integrity loss, policy violation or service degradation."
+      },
+      {
+        "term": "Severity",
+        "definition": "A priority classification based on impact, scope, urgency and risk, not the seniority of the reporter."
+      },
+      {
+        "term": "Incident commander",
+        "definition": "The person coordinating response priorities, roles, decisions and communication during an incident."
+      },
+      {
+        "term": "Containment",
+        "definition": "Actions that limit ongoing harm or blast radius while preserving enough evidence to investigate."
+      },
+      {
+        "term": "Eradication",
+        "definition": "Removal of the underlying cause, such as a compromised credential, poisoned artifact or unsafe configuration."
+      },
+      {
+        "term": "Recovery",
+        "definition": "Restoring service using verified known-good components and monitoring for recurrence."
+      },
+      {
+        "term": "Chain of custody",
+        "definition": "A record of who collected, accessed, transferred or transformed evidence and when."
+      },
+      {
+        "term": "Blameless postmortem",
+        "definition": "A factual review focused on system conditions, contributing factors and corrective actions rather than individual blame."
+      },
+      {
+        "term": "Recovery gate",
+        "definition": "A set of explicit security, quality, data-integrity and reliability checks that must pass before normal traffic resumes."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "AI incidents can affect more than uptime. A prompt-injection exploit may exfiltrate data through tools; a tenant isolation bug may expose another customer's documents; a compromised model artifact may change deployed behavior; an unsafe tool call may mutate production data; and runaway retries can create a denial-of-wallet event. Recovery without a disciplined process can destroy evidence or reintroduce the same failure.",
+    "plainLanguage": "Treat an incident as a coordinated response, not an improvised debugging session. First establish what is happening, who is affected, whether harm is continuing and who is leading the response. Assign an incident commander, an operations lead, a security/privacy lead and a communications owner when the impact warrants it. Keep one timeline and one source of truth for decisions.\n\nSeverity should reflect user impact, data exposure, security risk, scope and urgency. A confirmed cross-tenant data disclosure or active credential compromise may be the highest severity even if the service is still responding. A short regional provider outage with a safe fallback may be lower severity. Define severity levels and escalation targets before an incident; do not improvise them during an outage.\n\nContainment reduces ongoing harm. For a suspected credential leak, revoke and rotate the credential, disable affected integrations and inspect access logs. For a tenant isolation breach, block the affected data path, disable unsafe cache/retrieval paths, revoke exposed links and preserve a list of affected resources. For a compromised model or package, quarantine the artifact and stop promotion. For unsafe tool execution, disable the tool capability or require human approval. For provider failure, open the circuit breaker and shift to an explicitly safe degraded mode. For runaway cost, cap or suspend the expensive workflow and enforce tenant budgets.\n\nPreserve evidence before destructive cleanup where possible. Capture incident IDs, timestamps, trace IDs, deployment and model digests, configuration versions, relevant redacted logs, access decisions, queue identifiers and artifact provenance. Record who collected the evidence and its digest. Avoid copying raw prompts, customer documents, tokens or secrets into broad incident channels. Restrict evidence access, preserve original copies and document any redaction or transformation. If credentials may be exposed, rotate them; do not keep a secret alive solely for forensic convenience.\n\nEradicate the root cause and recover from a known-good state. Roll back to an immutable release digest, restore trusted model/data artifacts, reprocess only validated data, rebuild caches and vector indexes with tenant/ACL checks, and verify credentials and permissions. Do not simply restart a compromised service. Recovery gates should include security regression tests, data integrity, model quality/safety evaluation, tenant isolation, SLO health, cost guardrails and operational monitoring. Use a canary or staged rollout before full traffic resumes.\n\nAfter recovery, write a blameless postmortem. Include impact, detection, timeline, containment, root and contributing causes, what went well, what made response harder, and corrective actions. Every action needs an owner, due date, priority and verification method. Distinguish immediate fixes from systemic improvements such as better telemetry, safer defaults, isolation tests, release attestations, runbooks or alert tuning.\n\nPractice before the real incident. Run tabletop exercises for cross-tenant exposure, compromised model artifacts, prompt injection with tool access, provider outage, queue backlog and denial-of-wallet. Inject failures in a controlled environment, test escalation and communications, and measure time to detect, contain and recover. A runbook that has never been exercised is only a hypothesis.",
+    "mentalModel": "Detect → declare and classify → assign commander/roles → contain blast radius → preserve privacy-aware evidence → eradicate cause → recover from known-good state → validate security/quality/SLO gates → communicate and learn.",
+    "limitations": [
+      "Severity examples are starting points; organizations must define legal, regulatory, contractual and customer-notification obligations with qualified owners.",
+      "Evidence preservation must not delay urgent containment of active harm or credential compromise.",
+      "A simulator demonstrates response logic but cannot determine real breach scope, legal notification duties or forensic attribution.",
+      "Rollback does not automatically restore data integrity, revoke leaked credentials or invalidate cached/signed URLs.",
+      "AI quality incidents can be statistically subtle; recovery requires representative evaluation data and ongoing monitoring, not only a service health check.",
+      "Postmortems should be blameless but still assign clear ownership and deadlines for corrective actions."
+    ],
+    "everydayAnalogy": "When a building alarm sounds, the team first protects people and limits danger, then records what happened, removes the hazard, checks the building before reopening and reviews how to prevent recurrence. Restarting the lights is not the same as proving the building is safe.",
+    "mathMadeSimple": "Track three operational durations: time to detect (TTD), time to contain (TTC) and time to recover (TTR). If an incident begins at 09:00, is detected at 09:12, contained at 09:30 and service is safely restored at 10:15, TTD=12 minutes, TTC=18 minutes after detection, and TTR=45 minutes after containment (75 minutes from incident start). These metrics help improve systems, not rank individuals.",
+    "productionImpact": "Prepare severity definitions, incident roles and category-specific runbooks; contain active harm quickly; preserve redacted verifiable evidence; restore only known-good immutable releases; validate security, data, quality, SLO and cost gates; and turn each incident into owned, testable corrective actions."
+  },
+  "useCase": {
+    "scenario": "A production RAG-agent service receives an alert that a tool integration may have exposed one tenant's document references to another tenant. The service is partially available, logs contain sensitive metadata, a background indexing queue is running and a recent model release changed retrieval behavior. Respond without destroying evidence or reopening the exposure during recovery.",
+    "actors": [
+      "Incident commander",
+      "Service operations lead",
+      "Security/privacy lead",
+      "Application and data owners",
+      "Model and supply-chain owner",
+      "Customer communications owner",
+      "On-call and observability team",
+      "Post-incident action owners"
+    ],
+    "inputs": [
+      "Alert, severity indicators and affected time window",
+      "Trace IDs, request IDs, deployment/model digests and config versions",
+      "Redacted access logs, audit decisions and queue metadata",
+      "Tenant/resource identifiers and access-control outcomes",
+      "Current rollback target and known-good artifact attestations",
+      "Security, quality, SLO and data-integrity recovery checks"
+    ],
+    "constraints": [
+      "Stop active exposure before investigating nonessential details.",
+      "Do not publish raw prompts, documents, credentials or tenant secrets in broad channels.",
+      "Preserve evidence with collection time, source, digest, access history and transformation notes.",
+      "Do not use a mutable tag as a rollback target; use a verified immutable release digest.",
+      "Recovery requires tenant isolation, cache/vector/object, credential and queue checks.",
+      "Do not claim a tool action or customer notification occurred unless verified.",
+      "Every postmortem action has an owner, due date and evidence of completion."
+    ],
+    "outputs": [
+      "Severity and impact assessment",
+      "Containment decisions and affected-resource inventory",
+      "Evidence manifest with redaction and custody metadata",
+      "Known-good recovery plan and verification results",
+      "Customer/internal communication log",
+      "Blameless postmortem and corrective-action register"
+    ],
+    "successMetric": "Exposure is contained quickly, evidence remains trustworthy and privacy-aware, service is restored from a verified release only after recovery gates pass, and corrective actions are owned and tested."
+  },
+  "architecture": {
+    "diagram": "content/topics/incidents/incident-response-lifecycle.mmd",
+    "components": [
+      "Detection and alert correlation",
+      "Severity matrix and incident commander",
+      "Response roles and communication channel",
+      "Category-specific containment controls",
+      "Privacy-aware evidence vault and custody log",
+      "Eradication and known-good release selection",
+      "Security/data/quality/SLO recovery gates",
+      "Staged rollout and live monitoring",
+      "Blameless postmortem and action tracker"
+    ],
+    "dataFlow": [
+      {
+        "from": "Telemetry and security alerts",
+        "to": "Incident intake",
+        "payload": "Alert, trace ID, event time and suspected category",
+        "purpose": "Create a single incident record and establish an initial timeline."
+      },
+      {
+        "from": "Incident intake",
+        "to": "Severity and commander",
+        "payload": "User impact, scope, exposure and urgency",
+        "purpose": "Classify severity and assign response authority and roles."
+      },
+      {
+        "from": "Commander",
+        "to": "Containment controls",
+        "payload": "Approved action, scope and owner",
+        "purpose": "Stop active harm using the narrowest effective control."
+      },
+      {
+        "from": "Responders",
+        "to": "Evidence vault",
+        "payload": "Redacted logs, digests, traces, configs and custody metadata",
+        "purpose": "Preserve evidence with access control and integrity checks."
+      },
+      {
+        "from": "Containment",
+        "to": "Eradication",
+        "payload": "Confirmed cause and affected components",
+        "purpose": "Remove compromised credentials, artifacts, policies or unsafe paths."
+      },
+      {
+        "from": "Eradication",
+        "to": "Recovery gate",
+        "payload": "Known-good immutable release and remediation evidence",
+        "purpose": "Verify security, data, model quality, SLO and cost guardrails."
+      },
+      {
+        "from": "Recovery gate",
+        "to": "Staged rollout",
+        "payload": "Approved recovery decision and canary scope",
+        "purpose": "Restore service gradually while monitoring for recurrence."
+      },
+      {
+        "from": "Incident record",
+        "to": "Postmortem and actions",
+        "payload": "Timeline, impact, decisions and evidence references",
+        "purpose": "Assign systemic improvements and verify completion."
+      }
+    ],
+    "trustBoundaries": [
+      "Incident channels and tickets are not automatically approved locations for customer content or secrets.",
+      "Evidence access is role-based and audited; redaction is recorded without overwriting originals where retention permits.",
+      "Containment actions are scoped and approved according to incident authority; destructive actions require extra care unless active harm requires immediate response.",
+      "Rollback artifacts and model versions must be verified against trusted digests and provenance.",
+      "Customer/legal/regulatory communication is handled by authorized owners with verified facts."
+    ],
+    "failurePaths": [
+      "Unclear ownership: declare an incident commander and record roles before parallel actions begin.",
+      "Active data exfiltration: disable the affected path, revoke links/credentials and stop further access while preserving minimal evidence.",
+      "Artifact compromise: quarantine the digest, stop rollout and restore a known-good signed artifact.",
+      "Evidence contains secrets: restrict access, redact derived copies, rotate exposed credentials and preserve custody metadata.",
+      "Rollback reintroduces old vulnerability: run recovery gates and regression tests before staged traffic.",
+      "Queue replays harmful jobs: pause consumers, preserve queue metadata, deduplicate and revalidate before resuming.",
+      "Postmortem actions lack owners: block closure until owner, due date and verification criteria are recorded."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-10/incidents/incident-scenarios.json",
+    "steps": [
+      {
+        "label": "Detect and declare",
+        "explanation": "Correlate alerts, open an incident record and appoint an incident commander.",
+        "expectedState": "One timeline and clear response ownership."
+      },
+      {
+        "label": "Classify severity",
+        "explanation": "Assess user impact, security/privacy exposure, scope and urgency.",
+        "expectedState": "Severity and escalation path are explicit."
+      },
+      {
+        "label": "Contain active harm",
+        "explanation": "Disable the affected capability, revoke credentials or stop unsafe traffic using the narrowest effective control.",
+        "expectedState": "Blast radius is limited."
+      },
+      {
+        "label": "Preserve evidence",
+        "explanation": "Capture redacted traces, digests, config versions and custody metadata in a restricted evidence store.",
+        "expectedState": "Evidence is verifiable and privacy-aware."
+      },
+      {
+        "label": "Eradicate and recover",
+        "explanation": "Remove the root cause and restore from a known-good immutable release after recovery gates pass.",
+        "expectedState": "Security, data, quality and SLO checks pass."
+      },
+      {
+        "label": "Review and improve",
+        "explanation": "Write a blameless timeline and assign corrective actions with owners and due dates.",
+        "expectedState": "Lessons become tracked engineering work."
+      }
+    ],
+    "accessibility": [
+      "Every stage names the action, decision and expected state in text; severity levels and containment outcomes are not represented by color alone.",
+      "A static lifecycle diagram and step-by-step controls support reduced-motion and keyboard navigation."
+    ],
+    "animation": {
+      "objective": "Walk through a suspected tenant-data exposure from alert to containment, evidence preservation, known-good recovery and blameless corrective actions.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Detect and declare",
+          "narration": "An alert indicates possible cross-tenant document access; create an incident and appoint a commander.",
+          "input": "Security alert and trace references",
+          "transformation": "Correlate alert, deployment and affected time window.",
+          "output": "Incident record and commander",
+          "visualState": "detection"
+        },
+        {
+          "step": 2,
+          "title": "Classify impact",
+          "narration": "Assess whether data was exposed, how many tenants/resources are affected and whether access continues.",
+          "input": "Impact and scope evidence",
+          "transformation": "Apply the severity matrix and escalation policy.",
+          "output": "Severity and response roles",
+          "visualState": "severity"
+        },
+        {
+          "step": 3,
+          "title": "Contain",
+          "narration": "Disable the unsafe retrieval/tool path, revoke exposed links and pause affected consumers.",
+          "input": "Approved containment scope",
+          "transformation": "Stop active access while preserving necessary queue and audit metadata.",
+          "output": "Blast radius contained",
+          "visualState": "containment"
+        },
+        {
+          "step": 4,
+          "title": "Preserve evidence",
+          "narration": "Store redacted logs, trace IDs, release digests and collection metadata in a restricted evidence vault.",
+          "input": "Logs, traces, artifact and config references",
+          "transformation": "Hash evidence and record collector, timestamp and transformations.",
+          "output": "Custody-tracked evidence",
+          "visualState": "evidence"
+        },
+        {
+          "step": 5,
+          "title": "Recover safely",
+          "narration": "Restore a known-good immutable release only after isolation, cache, vector, object and credential checks pass.",
+          "input": "Verified release and recovery checklist",
+          "transformation": "Run security regression, data integrity, quality and SLO gates; canary traffic.",
+          "output": "Approved staged recovery",
+          "visualState": "recovery"
+        },
+        {
+          "step": 6,
+          "title": "Learn and prevent",
+          "narration": "Publish a blameless timeline and assign measurable corrective actions.",
+          "input": "Impact, timeline, decisions and evidence",
+          "transformation": "Create actions with owners, due dates and verification tests.",
+          "output": "Postmortem and action register",
+          "visualState": "postmortem"
+        }
+      ],
+      "controls": [
+        {
+          "name": "incident_category",
+          "min": 0,
+          "max": 4,
+          "defaultValue": 0,
+          "effect": "Select tenant exposure, artifact compromise, provider outage, unsafe tool action or cost runaway to load category-specific containment steps."
+        },
+        {
+          "name": "active_harm",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "Toggle whether harm is ongoing; active harm requires containment before extended investigation."
+        },
+        {
+          "name": "recovery_gates",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 0,
+          "effect": "Toggle whether all security/data/quality/SLO gates pass; recovery cannot complete until required gates pass."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Six narrated stages expose decision inputs, actions and expected outputs. Active-harm, severity and recovery-gate states are explicitly labeled in text."
+    }
+  },
+  "workedExample": {
+    "problem": "At 09:12, security monitoring detects possible cross-tenant document access caused by a recently deployed RAG retrieval adapter. The service remains partially available; indexing workers continue to run; traces and logs contain sensitive metadata.",
+    "input": "Incident begins at 09:00; alert at 09:12; containment at 09:30; safe recovery at 10:15. Suspected affected resource IDs and trace IDs are available; raw prompts and access tokens must not be copied into broad channels.",
+    "steps": [
+      {
+        "operation": "Declare and classify",
+        "reasoning": "Create one incident record, appoint a commander and security/privacy lead, define affected time window and identify possible tenant exposure.",
+        "result": "High-severity security incident with explicit owner and timeline."
+      },
+      {
+        "operation": "Contain the access path",
+        "reasoning": "Disable the affected retrieval/tool capability, pause relevant index consumers and revoke exposed object links while retaining queue metadata.",
+        "result": "New cross-tenant access is blocked; user impact is documented."
+      },
+      {
+        "operation": "Preserve evidence",
+        "reasoning": "Collect redacted access decisions, trace IDs, release/config digests and affected resource references; hash evidence and record collector/time/access.",
+        "result": "Restricted evidence manifest with custody metadata and no raw secrets in incident channels."
+      },
+      {
+        "operation": "Eradicate the cause",
+        "reasoning": "Fix tenant predicate and cache/vector/object ownership checks, rotate any exposed credentials and invalidate unsafe cached entries.",
+        "result": "Root cause removed and regression tests added."
+      },
+      {
+        "operation": "Validate recovery",
+        "reasoning": "Run cross-tenant negative tests, cache/vector/object checks, queue replay review, data integrity, model quality and SLO gates.",
+        "result": "Recovery is blocked until every required gate passes."
+      },
+      {
+        "operation": "Restore and learn",
+        "reasoning": "Deploy the known-good immutable digest via canary, monitor for recurrence and publish a blameless postmortem with owners and due dates.",
+        "result": "Safe recovery at 10:15; TTD=12 minutes, TTC=18 minutes and recovery after containment=45 minutes."
+      }
+    ],
+    "expectedOutput": "The incident is contained by 09:30, evidence is preserved with privacy controls, the root cause is eradicated, and traffic is restored at 10:15 only after security and reliability gates pass. A postmortem assigns verified corrective actions."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-10/incidents/incident_engine.py",
+      "runCommand": "python examples/stage-10/incidents/incident_engine.py",
+      "testsPath": "examples/stage-10/test_incidents.py",
+      "expectedResult": "Offline incident simulator classifies severity, selects category-specific containment, validates lifecycle transitions, hashes redacted evidence and checks recovery/postmortem gates."
+    },
+    {
+      "language": "other",
+      "role": "production",
+      "path": "examples/stage-10/incidents/README.md",
+      "runCommand": "python -m unittest discover -s examples/stage-10 -p 'test_*.py' -v",
+      "testsPath": "examples/stage-10/test_incidents.py",
+      "expectedResult": "Production guide defines incident roles, escalation, evidence custody, safe rollback, recovery gates, communications and blameless postmortems."
+    }
+  ],
+  "failures": [
+    {
+      "name": "No incident commander or shared timeline",
+      "symptom": "Responders perform conflicting actions and impact estimates differ across channels.",
+      "rootCause": "The incident is handled as ad-hoc debugging without ownership, roles or a canonical record.",
+      "recovery": "Declare an incident, appoint a commander, assign technical/security/communications roles and maintain one timestamped timeline.",
+      "regressionTest": "A simulated incident cannot move to containment until commander and severity are recorded."
+    },
+    {
+      "name": "Containment delayed by investigation",
+      "symptom": "Data exposure, unsafe tool execution or runaway spend continues while teams gather more detail.",
+      "rootCause": "Responders prioritize root-cause certainty over stopping active harm.",
+      "recovery": "Apply the narrowest safe containment first, then continue investigation with preserved evidence.",
+      "regressionTest": "Active-harm scenario requires a containment action before eradication or recovery."
+    },
+    {
+      "name": "Evidence copied with secrets or overwritten",
+      "symptom": "Incident ticket contains raw prompts, credentials or customer documents; original logs are lost.",
+      "rootCause": "Evidence handling lacks redaction, access control, hashing and custody metadata.",
+      "recovery": "Restrict originals, create redacted derived copies, rotate exposed credentials and record collection/transformation history.",
+      "regressionTest": "Evidence manifest requires digest, source, collector, timestamp and redaction status."
+    },
+    {
+      "name": "Rollback to unverified artifact",
+      "symptom": "Service returns but compromised or vulnerable model/image is redeployed.",
+      "rootCause": "Rollback uses mutable tags or an artifact whose provenance was not checked.",
+      "recovery": "Select a known-good immutable digest and verify signature/provenance before staged rollout.",
+      "regressionTest": "Recovery gate rejects unsigned or untrusted rollback artifact."
+    },
+    {
+      "name": "Recovery skips tenant or quality checks",
+      "symptom": "Service resumes while cross-tenant access, stale cache or model-quality regression remains.",
+      "rootCause": "Recovery is treated as restarting processes rather than proving system invariants.",
+      "recovery": "Run security, data integrity, quality/safety, SLO and cost gates before canary and full traffic.",
+      "regressionTest": "A failed tenant-isolation or quality gate prevents recovery completion."
+    },
+    {
+      "name": "Queue replays harmful work",
+      "symptom": "Paused jobs execute after restart and repeat unsafe tool calls or data mutations.",
+      "rootCause": "Queue state, idempotency and authorization are not reviewed before consumers resume.",
+      "recovery": "Preserve queue evidence, quarantine affected messages, deduplicate and revalidate tenant/actor/resource authorization.",
+      "regressionTest": "A forged or duplicate job is denied before side effects after recovery."
+    },
+    {
+      "name": "Postmortem actions are not actionable",
+      "symptom": "The same incident recurs and review notes contain vague actions without completion evidence.",
+      "rootCause": "Actions lack an owner, due date, priority or verification method.",
+      "recovery": "Create specific corrective actions with accountable owners, dates and regression/monitoring evidence.",
+      "regressionTest": "Postmortem cannot be finalized with ownerless or undated actions."
+    }
+  ],
+  "practice": {
+    "guided": "Run the incident simulator for a tenant exposure. Classify severity, select containment, add redacted evidence, attempt recovery with a failed gate, then pass the security/data/quality/SLO gates and complete a postmortem.",
+    "independent": "Add a model supply-chain compromise scenario. Quarantine the artifact, stop promotion, identify deployments by digest, restore a trusted release, verify provenance and quality, and record customer-impact scope without copying sensitive prompts.",
+    "realWorld": "Write an incident runbook for a multi-tenant RAG-agent service. Cover tenant exposure, prompt injection with tool exfiltration, compromised model artifacts, provider outage, unsafe tool action and denial-of-wallet. Define roles, severity, containment, evidence, recovery gates and communications.",
+    "expertExtension": "Run quarterly game days, add automated kill switches, evidence retention/chain-of-custody integration, incident-specific recovery SLOs, customer impact reconciliation, canary recovery gates, and postmortem action aging/escalation.",
+    "guidedExercise": {
+      "title": "Build a lifecycle-gated incident manager",
+      "instructions": "Implement legal state transitions, category-specific containment and recovery gates. Prevent resolution until evidence, remediation and verification are recorded.",
+      "starterCode": "def transition(incident, next_state, evidence):\n    raise NotImplementedError",
+      "solutionCode": "ALLOWED = {'DETECTED': 'TRIAGED', 'TRIAGED': 'CONTAINED', 'CONTAINED': 'ERADICATED', 'ERADICATED': 'RECOVERING', 'RECOVERING': 'RESOLVED', 'RESOLVED': 'REVIEWED'}\ndef transition(incident, next_state, evidence):\n    if ALLOWED.get(incident.status) != next_state:\n        raise ValueError('INVALID_TRANSITION')\n    if next_state in {'CONTAINED', 'RESOLVED'} and not evidence:\n        raise ValueError('EVIDENCE_REQUIRED')\n    incident.status = next_state\n    return incident",
+      "unitTests": "assert transition(incident, 'TRIAGED', evidence).status == 'TRIAGED'\nassert recovery_gate({'tenant_isolation': False}) == (False, 'RECOVERY_GATE_FAILED')\nassert postmortem_action(owner=None, due_date=None).valid is False"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build an AI incident-response workbench that classifies severity, guides containment, preserves redacted evidence, validates recovery gates and tracks blameless corrective actions.",
+      "steps": [
+        "Create synthetic incidents for tenant exposure, artifact compromise, provider outage, unsafe tool execution and cost runaway.",
+        "Classify severity from impact, exposure, scope and urgency.",
+        "Assign commander and response roles and create a canonical timeline.",
+        "Apply category-specific containment actions before deep investigation when harm is active.",
+        "Collect evidence with digest, source, collector, timestamp, access and redaction metadata.",
+        "Run eradication and recovery gates for security, data, model quality, SLO and cost.",
+        "Restore a known-good immutable release through a canary and monitor recurrence.",
+        "Generate a postmortem with owners, due dates and verification criteria."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "What is the first priority when active data exfiltration is confirmed?",
+        "options": [
+          "Contain the active access path",
+          "Write the final postmortem",
+          "Wait for full root cause",
+          "Delete all logs"
+        ],
+        "correctIndex": 0,
+        "explanation": "Stop ongoing harm with the narrowest effective containment while preserving enough evidence for investigation."
+      },
+      {
+        "question": "What should a rollback target identify?",
+        "options": [
+          "Verified immutable artifact digest",
+          "Mutable latest tag",
+          "Unreviewed branch name",
+          "Local file name only"
+        ],
+        "correctIndex": 0,
+        "explanation": "An immutable verified digest ensures recovery restores known-good bytes with trusted provenance rather than an artifact that may have changed."
+      },
+      {
+        "question": "What belongs in an evidence custody record?",
+        "options": [
+          "Source, collector, time and digest",
+          "Only a screenshot",
+          "A copied raw secret",
+          "An unverified summary"
+        ],
+        "correctIndex": 0,
+        "explanation": "Evidence must be attributable and integrity-verifiable; record source, collector, timestamp, digest, access and transformations."
+      },
+      {
+        "question": "When should normal traffic resume?",
+        "options": [
+          "After required recovery gates pass",
+          "As soon as the process restarts",
+          "Before tenant tests",
+          "When the alert disappears"
+        ],
+        "correctIndex": 0,
+        "explanation": "Recovery requires security, data-integrity, quality, SLO and operational checks before staged rollout and full traffic."
+      },
+      {
+        "question": "What makes a postmortem action actionable?",
+        "options": [
+          "Owner, due date and verification",
+          "A vague intention",
+          "No assigned owner",
+          "Only a meeting note"
+        ],
+        "correctIndex": 0,
+        "explanation": "Corrective actions need an accountable owner, deadline and evidence that the control or regression test was completed."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Severity and incident coordination",
+        "weight": 20,
+        "evidence": "Classifies impact and assigns commander, roles and a canonical timeline."
+      },
+      {
+        "criterion": "Containment and evidence preservation",
+        "weight": 25,
+        "evidence": "Stops active harm and preserves redacted, integrity-verifiable evidence with custody metadata."
+      },
+      {
+        "criterion": "Eradication and safe recovery",
+        "weight": 25,
+        "evidence": "Uses known-good immutable artifacts and passes security, data, quality, SLO and cost gates."
+      },
+      {
+        "criterion": "Communication and postmortem",
+        "weight": 15,
+        "evidence": "Communicates verified impact and produces a blameless review with owned corrective actions."
+      },
+      {
+        "criterion": "Exercises and recurrence prevention",
+        "weight": 15,
+        "evidence": "Tests incident scenarios, measures response time and adds regression/monitoring evidence."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Severity and incident commander are recorded before coordinated response.",
+      "Active-harm scenarios apply containment before extended investigation.",
+      "Evidence includes source, collector, timestamp, digest and redaction status.",
+      "Recovery is blocked by any failed security/data/quality/SLO gate.",
+      "Rollback uses a verified immutable release digest.",
+      "Postmortem actions have owner, due date and verification evidence."
+    ]
+  },
+  "references": [
+    {
+      "title": "NIST SP 800-61 Rev. 2 — Computer Security Incident Handling Guide",
+      "url": "https://csrc.nist.gov/pubs/sp/800/61/r2/final",
+      "sourceType": "standard",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "Google SRE Book — Managing Incidents",
+      "url": "https://sre.google/sre-book/managing-incidents/",
+      "sourceType": "book",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "Google SRE Workbook — Postmortem Culture",
+      "url": "https://sre.google/workbook/postmortem-culture/",
+      "sourceType": "book",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "OWASP Incident Response Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Incident_Response_Cheat_Sheet.html",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "NIST AI Risk Management Framework",
+      "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+      "sourceType": "standard",
+      "checkedOn": "2026-11-22"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "incident = incident_store.open(alert, detected_at=now, correlation_ids=trace_ids)",
+      "explanation": "Create one incident record with a canonical timeline and correlation references rather than scattering facts across chat threads."
+    },
+    {
+      "lines": "severity = severity_policy.classify(user_impact, data_exposure, scope, urgency)",
+      "explanation": "Classify by user and security impact, not by service status or who reported the issue."
+    },
+    {
+      "lines": "containment = runbook.for_category(incident.category).contain(scope)",
+      "explanation": "Apply the narrowest effective containment to stop active harm while preserving required evidence."
+    },
+    {
+      "lines": "evidence = evidence_vault.collect(redacted_sources, digest=True, custody=True)",
+      "explanation": "Preserve integrity-verifiable evidence with source, collector, timestamp, access and transformation metadata."
+    },
+    {
+      "lines": "release = registry.resolve_known_good_immutable_digest(incident.rollback_target)",
+      "explanation": "Select a previously verified release by immutable digest, not a mutable tag or unreviewed branch."
+    },
+    {
+      "lines": "recovery_gate.require(security=True, data=True, quality=True, slo=True, cost=True)",
+      "explanation": "Do not restore normal traffic until required security, data, AI quality, reliability and budget checks pass."
+    },
+    {
+      "lines": "postmortem.add_action(owner, due_date, verification_test)",
+      "explanation": "Convert lessons into accountable corrective actions with measurable evidence of completion."
+    }
+  ]
+}
