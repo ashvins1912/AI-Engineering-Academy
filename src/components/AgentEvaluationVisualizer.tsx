@@ -1,5 +1,5 @@
 import {useEffect,useState} from 'react'
-import {ArrowLeft,ArrowRight,Pause,Play,RotateCcw,Activity,ShieldCheck,Timer,Database} from 'lucide-react'
+import {ArrowLeft,ArrowRight,Pause,Play,RotateCcw,Activity,ShieldCheck,Database} from 'lucide-react'
 import lesson from '../../content/topics/agent-eval/lesson.json'
 import fixture from '../../examples/stage-06/fixtures/agent-evaluation.json'
 export default function AgentEvaluationVisualizer(){
