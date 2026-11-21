@@ -242,7 +242,7 @@
           "step": 4,
           "title": "Rank and fit the context",
           "narration": "A simple score combines relevance, reliability and recency. The assembler selects the highest-value evidence while staying under 120 tokens.",
-          "input": "A=0.925/25 tokens; B=0.650/50; C=0.855/35",
+          "input": "A=0.955/25 tokens; B=0.650/80; C=0.855/35",
           "transformation": "Score=0.5 relevance + 0.3 reliability + 0.2 recency; greedily fit the budget",
           "output": "A+C selected for 60 tokens; B excluded",
           "visualState": "Selected evidence fills the budget meter with source IDs"
@@ -293,7 +293,7 @@
   },
   "workedExample": {
     "problem": "Select authorized memory records for a support request while respecting relevance, reliability, recency and a token budget.",
-    "input": "Budget=120 tokens. A: relevance .95, reliability 1.0, recency .9, cost 25. B: .80, .70, .30, cost 50. C: .85, .95, .80, cost 35.",
+    "input": "Budget=120 tokens. A: relevance .95, reliability 1.0, recency .9, cost 25. B: .80, .70, .30, cost 80. C: .85, .95, .80, cost 35.",
     "steps": [
       {
         "operation": "Filter before ranking",
@@ -303,7 +303,7 @@
       {
         "operation": "Calculate candidate scores",
         "reasoning": "Use teaching score 0.5×relevance + 0.3×reliability + 0.2×recency.",
-        "result": "A=.925; B=.650; C=.855."
+        "result": "A=.955; B=.650; C=.855."
       },
       {
         "operation": "Fit token budget",
