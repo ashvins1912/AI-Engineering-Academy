@@ -32,5 +32,32 @@
     "Agent Card securitySchemes",
     "per-request authentication",
     "tenant/task authorization"
-  ]
+  ],
+  "agentCard": {
+    "protocolVersion": "1.0.0",
+    "name": "Refund Specialist Agent",
+    "supportedInterfaces": [
+      {
+        "url": "https://refund-agent.example.com/a2a",
+        "protocolBinding": "JSONRPC",
+        "protocolVersion": "1.0.0"
+      }
+    ],
+    "capabilities": {
+      "streaming": true,
+      "pushNotifications": false
+    },
+    "skills": [
+      {
+        "id": "refund-review",
+        "name": "Refund review"
+      }
+    ],
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
 }
