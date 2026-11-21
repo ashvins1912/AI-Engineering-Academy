@@ -36,7 +36,9 @@ def simulate_canary(stable, candidate, policy, observations):
             return {"status": "rolled_back", "active_release": stable["release_id"], "candidate_weight_percent": 0, "history": history}
         if result["decision"] == "hold":
             return {"status": "held", "active_release": stable["release_id"], "candidate_weight_percent": 0, "history": history}
-    return {"status": "promoted", "active_release": candidate["release_id"], "candidate_weight_percent": weights[-1] if history else 0, "history": history}
+    if len(history) < len(weights):
+        return {"status": "held", "active_release": stable["release_id"], "candidate_weight_percent": 0, "reason": "incomplete rollout observations", "history": history}
+    return {"status": "promoted", "active_release": candidate["release_id"], "candidate_weight_percent": weights[-1], "history": history}
 
 
 def blue_green_switch(active_release, candidate_release, candidate_healthy):
