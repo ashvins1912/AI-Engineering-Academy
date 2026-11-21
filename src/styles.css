@@ -893,3 +893,32 @@
 .mcp-ops-ledger>div span{color:#94a5c0}
 .mcp-ops-ledger>div b{font:10px 'DM Mono';color:#dbe4ff;text-align:right;overflow-wrap:anywhere}
 @media(max-width:760px){.mcp-ops-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.mcp-ops-controls{grid-template-columns:1fr}}
+
+/* Stage 7 Topic 3 — MRTR and Tasks extension workbench */
+.mcp-advanced-panels{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+.mcp-advanced-panels article{display:grid;gap:8px;min-width:0;border:1px solid #2b3a55;border-radius:11px;background:#101a2b;padding:12px}
+.mcp-advanced-panels article>strong{display:flex;align-items:center;gap:7px;color:#e0e7f7;font-size:12px}
+.mcp-advanced-panels article>small{font-size:10px;color:#94a5c0;overflow-wrap:anywhere}
+.mcp-advanced-panels article>p{font-size:10px;color:#aab8d0;margin:0}
+.mcp-advanced-token{display:grid;gap:4px;border:1px solid #354565;border-radius:8px;padding:9px;background:#0e1728}
+.mcp-advanced-token span{font:9px 'DM Mono';color:#8e9fba}
+.mcp-advanced-token b{font-size:10px;color:#dbe4ff;overflow-wrap:anywhere}
+.mcp-advanced-panels label{display:grid;gap:6px;font-size:10px;color:#aab8d0}
+.mcp-advanced-panels label span{display:flex;justify-content:space-between}
+.mcp-advanced-panels label b{font:10px 'DM Mono';color:#dce5ff}
+.mcp-advanced-panels input[type=range]{width:100%;accent-color:#91a2ff}
+.mcp-advanced-panels label:has(input[type=checkbox]){display:flex;align-items:flex-start;gap:8px}
+.mcp-advanced-panels input[type=checkbox]{accent-color:#91a2ff;flex:none}
+.mcp-advanced-panels select{background:#111b2d;color:#e0e7f7;border:1px solid #405171;border-radius:7px;padding:7px}
+.mcp-advanced-panels article>b{font:10px 'DM Mono'}
+.mcp-advanced-panels article>b.pass{color:#a4d5b8}
+.mcp-advanced-panels article>b.fail{color:#f0a1a1}
+.mcp-advanced-actions{display:flex;flex-wrap:wrap;gap:6px}
+.mcp-advanced-actions button{border:1px solid #405171;border-radius:7px;background:#1a2945;color:#dce5fa;padding:7px 8px;font-size:9px;cursor:pointer}
+.mcp-advanced-actions button:disabled{opacity:.4;cursor:not-allowed}
+.mcp-advanced-deprecation{display:grid;gap:8px;border:1px solid #5a4b2c;border-radius:11px;background:#211d13;padding:13px;margin:14px 0}
+.mcp-advanced-deprecation>strong{display:flex;align-items:center;gap:7px;color:#f0d9a8;font-size:12px}
+.mcp-advanced-deprecation label{display:flex;align-items:center;gap:8px;font-size:10px;color:#d2c4a6}
+.mcp-advanced-deprecation input{accent-color:#d9b66f}
+.mcp-advanced-deprecation ul{margin:0;padding-left:18px;color:#d2c4a6;font-size:10px;line-height:1.7}
+@media(max-width:760px){.mcp-advanced-panels{grid-template-columns:1fr}}
