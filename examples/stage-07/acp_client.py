@@ -2,9 +2,19 @@
 from pathlib import PurePosixPath
 import posixpath
 import itertools
+import base64
 
 PROTOCOL_VERSION = 2
 TERMINAL_TOOL_STATES = {"completed", "failed", "cancelled"}
+
+def validate_jsonrpc_message(message):
+    if isinstance(message, list) or not isinstance(message, dict):
+        raise ValueError("ACP v2 does not accept JSON-RPC batch arrays")
+    if message.get("jsonrpc") != "2.0" or not isinstance(message.get("method"), str):
+        raise ValueError("invalid JSON-RPC request")
+    if "id" in message and (message["id"] is None or isinstance(message["id"], bool) or not isinstance(message["id"], (str, int))):
+        raise ValueError("request ID must be a string or integer")
+    return True
 
 class ACPConnection:
     def __init__(self, supported_versions=(2,)):
@@ -136,6 +146,12 @@ class ACPConnection:
         session["tool_calls"][tool_call_id] = item
         return dict(item)
 
+    def tool_call_content_chunk(self, session_id, tool_call_id, content):
+        session = self._session(session_id)
+        call = session["tool_calls"].setdefault(tool_call_id, {"toolCallId":tool_call_id,"status":"pending","cancelSupported":False,"content":[]})
+        call.setdefault("content", []).append(dict(content))
+        return len(call["content"])
+
     def tool_call_cancel(self, session_id, tool_call_id):
         session = self._session(session_id)
         call = session["tool_calls"].get(tool_call_id)
@@ -175,6 +191,18 @@ class ACPConnection:
         cwd = str(self._workspace_path(cwd, session["roots"]))
         session.setdefault("terminals", {})[terminal_id] = {"command":command,"cwd":cwd,"cancelSupported":True,"exitStatus":None}
         return {"terminalId":terminal_id,"command":command,"cwd":cwd}
+
+    def terminal_output_chunk(self, session_id, terminal_id, encoded_chunk):
+        session = self._session(session_id)
+        terminal = session.get("terminals", {}).get(terminal_id)
+        if not terminal:
+            raise KeyError("terminal not found")
+        try:
+            chunk = base64.b64decode(encoded_chunk, validate=True)
+        except Exception as exc:
+            raise ValueError("terminal output chunk must be valid base64") from exc
+        terminal.setdefault("output", bytearray()).extend(chunk)
+        return bytes(terminal["output"])
 
     def terminal_cancel(self, session_id, terminal_id):
         session = self._session(session_id)
