@@ -1,0 +1,596 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "serving",
+    "title": "Model Serving and Inference Optimization — vLLM, batching, KV cache and quantization",
+    "stage": 9,
+    "estimatedMinutes": 300
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Explain tokenization, prefill, decode, streaming and the model-serving request lifecycle.",
+      "Compare vLLM, TGI and Ollama by deployment target, batching, hardware and operational needs.",
+      "Calculate KV-cache memory and concurrency ceilings from model dimensions, precision and token counts.",
+      "Design continuous batching, bounded queues, admission control, deadlines and cancellation.",
+      "Evaluate quantization trade-offs across memory, throughput, latency and output quality.",
+      "Benchmark TTFT, inter-token latency, p50/p95, throughput, queue wait and GPU memory.",
+      "Diagnose OOM, head-of-line blocking, low utilization, long prompts and streaming disconnects."
+    ],
+    "prerequisites": [
+      "Transformer attention, tokenization and autoregressive decoding",
+      "Python, HTTP APIs, concurrency and memory units",
+      "Stage 9 containers, CI/CD and Kubernetes scheduling"
+    ],
+    "glossary": [
+      {
+        "term": "Prefill",
+        "definition": "Processes prompt tokens and creates the initial attention key/value state."
+      },
+      {
+        "term": "Decode",
+        "definition": "Generates subsequent tokens autoregressively while reusing KV cache."
+      },
+      {
+        "term": "KV cache",
+        "definition": "Stores prior attention keys and values to avoid recomputing all earlier token projections."
+      },
+      {
+        "term": "Continuous batching",
+        "definition": "Dynamically adds and removes sequences at execution iteration boundaries."
+      },
+      {
+        "term": "TTFT",
+        "definition": "Time from request acceptance until the first generated token is delivered."
+      },
+      {
+        "term": "Inter-token latency",
+        "definition": "Elapsed time between consecutive generated tokens after the first."
+      },
+      {
+        "term": "Quantization",
+        "definition": "Represents weights or activations with fewer bits, trading memory for possible quality or speed changes."
+      },
+      {
+        "term": "Admission control",
+        "definition": "Accepts work only when queue, memory and latency budgets can safely accommodate it."
+      },
+      {
+        "term": "PagedAttention",
+        "definition": "Allocates KV cache in blocks to reduce fragmentation and support flexible sequence scheduling."
+      },
+      {
+        "term": "Head-of-line blocking",
+        "definition": "A long request delays shorter requests behind it in a shared queue or batch."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "Notebook inference does not solve multi-user serving. Production must coordinate GPU memory, prompt processing, decode, queueing, batching, streaming, fairness and overload behavior.",
+    "plainLanguage": "A serving engine is a traffic controller around a model. Tokenization turns text into token IDs. Prefill processes the prompt and creates key/value cache entries. Decode predicts one token at a time while reusing that cache. The server streams output while scheduling many active sequences.\n\nStatic batching waits for a fixed group and can make short requests wait for long ones. Continuous batching schedules at iteration boundaries: finished sequences leave and new sequences enter when capacity permits. This improves utilization but still needs fairness, queue caps and cancellation.\n\nKV cache is a major concurrency budget. For a conventional decoder, approximate bytes per token = 2 × layers × KV heads × head dimension × bytes per element. Multiply by all cached tokens and active sequences. Grouped-query attention changes KV-head count. Paged allocation, prefix sharing and quantized cache can change actual use. Reserve memory for weights, activations, temporary buffers, CUDA graphs and fragmentation.\n\nA 7B-parameter model at 16-bit weights needs about 14 GB decimal for raw weights; 4-bit raw weights need about 3.5 GB before scales, metadata and runtime overhead. Quantization does not guarantee faster inference: kernel support, hardware, batch shape and memory bandwidth matter. Compare output quality on representative evaluations.\n\nMeasure queue wait, TTFT, inter-token latency, end-to-end p50/p95/p99, input/output tokens per second, GPU utilization, allocated/reserved memory, OOMs, cancellations and rejections. Pin model, runtime, hardware, precision, prompt distribution, output cap, concurrency and warmup. A benchmark without workload metadata is not reproducible.\n\nvLLM is a common high-throughput GPU serving choice with continuous batching and PagedAttention. TGI offers a production text-generation server with batching and streaming. Ollama is convenient for local model packaging and developer workflows. Confirm architecture, model license, quantization, GPU/driver compatibility, security patch cadence and observability before selection.\n\nBound request size, prompt/output tokens, active sequences, queue length and deadlines. Propagate cancellation and per-tenant quotas. When full, return clear retryable overload (for example HTTP 429 with Retry-After), not unbounded work that later crashes the process.",
+    "mentalModel": "HTTP → auth and token validation → bounded admission → tokenizer → prefill → KV cache → continuous decode → streaming → release resources → metrics.",
+    "limitations": [
+      "Memory formulas are estimates; runtime allocators, kernels and parallelism affect actual use.",
+      "Larger batches can improve throughput while worsening queue wait, TTFT and tail latency.",
+      "Quantization can reduce quality and may not accelerate unsupported kernels or hardware.",
+      "Benchmark comparisons require identical workload and hardware metadata.",
+      "The local simulator teaches queue trade-offs but cannot predict GPU kernel performance.",
+      "Client cancellation must release queued and active work safely."
+    ],
+    "everydayAnalogy": "A GPU is a finite-capacity kitchen. Prefill prepares an order, decode plates tokens one by one, continuous batching lets the expediter insert new tickets as stations free up, and KV cache is limited counter space.",
+    "mathMadeSimple": "For 32 layers, 8 KV heads, head dimension 128 and FP16 cache: 2 × 32 × 8 × 128 × 2 = 131,072 bytes = 128 KiB/token. A 4,096-token sequence uses about 512 MiB; eight need 4 GiB before weights and runtime reserve.",
+    "productionImpact": "Publish workload-aware SLOs, bound memory and queue growth, protect tenant fairness, stream with cancellation, and choose model/precision/engine/hardware from repeatable benchmark evidence."
+  },
+  "useCase": {
+    "scenario": "Serve a decoder-only model behind an authenticated streaming API. Estimate KV cache, enforce queue and token budgets, and benchmark fixed prompt fixtures without requiring GPU hardware or paid infrastructure.",
+    "actors": [
+      "API gateway",
+      "Tokenizer",
+      "Admission controller",
+      "Inference engine",
+      "GPU scheduler",
+      "Streaming client",
+      "Metrics collector"
+    ],
+    "inputs": [
+      "32 layers, 8 KV heads, head dimension 128",
+      "FP16 cache element size: 2 bytes",
+      "Prompt lengths 128 and 512 tokens",
+      "Output cap 128 tokens",
+      "Concurrency 1, 4 and 8",
+      "Queue cap and request deadline"
+    ],
+    "constraints": [
+      "Bound active sequences and waiting requests.",
+      "Reject excessive prompt and output token budgets before admission.",
+      "Reserve memory for weights and runtime overhead.",
+      "Propagate cancellation and release cache on every terminal path.",
+      "No cloud account, model weights, GPU or paid API is required for this lab.",
+      "Label synthetic simulator values as proxies, not GPU measurements."
+    ],
+    "outputs": [
+      "KV-cache estimate and concurrency ceiling",
+      "Benchmark matrix with latency and throughput proxies",
+      "Admission and overload behavior",
+      "Cancellation and long-prompt regression evidence",
+      "Engine-selection decision record"
+    ],
+    "successMetric": "All deterministic tests pass; queue and memory bounds hold under stress; reports identify synthetic metrics and workload assumptions."
+  },
+  "architecture": {
+    "diagram": "content/topics/serving/serving-request-flow.mmd",
+    "components": [
+      "HTTP gateway and auth",
+      "Token budget validator",
+      "Bounded admission queue",
+      "Tokenizer",
+      "Inference scheduler",
+      "Prefill and KV cache",
+      "Continuous decode batcher",
+      "Streaming writer",
+      "Metrics exporter"
+    ],
+    "dataFlow": [
+      {
+        "from": "Client",
+        "to": "Gateway",
+        "payload": "prompt and generation limits",
+        "purpose": "Authenticate and validate request."
+      },
+      {
+        "from": "Gateway",
+        "to": "Admission",
+        "payload": "token counts and deadline",
+        "purpose": "Reject work exceeding queue or memory budget."
+      },
+      {
+        "from": "Admission",
+        "to": "Scheduler",
+        "payload": "accepted sequence",
+        "purpose": "Schedule fairly."
+      },
+      {
+        "from": "Scheduler",
+        "to": "KV cache",
+        "payload": "key/value blocks",
+        "purpose": "Reserve and release attention memory."
+      },
+      {
+        "from": "Decode",
+        "to": "Client",
+        "payload": "streamed token deltas",
+        "purpose": "Deliver incremental output."
+      },
+      {
+        "from": "Runtime",
+        "to": "Metrics",
+        "payload": "TTFT, ITL, tokens/sec and memory",
+        "purpose": "Measure SLOs without raw prompts."
+      }
+    ],
+    "trustBoundaries": [
+      "Clients cannot set internal priority or bypass tenant quotas.",
+      "Verify model artifacts and tokenizer files before loading.",
+      "Redact prompts, credentials and personal data from metrics.",
+      "The simulator does not contact a model provider or GPU."
+    ],
+    "failurePaths": [
+      "Queue full returns bounded retryable overload.",
+      "Long prompt rejected when token or cache budget is exceeded.",
+      "Cache allocation failure releases partial reservations.",
+      "Client disconnect cancels work and frees resources.",
+      "Slow decode triggers deadline and fairness controls.",
+      "Unsupported engine/model blocks readiness."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-09/serving/benchmark.json",
+    "steps": [
+      {
+        "label": "Validate request",
+        "explanation": "Count prompt tokens and validate output budget and deadline.",
+        "expectedState": "request=valid"
+      },
+      {
+        "label": "Admit work",
+        "explanation": "Check active, queue and estimated cache capacity.",
+        "expectedState": "queue<=cap; cache<=budget"
+      },
+      {
+        "label": "Prefill",
+        "explanation": "Process prompt tokens and allocate initial KV cache.",
+        "expectedState": "phase=prefill"
+      },
+      {
+        "label": "Decode",
+        "explanation": "Generate tokens while continuous batching changes active sequences.",
+        "expectedState": "phase=decode"
+      },
+      {
+        "label": "Stream and cancel",
+        "explanation": "Deliver token deltas and release resources after completion or disconnect.",
+        "expectedState": "resources=released"
+      },
+      {
+        "label": "Measure",
+        "explanation": "Compare TTFT, ITL, p95, throughput and memory.",
+        "expectedState": "report=reproducible"
+      }
+    ],
+    "accessibility": [
+      "Each animation step includes a textual explanation and expected state.",
+      "Numeric controls expose current values and units.",
+      "Benchmark output remains readable without color or animation."
+    ],
+    "animation": {
+      "objective": "Change prompt length, concurrency and queue limits to observe KV pressure, throughput and overload.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Request arrives",
+          "narration": "Client sends prompt and bounded generation parameters.",
+          "input": "prompt=512; max_new=128",
+          "transformation": "tokenize and validate",
+          "output": "request=valid",
+          "visualState": "Validated"
+        },
+        {
+          "step": 2,
+          "title": "Admission",
+          "narration": "Check active sequence, queue and memory budget.",
+          "input": "active=4; queue=1",
+          "transformation": "reserve cache or reject",
+          "output": "admission=bounded",
+          "visualState": "Capacity reserved"
+        },
+        {
+          "step": 3,
+          "title": "Prefill",
+          "narration": "Process prompt tokens and create attention cache.",
+          "input": "prompt_tokens=512",
+          "transformation": "prompt attention",
+          "output": "cache=allocated",
+          "visualState": "Prompt processed"
+        },
+        {
+          "step": 4,
+          "title": "Decode",
+          "narration": "Generate next tokens while continuous batching admits new work.",
+          "input": "active=4",
+          "transformation": "decode iteration",
+          "output": "batch=dynamic",
+          "visualState": "Batch active"
+        },
+        {
+          "step": 5,
+          "title": "Release",
+          "narration": "Stream output and free resources on completion or cancellation.",
+          "input": "client=connected",
+          "transformation": "emit token and release",
+          "output": "cache_released=true",
+          "visualState": "Completed"
+        },
+        {
+          "step": 6,
+          "title": "Tune",
+          "narration": "Compare latency and throughput across controlled concurrency.",
+          "input": "concurrency=1,4,8",
+          "transformation": "aggregate measurements",
+          "output": "report=ready",
+          "visualState": "Benchmark report"
+        }
+      ],
+      "controls": [
+        {
+          "name": "prompt_tokens",
+          "min": 128,
+          "max": 4096,
+          "defaultValue": 512,
+          "effect": "Raises cache reservation and prefill work."
+        },
+        {
+          "name": "concurrency",
+          "min": 1,
+          "max": 16,
+          "defaultValue": 4,
+          "effect": "Raises active sequence memory and can saturate throughput."
+        },
+        {
+          "name": "queue_limit",
+          "min": 0,
+          "max": 32,
+          "defaultValue": 8,
+          "effect": "Bounds waiting work; excess requests are rejected."
+        },
+        {
+          "name": "batch_capacity",
+          "min": 1,
+          "max": 16,
+          "defaultValue": 8,
+          "effect": "Limits active decode batch size."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Text exposes prompt tokens, concurrency, queue limit, cache estimate and admission outcome."
+    }
+  },
+  "workedExample": {
+    "problem": "Estimate KV-cache memory and decide whether eight concurrent sequences fit a 4 GiB cache budget.",
+    "input": "32 layers, 8 KV heads, head dimension 128, FP16 element=2 bytes, 4,096 tokens per sequence, concurrency=8.",
+    "steps": [
+      {
+        "operation": "Bytes per token",
+        "reasoning": "2 × 32 × 8 × 128 × 2.",
+        "result": "131,072 bytes = 128 KiB"
+      },
+      {
+        "operation": "One sequence",
+        "reasoning": "128 KiB × 4,096 tokens.",
+        "result": "512 MiB"
+      },
+      {
+        "operation": "Eight sequences",
+        "reasoning": "512 MiB × 8.",
+        "result": "4 GiB KV cache"
+      },
+      {
+        "operation": "Reserve overhead",
+        "reasoning": "Weights, activations and temporary buffers still need memory.",
+        "result": "No safe headroom remains"
+      },
+      {
+        "operation": "Choose policy",
+        "reasoning": "Reduce concurrency/context or use a measured cache strategy.",
+        "result": "Reject or defer before physical OOM"
+      }
+    ],
+    "expectedOutput": "Eight 4,096-token sequences use approximately 4 GiB of FP16 KV cache alone; a real server needs additional memory reserve."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-09/serving/simulator.py",
+      "runCommand": "python examples/stage-09/serving/simulator.py --scenario examples/stage-09/serving/benchmark.json",
+      "testsPath": "examples/stage-09/test_serving.py",
+      "expectedResult": "Deterministic GPU-free simulation reports cache, queue, latency and throughput proxies."
+    },
+    {
+      "language": "python",
+      "role": "production",
+      "path": "examples/stage-09/serving/README.md",
+      "runCommand": "python -m unittest discover -s examples/stage-09 -p 'test_serving.py' -v",
+      "testsPath": "examples/stage-09/test_serving.py",
+      "expectedResult": "Production benchmark and engine-selection procedure for vLLM, TGI and Ollama with security and compatibility checks."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Unbounded queue",
+      "symptom": "Queue wait and memory grow until timeouts cascade.",
+      "rootCause": "Requests are accepted without queue or token caps.",
+      "recovery": "Bound queue and token budgets; return retryable overload.",
+      "regressionTest": "Fill queue and assert next request is rejected."
+    },
+    {
+      "name": "KV cache OOM",
+      "symptom": "GPU allocation fails as context or concurrency rises.",
+      "rootCause": "Cache estimate ignores layers, KV heads, precision or reserve.",
+      "recovery": "Calculate cache per token and reserve non-cache memory.",
+      "regressionTest": "Reject requests exceeding cache budget."
+    },
+    {
+      "name": "Head-of-line blocking",
+      "symptom": "Short requests wait behind long prompts.",
+      "rootCause": "FIFO scheduling and fixed batches ignore request cost.",
+      "recovery": "Use continuous batching, deadlines and tenant fairness.",
+      "regressionTest": "Mixed short/long workload keeps bounded short-request wait."
+    },
+    {
+      "name": "Cancellation leak",
+      "symptom": "GPU continues work after client disconnect.",
+      "rootCause": "Disconnect is not propagated to active sequence.",
+      "recovery": "Cancel engine work and release reservations in finally paths.",
+      "regressionTest": "Cancel during decode and assert active/cache returns to baseline."
+    },
+    {
+      "name": "Quantization quality regression",
+      "symptom": "Lower-bit model fails task quality checks.",
+      "rootCause": "Precision approved using memory metrics alone.",
+      "recovery": "Run representative quality evaluation with latency and memory.",
+      "regressionTest": "Block promotion beyond declared quality tolerance."
+    },
+    {
+      "name": "Misleading benchmark",
+      "symptom": "Tokens/sec cannot be reproduced and hides TTFT.",
+      "rootCause": "Workload, warmup, hardware and output caps omitted.",
+      "recovery": "Pin workload and report TTFT, ITL, p50/p95 and metadata.",
+      "regressionTest": "Fail report missing model/runtime/hardware parameters."
+    }
+  ],
+  "practice": {
+    "guided": "Run 128/512-token fixtures at concurrency 1, 4 and 8. Compare queue wait, TTFT proxy, throughput and cache.",
+    "independent": "Extend scheduler with per-tenant active-token budgets and deadline-aware queue. Keep cancellation idempotent.",
+    "realWorld": "Select vLLM, TGI or Ollama for a model and hardware target. Verify architecture, quantization, driver, license, security and metrics.",
+    "expertExtension": "Benchmark prefix caching, speculative decoding, tensor parallelism, chunked prefill and quantized KV cache with quality regression tests.",
+    "guidedExercise": {
+      "title": "Reject overload without leaking capacity",
+      "instructions": "Implement active and queue limits. Rejected requests reserve nothing; cancellation releases resources exactly once.",
+      "starterCode": "class Admission:\n    def admit(self):\n        raise NotImplementedError",
+      "solutionCode": "def can_admit(active, queued, max_active, max_queue):\n    if active < max_active: return 'accepted'\n    if queued < max_queue: return 'queued'\n    return 'rejected'",
+      "unitTests": "assert can_admit(0,0,1,1) == 'accepted'\nassert can_admit(1,0,1,1) == 'queued'\nassert can_admit(1,1,1,1) == 'rejected'"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build a serving capacity workbench that estimates cache and simulates queue admission.",
+      "steps": [
+        "Load model dimensions and cache precision.",
+        "Calculate per-token and per-sequence KV memory.",
+        "Run fixed prompt and concurrency sweeps.",
+        "Inject overload, long prompt and cancellation failures.",
+        "Record TTFT, ITL, p50/p95, throughput and queue wait.",
+        "Compare hypothetical precision settings and evaluate quality.",
+        "Export workload metadata with each result."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "Which phase processes prompt tokens and creates initial KV cache?",
+        "options": [
+          "Prefill phase",
+          "Decode phase",
+          "HTTP teardown",
+          "Model quantization"
+        ],
+        "correctIndex": 0,
+        "explanation": "Prefill processes input prompt tokens and creates initial attention state."
+      },
+      {
+        "question": "What is cache per token for 32 layers, 8 KV heads, dim 128, FP16?",
+        "options": [
+          "128 KiB",
+          "512 MiB",
+          "4 GiB",
+          "14 GB"
+        ],
+        "correctIndex": 0,
+        "explanation": "2 × 32 × 8 × 128 × 2 = 131,072 bytes."
+      },
+      {
+        "question": "What is continuous batching's key benefit?",
+        "options": [
+          "Adds requests at iteration boundaries",
+          "Removes memory limits",
+          "Guarantees lower p99",
+          "Eliminates tokenization"
+        ],
+        "correctIndex": 0,
+        "explanation": "It dynamically adds/removes sequences as others finish."
+      },
+      {
+        "question": "What happens when bounded queue is full?",
+        "options": [
+          "Return retryable overload",
+          "Accept without limit",
+          "Drop active stream",
+          "Restart GPU process"
+        ],
+        "correctIndex": 0,
+        "explanation": "Reject excess work clearly, commonly HTTP 429 with Retry-After."
+      },
+      {
+        "question": "Why is 4-bit quantization not automatically faster?",
+        "options": [
+          "Kernel and hardware support matter",
+          "It always increases quality",
+          "It removes KV cache",
+          "It disables batching"
+        ],
+        "correctIndex": 0,
+        "explanation": "Speed depends on kernels, hardware, batch shape and bandwidth."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Serving architecture and lifecycle",
+        "weight": 20,
+        "evidence": "Explains tokenization, prefill, decode and streaming."
+      },
+      {
+        "criterion": "KV-cache and memory calculations",
+        "weight": 20,
+        "evidence": "Derives cache and includes non-cache reserve."
+      },
+      {
+        "criterion": "Admission, batching and cancellation",
+        "weight": 25,
+        "evidence": "Queue, active tokens, deadlines and cancellation are bounded and tested."
+      },
+      {
+        "criterion": "Benchmark methodology",
+        "weight": 20,
+        "evidence": "Reports TTFT, ITL, p50/p95, throughput, queue and workload metadata."
+      },
+      {
+        "criterion": "Production trade-offs",
+        "weight": 15,
+        "evidence": "Compares engine, quantization, security and quality."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "KV-cache calculations reproduce worked example.",
+      "Tests cover queue cap, cancellation and long prompt.",
+      "Benchmark includes workload metadata and proxy labels.",
+      "One failure has a regression test.",
+      "No paid GPU or model endpoint required."
+    ]
+  },
+  "references": [
+    {
+      "title": "vLLM documentation",
+      "url": "https://docs.vllm.ai/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "Hugging Face Text Generation Inference documentation",
+      "url": "https://huggingface.co/docs/text-generation-inference/index",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "Ollama documentation",
+      "url": "https://docs.ollama.com/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "PagedAttention paper",
+      "url": "https://arxiv.org/abs/2309.06180",
+      "sourceType": "research-paper",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "Transformers quantization documentation",
+      "url": "https://huggingface.co/docs/transformers/quantization/overview",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "bytes_per_token = 2 * layers * kv_heads * head_dim * bytes_per_element",
+      "explanation": "Count keys and values for every layer and KV head."
+    },
+    {
+      "lines": "sequence_cache = bytes_per_token * (prompt_tokens + generated_tokens)",
+      "explanation": "Cache grows with every token retained for the sequence."
+    },
+    {
+      "lines": "if active_tokens + request_tokens > cache_budget: reject()",
+      "explanation": "Reject before GPU allocation and preserve non-cache reserve."
+    },
+    {
+      "lines": "if active < max_active: accept(); elif queued < max_queue: enqueue(); else: reject()",
+      "explanation": "A bounded queue prevents unbounded memory and latency growth."
+    },
+    {
+      "lines": "on_disconnect: cancel(sequence_id); release_cache(sequence_id)",
+      "explanation": "Cancellation must reach the engine and release active/queued resources."
+    },
+    {
+      "lines": "report(TTFT, ITL, p50, p95, tokens_per_second, queue_wait, gpu_memory)",
+      "explanation": "Report user latency, throughput, queueing and memory together."
+    }
+  ]
+}
