@@ -1,0 +1,21 @@
+flowchart TD
+ A[Training run + artifact] --> MR[Immutable model registry]
+ B[Prompt template + variables] --> PR[Immutable prompt registry]
+ MR --> V[Digest and provenance verification]
+ PR --> V
+ V --> C[Compatibility validator]
+ E[Evaluation report + safety evidence] --> RB[Release bundle manifest]
+ C --> RB
+ RB --> H{Independent approval}
+ H -->|Rejected or missing| Q[Candidate blocked]
+ H -->|Approved exact manifest hash| G{Release manager RBAC}
+ G -->|Denied| Q
+ G -->|Allowed| CAS[Alias compare-and-swap]
+ CAS --> ST[Staging alias]
+ ST --> P[Production alias]
+ P --> R[Serving runtime resolves complete bundle]
+ R --> M[Loaded digest and version telemetry]
+ P -->|Canary regression| Rollback[Rollback alias to previous approved bundle]
+ Rollback --> R
+ CAS --> Audit[Append-only audit and alias history]
+ Rollback --> Audit
