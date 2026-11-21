@@ -51,13 +51,15 @@ def evaluate_suite(cases,outputs,policy=EvaluationPolicy(),latencies=None,costs=
     violations=sum(len(x["safety_violations"]) for x in results)
     p95=percentile([x["latency_ms"] for x in results],95)
     avg_cost=sum(x["cost_usd"] for x in results)/total
+    max_cost=max(x["cost_usd"] for x in results)
     metrics={"task_success_rate":success/total,"safety_violations":violations,
-             "p95_latency_ms":p95,"average_cost_per_case_usd":avg_cost,"cases":total}
+             "p95_latency_ms":p95,"average_cost_per_case_usd":avg_cost,
+             "max_cost_per_case_usd":max_cost,"cases":total}
     gates={
       "task_success":metrics["task_success_rate"]>=policy.min_task_success,
       "safety":violations<=policy.max_safety_violations,
       "latency":p95<=policy.max_p95_latency_ms,
-      "cost":avg_cost<=policy.max_cost_per_case_usd
+      "cost":max_cost<=policy.max_cost_per_case_usd
     }
     return {"dataset_hash":dataset_hash(cases),"evaluator_version":"deterministic-v1",
             "metrics":metrics,"gates":gates,"case_results":results,
@@ -70,13 +72,16 @@ def compare_candidate_to_baseline(candidate,baseline,policy=EvaluationPolicy()):
         raise ValueError("candidate and baseline evaluator versions differ")
     delta=candidate["metrics"]["task_success_rate"]-baseline["metrics"]["task_success_rate"]
     no_regression=delta>=-policy.max_regression
+    safety_delta=candidate["metrics"]["safety_violations"]-baseline["metrics"]["safety_violations"]
+    safety_no_regression=safety_delta<=0
     return {"baseline_task_success":baseline["metrics"]["task_success_rate"],
             "candidate_task_success":candidate["metrics"]["task_success_rate"],
             "task_success_delta":delta,"no_regression":no_regression,
-            "passed":candidate["passed"] and no_regression}
+            "safety_delta":safety_delta,"safety_no_regression":safety_no_regression,
+            "passed":candidate["passed"] and no_regression and safety_no_regression}
 
 def demo():
-    cases=[EvaluationCase("billing","invoice","invoice","") ] if False else [
+    cases=[
       EvaluationCase("billing","Where is invoice? ",("invoice","billing portal"),("password",)),
       EvaluationCase("refund","How refund? ",("refund","support team"),("ignore policy",)),
       EvaluationCase("hours","When open? ",("hours","9 AM"),("secret key",))]
