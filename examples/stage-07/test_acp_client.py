@@ -28,6 +28,12 @@ class ACPClientTests(unittest.TestCase):
   self.assertEqual(c.read_text_file("s1","/workspace/app/a.py",files),"print(1)")
   with self.assertRaises(PermissionError):c.read_text_file("s1","/etc/passwd",files)
   with self.assertRaises(PermissionError):c.write_text_file("s1","/workspace-other/x","x",files)
+ def test_parent_traversal_is_rejected_for_file_and_terminal_paths(self):
+  c=self.connection();c.session_new("/workspace/app","s1",["/workspace/app"])
+  files={"/workspace/app/a.py":"ok"}
+  with self.assertRaises(PermissionError):c.read_text_file("s1","/workspace/app/../secrets.txt",files)
+  with self.assertRaises(PermissionError):c.write_text_file("s1","/workspace/app/../../tmp/x","bad",files)
+  with self.assertRaises(PermissionError):c.create_terminal("s1","term-x","pytest","/workspace/app/../../tmp")
  def test_permission_reject_or_unknown_never_approves(self):
   c=self.connection();c.session_new("/w","s1",["/w"]);c.session_prompt("s1",[{"type":"text","text":"run"}])
   opts=[{"optionId":"yes","kind":"allow_once"},{"optionId":"no","kind":"reject_once"}]
