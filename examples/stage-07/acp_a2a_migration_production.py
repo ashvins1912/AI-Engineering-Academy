@@ -38,7 +38,9 @@ class MigrationLedger:
                 (tenant_id, legacy_run_id),
             ).fetchone()
             if row:
-                if row["request_hash"] != request_hash or row["task_id"] != task_id:
+                if (row["request_hash"] != request_hash or row["task_id"] != task_id
+                    or row["legacy_session_id"] != legacy_session_id
+                    or row["mapping_version"] != mapping_version):
                     raise ValueError("legacy run already mapped to a different request/task")
                 self.db.execute("COMMIT")
                 return {"task_id": row["task_id"], "duplicate": True}
