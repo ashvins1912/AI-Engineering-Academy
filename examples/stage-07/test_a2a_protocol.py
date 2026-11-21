@@ -44,4 +44,11 @@ class A2AProtocolTests(unittest.TestCase):
   self.assertFalse(registry.receive_push(*args)["duplicate"])
   self.assertTrue(registry.receive_push(*args)["duplicate"])
   with self.assertRaises(PermissionError):validate_push_callback("https://127.0.0.1/admin",{"127.0.0.1"})
+ def test_push_event_id_cannot_be_reused_for_another_task(self):
+  registry=TaskRegistry()
+  one=registry.create_task("tenant-a","ctx-1",{"parts":[{"kind":"text"}]})
+  two=registry.create_task("tenant-a","ctx-2",{"parts":[{"kind":"text"}]})
+  registry.receive_push("tenant-a",one,"evt-1","https://callbacks.example.com/a2a",{"callbacks.example.com"},{})
+  with self.assertRaises(ValueError):
+   registry.receive_push("tenant-a",two,"evt-1","https://callbacks.example.com/a2a",{"callbacks.example.com"},{})
 if __name__=="__main__":unittest.main()
