@@ -305,12 +305,10 @@
         },
         {
           "name": "fit_scope",
-          "options": [
-            "train_only",
-            "all_rows"
-          ],
-          "defaultValue": "train_only",
-          "effect": "Selecting all_rows demonstrates data leakage and should fail the gate."
+          "min": 0,
+          "max": 1,
+          "defaultValue": 0,
+          "effect": "0 means train_only. 1 means all_rows and deliberately demonstrates leakage; only train_only is accepted for a production artifact."
         }
       ],
       "playback": {
