@@ -26,7 +26,10 @@ class MigrationMappingTests(unittest.TestCase):
   first=translate_legacy_event({"type":"accepted"},"task-1",1)
   second=translate_legacy_event({"type":"working"},"task-1",2)
   self.assertEqual(first["sequence"],1);self.assertEqual(second["sequence"],2)
-  with self.assertRaises(ValueError):translate_legacy_event({"type":"mystery"},"task-1",3)
+  result=translate_legacy_event({"type":"result","artifact":{"artifactId":"a1","parts":[{"text":"ok"}]}},"task-1",3)
+  self.assertEqual(result["artifactUpdate"]["taskId"],"task-1")
+  with self.assertRaises(ValueError):translate_legacy_event({"type":"result"},"task-1",4)
+  with self.assertRaises(ValueError):translate_legacy_event({"type":"mystery"},"task-1",5)
  def test_parity_and_security_are_separate(self):
   old={"business_outcome":"eligible","artifact_hash":"abc","approval_required":True}
   new={**old,"cross_tenant_accesses":1}
