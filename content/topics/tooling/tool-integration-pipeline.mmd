@@ -1,0 +1,19 @@
+flowchart TD
+ A[Agent proposes tool + arguments] --> S[Resolve registered tool schema]
+ S --> V{Strict schema valid?}
+ V -->|No| X[Reject + audit]
+ V -->|Yes| I[Trusted identity + tenant authorization]
+ I --> Q{Scope/resource allowed?}
+ Q -->|No| X
+ Q -->|Yes| R[Token bucket + bulkhead + deadline]
+ R -->|Quota denied| D[Rate limited response]
+ R -->|Admitted| K[Idempotency reserve + payload hash]
+ K -->|Succeeded replay| O[Return cached result]
+ K -->|Pending/unknown| C[Reconcile by provider key]
+ K -->|New operation| B[Circuit breaker]
+ B -->|OPEN| F[Fail fast / fallback]
+ B -->|CLOSED/HALF_OPEN| P[Bounded provider call + retry]
+ P --> Z[Validate response schema]
+ Z --> L[Persist result + audit/outbox]
+ L --> O
+ C --> L

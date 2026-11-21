@@ -1,0 +1,57 @@
+{
+  "scenario": "High-value refund tool call with one transient provider failure and one ambiguous timeout",
+  "tool": {
+    "name": "refund",
+    "version": "v1",
+    "required": [
+      "order_id",
+      "amount"
+    ],
+    "sideEffect": true,
+    "idempotent": false,
+    "requiredScope": "refund:write"
+  },
+  "identity": {
+    "tenantId": "tenant-a",
+    "userId": "user-1",
+    "scopes": [
+      "refund:write"
+    ]
+  },
+  "request": {
+    "orderId": "ORD-7",
+    "amount": 12500,
+    "idempotencyKey": "refund-ORD-7"
+  },
+  "limits": {
+    "tokenBucketCapacity": 10,
+    "refillPerSecond": 2,
+    "maxInFlight": 4,
+    "maxAttempts": 3,
+    "deadlineMs": 2500
+  },
+  "provider": {
+    "attempts": [
+      503,
+      "timeout"
+    ],
+    "providerOperationId": "refund-88",
+    "finalStatus": "succeeded"
+  },
+  "ledger": {
+    "initial": "pending",
+    "afterTimeout": "unknown",
+    "afterReconcile": "succeeded"
+  },
+  "failureInjection": [
+    "unknown argument",
+    "cross-tenant claim",
+    "quota exhausted",
+    "breaker open",
+    "provider 503",
+    "provider success response lost",
+    "same key different payload",
+    "malformed provider result",
+    "secret in trace"
+  ]
+}
