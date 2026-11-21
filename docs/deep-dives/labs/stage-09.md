@@ -166,21 +166,22 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## rollouts — Deployment strategies
 
-**Implementation task:** Run canary and automatically roll back on quality/latency regression.
+**Implementation task:** Implement a progressive canary controller that advances through 10%, 25%, 50% and 100% only when sample count, p95 latency and relative model-quality guardrails pass. Restore the previous release on any mandatory breach.
 
-**Worked fixture:** 10% traffic canary; p95 threshold 2s, quality drop threshold 5%.
+**Worked fixture:** Stable quality 0.90 and p95 1,700 ms; candidate quality 0.88 and p95 1,800 ms; minimum 50 samples; maximum p95 2,000 ms; maximum relative quality drop 5%. A second observation injects p95 2,300 ms.
 
-**Expected result:** Canary promoted only when both guardrails pass.
+**Expected result:** The healthy candidate advances through the configured steps. The injected latency breach stops progression, returns candidate traffic to 0%, and restores the stable release ID. Missing telemetry or insufficient samples holds the rollout.
 
-**Verification tests:** Test partial rollout and rollback artifact compatibility.
+**Verification tests:** Run `python -m unittest discover -s examples/stage-09 -p 'test_rollouts.py' -v`. Cover quality-drop calculation, healthy promotion, p95 and quality rollback, insufficient samples, missing telemetry, blue-green readiness, shadow response isolation, shadow side-effect rejection and deterministic A/B cohorts.
 
-**Debugging checklist:** Reduce the example to the smallest failing input; inspect intermediate shapes, values and assumptions; reproduce the failure with a test; change one variable at a time and retain a regression test.
+**Debugging checklist:** Confirm the candidate manifest binds model, prompt, index, runtime and tool-policy versions; inspect the exact metric window and cohort; verify minimum sample count; compare p95 rather than mean latency; confirm missing telemetry fails closed; inspect traffic weights and last known-good release; verify shadow credentials are read-only; check the rollback bundle is schema-compatible.
 
-**Interview checks:** How is canary different from blue-green and shadow?
+**Interview checks:** Compare rolling, blue-green, canary, shadow and A/B. Explain why shadow traffic must not trigger side effects, why p95 can fail while average latency passes, how stable cohort assignment works, and why rollback must restore a complete release bundle.
 
-**Submission evidence:** Include the implementation, a successful run, the verification tests (including one negative case), and a 3–5 sentence explanation of the trade-off or failure mode.
+**Submission evidence:** Include simulator output, healthy and failed canary traces, passing tests with negative cases, the release-flow diagram, an immutable manifest example, and a short strategy-selection decision record.
 
 ---
+
 
 ## kubernetes — Kubernetes for AI services
 

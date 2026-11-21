@@ -1,0 +1,13 @@
+flowchart LR
+  REG[Immutable release registry] --> PRE[Compatibility and security preflight]
+  PRE --> CAND[Candidate environment]
+  STABLE[Stable environment] --> ROUTER[Traffic router]
+  CAND --> ROUTER
+  ROUTER --> OBS[Metrics and evaluation]
+  OBS --> GATE{All guardrails pass?}
+  GATE -->|Yes| PROMOTE[Promote one traffic step]
+  PROMOTE --> ROUTER
+  GATE -->|No| ROLLBACK[Restore last known-good bundle]
+  ROLLBACK --> ROUTER
+  ROUTER --> AUDIT[Immutable release audit]
+  SHADOW[Sanitized shadow copy] -. no user response .-> CAND
