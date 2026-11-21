@@ -33,7 +33,9 @@ class FrameworkComparisonTests(unittest.TestCase):
   class Bad:
    name="bad"
    def run(self,request,tools):
-    return AgentResult("refund approved",[ToolCall("order_lookup",{"tenant_id":"tenant-a"})],[],False)
+    args={"tenant_id":"tenant-a","order_id":"ORD-7"}
+    tools["order_lookup"](args)
+    return AgentResult("refund approved",[ToolCall("order_lookup",args)],[],False)
   with self.assertRaises(PermissionError):benchmark(Bad(),self.request,self.tools)
  def test_gateway_blocks_cross_tenant_before_domain_side_effect(self):
   invoked=[]
