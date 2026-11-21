@@ -1,0 +1,581 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "data-pipeline",
+    "title": "Data and Feature Pipelines — quality, lineage, drift and reproducibility",
+    "stage": 9,
+    "estimatedMinutes": 240
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Define executable data contracts for schema, types, ranges, nullability, uniqueness and allowed values.",
+      "Build deterministic ingestion, validation, deduplication, splitting and feature transformations.",
+      "Prevent train/test leakage by fitting preprocessing only on training data.",
+      "Track dataset, schema, code, feature and split lineage with immutable manifests.",
+      "Detect data quality regressions and distribution drift before training or serving.",
+      "Persist tenant-scoped pipeline lineage and terminal run state with regression tests."
+    ],
+    "prerequisites": [
+      "Stage 1 Python, statistics, probability and data handling",
+      "Stage 2 train/validation/test splits and leakage",
+      "Stage 3 feature engineering and model evaluation",
+      "Stage 9 Topics 1–3 experiment tracking, registry and evaluation gates"
+    ],
+    "glossary": [
+      {
+        "term": "Data contract",
+        "definition": "A machine-checkable agreement describing schema, types, required fields, constraints and semantics."
+      },
+      {
+        "term": "Data quality",
+        "definition": "Fitness of data for a use case: completeness, validity, uniqueness, consistency, timeliness and accuracy."
+      },
+      {
+        "term": "Feature",
+        "definition": "A reproducible input variable derived from raw data and used by a model."
+      },
+      {
+        "term": "Feature store",
+        "definition": "A governed system for defining, serving and reusing feature values consistently in training and inference."
+      },
+      {
+        "term": "Point-in-time correctness",
+        "definition": "A feature value uses only information available at the prediction timestamp."
+      },
+      {
+        "term": "Data leakage",
+        "definition": "Information unavailable at prediction time or from held-out data influences training or preprocessing."
+      },
+      {
+        "term": "Lineage",
+        "definition": "Traceable relationships among source data, transformations, code, features, model runs and artifacts."
+      },
+      {
+        "term": "Dataset manifest",
+        "definition": "An immutable record of source version, schema, content hash, code revision, feature spec and split seed."
+      },
+      {
+        "term": "Data drift",
+        "definition": "A change in input distribution between a reference population and a current population."
+      },
+      {
+        "term": "PSI",
+        "definition": "Population Stability Index; a binned divergence score used as a drift signal, not a universal quality verdict."
+      },
+      {
+        "term": "Backfill",
+        "definition": "Reprocessing historical data with a specified transformation version and controlled output version."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "A model can be mathematically correct and still fail because the data feeding it changed, contains duplicates, violates assumptions, leaks labels or cannot be reproduced. A production data pipeline turns raw data into governed, validated and traceable features.",
+    "plainLanguage": "A data pipeline is a sequence of explicit stages: ingest a versioned source, validate its contract, deduplicate records, check time boundaries, split data, fit transformations on training data only, transform validation/test data with the frozen training parameters, profile distributions, and publish an immutable manifest. Every stage should have inputs, outputs, metrics and failure behavior.\n\nA data contract makes assumptions executable. It can require a customer ID, enforce integer age between 0 and 120, constrain a churn label to 0 or 1, reject unexpected columns and guarantee uniqueness. A contract failure should stop publication rather than silently coerce or drop data. Warnings can be used for monitored thresholds such as rising null rates, but critical violations must fail closed.\n\nFeature engineering must preserve time and split boundaries. Fit a scaler, imputer, vocabulary or target encoder using training data only. Save the fitted parameters and apply those exact parameters to validation, test and online inference. If preprocessing is refit on the full dataset, held-out information leaks into training and reported quality becomes optimistic. For time-dependent tasks, random splitting can itself leak future information; use chronological or entity-aware splitting where appropriate.\n\nFeature parity matters. A feature computed differently in training and serving creates training-serving skew. Centralize transformation logic, version the feature definition, test point-in-time correctness, and monitor missingness, range and freshness. A feature store can help coordinate offline and online values, but it does not automatically guarantee point-in-time joins or semantic correctness.\n\nLineage answers: which source version, schema, code commit, transformation parameters, random seed and upstream run created this model dataset? A manifest should include content hashes and immutable identifiers. Store manifests and run records separately from large data files; object storage or a governed warehouse holds the data itself. A relational catalog can enforce tenant-scoped ownership, immutable versions and run state.\n\nDrift monitoring compares reference and current distributions. PSI can be calculated by binning reference values and comparing bin proportions. It is a signal for investigation, not proof that model quality degraded. Combine it with schema checks, null-rate and freshness monitoring, label/ground-truth feedback, slice metrics and retraining policy. Avoid automatic retraining on drift alone: a changed distribution may be expected, benign or caused by a broken pipeline.\n\nBackfills and replays must be reproducible. Pin source snapshots, code revision, schema version, feature definitions and parameters. Publish to a new dataset version, compare quality metrics, then promote the approved version. Never overwrite the only known-good dataset or silently mutate a manifest referenced by a model release.",
+    "mentalModel": "Versioned source → contract checks → deduplicate/time checks → split → fit on train → transform all splits → quality/drift checks → immutable manifest → experiment and model registry.",
+    "limitations": [
+      "A schema-valid dataset can still be biased, mislabeled or semantically wrong.",
+      "PSI depends on binning and sample size; there is no universal threshold suitable for every feature.",
+      "Random train/test splitting is unsafe for temporal or grouped data unless assumptions justify it.",
+      "A hash proves byte/content identity, not correctness, authorization or provenance authenticity.",
+      "SQLite examples teach transactions and lineage; production workloads may need PostgreSQL, object storage, warehouse tables and orchestration.",
+      "A feature store does not eliminate training-serving skew unless transformations and point-in-time joins are governed."
+    ],
+    "everydayAnalogy": "Think of a commercial kitchen. Ingredients arrive with supplier and batch IDs, staff inspect quality and expiry, recipes specify exact quantities, and each prepared dish can be traced back to its ingredients and recipe revision. If an ingredient batch fails inspection, it is quarantined rather than mixed into every dish.",
+    "mathMadeSimple": "Suppose a training feature has mean μ=50 and standard deviation σ=10. A value x=70 becomes z=(70−50)/10=2. Fit μ and σ on training rows only. If the holdout values are used to compute μ and σ, information from the test set has leaked. For drift, if a reference bin contains 20% and the current bin 40%, its PSI contribution is (0.40−0.20)×ln(0.40/0.20)≈0.139. Sum contributions across bins; interpret the score with sample size and domain context.",
+    "productionImpact": "Data contracts prevent silent schema breakage; deterministic splits and train-only transforms protect evaluation; manifests make experiments reproducible; lineage enables audits and rollback; drift and freshness monitors catch upstream changes before they become model incidents."
+  },
+  "useCase": {
+    "scenario": "A customer churn model is retrained weekly from a versioned customer snapshot. The pipeline validates contract and uniqueness, prevents future events from entering features, creates deterministic splits, fits scalers on training data, calculates drift and publishes a signed-off dataset manifest.",
+    "actors": [
+      "Source database or warehouse",
+      "Pipeline orchestrator",
+      "Data contract validator",
+      "Feature transformation library",
+      "Lineage catalog",
+      "Experiment tracker",
+      "Model registry",
+      "Monitoring service"
+    ],
+    "inputs": [
+      "Versioned source snapshot",
+      "Schema and data contract",
+      "Feature definitions and time windows",
+      "Code revision and parameters",
+      "Split strategy and seed",
+      "Reference distribution"
+    ],
+    "constraints": [
+      "No model training on failed data contracts.",
+      "No fit operation may inspect holdout rows.",
+      "Feature values must respect prediction-time availability.",
+      "Dataset versions and manifests are immutable.",
+      "Lineage reads are tenant scoped.",
+      "Drift is an alert signal and must not automatically imply retraining."
+    ],
+    "outputs": [
+      "Validated training/validation/test datasets",
+      "Feature transformation artifact",
+      "Quality and drift report",
+      "Immutable dataset manifest",
+      "Pipeline run record with terminal status"
+    ],
+    "successMetric": "A second run with the same source snapshot, code revision, parameters and seed reproduces identical split membership, feature parameters and manifest hashes."
+  },
+  "architecture": {
+    "diagram": "content/topics/data-pipeline/data-feature-lineage.mmd",
+    "components": [
+      "Versioned source snapshot",
+      "Contract and schema validator",
+      "Deduplication and temporal integrity checks",
+      "Deterministic split planner",
+      "Train-only feature fitter",
+      "Frozen feature transformer",
+      "Quality and drift profiler",
+      "Immutable manifest builder",
+      "Tenant-scoped lineage catalog",
+      "Orchestrator and alerting"
+    ],
+    "dataFlow": [
+      {
+        "from": "Source snapshot",
+        "to": "Contract validator",
+        "payload": "rows + schema version",
+        "purpose": "Reject missing, unexpected or invalid fields."
+      },
+      {
+        "from": "Contract validator",
+        "to": "Split planner",
+        "payload": "validated rows",
+        "purpose": "Deduplicate and assign deterministic or time-aware split membership."
+      },
+      {
+        "from": "Split planner",
+        "to": "Feature fitter",
+        "payload": "training rows only",
+        "purpose": "Fit imputation, scaling, encoding and vocabulary parameters without leakage."
+      },
+      {
+        "from": "Feature fitter",
+        "to": "Feature transformer",
+        "payload": "fitted feature spec",
+        "purpose": "Apply the frozen transform to train, validation, test and serving data."
+      },
+      {
+        "from": "Feature transformer",
+        "to": "Quality profiler",
+        "payload": "feature datasets",
+        "purpose": "Measure missingness, range, freshness, skew and distribution drift."
+      },
+      {
+        "from": "Quality profiler",
+        "to": "Manifest builder",
+        "payload": "quality report + feature spec",
+        "purpose": "Publish only when hard gates pass."
+      },
+      {
+        "from": "Manifest builder",
+        "to": "Lineage catalog",
+        "payload": "hashes + versions + code + seed",
+        "purpose": "Persist immutable provenance and pipeline run."
+      }
+    ],
+    "trustBoundaries": [
+      "Source rows, labels and upstream schema are untrusted inputs.",
+      "Feature definitions and transformation artifacts are versioned and reviewed.",
+      "Tenant ID is part of every lineage catalog key and query.",
+      "Manifest hashes must be bound to authenticated source snapshots and code provenance.",
+      "Model training consumes only approved manifests; no direct mutable source path."
+    ],
+    "failurePaths": [
+      "Unexpected schema: fail contract and quarantine the source version.",
+      "Duplicate entity key: stop publication and report duplicate examples safely.",
+      "Train/test contamination: fail split validation and regenerate using a valid split strategy.",
+      "Feature fit on holdout rows: reject transformation artifact and rerun train-only fit.",
+      "Point-in-time violation: quarantine feature and rebuild temporal joins.",
+      "Drift spike: alert and investigate data quality, seasonality and model slices before retraining.",
+      "Stale or cross-tenant manifest: return not found and deny pipeline execution."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-09/fixtures/data-feature-pipeline.json",
+    "steps": [
+      {
+        "label": "Ingest and contract",
+        "explanation": "Load a versioned snapshot and validate schema, types, bounds and uniqueness.",
+        "expectedState": "contract=passed; duplicate_keys=0"
+      },
+      {
+        "label": "Split safely",
+        "explanation": "Create deterministic membership before fitting any transformation.",
+        "expectedState": "train=80; test=20; seed=17"
+      },
+      {
+        "label": "Fit on train",
+        "explanation": "Compute mean and standard deviation from training rows only.",
+        "expectedState": "fit_rows=80; holdout_rows_seen=0"
+      },
+      {
+        "label": "Transform and monitor",
+        "explanation": "Apply frozen feature spec and compare current distributions to reference.",
+        "expectedState": "feature_spec=immutable; drift_report=available"
+      },
+      {
+        "label": "Publish lineage",
+        "explanation": "Hash source, contract, code and transformation metadata into a versioned manifest.",
+        "expectedState": "manifest=registered; run=succeeded"
+      }
+    ],
+    "accessibility": [
+      "Every stage has a textual explanation and expected state.",
+      "The visualization exposes train and test counts and makes fit scope explicit.",
+      "All controls have labels and keyboard-accessible inputs."
+    ],
+    "animation": {
+      "objective": "Explore a deterministic data-to-feature pipeline and inject contract, leakage and drift failures.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Validate the source",
+          "narration": "The customer snapshot is checked against its contract before any transformation.",
+          "input": "rows=100; schema=customers-v3",
+          "transformation": "required fields + types + bounds + unique ID",
+          "output": "valid_rows=100; errors=0",
+          "visualState": "Contract passed"
+        },
+        {
+          "step": 2,
+          "title": "Create deterministic splits",
+          "narration": "A seeded split creates 80 training and 20 holdout rows.",
+          "input": "rows=100; seed=17; test_fraction=0.20",
+          "transformation": "shuffle with fixed seed and persist membership",
+          "output": "train=80; test=20",
+          "visualState": "Split frozen"
+        },
+        {
+          "step": 3,
+          "title": "Fit feature parameters",
+          "narration": "The scaler reads training rows only and saves its mean and standard deviation.",
+          "input": "train.spend=[10,20,30,40]",
+          "transformation": "mean=25; population_std≈11.18",
+          "output": "feature_spec={mean:25,std:11.18}; fit_rows=4",
+          "visualState": "No holdout leakage"
+        },
+        {
+          "step": 4,
+          "title": "Transform and monitor",
+          "narration": "The same feature spec transforms holdout rows; the profiler compares distributions.",
+          "input": "holdout.spend=[50,60]",
+          "transformation": "z=(x−25)/11.18; calculate drift score",
+          "output": "z≈2.24,3.13; drift_report=ready",
+          "visualState": "Frozen transform applied"
+        },
+        {
+          "step": 5,
+          "title": "Publish immutable lineage",
+          "narration": "The manifest records source, contract, feature spec, code revision and split seed.",
+          "input": "source=v3; code=abc123; seed=17",
+          "transformation": "canonical JSON hash + tenant-scoped catalog insert",
+          "output": "manifest_hash=sha256; run=succeeded",
+          "visualState": "Reproducible dataset published"
+        }
+      ],
+      "controls": [
+        {
+          "name": "invalid_rows",
+          "min": 0,
+          "max": 10,
+          "defaultValue": 0,
+          "effect": "Inject missing, invalid or out-of-range rows and watch the contract fail."
+        },
+        {
+          "name": "test_fraction",
+          "min": 10,
+          "max": 40,
+          "defaultValue": 20,
+          "effect": "Change train/holdout allocation while keeping a deterministic seed."
+        },
+        {
+          "name": "drift_shift",
+          "min": 0,
+          "max": 100,
+          "defaultValue": 0,
+          "effect": "Shift current values and observe the PSI signal increase."
+        },
+        {
+          "name": "fit_scope",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 0,
+          "effect": "0 means train_only. 1 means all_rows and deliberately demonstrates leakage; only train_only is accepted for a production artifact."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Textual stage status, train/holdout counts, fit scope, drift score and manifest identity accompany the diagram."
+    }
+  },
+  "workedExample": {
+    "problem": "Validate a small dataset, split deterministically and fit a numeric feature transformation without holdout leakage.",
+    "input": "Rows spend=[10,20,30,40,50,60], seed=17, test_fraction=1/3.",
+    "steps": [
+      {
+        "operation": "Validate contract",
+        "reasoning": "Require numeric non-negative spend and unique integer customer IDs.",
+        "result": "6 rows pass; duplicate IDs=0"
+      },
+      {
+        "operation": "Split",
+        "reasoning": "Shuffle with a fixed seed and allocate four train, two test rows.",
+        "result": "train=4; test=2; seed=17"
+      },
+      {
+        "operation": "Fit scaler",
+        "reasoning": "Calculate mean and population standard deviation from only the four train rows.",
+        "result": "μ=25; σ≈11.18"
+      },
+      {
+        "operation": "Transform holdout",
+        "reasoning": "Reuse the frozen training parameters; do not refit on test rows.",
+        "result": "50→2.24; 60→3.13"
+      },
+      {
+        "operation": "Publish manifest",
+        "reasoning": "Hash source snapshot, contract, feature spec, code revision and split seed.",
+        "result": "manifest_hash=SHA-256(canonical provenance)"
+      }
+    ],
+    "expectedOutput": "The pipeline passes contract checks, has a reproducible 4/2 split, fits on four training rows only and publishes an immutable manifest."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-09/data_feature_pipeline.py",
+      "runCommand": "python examples/stage-09/data_feature_pipeline.py",
+      "testsPath": "examples/stage-09/test_data_feature_pipeline.py",
+      "expectedResult": "Contract validation, deterministic split, train-only numeric feature fit, transformation, PSI drift signal and manifest generation."
+    },
+    {
+      "language": "python",
+      "role": "production",
+      "path": "examples/stage-09/data_pipeline_production.py",
+      "runCommand": "python -m unittest discover -s examples/stage-09 -p 'test_data_pipeline_production.py' -v",
+      "testsPath": "examples/stage-09/test_data_pipeline_production.py",
+      "expectedResult": "Tenant-scoped SQLite lineage catalog with immutable dataset versions and single-terminal pipeline run state."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Schema drift",
+      "symptom": "A source adds or changes a field and downstream transforms silently misbehave.",
+      "rootCause": "No executable schema contract or unexpected fields are tolerated.",
+      "recovery": "Fail validation, quarantine the snapshot, review schema evolution and publish a new contract version.",
+      "regressionTest": "Add an unexpected field and assert the contract fails."
+    },
+    {
+      "name": "Duplicate entities",
+      "symptom": "Customer rows are counted twice and split membership becomes inconsistent.",
+      "rootCause": "No uniqueness constraint or idempotent deduplication rule.",
+      "recovery": "Use a stable business key, deterministic conflict policy and duplicate report.",
+      "regressionTest": "Insert duplicate IDs and assert publication is blocked."
+    },
+    {
+      "name": "Train/test leakage",
+      "symptom": "Offline metrics look implausibly strong but production performance drops.",
+      "rootCause": "Preprocessing fit on all rows or random split ignores temporal/group boundaries.",
+      "recovery": "Split first, fit transforms on train only and use time/group-aware splits where required.",
+      "regressionTest": "Assert feature fit row count equals train count and holdout values do not affect fitted parameters."
+    },
+    {
+      "name": "Training-serving skew",
+      "symptom": "The same entity receives different feature values offline and online.",
+      "rootCause": "Separate transformations or mismatched feature versions.",
+      "recovery": "Share versioned transformation logic and add parity tests.",
+      "regressionTest": "Run identical raw records through batch and serving transforms and compare output."
+    },
+    {
+      "name": "Silent data drift",
+      "symptom": "Feature distribution changes but model quality and input alerts are not examined.",
+      "rootCause": "No reference profile, freshness monitor or drift investigation process.",
+      "recovery": "Compare distribution and slices, investigate upstream changes and ground-truth outcomes before retraining.",
+      "regressionTest": "Shift a reference distribution and assert drift alert is emitted."
+    },
+    {
+      "name": "Mutable lineage",
+      "symptom": "A historical model's dataset version now points to different source data.",
+      "rootCause": "Manifest is overwritten instead of immutable versioned.",
+      "recovery": "Bind a dataset name/version to one content hash; publish changed data as a new version.",
+      "regressionTest": "Attempt to register changed manifest under same version and assert conflict."
+    }
+  ],
+  "practice": {
+    "guided": "Define a contract for customer_id, age, monthly_spend and churn label. Predict which rows should fail and why.",
+    "independent": "Build an ingestion-to-manifest pipeline with contract validation, deterministic splits, train-only preprocessing and drift report.",
+    "realWorld": "Create a weekly churn dataset pipeline with point-in-time features, immutable manifests, tenant-aware lineage and evaluation-gated promotion.",
+    "expertExtension": "Add Great Expectations or Pandera contracts, Feast-style offline/online parity, time-aware backfills, OpenLineage events, warehouse snapshots, feature freshness SLOs and drift slices.",
+    "guidedExercise": {
+      "title": "Implement a train-only standardizer",
+      "instructions": "Fit mean and standard deviation using the training partition. Reuse the saved parameters on holdout values.",
+      "starterCode": "def fit_standardizer(train_values):\n    # compute mean and population std from train only\n    raise NotImplementedError",
+      "solutionCode": "def fit_standardizer(train_values):\n    if not train_values:\n        raise ValueError('training values required')\n    mean = sum(train_values) / len(train_values)\n    variance = sum((x - mean) ** 2 for x in train_values) / len(train_values)\n    return {'mean': mean, 'std': variance ** 0.5 or 1.0}",
+      "unitTests": "spec = fit_standardizer([10, 20, 30, 40])\nassert spec['mean'] == 25\nassert round((50 - spec['mean']) / spec['std'], 2) == 2.24\nassert spec['std'] > 0"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build a data quality and feature lineage inspector for a model training pipeline.",
+      "steps": [
+        "Load the customer snapshot and display schema, row count and source version.",
+        "Run required-field, type, range and unique-key contract checks.",
+        "Inject duplicate IDs and schema changes to observe fail-closed validation.",
+        "Freeze deterministic train/test membership and show row IDs in each split.",
+        "Fit scaler only on train and expose the saved feature parameters.",
+        "Transform holdout rows with the frozen feature spec and compare batch/online output.",
+        "Shift a feature distribution and calculate a drift signal with a visible threshold caveat.",
+        "Register a manifest and attempt to mutate the same dataset version.",
+        "Query pipeline run history under two tenant IDs and verify isolation."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "When should a standardizer be fitted?",
+        "options": [
+          "On all rows before splitting",
+          "On training rows only, then reused on holdout and serving",
+          "Only on the test set",
+          "Separately refit on every batch"
+        ],
+        "correctIndex": 1,
+        "explanation": "Fitting on train only prevents holdout information leaking into preprocessing."
+      },
+      {
+        "question": "What should happen when a required field is missing?",
+        "options": [
+          "Silently fill with zero",
+          "Ignore the contract",
+          "Fail or quarantine the dataset version",
+          "Train anyway and log later"
+        ],
+        "correctIndex": 2,
+        "explanation": "Critical contract violations must block publication."
+      },
+      {
+        "question": "Does a high PSI prove the model is inaccurate?",
+        "options": [
+          "Yes, always",
+          "No; it is a distribution-shift signal that requires investigation",
+          "It proves labels are corrupted",
+          "It guarantees retraining improves quality"
+        ],
+        "correctIndex": 1,
+        "explanation": "PSI is a monitoring signal. Combine it with quality, freshness, slices and ground-truth outcomes."
+      },
+      {
+        "question": "What belongs in a reproducible dataset manifest?",
+        "options": [
+          "Only a friendly dataset name",
+          "Source snapshot, schema, content hash, code revision, feature spec and split seed",
+          "Only model accuracy",
+          "A mutable pointer to latest data"
+        ],
+        "correctIndex": 1,
+        "explanation": "The manifest pins data and transformation provenance."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Data contracts and validation",
+        "weight": 20,
+        "evidence": "Required fields, types, ranges, uniqueness and failure behavior are tested."
+      },
+      {
+        "criterion": "Leakage-safe feature engineering",
+        "weight": 25,
+        "evidence": "Split is created before fit; feature transforms use training partition only."
+      },
+      {
+        "criterion": "Lineage and reproducibility",
+        "weight": 25,
+        "evidence": "Manifest pins source, schema, code, feature parameters and split seed."
+      },
+      {
+        "criterion": "Drift and monitoring interpretation",
+        "weight": 15,
+        "evidence": "Drift signals are measured and interpreted with appropriate caveats."
+      },
+      {
+        "criterion": "Production safety and testing",
+        "weight": 15,
+        "evidence": "Tenant isolation, immutable versions, replay and regression tests pass."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "All data contract and feature pipeline tests pass.",
+      "Train-only feature fitting is demonstrated.",
+      "Manifest hash changes when provenance changes.",
+      "SQLite lineage tests prove immutability and tenant scope.",
+      "Drift is treated as a signal rather than automatic retraining trigger."
+    ]
+  },
+  "references": [
+    {
+      "title": "Google Rules of Machine Learning",
+      "url": "https://developers.google.com/machine-learning/guides/rules-of-ml",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "Feast documentation: feature retrieval and point-in-time joins",
+      "url": "https://docs.feast.dev/getting-started/concepts/point-in-time-joins",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "Great Expectations documentation",
+      "url": "https://docs.greatexpectations.io/docs/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "OpenLineage specification",
+      "url": "https://openlineage.io/docs/spec/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "report = validate_rows(rows, contract, unique_key='id')",
+      "explanation": "A data contract checks types, nullability, ranges, allowed values, unexpected fields and duplicate business keys before publication."
+    },
+    {
+      "lines": "train, holdout = deterministic_split(rows, seed=17)",
+      "explanation": "Freeze split membership first. For temporal or grouped data, replace random shuffle with chronological or group-aware logic."
+    },
+    {
+      "lines": "spec = fit_numeric_feature(train, 'spend')",
+      "explanation": "Only training rows determine mean and standard deviation. The feature spec is an artifact that can be reused later."
+    },
+    {
+      "lines": "transform_numeric(holdout, spec)",
+      "explanation": "Apply training-derived parameters to holdout rows; never refit on the holdout."
+    },
+    {
+      "lines": "manifest = build_manifest(rows, contract, spec, source, code, seed)",
+      "explanation": "Canonical serialization and content hashing bind source and transformation provenance into a reproducible identity."
+    },
+    {
+      "lines": "catalog.register_dataset(tenant, name, version, manifest)",
+      "explanation": "The lineage catalog prevents a dataset version from being silently rebound to different content and scopes every lookup by tenant."
+    }
+  ]
+}

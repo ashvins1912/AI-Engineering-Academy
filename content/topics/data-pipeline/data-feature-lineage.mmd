@@ -1,0 +1,14 @@
+flowchart TD
+ A[Versioned source snapshot] --> B[Data contract validation]
+ B -->|Pass| C[Deduplicate and temporal checks]
+ B -->|Fail| Q[Quarantine source version]
+ C --> D[Deterministic split planner]
+ D --> E[Fit feature transforms on TRAIN only]
+ E --> F[Freeze feature specification]
+ F --> G[Transform train validation and test]
+ G --> H[Quality freshness and drift profiler]
+ H -->|Hard gate fails| Q
+ H -->|Pass| I[Immutable dataset manifest]
+ I --> J[Tenant-scoped lineage catalog]
+ J --> K[Experiment tracker]
+ K --> L[Model registry and release gate]
