@@ -32,7 +32,7 @@
       "relevance": 0.8,
       "reliability": 0.7,
       "recency": 0.3,
-      "token_cost": 50
+      "token_cost": 80
     },
     {
       "id": "C",
