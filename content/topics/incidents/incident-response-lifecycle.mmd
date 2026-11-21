@@ -1,0 +1,12 @@
+flowchart TD
+  A[Alert / detection] --> B[Declare incident + assign commander]
+  B --> C[Classify severity and impact]
+  C --> D[Contain active harm]
+  D --> E[Preserve redacted evidence + custody]
+  E --> F[Eradicate root cause]
+  F --> G[Known-good immutable release]
+  G --> H{Recovery gates pass?}
+  H -->|No| F
+  H -->|Yes| I[Canary / staged recovery]
+  I --> J[Monitor recurrence]
+  J --> K[Blameless postmortem + owned actions]

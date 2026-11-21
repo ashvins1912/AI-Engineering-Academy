@@ -1,0 +1,51 @@
+{
+  "incidentId": "INC-SYNTH-001",
+  "category": "tenant_exposure",
+  "severity": "P0",
+  "activeHarm": true,
+  "timeline": [
+    {
+      "at": "09:00",
+      "event": "suspected incident start"
+    },
+    {
+      "at": "09:12",
+      "event": "alert detected"
+    },
+    {
+      "at": "09:30",
+      "event": "containment"
+    },
+    {
+      "at": "10:15",
+      "event": "recovery gate passed"
+    }
+  ],
+  "containment": [
+    "disable_affected_data_path",
+    "revoke_exposed_links",
+    "pause_affected_workers",
+    "preserve_access_audit"
+  ],
+  "evidence": {
+    "source": "redacted-access-audit",
+    "collector": "security-lead",
+    "digest": "sha256:synthetic-fixture",
+    "redacted": true
+  },
+  "recoveryGates": {
+    "tenant_isolation": true,
+    "cache_acl": true,
+    "vector_acl": true,
+    "object_acl": true,
+    "queue_authorization": true,
+    "quality": true,
+    "slo": true,
+    "cost": true
+  },
+  "expected": {
+    "ttdMinutes": 12,
+    "ttcMinutes": 18,
+    "recoveryAfterContainmentMinutes": 45
+  }
+}
