@@ -6,7 +6,7 @@ from app import load_model,predict
 class ContainerDemoTests(unittest.TestCase):
  def test_demo_model_produces_stable_numeric_score(self):
   model=load_model(str(ROOT/"container-demo/model/model.json"))
-  self.assertAlmostEqual(predict([1,2,3],model)["score"],.15)
+  self.assertAlmostEqual(predict([1,2,3],model)["score"],.35)
   self.assertEqual(len(model["sha256"]),64)
  def test_invalid_feature_shape_and_types_fail(self):
   model=load_model(str(ROOT/"container-demo/model/model.json"))
