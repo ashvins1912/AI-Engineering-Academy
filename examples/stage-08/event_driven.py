@@ -54,7 +54,8 @@ class InMemoryBroker:
         self.messages.append(message)
         return self._delivery
     def receive(self):
-        return next((m for m in self.messages if not m["acked"]),None)
+        available=[m for m in self.messages if not m["acked"]]
+        return min(available,key=lambda m:self.attempts.get(m["delivery_id"],0),default=None)
     def ack(self,delivery_id):
         for message in self.messages:
             if message["delivery_id"]==delivery_id:
