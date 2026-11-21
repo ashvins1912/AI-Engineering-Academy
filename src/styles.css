@@ -1268,3 +1268,31 @@
 .container-memory-equation>div b{font:12px 'DM Mono';color:#dbe4ff}
 .container-memory-equation>small{display:block;color:#8e9fba;font-size:10px;line-height:1.5;margin-top:12px}
 @media(max-width:760px){.container-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.container-controls{grid-template-columns:1fr}.container-memory-equation>div{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Stage 9 Topic 6 — CI/CD release and rollback workbench */
+.cicd-stage-track{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:15px 0;padding:12px;border:1px solid #293750;border-radius:12px;background:#0e1728}
+.cicd-stage-track>div{display:grid;justify-items:center;gap:5px;color:#7486a5}
+.cicd-stage-track>div.done{color:#b7c7ff}
+.cicd-stage-track span{font-size:15px}
+.cicd-stage-track small{font:10px 'DM Mono'}
+.cicd-release-state{border:1px solid #293750;border-radius:12px;background:#0e1728;padding:13px;margin:14px 0}
+.cicd-release-state>div{display:flex;justify-content:space-between;gap:12px;padding:7px 2px;border-bottom:1px solid #202c41}
+.cicd-release-state>div:last-child{border-bottom:0}
+.cicd-release-state>div:first-child{align-items:center}
+.cicd-release-state strong{display:flex;align-items:center;gap:7px;color:#e0e7f7;font-size:12px}
+.cicd-release-state span,.cicd-release-state code{font:10px 'DM Mono';color:#91a2be}
+.cicd-release-state b{font:11px 'DM Mono';color:#dbe4ff;overflow-wrap:anywhere;text-align:right}
+.cicd-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;border:1px solid #293750;border-radius:12px;padding:15px;margin:14px 0}
+.cicd-controls label{display:grid;gap:8px;color:#aab8d0;font-size:12px}
+.cicd-controls label span{display:flex;justify-content:space-between;gap:8px}
+.cicd-controls label b{font:11px 'DM Mono';color:#d9dfff}
+.cicd-controls input[type=range]{width:100%;accent-color:#91a2ff}
+.cicd-toggle{display:flex!important;align-items:center;gap:9px}
+.cicd-toggle input{accent-color:#91a2ff}
+.cicd-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:15px 0}
+.cicd-metrics article{min-width:0;border:1px solid #2a3852;background:#111b2d;border-radius:11px;padding:13px}
+.cicd-metrics small,.cicd-metrics strong,.cicd-metrics span{display:block}
+.cicd-metrics small{font:10px 'DM Mono';letter-spacing:.7px;color:#8c9bb7}
+.cicd-metrics strong{font:600 20px 'Space Grotesk';color:#e8edff;margin:7px 0}
+.cicd-metrics span{font-size:11px;color:#96a6c1;line-height:1.45}
+@media(max-width:760px){.cicd-stage-track{overflow-x:auto}.cicd-stage-track>div{min-width:52px}.cicd-controls{grid-template-columns:1fr}.cicd-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
