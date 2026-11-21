@@ -19,7 +19,8 @@
     "failures",
     "practice",
     "assessment",
-    "references"
+    "references",
+    "codeWalkthrough"
   ],
   "properties": {
     "schemaVersion": {
@@ -606,7 +607,10 @@
         "guided",
         "independent",
         "realWorld",
-        "expertExtension"
+        "expertExtension",
+        "guidedExercise",
+        "miniAppIntegration",
+        "scenarioQuiz"
       ],
       "properties": {
         "guided": {
@@ -624,6 +628,98 @@
         "expertExtension": {
           "type": "string",
           "minLength": 10
+        },
+        "guidedExercise": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "title",
+            "instructions",
+            "starterCode",
+            "solutionCode",
+            "unitTests"
+          ],
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 4
+            },
+            "instructions": {
+              "type": "string",
+              "minLength": 30
+            },
+            "starterCode": {
+              "type": "string",
+              "minLength": 10
+            },
+            "solutionCode": {
+              "type": "string",
+              "minLength": 10
+            },
+            "unitTests": {
+              "type": "string",
+              "minLength": 10
+            }
+          }
+        },
+        "miniAppIntegration": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "projectGoal",
+            "steps"
+          ],
+          "properties": {
+            "projectGoal": {
+              "type": "string",
+              "minLength": 20
+            },
+            "steps": {
+              "type": "array",
+              "minItems": 3,
+              "items": {
+                "type": "string",
+                "minLength": 15
+              }
+            }
+          }
+        },
+        "scenarioQuiz": {
+          "type": "array",
+          "minItems": 3,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "question",
+              "options",
+              "correctIndex",
+              "explanation"
+            ],
+            "properties": {
+              "question": {
+                "type": "string",
+                "minLength": 20
+              },
+              "options": {
+                "type": "array",
+                "minItems": 3,
+                "items": {
+                  "type": "string",
+                  "minLength": 5
+                }
+              },
+              "correctIndex": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 3
+              },
+              "explanation": {
+                "type": "string",
+                "minLength": 30
+              }
+            }
+          }
         }
       }
     },
@@ -712,6 +808,28 @@
           },
           "version": {
             "type": "string"
+          }
+        }
+      }
+    },
+    "codeWalkthrough": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "lines",
+          "explanation"
+        ],
+        "properties": {
+          "lines": {
+            "type": "string",
+            "minLength": 3
+          },
+          "explanation": {
+            "type": "string",
+            "minLength": 20
           }
         }
       }
