@@ -31,6 +31,14 @@ class WorkflowJournalTests(unittest.TestCase):
   self.store.record_step("tenant-a","run-1","payment","k1",0,{"provider_id":"p1"})
   run=self.store.record_compensation("tenant-a","run-1","payment",1,"failed","provider unavailable")
   self.assertEqual(run["steps"][0]["compensation_state"],"failed")
+ def test_terminal_run_rejects_new_steps(self):
+  self.store.finish_run("tenant-a","run-1",0,"completed")
+  with self.assertRaises(WorkflowConflict):self.store.record_step("tenant-a","run-1","late","k1",0,{"x":1})
+ def test_compensated_terminal_requires_every_step_compensated(self):
+  self.store.record_step("tenant-a","run-1","reserve","k1",0,{"reservation":"r1"})
+  with self.assertRaises(WorkflowConflict):self.store.finish_run("tenant-a","run-1",1,"compensated")
+  self.store.record_compensation("tenant-a","run-1","reserve",1,"compensated")
+  self.store.finish_run("tenant-a","run-1",2,"compensated")
  def test_reopen_persistence(self):
   self.store.record_step("tenant-a","run-1","reserve","k1",0,{"reservation":"r1"})
   self.store.close();self.store=WorkflowJournal(self.path,clock=lambda:101.0)
