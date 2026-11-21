@@ -1,0 +1,498 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "human-loop",
+    "title": "Human-in-the-loop controls",
+    "stage": 6,
+    "estimatedMinutes": 180
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Explain why consequential agent actions require human review outside model control.",
+      "Bind approvals to an exact action, tenant, resource and workflow version.",
+      "Enforce trusted reviewer roles, separation of duties, expiry and quorum.",
+      "Resume durable workflows safely after approval, rejection, timeout or escalation.",
+      "Test replay, stale approval, privilege escalation and payload tampering."
+    ],
+    "prerequisites": [
+      "Stage 6 Topics 1–4: agent loop, planning, memory and durable state",
+      "Python, SQLite transactions, authentication and RBAC"
+    ],
+    "glossary": [
+      {
+        "term": "Human-in-the-loop",
+        "definition": "A control pattern where a qualified person reviews a consequential action before execution."
+      },
+      {
+        "term": "Action binding",
+        "definition": "An immutable link between the reviewed payload, workflow version and resulting decision."
+      },
+      {
+        "term": "Separation of duties",
+        "definition": "A policy preventing the requester or a conflicted identity from approving the same operation."
+      },
+      {
+        "term": "Quorum",
+        "definition": "The minimum number of distinct authorized identities required for a decision to pass."
+      },
+      {
+        "term": "Fail-closed",
+        "definition": "When identity, policy or approval cannot be verified, the consequential action is denied."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "A prompt that says ask a human is not enforceable. The application must pause before a consequential side effect, persist the exact proposed action, authenticate a reviewer, validate the decision and only then resume.",
+    "plainLanguage": "The agent proposes an action, but server-side policy decides whether approval is required. If review is needed, execution pauses before the side effect. Persist tenant, resource, action type, canonical payload hash, requester, workflow version, policy version and expiry. The reviewer sees the exact consequences.\n\nThe reviewer authenticates independently. The server loads roles from a trusted identity source; it never trusts a role supplied by the model or browser. The requester cannot approve their own action. High-risk operations may require two distinct approvers.\n\nApproval is bound to what was reviewed. If the amount changes from ₹8,000 to ₹80,000, the old approval is invalid. Compare a canonical action hash and workflow version at decision time and again before execution. Decisions are single-use and append-only. Replay, cross-tenant access, tampering and expiry fail closed.\n\nApproval, rejection, expiry and escalation are different outcomes. Rejection must not silently retry. Expiry moves the workflow to a safe timeout or escalation state. Notifications are advisory; an authenticated decision endpoint is authoritative.\n\nUse risk-based policy considering impact, reversibility, money, data sensitivity and user expectations. Enforce the gate in a server-owned tool adapter so the model cannot bypass it by renaming a tool or splitting an operation.",
+    "mentalModel": "Propose → classify risk → persist exact action → notify → authenticate → bind decision to hash/version → satisfy quorum → revalidate → execute or stop.",
+    "limitations": [
+      "Human approval does not guarantee a reviewer understands or decides correctly.",
+      "Notifications may be delayed or duplicated and must never be authorization.",
+      "Two-person approval can fail when identities or the control plane are compromised.",
+      "A database transaction cannot atomically include a remote provider; use idempotency and reconciliation.",
+      "Excessive prompts cause fatigue and rubber-stamping; tune thresholds using measured outcomes."
+    ],
+    "everydayAnalogy": "A bank transfer is prepared by one employee and reviewed by an authorized manager. The manager signs a specific amount and recipient, not a blank cheque. If either changes, the signature no longer applies.",
+    "mathMadeSimple": "Actions below ₹10,000 require one reviewer; actions at or above ₹10,000 require two. A ₹8,000 refund needs one decision; a ₹12,000 refund needs two. Quorum requires unique authenticated identities authorized for the same action hash.",
+    "productionImpact": "Production HITL requires server-side policy, trusted identity and role lookup, exact action binding, immutable decisions, expiry, separation of duties, quorum, idempotent resume, escalation, privacy-aware notifications and queue/latency metrics."
+  },
+  "useCase": {
+    "scenario": "An ecommerce agent prepares a ₹12,500 refund. Policy requires two distinct finance approvers. The workflow pauses, stores the canonical action and order version, collects authenticated decisions and revalidates the order before issuing the refund.",
+    "actors": [
+      "Agent",
+      "Risk policy engine",
+      "Approval store",
+      "Finance reviewer A",
+      "Finance reviewer B",
+      "Refund adapter",
+      "Audit worker"
+    ],
+    "inputs": [
+      "Tenant, requester and order ID",
+      "Exact refund amount, currency and reason",
+      "Workflow and policy version",
+      "Trusted reviewer identity and roles",
+      "Approval expiry"
+    ],
+    "constraints": [
+      "Agent cannot approve or change policy.",
+      "Requester and approvers are distinct identities.",
+      "Decisions bind to one payload hash and workflow version.",
+      "Expired, replayed, cross-tenant or stale decisions are rejected.",
+      "Provider dispatch requires quorum and final policy recheck."
+    ],
+    "outputs": [
+      "Durable approval request",
+      "Append-only decisions and audit events",
+      "Approved, rejected, expired or escalated outcome",
+      "At most one logical refund with stable idempotency key"
+    ],
+    "successMetric": "Zero unauthorized or duplicate refunds; every dispatched refund has verifiable quorum and audit trail."
+  },
+  "architecture": {
+    "diagram": "content/topics/human-loop/human-loop.mmd",
+    "components": [
+      "Agent proposal adapter",
+      "Server-owned risk policy",
+      "Tenant-scoped approval repository",
+      "Identity and RBAC provider",
+      "Reviewer notification adapter",
+      "Decision and quorum evaluator",
+      "Durable workflow resumer",
+      "Protected side-effect adapter",
+      "Append-only audit log"
+    ],
+    "dataFlow": [
+      {
+        "from": "Agent",
+        "to": "Policy engine",
+        "payload": "tool + canonical payload + workflow version",
+        "purpose": "Classify risk and decide whether review is required."
+      },
+      {
+        "from": "Policy engine",
+        "to": "Approval store",
+        "payload": "tenant + requester + payload hash + expiry",
+        "purpose": "Persist immutable request before pausing."
+      },
+      {
+        "from": "Approval store",
+        "to": "Reviewer inbox",
+        "payload": "request ID + minimized summary",
+        "purpose": "Notify reviewers without granting authority."
+      },
+      {
+        "from": "Reviewer",
+        "to": "Decision API",
+        "payload": "authenticated identity + decision",
+        "purpose": "Validate role, separation, expiry and action binding."
+      },
+      {
+        "from": "Decision API",
+        "to": "Workflow resumer",
+        "payload": "quorum + decision IDs",
+        "purpose": "Resume only after final authorization."
+      },
+      {
+        "from": "Workflow resumer",
+        "to": "Protected adapter",
+        "payload": "approved action + idempotency key",
+        "purpose": "Execute side effect logically once."
+      }
+    ],
+    "trustBoundaries": [
+      "Model output and browser input are untrusted; never accept model-supplied roles.",
+      "Identity is verified by server middleware against a trusted issuer and current permissions.",
+      "Tenant scope is enforced in every repository query.",
+      "Notification links are navigation aids; decisions require fresh authentication.",
+      "Final adapter rechecks hash, quorum, policy and workflow version."
+    ],
+    "failurePaths": [
+      "Notification lost: request remains pending in durable queue; resend is idempotent.",
+      "Self-approval: reject and audit denial.",
+      "Payload changes: invalidate request and require new approval.",
+      "Expiry or incomplete quorum: pause and escalate; never auto-approve.",
+      "Replay or cross-tenant decision: reject transactionally.",
+      "Provider timeout: reconcile with same operation key before retrying."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-06/fixtures/human-loop.json",
+    "steps": [
+      {
+        "label": "Risk classification",
+        "explanation": "A ₹12,500 refund crosses the ₹10,000 threshold and requires two finance reviewers.",
+        "expectedState": "approval required; provider_calls=0"
+      },
+      {
+        "label": "Persist exact action",
+        "explanation": "Store canonical action, tenant, requester, payload hash and workflow version before pausing.",
+        "expectedState": "pending; quorum=0/2"
+      },
+      {
+        "label": "First reviewer",
+        "explanation": "An authenticated finance reviewer approves the exact action; requester cannot self-approve.",
+        "expectedState": "quorum=1/2"
+      },
+      {
+        "label": "Second reviewer",
+        "explanation": "A second distinct finance identity approves the same hash and version.",
+        "expectedState": "quorum=2/2"
+      },
+      {
+        "label": "Revalidate and execute",
+        "explanation": "Recheck hash, workflow version and expiry, then dispatch with a stable idempotency key.",
+        "expectedState": "one logical refund"
+      }
+    ],
+    "accessibility": [
+      "Every stage exposes input, transformation, output and quorum as text.",
+      "Controls are keyboard operable; color is never the only status signal.",
+      "Decision history lists reviewer identity, role, timestamp and reason."
+    ],
+    "animation": {
+      "objective": "Animate a ₹12,500 refund through risk classification, two-person review, exact action binding and safe execution.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Risk classification",
+          "narration": "A ₹12,500 refund crosses the ₹10,000 threshold and requires two finance reviewers.",
+          "input": "amount=12500; threshold=10000",
+          "transformation": "risk=HIGH; quorum=2",
+          "output": "approval required; provider_calls=0",
+          "visualState": "Policy gate blocks provider"
+        },
+        {
+          "step": 2,
+          "title": "Persist exact action",
+          "narration": "Store canonical action, tenant, requester, payload hash and workflow version before pausing.",
+          "input": "hash=sha256:8f31; version=12",
+          "transformation": "persist APR-204 and audit event",
+          "output": "pending; quorum=0/2",
+          "visualState": "Immutable request queued"
+        },
+        {
+          "step": 3,
+          "title": "First reviewer",
+          "narration": "An authenticated finance reviewer approves the exact action; requester cannot self-approve.",
+          "input": "reviewer=finance-04",
+          "transformation": "check identity, role, expiry and separation",
+          "output": "quorum=1/2",
+          "visualState": "Provider remains blocked"
+        },
+        {
+          "step": 4,
+          "title": "Second reviewer",
+          "narration": "A second distinct finance identity approves the same hash and version.",
+          "input": "reviewer=finance-09",
+          "transformation": "enforce unique reviewer and decision binding",
+          "output": "quorum=2/2",
+          "visualState": "Quorum reached"
+        },
+        {
+          "step": 5,
+          "title": "Revalidate and execute",
+          "narration": "Recheck hash, workflow version and expiry, then dispatch with a stable idempotency key.",
+          "input": "version=12; key=refund:ORD-42:v12",
+          "transformation": "consume approval and call protected adapter",
+          "output": "one logical refund",
+          "visualState": "Auditable workflow resume"
+        }
+      ],
+      "controls": [
+        {
+          "name": "required_quorum",
+          "min": 1,
+          "max": 3,
+          "defaultValue": 2,
+          "effect": "Changes the number of distinct authorized identities required."
+        },
+        {
+          "name": "refund_amount",
+          "min": 1000,
+          "max": 30000,
+          "defaultValue": 12500,
+          "effect": "Crossing ₹10,000 changes the policy from one reviewer to two."
+        },
+        {
+          "name": "request_age_minutes",
+          "min": 0,
+          "max": 60,
+          "defaultValue": 5,
+          "effect": "At 30 minutes the request expires and cannot be approved or executed."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Five stages show amount, threshold, hash, workflow version, reviewer identities, quorum and provider operation count as text."
+    }
+  },
+  "workedExample": {
+    "problem": "Determine whether a ₹12,500 refund can execute after two reviewers approve it.",
+    "input": "Requester=agent-17; reviewers=finance-04 and finance-09; quorum=2; version=12; provider calls=0.",
+    "steps": [
+      {
+        "operation": "Evaluate policy",
+        "reasoning": "₹12,500 exceeds the ₹10,000 threshold, so two distinct finance identities are required.",
+        "result": "risk=HIGH; state=WAITING_FOR_APPROVAL; provider_calls=0"
+      },
+      {
+        "operation": "Freeze action identity",
+        "reasoning": "Canonical JSON includes order, amount, currency, reason and version. Hashing detects changes.",
+        "result": "payload_hash=sha256:8f31; request=APR-204"
+      },
+      {
+        "operation": "First decision",
+        "reasoning": "finance-04 is authenticated, authorized and distinct from requester agent-17.",
+        "result": "quorum=1/2; execution blocked"
+      },
+      {
+        "operation": "Second decision",
+        "reasoning": "finance-09 is a second authorized identity approving the same hash and version.",
+        "result": "quorum=2/2; final freshness check required"
+      },
+      {
+        "operation": "Revalidate and dispatch",
+        "reasoning": "Hash and version are unchanged, request is unexpired and unused, and provider key is stable.",
+        "result": "provider_calls=1; audit decisions=2"
+      }
+    ],
+    "expectedOutput": "Refund dispatches once only after two distinct finance reviewers approve the exact action at version 12. Changed amount, stale version, expiry or replay blocks execution."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-06/human_loop.py",
+      "runCommand": "python examples/stage-06/human_loop.py",
+      "testsPath": "examples/stage-06/test_human_loop.py",
+      "expectedResult": "In-memory gate demonstrates distinct reviewers, exact action binding, quorum and expiry."
+    },
+    {
+      "language": "python",
+      "role": "production",
+      "path": "examples/stage-06/human_loop_production.py",
+      "runCommand": "python -m unittest discover -s examples/stage-06 -p 'test_human_loop_production.py' -v",
+      "testsPath": "examples/stage-06/test_human_loop_production.py",
+      "expectedResult": "SQLite store enforces tenant scope, requester separation, role allowlists, action hash, expiry, quorum and one-time consumption."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Model self-approval",
+      "symptom": "Agent marks its own high-impact action approved.",
+      "rootCause": "Application trusted model-generated approver or browser-supplied role.",
+      "recovery": "Require server-authenticated identity and current role; reject requester and audit.",
+      "regressionTest": "Submit requester identity and assert denial with zero provider operations."
+    },
+    {
+      "name": "Payload changed after review",
+      "symptom": "Reviewer approves ₹8,000 but system executes ₹80,000.",
+      "rootCause": "Approval referenced only workflow ID, not payload hash and version.",
+      "recovery": "Bind decision to exact hash/version; require new review after changes.",
+      "regressionTest": "Mutate amount after request creation and assert decision or execution fails."
+    },
+    {
+      "name": "Duplicate or replayed decision",
+      "symptom": "Repeated callback counts twice toward quorum.",
+      "rootCause": "No unique decision constraint or single-use consumption.",
+      "recovery": "Deduplicate by request and authenticated reviewer; consume transactionally.",
+      "regressionTest": "Replay same reviewer decision and assert quorum does not increase."
+    },
+    {
+      "name": "Expired approval accepted",
+      "symptom": "Request is approved after its deadline.",
+      "rootCause": "Expiry checked only in UI or notification link.",
+      "recovery": "Check server time inside decision and execution transactions.",
+      "regressionTest": "Advance deterministic clock past expiry and assert denial."
+    },
+    {
+      "name": "Notification treated as authorization",
+      "symptom": "Chat reaction or link click causes a sensitive tool to execute.",
+      "rootCause": "Notification delivery was coupled to side-effect adapter.",
+      "recovery": "Require fresh authenticated decision endpoint; notifications remain advisory.",
+      "regressionTest": "Deliver notifications without a decision and assert zero provider calls."
+    }
+  ],
+  "practice": {
+    "guided": "Classify tool calls by impact, reversibility, data sensitivity and monetary threshold. Decide whether each can proceed, needs one reviewer, needs quorum or must be denied.",
+    "independent": "Implement a server-side approval endpoint with identity verification, role checks, separation of duties, exact payload binding, expiry and replay protection.",
+    "realWorld": "Add approval gates to an ecommerce refund workflow. Persist requests, notify finance reviewers, record decisions and resume only after quorum.",
+    "expertExtension": "Design dynamic quorum, delegated approvers, break-glass review, policy versioning, risk scoring and approval-fatigue monitoring.",
+    "guidedExercise": {
+      "title": "Implement an exact-action quorum gate",
+      "instructions": "Count a decision only when the reviewer is authorized, is not the requester, has not already decided and approves the same action hash before expiry.",
+      "starterCode": "def record_decision(request, reviewer, role, decision, now):\n    # TODO: check expiry and pending state\n    # TODO: check role and separation of duties\n    # TODO: bind action hash and deduplicate reviewer\n    raise NotImplementedError",
+      "solutionCode": "if now >= request['expires_at']: raise ValueError('expired')\nif reviewer == request['requester'] or role not in request['allowed_roles']: raise PermissionError('unauthorized')\nif reviewer in request['decisions']: raise ValueError('duplicate reviewer')\nrequest['decisions'][reviewer] = {'decision': decision, 'hash': request['action_hash']}\nreturn 'APPROVED' if sum(d['decision']=='APPROVE' for d in request['decisions'].values()) >= request['required_quorum'] else 'PENDING'",
+      "unitTests": "assert record_decision(req, 'finance-1', 'finance', 'APPROVE', 110) == 'PENDING'\nassert record_decision(req, 'finance-2', 'finance', 'APPROVE', 111) == 'APPROVED'"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build an approval console showing risk, immutable action details, reviewer decisions, quorum, expiry and safe resume.",
+      "steps": [
+        "Classify impact, reversibility and monetary threshold from the fixture.",
+        "Display action snapshot, hash, tenant, requester, workflow and policy version.",
+        "Reject self-approval, unauthorized roles and duplicate reviewers.",
+        "Adjust quorum and request age to inspect pending, approved, rejected and expired states.",
+        "Change amount or workflow version after approval and prove execution is blocked.",
+        "Show audit events and provider operation count; notifications alone must not change either."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "The agent returns approved=true in tool arguments. What should the server do?",
+        "options": [
+          "Trust the agent",
+          "Accept high model confidence",
+          "Require an authenticated authorized human decision",
+          "Execute then request approval"
+        ],
+        "correctIndex": 2,
+        "explanation": "The model is not an authority. Only a server-verified identity with current permission can create a decision."
+      },
+      {
+        "question": "A reviewer approves ₹8,000, then the payload changes to ₹80,000. What is correct?",
+        "options": [
+          "Reuse approval",
+          "Invalidate because action hash changed",
+          "Reuse after warning",
+          "Execute and log"
+        ],
+        "correctIndex": 1,
+        "explanation": "Approval is specific to the reviewed action. A material payload or version change requires a new request."
+      },
+      {
+        "question": "A two-person quorum has one approval. Can the provider call proceed?",
+        "options": [
+          "Yes, if manager",
+          "Yes, if model confident",
+          "No, quorum is incomplete",
+          "Yes, if notification sent"
+        ],
+        "correctIndex": 2,
+        "explanation": "Quorum is a hard precondition immediately before dispatch. Notifications and model confidence do not satisfy it."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Risk classification and policy design",
+        "weight": 20,
+        "evidence": "Classify monetary, sensitive and irreversible actions using explicit thresholds."
+      },
+      {
+        "criterion": "Identity, RBAC and separation of duties",
+        "weight": 20,
+        "evidence": "Tests reject self-approval, unauthorized roles and duplicate identities."
+      },
+      {
+        "criterion": "Exact action binding and freshness",
+        "weight": 20,
+        "evidence": "Payload hash and workflow version are checked at decision and execution."
+      },
+      {
+        "criterion": "Durable quorum, expiry and replay protection",
+        "weight": 25,
+        "evidence": "Tests cover quorum, rejection, expiry, tenant isolation and one-time consumption."
+      },
+      {
+        "criterion": "Auditability and operations",
+        "weight": 15,
+        "evidence": "Append-only events and measurable notification, queue and escalation behavior."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "From-scratch and production approval tests pass.",
+      "No provider operation occurs before quorum and final freshness checks.",
+      "Replay, self-approval, changed payload, expiry and cross-tenant tests are denied.",
+      "Threat model explains identity trust, reviewer collusion and approval fatigue."
+    ]
+  },
+  "references": [
+    {
+      "title": "NIST AI Risk Management Framework 1.0",
+      "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "OWASP Top 10 for LLM Applications",
+      "url": "https://owasp.org/www-project-top-10-for-large-language-model-applications/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "NIST SP 800-53 Rev. 5",
+      "url": "https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "if reviewer_id == request.requester_id: raise PermissionError",
+      "explanation": "Separation of duties uses trusted identity, not a user-editable field or model-generated name."
+    },
+    {
+      "lines": "if now >= expires_at or current_hash != approved_hash: reject()",
+      "explanation": "Expiry and action binding prevent stale approvals from authorizing changed or delayed operations."
+    },
+    {
+      "lines": "if unique_approvers < required_quorum: keep_paused()",
+      "explanation": "Quorum counts distinct authenticated identities with current roles; repeated clicks cannot satisfy it."
+    },
+    {
+      "lines": "consume_approval_and_append_audit_event()",
+      "explanation": "The decision is consumed transactionally and leaves an audit record before the workflow resumes."
+    }
+  ]
+}

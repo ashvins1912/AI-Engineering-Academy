@@ -1,0 +1,30 @@
+{
+  "scenario": "Two-person finance approval for a ₹12,500 refund",
+  "tenantId": "acme",
+  "requester": "agent-17",
+  "workflowId": "WF-ORD-42",
+  "workflowVersion": 12,
+  "policyVersion": "refund-v3",
+  "action": {
+    "orderId": "ORD-42",
+    "amount": 12500,
+    "currency": "INR"
+  },
+  "requiredQuorum": 2,
+  "allowedRoles": [
+    "finance"
+  ],
+  "expiresAt": 130,
+  "reviewers": [
+    {
+      "id": "finance-04",
+      "decision": "APPROVE"
+    },
+    {
+      "id": "finance-09",
+      "decision": "APPROVE"
+    }
+  ],
+  "requestId": "APR-204",
+  "actionHashPrefix": "8f31"
+}
