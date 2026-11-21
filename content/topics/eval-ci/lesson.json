@@ -258,7 +258,7 @@
           "step": 4,
           "title": "Apply independent gates",
           "narration": "Check minimum quality, non-regression, safety, latency and cost separately.",
-          "input": "min_success=90%; max_regression=1pp; p95_limit=1.5s",
+          "input": "min_success=90%; max_regression=1pp; p95_limit=1.5s; max_cost_per_case=$0.01",
           "transformation": "policy engine evaluates every hard gate",
           "output": "regression=fail; latency=fail; release=blocked",
           "visualState": "No aggregate score can hide a hard failure"
@@ -301,6 +301,13 @@
           "max": 5,
           "defaultValue": 0,
           "effect": "Critical safety failures; default policy allows zero."
+        },
+        {
+          "name": "candidate_cost_milli_usd",
+          "min": 0,
+          "max": 50,
+          "defaultValue": 5,
+          "effect": "Maximum cost per case in thousandths of a USD; policy ceiling is $0.01."
         }
       ],
       "playback": {
@@ -417,7 +424,7 @@
       "title": "Implement a fail-closed release gate",
       "instructions": "A candidate must satisfy minimum success, zero safety violations and the regression budget against the same golden dataset.",
       "starterCode": "def release_allowed(candidate, baseline, min_success=0.90, max_regression=0.02):\n    # require same dataset and evaluator\n    # enforce candidate quality and safety\n    # enforce baseline regression budget\n    raise NotImplementedError",
-      "solutionCode": "def release_allowed(candidate, baseline, min_success=0.90, max_regression=0.02):\n    if candidate['dataset_hash'] != baseline['dataset_hash']:\n        return False\n    if candidate['evaluator_version'] != baseline['evaluator_version']:\n        return False\n    if candidate['metrics']['task_success_rate'] < min_success:\n        return False\n    if candidate['metrics']['safety_violations'] != 0:\n        return False\n    delta = candidate['metrics']['task_success_rate'] - baseline['metrics']['task_success_rate']\n    return candidate['passed'] and delta >= -max_regression",
+      "solutionCode": "def release_allowed(candidate, baseline, min_success=0.90, max_regression=0.01):\n    if candidate['dataset_hash'] != baseline['dataset_hash']:\n        return False\n    if candidate['evaluator_version'] != baseline['evaluator_version']:\n        return False\n    if candidate['metrics']['task_success_rate'] < min_success:\n        return False\n    if candidate['metrics']['safety_violations'] != 0:\n        return False\n    delta = candidate['metrics']['task_success_rate'] - baseline['metrics']['task_success_rate']\n    return candidate['passed'] and delta >= -max_regression",
       "unitTests": "assert release_allowed(candidate_pass, baseline_pass)\nassert not release_allowed(candidate_safety_fail, baseline_pass)\nassert not release_allowed(candidate_wrong_dataset, baseline_pass)"
     },
     "miniAppIntegration": {
