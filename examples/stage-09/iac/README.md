@@ -1,5 +1,7 @@
 # Infrastructure as Code lab
 
+Repository CI runs `.github/workflows/terraform-iac-validation.yml` on IaC changes. It performs formatting, provider initialization without a remote backend, validation and static scanning; it never applies resources. `validate.yml` in this directory is a portable teaching template.
+
 The AWS example describes an HTTPS inference service with an internet-facing ALB, private Fargate tasks, private ECR/CloudWatch/Secrets Manager VPC endpoints, immutable ECR tags, digest-pinned image, non-root/read-only container, least-privilege task role and deployment circuit breaker.
 
 ## Safety boundary
