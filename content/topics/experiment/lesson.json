@@ -1,0 +1,569 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "experiment",
+    "title": "Experiment tracking — MLflow, W&B and reproducibility",
+    "stage": 9,
+    "estimatedMinutes": 240
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Design reproducible experiment runs with immutable parameters, versioned datasets, metrics and artifacts.",
+      "Compare MLflow Tracking and Weights & Biases run/project/artifact concepts and trade-offs.",
+      "Build dataset manifests with content hashes, split lineage and leakage checks.",
+      "Track metrics as step-indexed time series and compare runs using declared objectives.",
+      "Reproduce training using code commit, environment lock, seeds, hardware and dataset snapshot.",
+      "Protect experiment metadata and artifacts from secret/PII leakage."
+    ],
+    "prerequisites": [
+      "Stage 1 Python/data foundations and Stage 2–4 ML/DL training fundamentals",
+      "Git, virtual environments, dataset splitting, metrics and basic model training"
+    ],
+    "glossary": [
+      {
+        "term": "Experiment",
+        "definition": "A named collection of related training runs addressing one research question."
+      },
+      {
+        "term": "Run",
+        "definition": "One execution with parameters, metrics, code/environment metadata and artifacts."
+      },
+      {
+        "term": "Parameter",
+        "definition": "A run configuration value normally immutable once logged."
+      },
+      {
+        "term": "Metric",
+        "definition": "A measured value recorded at a step/time, often as a time series."
+      },
+      {
+        "term": "Artifact",
+        "definition": "A file or directory produced or consumed by a run, such as model, plot, checkpoint or dataset manifest."
+      },
+      {
+        "term": "Dataset manifest",
+        "definition": "A versioned description of files, hashes, schema, splits and provenance."
+      },
+      {
+        "term": "Lineage",
+        "definition": "The trace linking dataset, code, configuration, model and downstream evaluation."
+      },
+      {
+        "term": "Reproducibility",
+        "definition": "The ability to rerun or explain an experiment using its recorded inputs and environment."
+      },
+      {
+        "term": "Sweep",
+        "definition": "A coordinated search over hyperparameter configurations."
+      },
+      {
+        "term": "Model registry",
+        "definition": "A governed catalog of model versions and promotion stages, separate from experiment tracking."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "Machine learning progress is easy to lose. A notebook may show accuracy 94%, but without the exact dataset version, split, code commit, preprocessing, seed, hyperparameters, environment and checkpoint, the result cannot be trusted or reproduced. Experiment tracking turns informal trial-and-error into an auditable scientific workflow.",
+    "plainLanguage": "An experiment groups runs around one question, such as whether a deeper model improves validation accuracy. A run records configuration parameters, metric time series, tags, dataset references, source-code commit, environment and output artifacts. Keep the experiment name stable and give each run a unique ID. Do not overwrite a previous run when a configuration changes.\n\nParameters describe what you set before training: learning rate, batch size, optimizer, model depth, seed, data split and augmentation. Treat parameters as immutable once recorded. Metrics describe what happened: training loss, validation loss, accuracy, F1, latency or memory. Metrics often have a step and timestamp; keep the full history rather than only the final summary. State the direction of optimization and evaluation split.\n\nMLflow Tracking organizes experiments and runs, with parameters, metrics, tags and artifacts stored by a tracking backend. Its tracking server can use a database for metadata and an artifact store for files. MLflow model logging and registry features build on tracking, but a run is not automatically a promoted production model. Choose backend storage, authentication, artifact access and retention deliberately.\n\nWeights & Biases organizes work into projects and runs, with config, step-based history, summaries, tags, artifacts and lineage. Artifacts can version datasets, checkpoints and model outputs. Sweeps coordinate hyperparameter search strategies. Teams should understand project privacy, artifact access, offline logging/sync, entity ownership and retention before uploading proprietary data.\n\nDataset identity is more than a filename. Build a manifest with immutable dataset version, file paths, content hashes, schema, row count, source, license, preprocessing code version and split membership. Keep train/validation/test IDs disjoint. Never tune against the test set; reserve it for final unbiased evaluation. If data changes, create a new dataset version rather than silently mutating an existing one.\n\nReproducibility metadata includes Git commit and dirty state, dependency lockfile hash, Python/library versions, OS/container image, hardware/accelerator, random seeds, deterministic settings, training config, dataset snapshot, preprocessing pipeline and model initialization. Seeds help but do not guarantee bitwise determinism across hardware, kernels or distributed training. Record limitations instead of promising perfect reproducibility.\n\nCompare runs using the same evaluation dataset and metric definition. A higher accuracy on a different split is not a valid win. Use tables/plots for metric trajectories and declare the primary objective before looking at results. Track resource use and cost alongside quality; a 0.2% gain may not justify 4× training cost.\n\nSweeps can explore grid, random or Bayesian configurations. Start with a bounded search space and fixed validation protocol. Avoid using test metrics to choose hyperparameters. Use early stopping or pruning only when it does not bias comparisons. Preserve exact configuration and sweep agent version for every run.\n\nArtifacts should be content-addressed and linked to the run: checkpoints, model weights, confusion matrices, plots, evaluation reports and dataset manifests. Store large artifacts in object storage, not as database blobs. Record artifact URI, SHA-256, size, media type and access policy. Verify hashes on download and promotion.\n\nTracking systems can leak sensitive information. Never log passwords, access tokens, connection strings, raw PII, unredacted prompts or sensitive training samples. Use metadata allowlists, artifact ACLs, encryption, retention/deletion policies and audit logs. Redact exception messages and command lines that may contain secrets.\n\nExperiment tracking is not evaluation governance or a model registry. Tracking explains how a candidate was trained; evaluation establishes whether it meets quality/safety thresholds; a registry governs version, approval and promotion. Connect these systems with immutable run IDs and artifact hashes rather than treating a logged checkpoint as production-ready.",
+    "mentalModel": "Question → experiment → immutable run config + dataset snapshot → training → step-indexed metrics + artifacts → compare on same evaluation protocol → reproduce/promote separately.",
+    "limitations": [
+      "A random seed does not guarantee bitwise determinism across GPU kernels, devices or distributed execution.",
+      "Metrics are comparable only when dataset split, preprocessing and metric definitions match.",
+      "Tracking metadata does not replace data governance, evaluation gates or model registry approvals.",
+      "Artifact hashes prove file integrity, not that the artifact is safe or scientifically valid.",
+      "Cloud tracking may transmit sensitive metadata or artifacts; configure privacy, ACLs and retention.",
+      "A notebook's final cell output is not a reproducible experiment record."
+    ],
+    "everydayAnalogy": "A scientist keeps a lab notebook: exact ingredients, instrument settings, sample batch, procedure, observations and resulting samples. If another scientist cannot identify the sample or reproduce the procedure, the reported result is not reliable.",
+    "mathMadeSimple": "Run A reaches validation accuracy 0.91 at epoch 8; Run B reaches 0.93 at epoch 12. If B used a different validation split, comparison is invalid. If both use the same dataset snapshot and metric, B gains 2 percentage points but takes 50% more epochs. Record quality and compute cost before choosing.",
+    "productionImpact": "Production experiment tracking requires immutable run IDs, dataset manifests, source/environment hashes, step-indexed metrics, artifact checksums, access controls, secret redaction, retention, run comparison and integration with evaluation and registry gates."
+  },
+  "useCase": {
+    "scenario": "A team compares logistic regression, a small neural network and a transformer baseline on the same versioned text dataset. Every run records split hashes, preprocessing commit, hyperparameters, seed, validation metrics, training duration and model artifacts.",
+    "actors": [
+      "Researcher",
+      "Dataset registry",
+      "Git repository",
+      "Training process",
+      "MLflow/W&B tracker",
+      "Artifact store",
+      "Evaluation job",
+      "Reviewer"
+    ],
+    "inputs": [
+      "Research question and objective",
+      "Versioned dataset manifest",
+      "Code commit and dependency lock",
+      "Hyperparameter configuration and seed",
+      "Training and validation metric definitions"
+    ],
+    "constraints": [
+      "Dataset snapshot and splits are immutable.",
+      "Parameters are recorded before training and cannot be silently changed.",
+      "All runs use the same validation protocol.",
+      "Artifacts are hashed and access-controlled.",
+      "Secrets and raw PII are not logged.",
+      "Test set is reserved for final evaluation."
+    ],
+    "outputs": [
+      "Run records and metric histories",
+      "Dataset and code lineage",
+      "Model/checkpoint artifacts",
+      "Run comparison report",
+      "Reproduction instructions",
+      "Experiment audit trail"
+    ],
+    "successMetric": "A reviewer can reproduce the run configuration, verify dataset/artifact hashes and compare candidates on the same evaluation protocol."
+  },
+  "architecture": {
+    "diagram": "content/topics/experiment/experiment-tracking-pipeline.mmd",
+    "components": [
+      "Experiment/project registry",
+      "Dataset manifest and split store",
+      "Git/environment metadata collector",
+      "Training process",
+      "Metrics logger",
+      "Run metadata backend",
+      "Artifact/object store",
+      "Run comparison UI",
+      "Sweep controller",
+      "Evaluation and model registry handoff"
+    ],
+    "dataFlow": [
+      {
+        "from": "Research question",
+        "to": "Experiment registry",
+        "payload": "experiment name + objective",
+        "purpose": "Group related runs."
+      },
+      {
+        "from": "Dataset registry",
+        "to": "Run",
+        "payload": "dataset version + split hashes",
+        "purpose": "Bind run to immutable data."
+      },
+      {
+        "from": "Git/environment",
+        "to": "Run",
+        "payload": "commit + lockfile + hardware + seed",
+        "purpose": "Capture reproducibility context."
+      },
+      {
+        "from": "Training process",
+        "to": "Metrics logger",
+        "payload": "metric + step + timestamp",
+        "purpose": "Record metric history."
+      },
+      {
+        "from": "Training process",
+        "to": "Artifact store",
+        "payload": "checkpoint + report + SHA-256",
+        "purpose": "Persist outputs with integrity metadata."
+      },
+      {
+        "from": "Run backend",
+        "to": "Comparison UI",
+        "payload": "parameters + metric history + tags",
+        "purpose": "Compare candidates under same protocol."
+      },
+      {
+        "from": "Evaluation job",
+        "to": "Model registry",
+        "payload": "run ID + artifact hash + gate result",
+        "purpose": "Promote only validated candidates."
+      }
+    ],
+    "trustBoundaries": [
+      "Tracking client receives scoped credentials; secrets are never stored in run params or tags.",
+      "Dataset and artifact stores enforce tenant/project ACLs.",
+      "Artifact downloads verify content hash and scan untrusted files.",
+      "Metric and metadata logging uses allowlists to prevent PII/secret leakage.",
+      "Promotion to registry requires independent evaluation and approval."
+    ],
+    "failurePaths": [
+      "Mutable dataset overwritten: reject and create a new content-hashed dataset version.",
+      "Run parameter changed after start: fail immutable-parameter check.",
+      "Metric logged with wrong split: tag evaluation split and block invalid comparison.",
+      "Artifact upload interrupted: resume/checksum and mark incomplete until verified.",
+      "Tracking backend unavailable: bounded local/offline buffer with explicit sync status.",
+      "Secret/PII detected in metadata: redact/block upload and emit security event.",
+      "Different code/environment: mark run non-reproducible rather than claiming exact replay."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-09/fixtures/experiment-tracking.json",
+    "steps": [
+      {
+        "label": "Version data",
+        "explanation": "Create immutable dataset manifest and split hashes.",
+        "expectedState": "dataset=v3"
+      },
+      {
+        "label": "Configure run",
+        "explanation": "Capture code commit, environment, seed and parameters.",
+        "expectedState": "run config immutable"
+      },
+      {
+        "label": "Train and log",
+        "explanation": "Record loss/accuracy by epoch and persist artifacts.",
+        "expectedState": "metric history + checkpoint"
+      },
+      {
+        "label": "Compare runs",
+        "explanation": "Compare candidates using the same dataset and metric protocol.",
+        "expectedState": "valid comparison"
+      },
+      {
+        "label": "Reproduce",
+        "explanation": "Verify code, environment, dataset and artifact hashes.",
+        "expectedState": "reproducibility evidence"
+      }
+    ],
+    "accessibility": [
+      "Task state and context IDs are labeled as text.",
+      "Streaming events are listed with event type and sequence.",
+      "Artifact name, MIME type and validation status are explicit."
+    ],
+    "animation": {
+      "objective": "Compare two training runs on one immutable dataset and inspect why dataset/split lineage and artifact hashes matter.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Version dataset",
+          "narration": "Hash source files and record train/validation/test split IDs before training.",
+          "input": "dataset=reviews-v3; rows=10000",
+          "transformation": "manifest + file hashes + disjoint split IDs",
+          "output": "dataset_hash=sha256:ab12; split_overlap=0",
+          "visualState": "Immutable data snapshot"
+        },
+        {
+          "step": 2,
+          "title": "Configure run",
+          "narration": "Record code commit, environment lock, seed and immutable hyperparameters.",
+          "input": "seed=42; lr=0.01; batch=32; commit=8f3a",
+          "transformation": "create experiment run + log params/tags",
+          "output": "run_id=run-A; params_locked=true",
+          "visualState": "Reproducible run definition"
+        },
+        {
+          "step": 3,
+          "title": "Train and log",
+          "narration": "Log training and validation loss/accuracy by epoch and upload a checkpoint artifact.",
+          "input": "epochs=12; log_every=1",
+          "transformation": "metric(step,value) + artifact(hash,size,uri)",
+          "output": "val_accuracy=0.93; artifact_hash=sha256:cd34",
+          "visualState": "Run history persisted"
+        },
+        {
+          "step": 4,
+          "title": "Compare candidates",
+          "narration": "Compare Run A and B only when dataset version and metric definitions match.",
+          "input": "run-A=0.91; run-B=0.93; same split",
+          "transformation": "objective=validation_accuracy; compare cost and epochs",
+          "output": "delta=+0.02; epochs=+4",
+          "visualState": "Evidence-based selection"
+        },
+        {
+          "step": 5,
+          "title": "Verify reproduction",
+          "narration": "Recreate the run and compare config, dataset and artifact hashes.",
+          "input": "commit + lockfile + dataset hash + seed",
+          "transformation": "replay training → compare metadata/artifacts",
+          "output": "config_match=true; data_match=true; artifact_match=true",
+          "visualState": "Reproduction evidence"
+        }
+      ],
+      "controls": [
+        {
+          "name": "seed",
+          "min": 1,
+          "max": 1000,
+          "defaultValue": 42,
+          "effect": "Random seed recorded with the run."
+        },
+        {
+          "name": "learning_rate_milli",
+          "min": 1,
+          "max": 100,
+          "defaultValue": 10,
+          "effect": "Learning rate in thousandths."
+        },
+        {
+          "name": "epochs",
+          "min": 1,
+          "max": 30,
+          "defaultValue": 12,
+          "effect": "Training duration and metric history length."
+        },
+        {
+          "name": "dataset_version",
+          "min": 1,
+          "max": 5,
+          "defaultValue": 3,
+          "effect": "Immutable dataset version used for comparison."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Each stage displays dataset version/hash, split overlap, run ID, parameters, metric values, artifact hash and reproduction match status."
+    }
+  },
+  "workedExample": {
+    "problem": "Compare two sentiment classifiers and decide whether the neural network is a valid improvement.",
+    "input": "Same dataset reviews-v3 and same train/validation split. Run A logistic regression val_accuracy=0.91 in 8 epochs; Run B neural net val_accuracy=0.93 in 12 epochs.",
+    "steps": [
+      {
+        "operation": "Freeze dataset",
+        "reasoning": "Store manifest, file hashes, schema and disjoint split IDs.",
+        "result": "dataset_version=v3; split_overlap=0"
+      },
+      {
+        "operation": "Record run configuration",
+        "reasoning": "Log code commit, dependency lock, seed, optimizer, learning rate and batch size before training.",
+        "result": "run-A and run-B have immutable parameter sets"
+      },
+      {
+        "operation": "Log metric history",
+        "reasoning": "Record training/validation loss and accuracy at each epoch.",
+        "result": "run-A=0.91@8; run-B=0.93@12"
+      },
+      {
+        "operation": "Compare objective and cost",
+        "reasoning": "Both use same validation protocol; B improves accuracy by 0.02 but uses 50% more epochs.",
+        "result": "delta_accuracy=+2pp; epoch_cost=+50%"
+      },
+      {
+        "operation": "Verify artifact lineage",
+        "reasoning": "Check checkpoint SHA-256 and source/environment/dataset hashes before evaluation handoff.",
+        "result": "artifact and dataset provenance verified"
+      }
+    ],
+    "expectedOutput": "Run B is a valid validation improvement candidate, but it still needs independent test-set evaluation and registry approval."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-09/experiment_tracking.py",
+      "runCommand": "python examples/stage-09/experiment_tracking.py",
+      "testsPath": "examples/stage-09/test_experiment_tracking.py",
+      "expectedResult": "Dataset manifests, split-leakage checks, immutable run parameters, metric histories, artifact hashing and deterministic toy training."
+    },
+    {
+      "language": "python",
+      "role": "production",
+      "path": "examples/stage-09/experiment_tracking_production.py",
+      "runCommand": "python -m unittest discover -s examples/stage-09 -p 'test_experiment_tracking_production.py' -v",
+      "testsPath": "examples/stage-09/test_experiment_tracking_production.py",
+      "expectedResult": "SQLite experiments/runs/params/metrics/artifacts/dataset lineage with immutable params and durable metric history."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Dataset drift hidden",
+      "symptom": "A rerun reports different metrics under same dataset name.",
+      "rootCause": "Dataset file or split mutated without new version.",
+      "recovery": "Content-hashed manifest and immutable split membership.",
+      "regressionTest": "Modify one source file and assert dataset hash changes."
+    },
+    {
+      "name": "Parameter overwrite",
+      "symptom": "Run appears to have one config but actually trained with another.",
+      "rootCause": "Parameters changed after training began.",
+      "recovery": "Make run params immutable; create a new run for changes.",
+      "regressionTest": "Second log_param with different value is rejected."
+    },
+    {
+      "name": "Invalid run comparison",
+      "symptom": "Candidate B appears better because it used an easier validation split.",
+      "rootCause": "No split/version compatibility check.",
+      "recovery": "Compare only runs with same dataset snapshot and metric definition.",
+      "regressionTest": "Comparison rejects mismatched split hashes."
+    },
+    {
+      "name": "Artifact corruption",
+      "symptom": "Downloaded checkpoint differs from uploaded file.",
+      "rootCause": "No checksum or incomplete artifact upload.",
+      "recovery": "Record SHA-256 and verify on retrieval.",
+      "regressionTest": "Corrupted artifact bytes fail checksum verification."
+    },
+    {
+      "name": "Secret leakage",
+      "symptom": "API token or PII appears in run tags or artifacts.",
+      "rootCause": "Unrestricted metadata logging.",
+      "recovery": "Allowlist fields, redact secrets and enforce artifact ACLs.",
+      "regressionTest": "Secret detector blocks token/password metadata."
+    },
+    {
+      "name": "False reproducibility claim",
+      "symptom": "Run cannot be recreated despite same seed.",
+      "rootCause": "Missing code/environment/hardware/preprocessing metadata.",
+      "recovery": "Record commit, lockfile, hardware and deterministic limitations.",
+      "regressionTest": "Reproduction report identifies missing metadata as incomplete."
+    }
+  ],
+  "practice": {
+    "guided": "Create a run card for one training experiment. Identify immutable parameters, metric histories, dataset lineage and artifacts.",
+    "independent": "Implement a local tracker, dataset manifest, split validation, metric logger, artifact hash store and run comparison.",
+    "realWorld": "Track a sentiment classification experiment with multiple models and a reproducibility report using MLflow or W&B concepts.",
+    "expertExtension": "Add MLflow Tracking server, W&B artifacts, hyperparameter sweeps, offline sync, distributed metric logging and model registry handoff.",
+    "guidedExercise": {
+      "title": "Validate dataset split lineage",
+      "instructions": "Reject overlapping train/validation/test IDs and hash the canonical dataset manifest.",
+      "starterCode": "def validate_splits(train_ids, validation_ids, test_ids):\n    # reject overlap between every pair\n    # return a stable manifest hash\n    raise NotImplementedError",
+      "solutionCode": "def validate_splits(train_ids, validation_ids, test_ids):\n    train=set(train_ids); validation=set(validation_ids); test=set(test_ids)\n    if train & validation or train & test or validation & test:\n        raise ValueError('dataset split leakage')\n    manifest={'train':sorted(train),'validation':sorted(validation),'test':sorted(test)}\n    return hashlib.sha256(json.dumps(manifest,sort_keys=True).encode()).hexdigest()",
+      "unitTests": "assert len(validate_splits(['a'],['b'],['c'])) == 64\ntry:\n    validate_splits(['a'],['a'],['c'])\n    raise AssertionError('overlap must fail')\nexcept ValueError:\n    pass"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build an experiment dashboard with dataset lineage, run configuration, metric curves and artifact verification.",
+      "steps": [
+        "Create a dataset manifest with file hashes and split IDs.",
+        "Run deterministic toy training with seed, learning rate and epochs.",
+        "Log params once and metrics by epoch; attempt a forbidden param overwrite.",
+        "Upload model checkpoint and verify SHA-256 on readback.",
+        "Compare two runs only when dataset/split and metric definitions match.",
+        "Change dataset version and observe comparison rejection.",
+        "Export a reproducibility card with code commit, environment and artifact lineage."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "What should change when a dataset file changes?",
+        "options": [
+          "Keep same version and overwrite",
+          "Create a new immutable dataset version and hash",
+          "Only update run description",
+          "Change random seed"
+        ],
+        "correctIndex": 1,
+        "explanation": "Dataset identity is content-based; changed data creates a new version and lineage."
+      },
+      {
+        "question": "Can a run's logged parameter be overwritten after training starts?",
+        "options": [
+          "Yes, to keep dashboard clean",
+          "No, create a new run for changed configuration",
+          "Only if metric improves",
+          "Only on weekends"
+        ],
+        "correctIndex": 1,
+        "explanation": "Run parameters should be immutable to preserve experiment provenance."
+      },
+      {
+        "question": "Which metadata best supports reproducibility?",
+        "options": [
+          "Model name only",
+          "Seed only",
+          "Code commit, lockfile, dataset/splits, config, hardware and artifacts",
+          "Final accuracy only"
+        ],
+        "correctIndex": 2,
+        "explanation": "Reproduction requires the full input and execution context, not only a seed."
+      },
+      {
+        "question": "Run B scores higher but uses a different validation split. What is correct?",
+        "options": [
+          "Declare B the winner",
+          "Compare only after aligning dataset and metric protocol",
+          "Use test set to tune both",
+          "Average the two scores"
+        ],
+        "correctIndex": 1,
+        "explanation": "Metrics are comparable only when evaluation datasets and definitions match."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Experiment/run design",
+        "weight": 15,
+        "evidence": "Runs have immutable params, unique IDs and clear objective."
+      },
+      {
+        "criterion": "Dataset lineage and split integrity",
+        "weight": 25,
+        "evidence": "Manifest hashes, schema and disjoint split IDs are recorded."
+      },
+      {
+        "criterion": "Metrics and artifact tracking",
+        "weight": 20,
+        "evidence": "Step-indexed metrics and verified artifacts are persisted."
+      },
+      {
+        "criterion": "Reproducibility and comparison",
+        "weight": 25,
+        "evidence": "Code/environment/seed are recorded and only compatible runs are compared."
+      },
+      {
+        "criterion": "Security and governance",
+        "weight": 15,
+        "evidence": "Secrets/PII are redacted and artifact access is controlled."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Both Python suites pass.",
+      "Dataset split overlap is rejected.",
+      "Parameters cannot be overwritten.",
+      "Metric history and artifact hash persist across restart.",
+      "Mismatched dataset/split comparisons are rejected."
+    ]
+  },
+  "references": [
+    {
+      "title": "MLflow Tracking documentation",
+      "url": "https://mlflow.org/docs/latest/ml/tracking/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "Weights & Biases — Runs and experiments",
+      "url": "https://docs.wandb.ai/guides/track/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "Weights & Biases — Artifacts",
+      "url": "https://docs.wandb.ai/guides/artifacts/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "DVC — Data and model versioning",
+      "url": "https://dvc.org/doc",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "dataset_hash = sha256(canonical_manifest)",
+      "explanation": "A dataset name is not identity; content and split hashes are."
+    },
+    {
+      "lines": "log_param('learning_rate', 0.01) once",
+      "explanation": "Parameters are immutable run configuration; changed values require a new run."
+    },
+    {
+      "lines": "log_metric('val_accuracy', value, step=epoch)",
+      "explanation": "Step-indexed metric history supports curves, early stopping and reproducible comparisons."
+    },
+    {
+      "lines": "artifact.sha256 == sha256(downloaded_bytes)",
+      "explanation": "Artifact hashes detect corruption and preserve provenance."
+    },
+    {
+      "lines": "compare only if dataset_hash and metric_protocol match",
+      "explanation": "A numeric score is not comparable when the evaluation protocol differs."
+    }
+  ]
+}
