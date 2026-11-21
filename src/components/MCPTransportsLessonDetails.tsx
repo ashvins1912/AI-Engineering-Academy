@@ -1,6 +1,6 @@
 import {useState} from 'react'
 import {BookOpen,Bug,Code2,Lightbulb,Target,Network} from 'lucide-react'
-import lesson from '../../content/topics/mcp-transports/lesson.json'
+import lesson from '../../content/topics/mcp-transport/lesson.json'
 export default function MCPTransportsLessonDetails(){
  const [answers,setAnswers]=useState<Record<number,number>>({})
  const [checked,setChecked]=useState(false)
