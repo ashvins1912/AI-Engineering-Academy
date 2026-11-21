@@ -1,0 +1,21 @@
+sequenceDiagram
+ participant O as Orchestrator Agent
+ participant C as A2A Client
+ participant D as Agent Card Endpoint
+ participant S as Specialist Agent
+ participant T as Task Store
+ participant M as Specialist MCP Tools
+ participant A as Artifact Store
+ O->>C: Delegate refund review
+ C->>D: GET /.well-known/agent-card.json
+ D-->>C: Agent Card + interfaces + skills + auth schemes
+ C->>S: message/send + authenticated identity
+ S->>T: Create taskId + contextId + history
+ S-->>C: Task status=working
+ S->>M: Read order/policy via specialist-owned MCP
+ M-->>S: Evidence
+ S->>A: Persist typed artifact
+ S-->>C: SSE status-update + artifact-update
+ C->>T: tasks/get (fallback or final check)
+ T-->>C: completed task + artifact reference
+ C-->>O: Validated artifact + provenance
