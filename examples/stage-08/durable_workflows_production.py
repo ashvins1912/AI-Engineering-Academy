@@ -77,7 +77,7 @@ class DurableWorkflowStore:
                 self.db.execute("UPDATE durable_activities SET status='pending',error=NULL,updated_at=? WHERE workflow_id=? AND activity_id=?",(self.clock(),workflow_id,activity_id))
             else:
                 now=self.clock()
-                self.db.execute("INSERT INTO durable_activities VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                self.db.execute("INSERT INTO durable_activities VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (workflow_id,activity_id,idempotency_key,json.dumps(activity_input,sort_keys=True),"pending",0,max_attempts,None,None,None,None,0,now,now))
             self._append(workflow_id,"ActivityScheduled",{"activity_id":activity_id,"idempotency_key":idempotency_key})
             self.db.execute("COMMIT")
