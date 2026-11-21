@@ -49,6 +49,13 @@ class RolloutPolicyTests(unittest.TestCase):
         self.assertEqual(result["active_release"], "v17")
         self.assertEqual(result["candidate_weight_percent"], 0)
 
+    def test_incomplete_canary_observations_hold(self):
+        healthy = {"samples": 100, "baseline_quality": .90, "candidate_quality": .88, "candidate_p95_ms": 1800}
+        result = module.simulate_canary(self.stable, self.candidate, self.policy, [healthy])
+        self.assertEqual(result["status"], "held")
+        self.assertEqual(result["candidate_weight_percent"], 0)
+        self.assertEqual(result["active_release"], "v17")
+
     def test_blue_green_keeps_stable_when_unhealthy(self):
         result = module.blue_green_switch("v17", "v18", False)
         self.assertEqual(result["traffic_target"], "v17")
