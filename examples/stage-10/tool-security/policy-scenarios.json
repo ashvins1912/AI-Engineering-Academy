@@ -1,0 +1,76 @@
+{
+  "principals": [
+    {
+      "subject": "user-17",
+      "tenant_id": "tenant-A",
+      "scopes": [
+        "reports:read",
+        "reports:write",
+        "sandbox:execute"
+      ]
+    },
+    {
+      "subject": "user-22",
+      "tenant_id": "tenant-A",
+      "scopes": [
+        "reports:read"
+      ]
+    }
+  ],
+  "resources": [
+    {
+      "resource_id": "report-A",
+      "owner_id": "user-17",
+      "tenant_id": "tenant-A"
+    },
+    {
+      "resource_id": "report-B",
+      "owner_id": "user-22",
+      "tenant_id": "tenant-A"
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "owner-read",
+      "tool": "report.read",
+      "action": "read",
+      "resource_id": "report-A",
+      "expected": "ALLOW"
+    },
+    {
+      "id": "cross-owner-write",
+      "tool": "report.write",
+      "action": "write",
+      "resource_id": "report-B",
+      "expected": "RESOURCE_NOT_OWNED"
+    },
+    {
+      "id": "unknown-tool",
+      "tool": "shell.root",
+      "action": "execute",
+      "resource_id": "report-A",
+      "expected": "UNKNOWN_TOOL_OR_ACTION"
+    },
+    {
+      "id": "path-traversal",
+      "path": "../secrets.txt",
+      "expected": "DENY"
+    },
+    {
+      "id": "ssrf-loopback",
+      "host": "approved.example",
+      "resolved_ip": "127.0.0.1",
+      "expected": "DENY"
+    },
+    {
+      "id": "expired-capability",
+      "capability_expiry_seconds": 0,
+      "expected": "CAPABILITY_EXPIRED"
+    },
+    {
+      "id": "replay",
+      "idempotency_key": "operation-42",
+      "expected": "EXECUTE_ONCE"
+    }
+  ]
+}
