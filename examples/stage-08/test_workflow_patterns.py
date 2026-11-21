@@ -38,6 +38,9 @@ class WorkflowPatternTests(unittest.TestCase):
   result=run_saga([{"name":"reserve","run":lambda:"r","compensate":lambda r:order.append("release")},{"name":"payment","run":lambda:"p","compensate":lambda p:order.append("void")},{"name":"shipping","run":lambda:(_ for _ in ()).throw(RuntimeError("down"))}])
   self.assertEqual(result["status"],"compensated")
   self.assertEqual(order,["void","release"])
+ def test_missing_compensator_is_not_reported_as_rollback(self):
+  result=run_saga([{'name':'charge','run':lambda:'p-1'},{'name':'shipping','run':lambda:(_ for _ in ()).throw(RuntimeError('down'))}])
+  self.assertEqual(result['status'],'compensation_required')
  def test_compensation_failure_requires_recovery(self):
   result=run_saga([{"name":"reserve","run":lambda:"r","compensate":lambda r:(_ for _ in ()).throw(RuntimeError("release failed"))},{"name":"shipping","run":lambda:(_ for _ in ()).throw(RuntimeError("down"))}])
   self.assertEqual(result["status"],"compensation_required")
