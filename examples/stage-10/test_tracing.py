@@ -70,7 +70,7 @@ class TracingTests(unittest.TestCase):
     def test_summary_uses_root_duration_not_sum_of_children(self):
         summary = summarize_trace(self.spans, slow_threshold_ms=500)
         self.assertEqual(summary["duration_ms"], 3200)
-        self.assertEqual(summary["slow_spans"], ["model.generate", "mcp.tool"])
+        self.assertEqual(summary["slow_spans"], ["rag.request", "model.generate", "mcp.tool"])
         self.assertEqual(summary["error_spans"], ["model.generate"])
 
     def test_invalid_trace_cannot_be_summarized(self):
