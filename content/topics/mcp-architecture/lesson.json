@@ -1,65 +1,540 @@
 {
- "schemaVersion":"1.1.0",
- "topic":{"id":"mcp-architecture","title":"MCP architecture and lifecycle","stage":7,"estimatedMinutes":180},
- "state":"visualized",
- "learning":{
-  "outcomes":["Explain MCP host, client and server responsibilities and their trust boundaries.","Trace JSON-RPC initialization, protocol negotiation, capability discovery, tool listing, invocation and shutdown.","Distinguish protocol capability discovery from application authorization and user consent.","Implement a minimal MCP-style lifecycle simulator and a host-owned tool gateway.","Diagnose invalid requests, unsupported protocol versions, schema errors and untrusted tool output."],
-  "prerequisites":["Stage 6 agent tools, security boundaries and evaluation","JSON-RPC, HTTP/STDIO basics and Python functions"],
-  "glossary":[{"term":"Host","definition":"The user-facing AI application that owns user experience, policy, consent and orchestration."},{"term":"Client","definition":"The protocol participant managed by a host that maintains a session with an MCP server."},{"term":"Server","definition":"A process that exposes capabilities such as tools, resources or prompts over an MCP transport."},{"term":"Capability negotiation","definition":"The initialization exchange where participants advertise supported protocol features."},{"term":"JSON-RPC","definition":"A request/response and notification message format with method names, parameters, IDs and errors."},{"term":"Tool discovery","definition":"The client retrieves tool names, descriptions and input schemas exposed by a server."},{"term":"Consent","definition":"A user/host decision that permits a particular capability; discovery alone does not grant consent."},{"term":"Transport","definition":"The communication channel, such as STDIO or Streamable HTTP, carrying protocol messages."}]},
- "explanation":{
-  "problem":"An agent needs access to tools and context outside its model runtime. Without a common protocol, every host and tool provider builds a bespoke integration with different discovery, invocation and lifecycle behavior. MCP defines a shared client/server protocol, but it does not remove the host's responsibility for user consent, authorization or safe execution.",
-  "plainLanguage":"MCP separates three roles. The host is the AI application the user interacts with. It owns the user experience, policy, consent, identity and orchestration. The host manages one or more MCP clients. A client speaks the protocol to an MCP server. The server exposes capabilities such as tools, resources and prompts. A server is not automatically trusted just because it speaks MCP.\n\nThe lifecycle begins with initialization. The client sends a JSON-RPC initialize request with a protocol version, client information and supported capabilities. The server responds with the negotiated protocol version, server information and its capabilities. The client then sends the initialized notification. Only after the session is ready should the client discover capabilities and invoke them. If no compatible protocol version exists, initialization fails rather than silently guessing.\n\nFor tools, the client calls tools/list and receives names, descriptions and JSON input schemas. The host can present these capabilities to the model, but discovery is not permission. The host should apply an allow-list, user consent, identity, tenant scope and risk policy before a proposed tool call reaches the server. The model's tool name and arguments are untrusted input. The host validates the schema and the server validates again before execution.\n\nA tools/call request carries the selected tool name and arguments. The server returns a structured result or a protocol error. Tool results are also untrusted data: a server can return malicious instructions, malformed content or stale facts. The host must treat the result as data, not as higher-priority instructions. Keep the tool gateway responsible for domain authorization, rate limits, idempotency and audit.\n\nJSON-RPC requests have IDs so responses can be correlated. Notifications do not require a response ID. Errors distinguish malformed requests, unknown methods, invalid parameters and server-specific failures. A robust client handles timeouts, cancellation, server restarts and connection closure. Lifecycle handling is not just a one-time call; long-running hosts must manage reconnect and capability changes.\n\nMCP can use different transports. STDIO is common for locally spawned processes, where the host launches a server and exchanges protocol messages over standard input/output. Streamable HTTP supports remote server communication and requires careful authentication, origin validation, session handling and transport security. Do not mix transport-specific security assumptions with protocol semantics.\n\nThe protocol standardizes interoperability, not trust. A malicious server can describe a tool deceptively or return prompt-injection content. A confused deputy can occur when a host uses its own credentials to perform a server-requested action without the user's authorization. Use explicit user consent, least-privilege scopes, server identity verification, tool review, tenant context from authenticated host state, schema validation and audit logs. Never accept tenant identity or privileged roles from model-generated arguments.",
-  "mentalModel":"Host owns user and policy → client manages protocol session → server advertises capabilities → host authorizes → client invokes → host validates results → session closes cleanly.",
-  "limitations":["MCP capability discovery does not grant user consent or domain authorization.","A valid protocol message can still request an unsafe business operation.","Tool descriptions and results are untrusted content and can contain prompt injection.","Transport security and authentication differ by deployment; protocol compliance alone is not sufficient.","Servers may restart or change capabilities; clients need reconnect and lifecycle handling.","A tool call can have side effects; use idempotency and reconciliation outside the protocol."],
-  "everydayAnalogy":"A hotel concierge is the host, a phone operator is the client, and each hotel department is a server. The operator can list available services, but the concierge still checks who is asking, whether they have permission and whether the requested action is safe.",
-  "mathMadeSimple":"A minimal session has five visible transitions: initialize request, initialize response, initialized notification, tools/list request/response and tools/call request/response. The request ID links each response to its request. If the client sends request id=7 and receives response id=8, correlation is invalid. Notifications have no response ID because they are one-way messages.",
-  "productionImpact":"Production MCP integrations need pinned protocol compatibility, authenticated server identity, secure transport, explicit consent, least-privilege scopes, schema validation, tenant isolation, output sanitization, rate limits, idempotency, audit, cancellation, reconnect behavior and capability-change handling."
- },
- "useCase":{
-  "scenario":"An academy host connects to a local tools server that exposes a read-only order lookup. It negotiates protocol capabilities, lists tools, asks the user for consent, validates arguments and calls the tool through a tenant-aware host gateway.",
-  "actors":["AI host","MCP client","MCP server","User consent UI","Identity provider","Tool gateway","Order service"],
-  "inputs":["Client protocol version and client metadata","Server metadata and advertised capabilities","Tool schemas and descriptions","Authenticated user and tenant context","Explicit consent and allowed scopes"],
-  "constraints":["Initialize before discovery or tool calls.","Only negotiated capabilities are used.","Host consent and application authorization are mandatory.","Tenant context is injected from authenticated host state.","Tool input and output are validated as untrusted data."],
-  "outputs":["Negotiated session metadata","Discovered tool list and schemas","Authorized tool result or structured error","Audit trace and clean shutdown"],
-  "successMetric":"A client completes a compatible session and calls only an explicitly consented, authorized and tenant-scoped tool."
- },
- "architecture":{
-  "diagram":"content/topics/mcp-architecture/mcp-lifecycle.mmd",
-  "components":["AI host","MCP client","JSON-RPC message layer","Protocol version negotiator","MCP server","Capability registry","User consent and policy engine","Domain tool gateway","Audit and trace"],
-  "dataFlow":[{"from":"Host","to":"Client","payload":"task + user context + policy", "purpose":"Create a managed protocol session."},{"from":"Client","to":"Server","payload":"initialize + protocol version + capabilities","purpose":"Negotiate protocol and server metadata."},{"from":"Client","to":"Server","payload":"notifications/initialized","purpose":"Mark the session ready."},{"from":"Client","to":"Server","payload":"tools/list","purpose":"Discover tool definitions and schemas."},{"from":"Host","to":"Policy engine","payload":"user consent + scopes + tenant context","purpose":"Authorize the requested capability."},{"from":"Client","to":"Server","payload":"tools/call + validated arguments","purpose":"Invoke the selected server tool."},{"from":"Server","to":"Host","payload":"structured result or JSON-RPC error","purpose":"Return untrusted tool data for validation."}],
-  "trustBoundaries":["Host owns authenticated user identity, tenant and consent.","Client maintains protocol state but does not independently grant business permissions.","Server tool descriptions and results are untrusted data.","Tool gateway validates scopes and injects tenant context from trusted host state.","Remote transport requires TLS, server authentication, origin validation and safe session handling."],
-  "failurePaths":["Unsupported protocol version: fail initialization and report supported versions.","Tool call before initialized notification: reject session state.","Unknown method or tool: return a structured protocol error.","Invalid arguments: reject against schema before handler execution.","Consent or scope missing: host blocks the call before transport dispatch.","Server restarts: reconnect, renegotiate and refresh capability list.","Prompt injection in tool result: treat as data and keep system policy priority."]
- },
- "visual":{
-  "kind":"animation",
-  "fixture":"examples/stage-07/fixtures/mcp-session.json",
-  "steps":[{"label":"Initialize","explanation":"Client and server negotiate protocol version and capabilities.","expectedState":"session=INITIALIZING"},{"label":"Ready","explanation":"Client sends initialized notification after successful negotiation.","expectedState":"session=READY"},{"label":"Discover","explanation":"Client requests tools/list and receives schemas.","expectedState":"tools=1"},{"label":"Authorize and call","explanation":"Host checks consent and tenant scope before tools/call.","expectedState":"authorized result"},{"label":"Shutdown","explanation":"Client closes the session cleanly.","expectedState":"session=CLOSED"}],
-  "accessibility":["Every lifecycle message is shown with method and direction text.","Session state and request IDs are visible as labels.","Consent and authorization outcomes are explicit words, not colors alone."],
-  "animation":{
-   "objective":"Animate an MCP session from initialize to shutdown and inspect protocol, capability and authorization boundaries.",
-   "stages":[{"step":1,"title":"Initialize","narration":"Client requests protocol negotiation and sends client metadata.","input":"protocol=2025-06-18; client=academy-host","transformation":"JSON-RPC initialize request/response","output":"serverInfo + capabilities.tools","visualState":"Protocol negotiated"},{"step":2,"title":"Ready","narration":"Client sends initialized notification and moves to READY.","input":"notifications/initialized","transformation":"session state INITIALIZING → READY","output":"session=READY","visualState":"Session may discover capabilities"},{"step":3,"title":"Discover","narration":"Client lists available tools and receives name, description and input schema.","input":"tools/list","transformation":"server capability registry → tool definitions","output":"lookup_order; inputSchema=object","visualState":"Capability discovered, not yet authorized"},{"step":4,"title":"Authorize and call","narration":"Host checks user consent, scopes and tenant before allowing tools/call.","input":"consent=granted; scope=orders:read; tenant=tenant-a","transformation":"host policy + schema validation + tool invocation","output":"order status=shipped","visualState":"Authorized result returned"},{"step":5,"title":"Shutdown","narration":"Client closes the session and clears initialized state.","input":"shutdown","transformation":"close protocol session and transport","output":"session=CLOSED","visualState":"Lifecycle complete"}],
-   "controls":[{"name":"protocol_supported","min":0,"max":1,"defaultValue":1,"effect":"0 simulates an unsupported protocol version and blocks initialization."},{"name":"user_consent","min":0,"max":1,"defaultValue":1,"effect":"0 blocks tool dispatch even when the server advertises the tool."},{"name":"scope_granted","min":0,"max":1,"defaultValue":1,"effect":"0 demonstrates host-side least-privilege denial."}],
-   "playback":{"play":true,"pause":true,"reset":true,"stepForward":true,"stepBackward":true,"adjustableSpeed":true},
-   "accessibilitySummary":"Five stages show JSON-RPC method, message direction, session state, discovered tool, consent/scope decision and shutdown status as text."
-  }
- },
- "workedExample":{
-  "problem":"Connect to a tools server, discover a read-only order lookup and invoke it safely.",
-  "input":"protocol=2025-06-18; tool=lookup_order; args={order_id: ORD-7}; tenant=tenant-a.",
-  "steps":[{"operation":"Initialize","reasoning":"Client requests a supported protocol version and advertises client metadata.","result":"protocolVersion=2025-06-18; server=academy-tools"},{"operation":"Mark ready","reasoning":"Initialized notification confirms the client completed negotiation.","result":"session=READY"},{"operation":"Discover","reasoning":"tools/list returns tool description and JSON input schema.","result":"lookup_order discovered; required=order_id"},{"operation":"Authorize and invoke","reasoning":"Host verifies consent and orders:read scope, injects tenant from authenticated context, then calls tools/call.","result":"tenant=tenant-a; order=ORD-7; status=shipped"},{"operation":"Shutdown","reasoning":"Client closes session and clears server session state.","result":"session=CLOSED"}],
-  "expectedOutput":"A negotiated session discovers one read-only tool and calls it only after host consent and tenant policy checks."
- },
- "implementations":[{"language":"python","role":"from-scratch","path":"examples/stage-07/mcp_lifecycle.py","runCommand":"python examples/stage-07/mcp_lifecycle.py","testsPath":"examples/stage-07/test_mcp_lifecycle.py","expectedResult":"A JSON-RPC lifecycle simulator for initialization, capability negotiation, tool discovery, invocation, errors and shutdown."},{"language":"python","role":"production","path":"examples/stage-07/mcp_lifecycle_production.py","runCommand":"python -m unittest discover -s examples/stage-07 -p 'test_mcp_lifecycle_production.py' -v","testsPath":"examples/stage-07/test_mcp_lifecycle_production.py","expectedResult":"Host-owned consent/scope gateway injects authenticated tenant context and rejects unregistered tools and model-supplied tenant IDs."}],
- "failures":[{"name":"Tool call before initialization","symptom":"Client invokes tools/list or tools/call before completing handshake.","rootCause":"Session lifecycle state is not enforced.","recovery":"Model explicit CREATED, INITIALIZING, READY and CLOSED states.","regressionTest":"Call tools/list before initialized notification and assert protocol error."},{"name":"Capability mistaken for permission","symptom":"A discovered tool executes without user consent.","rootCause":"Host treats tools/list as authorization.","recovery":"Require explicit consent and server-side policy before dispatch.","regressionTest":"Discover tool, omit consent and assert no handler execution."},{"name":"Model supplies tenant ID","symptom":"Tool arguments target another tenant's resource.","rootCause":"Tenant identity is trusted from model-generated JSON.","recovery":"Inject tenant from authenticated host context and reject tenant arguments.","regressionTest":"Pass tenant_id in tool arguments and assert denial."},{"name":"Schema drift","symptom":"Client sends malformed or unexpected tool arguments.","rootCause":"Tool schema is not validated at both boundaries.","recovery":"Validate schema in host and server; version capability definitions.","regressionTest":"Send unknown field or missing required value and assert structured error."},{"name":"Prompt injection in tool result","symptom":"Tool output tells the model to ignore system policy or reveal secrets.","rootCause":"Server result is treated as trusted instruction.","recovery":"Treat results as untrusted data and preserve host policy hierarchy.","regressionTest":"Return malicious instruction text and assert no permission change."}],
- "practice":{
-  "guided":"Draw host, client and server responsibilities. Trace initialize, initialized, tools/list, tools/call and shutdown with request IDs.",
-  "independent":"Implement a JSON-RPC client/server handshake, capability registry, tool schema validation and explicit lifecycle state machine.",
-  "realWorld":"Build a local MCP server exposing one read-only order lookup. Add a host consent screen and tenant-aware tool gateway before connecting an LLM.",
-  "expertExtension":"Add Streamable HTTP authentication, origin validation, session reconnect, capability change notifications, cancellation, resource subscriptions and trace redaction.",
-  "guidedExercise":{"title":"Enforce a safe MCP tool call","instructions":"A discovered tool is not automatically authorized. Check consent and scope, then inject tenant context from trusted host identity.","starterCode":"def dispatch_tool(user, tenant, tool_name, args, consent, scopes):\n    # check explicit consent\n    # check required scope\n    # reject tenant_id from model args\n    # inject tenant from host context\n    raise NotImplementedError","solutionCode":"def dispatch_tool(user, tenant, tool_name, args, consent, scopes):\n    if tool_name not in consent: raise PermissionError('consent required')\n    if 'orders:read' not in scopes: raise PermissionError('scope missing')\n    if 'tenant_id' in args: raise PermissionError('tenant is host-owned')\n    return order_lookup({**args, 'tenant_id': tenant, 'user_id': user})","unitTests":"assert dispatch_tool('u1','tenant-a','lookup_order',{'order_id':'ORD-7'},{'lookup_order'},{'orders:read'})['tenant_id']=='tenant-a'\nassert missing_consent_raises_permission_error"},
-  "miniAppIntegration":{"projectGoal":"Build an MCP inspector that shows lifecycle messages, capabilities, consent and tool-call traces.","steps":["Start a local server with one read-only lookup_order tool.","Initialize client and inspect protocol version, clientInfo and serverInfo.","Send initialized notification and verify READY state.","Call tools/list and render each tool's schema.","Toggle user consent and scope; verify unauthorized calls never reach server.","Inject invalid arguments, unsupported protocol and unknown method.","Inspect JSON-RPC IDs, errors, tool output and shutdown state."]},
-  "scenarioQuiz":[{"question":"What does tools/list prove?", "options":["The user authorized every tool","The server advertises tool definitions","The tool is safe for every tenant","The model can execute arbitrary code"],"correctIndex":1,"explanation":"Discovery reveals capabilities; the host still decides whether a user and task may invoke them."},{"question":"Who owns user consent and application policy?", "options":["MCP server description","AI host","Model-generated tool arguments","JSON-RPC request ID"],"correctIndex":1,"explanation":"The host owns user experience, identity, consent and orchestration policy."},{"question":"Where should tenant identity come from?", "options":["Model output","Tool description","Authenticated host context","Untrusted tool result"],"correctIndex":2,"explanation":"Tenant context is trusted application state and should be injected by the host/domain gateway."},{"question":"A tool result contains 'ignore previous instructions'. What should the host do?", "options":["Treat it as system instruction","Treat it as untrusted tool data","Grant more scopes","Disable authentication"],"correctIndex":1,"explanation":"Tool output is untrusted content and must not override host policy or system instructions."}]},
- "assessment":{"rubric":[{"criterion":"Host/client/server responsibilities","weight":20,"evidence":"Explain lifecycle roles and trust boundaries."},{"criterion":"Protocol lifecycle and JSON-RPC","weight":20,"evidence":"Trace initialization, negotiation, notifications, requests, errors and shutdown."},{"criterion":"Capability and schema handling","weight":20,"evidence":"Discover tools and validate inputs at host/server boundaries."},{"criterion":"Consent, identity and tenant security","weight":25,"evidence":"No call executes without consent, scope and trusted tenant context."},{"criterion":"Operational lifecycle","weight":15,"evidence":"Reconnect, cancellation, error handling and trace redaction are covered."}],"passThreshold":80,"evidence":["Both Python implementation suites pass.","Unsupported protocol and invalid lifecycle transitions are rejected.","Tool discovery never bypasses user consent.","Cross-tenant/model-supplied tenant arguments are rejected.","Tool results remain untrusted data."]},
- "references":[{"title":"Model Context Protocol specification","url":"https://modelcontextprotocol.io/specification/","sourceType":"official-docs","checkedOn":"2026-11-21"},{"title":"MCP architecture documentation","url":"https://modelcontextprotocol.io/docs/learn/architecture","sourceType":"official-docs","checkedOn":"2026-11-21"},{"title":"MCP tools documentation","url":"https://modelcontextprotocol.io/docs/concepts/tools","sourceType":"official-docs","checkedOn":"2026-11-21"}],
- "codeWalkthrough":[{"lines":"initialize → initialized notification → READY","explanation":"The client and server establish protocol compatibility before normal capability operations."},{"lines":"tools/list returns name + description + inputSchema","explanation":"Tool discovery is descriptive. It does not grant the model or user permission to execute."},{"lines":"if tool_name not in consented_tools: deny()", "explanation":"Explicit host consent is separate from server capability advertisement."},{"lines":"tenant_id = authenticated_host_context.tenant_id","explanation":"Never trust tenant identity from model-generated tool arguments."},{"lines":"tool result → untrusted content boundary","explanation":"A server response may contain prompt injection or stale data; validate and treat it as data."}]
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "mcp-architecture",
+    "title": "MCP architecture and lifecycle",
+    "stage": 7,
+    "estimatedMinutes": 180
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Explain MCP host, client and server responsibilities and their trust boundaries.",
+      "Trace JSON-RPC initialization, protocol negotiation, capability discovery, tool listing, invocation and shutdown.",
+      "Distinguish protocol capability discovery from application authorization and user consent.",
+      "Implement a minimal MCP-style lifecycle simulator and a host-owned tool gateway.",
+      "Diagnose invalid requests, unsupported protocol versions, schema errors and untrusted tool output."
+    ],
+    "prerequisites": [
+      "Stage 6 agent tools, security boundaries and evaluation",
+      "JSON-RPC, HTTP/STDIO basics and Python functions"
+    ],
+    "glossary": [
+      {
+        "term": "Host",
+        "definition": "The user-facing AI application that owns user experience, policy, consent and orchestration."
+      },
+      {
+        "term": "Client",
+        "definition": "The protocol participant managed by a host that maintains a session with an MCP server."
+      },
+      {
+        "term": "Server",
+        "definition": "A process that exposes capabilities such as tools, resources or prompts over an MCP transport."
+      },
+      {
+        "term": "Capability negotiation",
+        "definition": "The initialization exchange where participants advertise supported protocol features."
+      },
+      {
+        "term": "JSON-RPC",
+        "definition": "A request/response and notification message format with method names, parameters, IDs and errors."
+      },
+      {
+        "term": "Tool discovery",
+        "definition": "The client retrieves tool names, descriptions and input schemas exposed by a server."
+      },
+      {
+        "term": "Consent",
+        "definition": "A user/host decision that permits a particular capability; discovery alone does not grant consent."
+      },
+      {
+        "term": "Transport",
+        "definition": "The communication channel, such as STDIO or Streamable HTTP, carrying protocol messages."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "The current MCP specification is stateless. A client sends each request with protocol version and client capabilities in request metadata, rather than relying on a long-lived initialize/initialized handshake. Hosts still need a secure boundary for discovering, authorizing and invoking external capabilities.",
+    "plainLanguage": "MCP separates the AI host, protocol client and capability server. The host is the application the user interacts with; it owns identity, consent, policy and orchestration. A client is managed by the host and sends protocol messages to an MCP server. The server exposes tools, resources and prompts. A server is not automatically trusted because it speaks MCP.\n\nThe current 2026-07-28 specification uses a stateless core. It removes the protocol-level initialize/initialized handshake and the MCP-Session-Id header. Each request carries its protocol version and client capabilities in the `_meta` object; client identity may also be supplied there. The server returns its identity in result metadata. A client can call server/discover to learn supported versions, capabilities and server identity, but discovery is optional. It is not a session handshake.\n\nFor Streamable HTTP, requests carry standard Mcp-Method and, for tool calls, Mcp-Name headers. The server checks that headers agree with the JSON-RPC method and tool name. Version mismatches return an unsupported-protocol error. The current spec also adds resultType to results, cache hints such as ttlMs and cacheScope to list/read results, and deterministic ordering for list results. These details matter for routing, caching and client interoperability.\n\nFor tools, the client calls tools/list and receives names, descriptions and JSON input schemas. The host can present these capabilities to the model, but discovery is not permission. The host applies an allow-list, user consent, identity, tenant scope and risk policy before a proposed tool call reaches the server. Model-generated names and arguments are untrusted. The host validates arguments and the server validates again before execution.\n\nA tools/call request carries the selected tool name and arguments. The server returns structured content or a protocol error. Tool results are also untrusted data: a server can return malicious instructions, malformed content or stale facts. The host must treat results as data, not higher-priority instructions. The domain gateway remains responsible for authorization, rate limits, idempotency and audit.\n\nThe protocol uses JSON-RPC request IDs to correlate responses; notifications are one-way messages. Errors distinguish malformed requests, unknown methods, invalid parameters, unsupported protocol versions and implementation-specific failures. A robust client handles transport timeouts, cancellation, retries and reconnects. Stateless requests simplify load balancing, but stateful workflows must use explicit server-minted handles and application-owned durable state rather than assuming a connection session exists.\n\nMCP transports include STDIO for locally spawned processes and Streamable HTTP for remote communication. Remote deployments need TLS, authentication, origin validation and safe header routing. The older initialize/initialized session flow belongs to earlier protocol revisions and should be taught only as a compatibility path when connecting to legacy servers; it is not the current default.\n\nThe protocol standardizes interoperability, not trust. A malicious server can describe a tool deceptively or return prompt-injection content. A confused deputy can occur when a host uses its own credentials for a server-requested action without user authorization. Use explicit consent, least-privilege scopes, server identity verification, tool review, tenant context from authenticated host state, schema validation and audit logs. Never accept tenant identity or privileged roles from model-generated arguments.",
+    "mentalModel": "Host owns user and policy → client sends stateless versioned requests → server advertises capabilities → host authorizes → client invokes → host validates results.",
+    "limitations": [
+      "Capability discovery does not grant user consent or domain authorization.",
+      "A valid protocol message can still request an unsafe business operation.",
+      "Tool descriptions and results are untrusted content and can contain prompt injection.",
+      "Transport security and authentication differ by deployment; protocol compliance alone is insufficient.",
+      "Stateless requests simplify horizontal scaling but require explicit handles for multi-step server-side state.",
+      "A tool call can have side effects; use idempotency and reconciliation outside the protocol."
+    ],
+    "everydayAnalogy": "A hotel concierge is the host, a phone operator is the client, and each hotel department is a server. The operator can list available services, but the concierge still checks who is asking, whether they have permission and whether the requested action is safe.",
+    "mathMadeSimple": "A stateless request carries `_meta.io.modelcontextprotocol/protocolVersion` and `_meta.io.modelcontextprotocol/clientCapabilities`. A JSON-RPC request with id=7 must receive a response with id=7. For Streamable HTTP, `Mcp-Method` must match the JSON-RPC method, and a tools/call request's `Mcp-Name` must match params.name. List responses include cache hints such as ttlMs=30000 and cacheScope=private. No protocol session ID is needed.",
+    "productionImpact": "Production MCP integrations need version negotiation/discovery, per-request metadata, authenticated server identity, secure Streamable HTTP, header consistency, explicit consent, least-privilege scopes, schema validation, tenant isolation, output sanitization, rate limits, idempotency, audit, cancellation, reconnect behavior and cache freshness policy."
+  },
+  "useCase": {
+    "scenario": "An academy host connects to a stateless MCP tools server exposing a read-only order lookup. It optionally calls server/discover, sends request-scoped metadata on tools/list, asks the user for consent, validates arguments and invokes tools/call through a tenant-aware host gateway.",
+    "actors": [
+      "AI host",
+      "MCP client",
+      "MCP server",
+      "User consent UI",
+      "Identity provider",
+      "Tool gateway",
+      "Order service"
+    ],
+    "inputs": [
+      "Client protocol version and client metadata",
+      "Server metadata and advertised capabilities",
+      "Tool schemas and descriptions",
+      "Authenticated user and tenant context",
+      "Explicit consent and allowed scopes"
+    ],
+    "constraints": [
+      "Every request carries the required protocol version and client capabilities in _meta.",
+      "Streamable HTTP method/name headers agree with the JSON-RPC body.",
+      "Host consent and application authorization are mandatory.",
+      "Tenant context is injected from authenticated host state.",
+      "Tool input and output are validated as untrusted data."
+    ],
+    "outputs": [
+      "Discovered protocol versions and server identity",
+      "Tool list with schemas and cache hints",
+      "Authorized tool result or structured error",
+      "Audit trace and clean transport closure"
+    ],
+    "successMetric": "A client completes a compatible session and calls only an explicitly consented, authorized and tenant-scoped tool."
+  },
+  "architecture": {
+    "diagram": "content/topics/mcp-architecture/mcp-lifecycle.mmd",
+    "components": [
+      "AI host",
+      "MCP client",
+      "JSON-RPC message layer",
+      "Protocol version negotiator",
+      "MCP server",
+      "Capability registry",
+      "User consent and policy engine",
+      "Domain tool gateway",
+      "Audit and trace"
+    ],
+    "dataFlow": [
+      {
+        "from": "Host",
+        "to": "Client",
+        "payload": "task + user context + policy",
+        "purpose": "Create a managed protocol client."
+      },
+      {
+        "from": "Client",
+        "to": "Server",
+        "payload": "server/discover (optional)",
+        "purpose": "Discover versions, capabilities and server identity."
+      },
+      {
+        "from": "Client",
+        "to": "Server",
+        "payload": "tools/list + per-request _meta + Mcp-Method",
+        "purpose": "Discover tool definitions and cache hints."
+      },
+      {
+        "from": "Host",
+        "to": "Policy engine",
+        "payload": "user consent + scopes + tenant context",
+        "purpose": "Authorize the requested capability."
+      },
+      {
+        "from": "Client",
+        "to": "Server",
+        "payload": "tools/call + _meta + Mcp-Method + Mcp-Name",
+        "purpose": "Invoke the selected tool statelessly."
+      },
+      {
+        "from": "Server",
+        "to": "Host",
+        "payload": "resultType + structured content + serverInfo metadata",
+        "purpose": "Return untrusted tool data for validation."
+      }
+    ],
+    "trustBoundaries": [
+      "Host owns authenticated user identity, tenant and consent.",
+      "Every request carries version and client capability metadata; no protocol session is assumed.",
+      "Server tool descriptions and results are untrusted data.",
+      "Tool gateway validates scopes and injects tenant context from trusted host state.",
+      "Remote transport requires TLS, server authentication, origin validation and header consistency."
+    ],
+    "failurePaths": [
+      "Unsupported protocol version: return UnsupportedProtocolVersionError and do not process the request.",
+      "Mcp-Method or Mcp-Name mismatch: reject request before handler execution.",
+      "Unknown method or tool: return a structured JSON-RPC error.",
+      "Invalid arguments: reject against schema before handler execution.",
+      "Consent or scope missing: host blocks the call before transport dispatch.",
+      "Server restarts: stateless requests can route to another instance; refresh discovery/cache as required.",
+      "Prompt injection in tool result: treat as data and preserve host policy priority."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-07/fixtures/mcp-session.json",
+    "steps": [
+      {
+        "label": "Discover",
+        "explanation": "Client optionally asks the server for supported versions, identity and capabilities.",
+        "expectedState": "serverInfo + supported versions"
+      },
+      {
+        "label": "Request metadata",
+        "explanation": "Each request carries protocol version and client capabilities in _meta.",
+        "expectedState": "stateless request; no session handshake"
+      },
+      {
+        "label": "List tools",
+        "explanation": "Client requests tools/list with the required HTTP method header.",
+        "expectedState": "tools + ttlMs + cacheScope"
+      },
+      {
+        "label": "Authorize and call",
+        "explanation": "Host checks consent and tenant scope, then invokes with method and name headers.",
+        "expectedState": "authorized resultType=complete"
+      },
+      {
+        "label": "Validate result",
+        "explanation": "Host checks server metadata and treats returned content as untrusted.",
+        "expectedState": "validated application data"
+      }
+    ],
+    "accessibility": [
+      "Every lifecycle message is shown with method and direction text.",
+      "Session state and request IDs are visible as labels.",
+      "Consent and authorization outcomes are explicit words, not colors alone."
+    ],
+    "animation": {
+      "objective": "Animate a stateless MCP 2026-07-28 request flow and inspect discovery, per-request metadata, tool listing, authorization and result validation.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Discover",
+          "narration": "Client optionally asks for supported protocol versions, capabilities and server identity.",
+          "input": "server/discover",
+          "transformation": "server returns versions + serverInfo + capabilities",
+          "output": "protocol=2026-07-28; tools capability",
+          "visualState": "Discovery is optional, not a session handshake"
+        },
+        {
+          "step": 2,
+          "title": "Attach request metadata",
+          "narration": "Each JSON-RPC request carries protocol version and client capabilities in _meta.",
+          "input": "_meta.protocolVersion=2026-07-28",
+          "transformation": "add clientCapabilities and clientInfo",
+          "output": "request is self-describing; no session ID",
+          "visualState": "Stateless request can reach any server instance"
+        },
+        {
+          "step": 3,
+          "title": "List tools",
+          "narration": "Client sends tools/list with Mcp-Method header and receives cacheable tool definitions.",
+          "input": "Mcp-Method=tools/list",
+          "transformation": "server returns deterministic list and cache hints",
+          "output": "lookup_order; ttlMs=30000; cacheScope=private",
+          "visualState": "Capability discovered, not authorized"
+        },
+        {
+          "step": 4,
+          "title": "Authorize and call",
+          "narration": "Host checks user consent and scope, then sends tools/call with matching method and name headers.",
+          "input": "consent=granted; scope=orders:read",
+          "transformation": "validate headers + schema + domain policy",
+          "output": "resultType=complete; status=shipped",
+          "visualState": "Authorized stateless tool call"
+        },
+        {
+          "step": 5,
+          "title": "Validate result",
+          "narration": "Client checks result metadata and host treats tool content as untrusted data.",
+          "input": "serverInfo metadata + structured content",
+          "transformation": "validate and sanitize result",
+          "output": "trusted application representation",
+          "visualState": "No protocol session to shut down"
+        }
+      ],
+      "controls": [
+        {
+          "name": "protocol_supported",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "0 simulates an unsupported protocol version and rejects the request."
+        },
+        {
+          "name": "user_consent",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "0 blocks tool dispatch even when the server advertises the tool."
+        },
+        {
+          "name": "scope_granted",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "0 demonstrates host-side least-privilege denial."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Five stages show optional discovery, request-scoped metadata, method/name headers, cache hints, consent/scope and result validation as text."
+    }
+  },
+  "workedExample": {
+    "problem": "Call a read-only order lookup using the stateless MCP request model.",
+    "input": "protocol=2026-07-28; tool=lookup_order; args={order_id: ORD-7}; tenant=tenant-a.",
+    "steps": [
+      {
+        "operation": "Discover",
+        "reasoning": "Client optionally requests supported versions, server identity and capabilities.",
+        "result": "protocolVersions=[2026-07-28]; tools capability"
+      },
+      {
+        "operation": "Build request",
+        "reasoning": "Every request includes protocol version and client capabilities in _meta; HTTP method header matches JSON-RPC method.",
+        "result": "Mcp-Method=tools/list; no initialize or session ID"
+      },
+      {
+        "operation": "List tools",
+        "reasoning": "Server returns a deterministic list with tool schemas and cache hints.",
+        "result": "lookup_order; ttlMs=30000; cacheScope=private"
+      },
+      {
+        "operation": "Authorize and invoke",
+        "reasoning": "Host checks consent and orders:read scope, injects tenant from authenticated context and calls the tool.",
+        "result": "Mcp-Method=tools/call; Mcp-Name=lookup_order; resultType=complete"
+      },
+      {
+        "operation": "Validate output",
+        "reasoning": "Host checks server metadata and treats tool content as untrusted.",
+        "result": "tenant=tenant-a; order=ORD-7; status=shipped"
+      }
+    ],
+    "expectedOutput": "A stateless request discovers one read-only tool and invokes it only after host consent and tenant policy checks; no initialize handshake or MCP session ID is used."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-07/mcp_lifecycle.py",
+      "runCommand": "python examples/stage-07/mcp_lifecycle.py",
+      "testsPath": "examples/stage-07/test_mcp_lifecycle.py",
+      "expectedResult": "A JSON-RPC lifecycle simulator for initialization, capability negotiation, tool discovery, invocation, errors and shutdown."
+    },
+    {
+      "language": "python",
+      "role": "production",
+      "path": "examples/stage-07/mcp_lifecycle_production.py",
+      "runCommand": "python -m unittest discover -s examples/stage-07 -p 'test_mcp_lifecycle_production.py' -v",
+      "testsPath": "examples/stage-07/test_mcp_lifecycle_production.py",
+      "expectedResult": "Host-owned consent/scope gateway injects authenticated tenant context and rejects unregistered tools and model-supplied tenant IDs."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Legacy handshake assumed",
+      "symptom": "Client sends initialize/initialized to a current stateless server.",
+      "rootCause": "Implementation copied an older protocol lifecycle as if it were current.",
+      "recovery": "Use per-request _meta and optional server/discover; isolate legacy support behind an explicit compatibility adapter.",
+      "regressionTest": "Current-mode client sends tools/list without initialize and succeeds."
+    },
+    {
+      "name": "Capability mistaken for permission",
+      "symptom": "A discovered tool executes without user consent.",
+      "rootCause": "Host treats tools/list as authorization.",
+      "recovery": "Require explicit consent and server-side policy before dispatch.",
+      "regressionTest": "Discover tool, omit consent and assert no handler execution."
+    },
+    {
+      "name": "Model supplies tenant ID",
+      "symptom": "Tool arguments target another tenant's resource.",
+      "rootCause": "Tenant identity is trusted from model-generated JSON.",
+      "recovery": "Inject tenant from authenticated host context and reject tenant arguments.",
+      "regressionTest": "Pass tenant_id in tool arguments and assert denial."
+    },
+    {
+      "name": "HTTP header/body mismatch",
+      "symptom": "Gateway routes a request to a different method or tool than the JSON-RPC body.",
+      "rootCause": "Mcp-Method or Mcp-Name is not checked against body fields.",
+      "recovery": "Validate header/body consistency before handler dispatch.",
+      "regressionTest": "Mismatch Mcp-Name and params.name and assert rejection."
+    },
+    {
+      "name": "Prompt injection in tool result",
+      "symptom": "Tool output tells the model to ignore system policy or reveal secrets.",
+      "rootCause": "Server result is treated as trusted instruction.",
+      "recovery": "Treat results as untrusted data and preserve host policy hierarchy.",
+      "regressionTest": "Return malicious instruction text and assert no permission change."
+    }
+  ],
+  "practice": {
+    "guided": "Draw host, client and server responsibilities. Trace optional server/discover, per-request _meta, tools/list, host authorization and tools/call.",
+    "independent": "Implement a stateless JSON-RPC client/server request path with version metadata, server discovery, header/body consistency, tool schema validation and explicit host policy.",
+    "realWorld": "Build a stateless MCP tools endpoint exposing one read-only order lookup. Add a host consent screen and tenant-aware tool gateway before connecting an LLM.",
+    "expertExtension": "Add Streamable HTTP header routing, authorization discovery, cache hints, subscriptions/listen, MRTR, Tasks extension, cancellation, trace redaction and legacy compatibility adapters.",
+    "guidedExercise": {
+      "title": "Build a safe stateless MCP request",
+      "instructions": "Every request must include protocol version and client capabilities. Validate HTTP method/name headers and enforce consent before calling the tool.",
+      "starterCode": "def handle_request(headers, message, host_context):\n    # validate JSON-RPC and Mcp-Method\n    # require protocolVersion and clientCapabilities in _meta\n    # for tools/call validate Mcp-Name and host consent\n    # inject tenant from host_context\n    raise NotImplementedError",
+      "solutionCode": "def handle_request(headers, message, host_context):\n    method = message['method']\n    if headers.get('Mcp-Method') != method:\n        raise ValueError('method header mismatch')\n    meta = message['params'].get('_meta', {})\n    if not meta.get('io.modelcontextprotocol/protocolVersion'):\n        raise ValueError('protocol version required')\n    if 'io.modelcontextprotocol/clientCapabilities' not in meta:\n        raise ValueError('client capabilities required')\n    if method == 'tools/call':\n        name = message['params']['name']\n        if headers.get('Mcp-Name') != name:\n            raise ValueError('tool name header mismatch')\n        if name not in host_context['consented_tools']:\n            raise PermissionError('consent required')\n    return 'validated for dispatch'",
+      "unitTests": "assert handle_request(valid_headers, valid_message, consented_context) == 'validated for dispatch'\nassert mismatched_method_header_raises_value_error\nassert missing_protocol_metadata_raises_value_error"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build a stateless MCP inspector showing per-request metadata, HTTP headers, capability discovery, consent and tool traces.",
+      "steps": [
+        "Start a stateless server with one read-only lookup_order tool.",
+        "Call server/discover and inspect supported versions and capabilities.",
+        "Call tools/list with request-scoped _meta and inspect ttlMs/cacheScope.",
+        "Toggle consent and scope; verify unauthorized calls never reach server.",
+        "Send mismatched Mcp-Method and Mcp-Name headers and assert rejection.",
+        "Inject invalid arguments, unsupported protocol and unknown method.",
+        "Inspect resultType, serverInfo metadata and untrusted tool output."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "What replaced initialize/initialized in the current 2026-07-28 stateless core?",
+        "options": [
+          "Mcp-Session-Id header",
+          "Per-request protocol version and client capabilities in _meta",
+          "A permanent WebSocket session",
+          "No protocol metadata"
+        ],
+        "correctIndex": 1,
+        "explanation": "Each request carries protocol version and client capabilities; server/discover is optional."
+      },
+      {
+        "question": "What does tools/list prove?",
+        "options": [
+          "The user authorized every tool",
+          "The server advertises tool definitions",
+          "The tool is safe for every tenant",
+          "The model can execute arbitrary code"
+        ],
+        "correctIndex": 1,
+        "explanation": "Discovery reveals capabilities; the host still decides whether a user and task may invoke them."
+      },
+      {
+        "question": "Where should tenant identity come from?",
+        "options": [
+          "Model output",
+          "Tool description",
+          "Authenticated host context",
+          "Untrusted tool result"
+        ],
+        "correctIndex": 2,
+        "explanation": "Tenant context is trusted application state and should be injected by the host/domain gateway."
+      },
+      {
+        "question": "A tool result contains 'ignore previous instructions'. What should the host do?",
+        "options": [
+          "Treat it as system instruction",
+          "Treat it as untrusted tool data",
+          "Grant more scopes",
+          "Disable authentication"
+        ],
+        "correctIndex": 1,
+        "explanation": "Tool output is untrusted content and must not override host policy."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Host/client/server responsibilities",
+        "weight": 20,
+        "evidence": "Explain lifecycle roles and trust boundaries."
+      },
+      {
+        "criterion": "Protocol lifecycle and JSON-RPC",
+        "weight": 20,
+        "evidence": "Trace initialization, negotiation, notifications, requests, errors and shutdown."
+      },
+      {
+        "criterion": "Capability and schema handling",
+        "weight": 20,
+        "evidence": "Discover tools and validate inputs at host/server boundaries."
+      },
+      {
+        "criterion": "Consent, identity and tenant security",
+        "weight": 25,
+        "evidence": "No call executes without consent, scope and trusted tenant context."
+      },
+      {
+        "criterion": "Operational lifecycle",
+        "weight": 15,
+        "evidence": "Reconnect, cancellation, error handling and trace redaction are covered."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Current stateless requests include protocol and client capability metadata.",
+      "Legacy initialize flow is clearly separated as compatibility-only.",
+      "Header/body mismatch and unsupported versions fail closed.",
+      "Tool discovery never bypasses user consent.",
+      "Cross-tenant/model-supplied tenant arguments are rejected.",
+      "Tool results remain untrusted data."
+    ]
+  },
+  "references": [
+    {
+      "title": "MCP 2026-07-28 specification changelog",
+      "url": "https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/docs/specification/2026-07-28/changelog.mdx",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "MCP architecture documentation",
+      "url": "https://modelcontextprotocol.io/docs/learn/architecture",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "MCP tools documentation",
+      "url": "https://modelcontextprotocol.io/docs/concepts/tools",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "MCP versioning and compatibility",
+      "url": "https://modelcontextprotocol.io/specification/2026-07-28/basic/versioning",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "_meta['io.modelcontextprotocol/protocolVersion']",
+      "explanation": "Current MCP requests are self-describing; version metadata is sent per request rather than negotiated once in a stateful session."
+    },
+    {
+      "lines": "_meta['io.modelcontextprotocol/clientCapabilities']",
+      "explanation": "The server sees client capabilities relevant to each request and can tailor supported behavior."
+    },
+    {
+      "lines": "Mcp-Method == JSON-RPC method",
+      "explanation": "Streamable HTTP header routing must agree with the JSON-RPC body to prevent request smuggling or confused routing."
+    },
+    {
+      "lines": "Mcp-Name == params.name",
+      "explanation": "The HTTP tool name header must identify the same tool as the JSON-RPC parameters."
+    },
+    {
+      "lines": "tools/list → ttlMs + cacheScope",
+      "explanation": "Cache hints allow clients and intermediaries to cache list results within the advertised scope and freshness window."
+    },
+    {
+      "lines": "tenant_id = authenticated_host_context.tenant_id",
+      "explanation": "Never trust tenant identity from model-generated tool arguments."
+    }
+  ]
 }
