@@ -1,0 +1,51 @@
+{
+  "scenario": "order.paid event delivered twice to fulfillment",
+  "event": {
+    "eventId": "evt-7",
+    "eventType": "order.paid",
+    "tenantId": "tenant-a",
+    "aggregateId": "ORD-7",
+    "aggregateVersion": 4,
+    "schemaVersion": 1,
+    "source": "orders",
+    "traceId": "trace-77"
+  },
+  "producer": {
+    "businessState": "paid",
+    "outboxStatus": "pending"
+  },
+  "broker": {
+    "partitionKey": "ORD-7",
+    "deliveries": 2
+  },
+  "consumer": {
+    "name": "fulfillment",
+    "inboxKey": [
+      "fulfillment",
+      "tenant-a",
+      "evt-7"
+    ],
+    "projectionVersion": 4
+  },
+  "schedule": {
+    "scheduleId": "invoice-daily",
+    "timezone": "Asia/Kolkata",
+    "scheduledFor": "2026-11-21T09:00:00+05:30",
+    "overlapPolicy": "skip"
+  },
+  "webhook": {
+    "signatureValid": true,
+    "timestampFresh": true,
+    "replayDetected": false
+  },
+  "failureInjection": [
+    "publisher crash after publish",
+    "consumer crash before commit",
+    "consumer crash after commit before ack",
+    "aggregate version gap",
+    "poison message",
+    "invalid HMAC",
+    "replayed webhook",
+    "schedule overlap"
+  ]
+}
