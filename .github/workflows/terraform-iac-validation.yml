@@ -31,5 +31,8 @@ jobs:
       - name: Validate Terraform configuration
         working-directory: examples/stage-09/iac/aws-inference
         run: terraform validate
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
       - name: Run repository IaC policy tests
         run: python -m unittest discover -s examples/stage-09 -p 'test_iac_template.py' -v
