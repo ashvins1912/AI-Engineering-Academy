@@ -1,0 +1,527 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "memory",
+    "title": "Agent memory and context engineering",
+    "stage": 6,
+    "estimatedMinutes": 150
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Distinguish working, episodic and semantic memory and select the right storage and retrieval behavior for each.",
+      "Design a context assembly pipeline with token budgets, relevance ranking, recency, diversity and source attribution.",
+      "Implement memory writes, retrieval, summarization, expiration and deletion with explicit lifecycle rules.",
+      "Enforce tenant isolation, consent, data minimization and authorization at every memory boundary.",
+      "Evaluate memory usefulness, stale facts, retrieval leakage, token cost and answer grounding."
+    ],
+    "prerequisites": [
+      "Stage 6 Topic 1: agent loop and bounded tool execution",
+      "Stage 6 Topic 2: planning and task decomposition",
+      "Python dictionaries, lists, functions and JSON serialization",
+      "Basic understanding of embeddings, retrieval and token counts"
+    ],
+    "glossary": [
+      {
+        "term": "Working memory",
+        "definition": "Short-lived state needed to complete the current task or conversation turn."
+      },
+      {
+        "term": "Episodic memory",
+        "definition": "A record of a specific past interaction or event, including when it happened and its outcome."
+      },
+      {
+        "term": "Semantic memory",
+        "definition": "A normalized, reusable fact or preference distilled from one or more observations."
+      },
+      {
+        "term": "Context engineering",
+        "definition": "Selecting, ordering and budgeting trusted information supplied to a model for one inference call."
+      },
+      {
+        "term": "Memory consolidation",
+        "definition": "A controlled process that turns useful episodic observations into deduplicated semantic facts."
+      },
+      {
+        "term": "Time to live (TTL)",
+        "definition": "A retention limit after which a memory expires and must no longer be retrieved."
+      },
+      {
+        "term": "Tenant isolation",
+        "definition": "A security boundary that prevents one organization or user scope from reading another scope's memory."
+      },
+      {
+        "term": "Provenance",
+        "definition": "Evidence showing where a memory came from, when it was observed and how confidently it is supported."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "An agent that starts every turn with no history repeats questions and loses task continuity. An agent that remembers everything creates a different problem: stale facts, privacy exposure, prompt bloat and cross-tenant data leakage. Memory must be selective, scoped, expiring and retrievable with evidence. Context engineering decides which approved memories are worth spending tokens on for this specific request.",
+    "plainLanguage": "Think of three memory layers. Working memory is the scratchpad for the current task: the user's current request, intermediate calculations and tool results. Episodic memory is a diary of particular events: an order was delayed yesterday, a support case was opened, or a previous task ended with a timeout. Semantic memory stores reusable facts distilled from episodes: the customer prefers email, or a product's warranty lasts two years. These layers have different lifetimes and retrieval rules.\n\nA memory write should not mean “save the whole conversation”. First identify a candidate fact, check whether it is useful and permitted to retain, attach its source and timestamp, assign a scope and expiry, and deduplicate it against existing facts. Sensitive or unnecessary details should not be stored. A user correction should supersede the old fact rather than silently coexist with it.\n\nAt inference time, context engineering assembles a small evidence pack. It starts with system and developer instructions, then the current user request, relevant working state, selected episodic or semantic memories, and tool evidence. Each item has a token cost. Rank candidates by relevance and reliability, consider recency and diversity, and stop when the memory budget is exhausted. Do not let retrieved text override higher-priority instructions; memories are data, not policy.\n\nSummarization compresses a long episode into a short, source-linked note. It must preserve uncertainty, dates, decisions and unresolved work. A summary is not automatically true: retain provenance and allow a newer verified fact to supersede it. Retrieval should filter by tenant and user authorization before scoring, not retrieve globally and filter only after content has entered a prompt.\n\nMemory lifecycle includes capture, validation, storage, retrieval, consolidation, expiry, correction and deletion. Deletion must cover derived summaries and indexes as well as the original record. A production system needs consent and retention policy, tenant-scoped queries, encryption at rest and in transit, access logs, TTL enforcement, deletion propagation and tests that attempt cross-tenant reads.",
+    "mentalModel": "Observe → candidate fact → permission and minimization check → scoped write → retrieve authorized candidates → rank and budget → assemble evidence context → answer with provenance → expire, correct or delete.",
+    "limitations": [
+      "Similarity is not truth: a highly relevant memory can be stale, incorrect or maliciously planted.",
+      "Summaries can omit qualifiers, dates and uncertainty; keep source references and test summary fidelity.",
+      "A token budget is model/tokenizer-specific and changes with message formatting and tool schemas.",
+      "Semantic memory can collapse two different people or projects unless identity and scope are explicit.",
+      "Deletion is incomplete if embeddings, caches, summaries, backups or analytics copies are not covered by the retention policy.",
+      "More retrieved memories can reduce answer quality through distraction, contradiction and prompt injection."
+    ],
+    "everydayAnalogy": "Working memory is the notes on your desk while solving today's problem. Episodic memory is your dated diary of what happened on earlier days. Semantic memory is the organized reference card you keep after learning a reusable fact. Before a meeting, you do not dump the entire diary onto the table: you choose a few relevant, recent, trustworthy notes that fit the time available.",
+    "mathMadeSimple": "Suppose the context budget for memory is 120 tokens. Candidate A is a verified preference with relevance 0.95, reliability 1.0, recency 0.9 and cost 25 tokens. Candidate B is an old episode with relevance 0.80, reliability 0.7, recency 0.3 and cost 50. Candidate C is a verified project fact with relevance 0.85, reliability 0.95, recency 0.8 and cost 35. A simple teaching score is 0.5×relevance + 0.3×reliability + 0.2×recency: A=0.925, B=0.65, C=0.855. Select A and C for 60 tokens; B can be omitted. Real systems use calibrated ranking and must filter authorization before scoring.",
+    "productionImpact": "Unscoped memory retrieval can disclose another tenant's customer records. Unbounded history can exhaust context windows and increase latency and cost. Stale preferences can trigger incorrect actions. Production memory requires per-record scope, authorization-before-retrieval, consent, minimization, provenance, TTL, versioning, conflict resolution, deletion propagation, encryption, audit events, token accounting and evaluation for leakage and usefulness."
+  },
+  "useCase": {
+    "scenario": "A multi-tenant support agent helps a customer continue a delayed-shipment case. It uses working memory for the current turn, episodic memory for the prior case interaction, and semantic memory for a verified contact preference. It assembles only authorized evidence within a 120-token memory budget and never reads another tenant's records.",
+    "actors": [
+      "Customer support agent",
+      "Memory policy service",
+      "Tenant-scoped memory store",
+      "Embedding/retrieval adapter",
+      "Context assembler",
+      "Audit and retention worker"
+    ],
+    "inputs": [
+      "Current user request and authenticated tenant/user scope",
+      "Candidate episodic and semantic memories with provenance",
+      "Token budget, retention policy and consent state",
+      "Current tool evidence and trusted timestamps"
+    ],
+    "constraints": [
+      "Tenant and user scope are checked before retrieval and before write.",
+      "Sensitive categories are not retained by the teaching policy.",
+      "Expired or deleted memories are excluded from retrieval.",
+      "Retrieved memory is untrusted evidence and cannot override system policy.",
+      "Summaries preserve source IDs and uncertainty."
+    ],
+    "outputs": [
+      "A bounded context pack with source references",
+      "Memory lifecycle events for write, update, expire and delete",
+      "An auditable explanation of why each memory was included or excluded"
+    ],
+    "successMetric": "Relevant authorized memories fit the budget; expired and cross-tenant records are never returned; deletion removes source and derived records."
+  },
+  "architecture": {
+    "diagram": "examples/stage-06/visual/memory-context.mmd",
+    "components": [
+      "Conversation and tool event observer",
+      "Memory candidate extractor",
+      "Consent and data-minimization policy",
+      "Tenant-scoped memory repository",
+      "Episodic-to-semantic consolidator",
+      "Authorized retriever and ranker",
+      "Token-budgeted context assembler",
+      "TTL and deletion worker",
+      "Audit and evaluation pipeline"
+    ],
+    "dataFlow": [
+      {
+        "from": "Conversation/tool event",
+        "to": "Candidate extractor",
+        "payload": "event text, actor, time and source ID",
+        "purpose": "Identify candidate facts without storing the whole transcript"
+      },
+      {
+        "from": "Candidate extractor",
+        "to": "Policy gate",
+        "payload": "candidate, category, purpose and requested scope",
+        "purpose": "Apply consent, minimization and retention rules"
+      },
+      {
+        "from": "Policy gate",
+        "to": "Scoped memory store",
+        "payload": "approved typed memory with provenance and expiry",
+        "purpose": "Persist only authorized facts in the correct tenant scope"
+      },
+      {
+        "from": "Current request",
+        "to": "Authorized retriever",
+        "payload": "tenant, user, query and allowed memory types",
+        "purpose": "Filter scope and permissions before retrieval"
+      },
+      {
+        "from": "Authorized retriever",
+        "to": "Ranker and context assembler",
+        "payload": "authorized candidate records",
+        "purpose": "Rank evidence and fit it within a token budget"
+      },
+      {
+        "from": "Context assembler",
+        "to": "Agent inference",
+        "payload": "bounded evidence pack and source references",
+        "purpose": "Supply useful context without granting memory policy authority"
+      },
+      {
+        "from": "Retention request",
+        "to": "TTL/deletion worker",
+        "payload": "memory ID, tenant and deletion policy",
+        "purpose": "Expire or delete source and derived records"
+      }
+    ],
+    "trustBoundaries": [
+      "Tenant identity is derived from authenticated server context, never from model-generated memory metadata.",
+      "Retrieved text and summaries are untrusted data; they cannot grant tools or change system instructions.",
+      "The store enforces tenant scope in the query and storage layer, not only in UI filtering.",
+      "Deletion jobs must cover source records, summaries, embeddings, caches and derived indexes."
+    ],
+    "failurePaths": [
+      "Cross-tenant retrieval attempt returns no record and emits a security audit event.",
+      "Expired memory is excluded even if a vector index still contains its embedding.",
+      "Conflicting semantic facts are versioned and the newest verified source wins; ambiguity is surfaced.",
+      "Token-budget overflow drops lowest-ranked optional memory, never system instructions or current user request.",
+      "Deletion propagation failure marks the request incomplete and retries from a durable tombstone."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-06/fixtures/memory.json",
+    "steps": [
+      {
+        "label": "Capture a candidate",
+        "explanation": "Extract a small preference or event from an interaction and retain its source, time and scope.",
+        "expectedState": "Candidate exists but is not yet persisted."
+      },
+      {
+        "label": "Apply memory policy",
+        "explanation": "Check consent, data minimization, tenant scope and expiry before writing.",
+        "expectedState": "Only approved candidate records enter the scoped store."
+      },
+      {
+        "label": "Retrieve authorized evidence",
+        "explanation": "Filter by tenant and user permissions before relevance scoring.",
+        "expectedState": "Unauthorized and expired memories are absent from the candidate set."
+      },
+      {
+        "label": "Rank and assemble context",
+        "explanation": "Score reliability, relevance and recency, then fit selected memories into the token budget.",
+        "expectedState": "Context contains only selected evidence and source IDs."
+      },
+      {
+        "label": "Consolidate and expire",
+        "explanation": "Summarize episodes with provenance, supersede stale facts and delete expired or revoked records.",
+        "expectedState": "Derived memory is traceable and retention is enforced."
+      }
+    ],
+    "accessibility": [
+      "Every memory card exposes its type, scope, timestamp, expiry and source ID as text.",
+      "Selection, exclusion and token costs are described in a textual trace; color is never the only signal.",
+      "Play, pause, reset, previous and next controls are keyboard accessible."
+    ],
+    "animation": {
+      "objective": "Animate candidate capture through policy checks, tenant-filtered retrieval, ranking, token budgeting and lifecycle cleanup using a deterministic memory fixture.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Capture typed memory",
+          "narration": "A conversation yields a candidate preference and an episode. Keep type, source, timestamp and scope instead of copying the whole transcript.",
+          "input": "candidate: preferred_contact=email; episode: shipment_delay_case_42",
+          "transformation": "Normalize each candidate and attach provenance, confidence and owner scope",
+          "output": "two typed candidates awaiting policy review",
+          "visualState": "Working, episodic and semantic memory lanes appear with source metadata"
+        },
+        {
+          "step": 2,
+          "title": "Apply policy before storage",
+          "narration": "The policy gate checks purpose, consent, minimization, tenant and retention. A sensitive or unnecessary candidate is rejected.",
+          "input": "tenant=acme; consent=true; retention_days=30",
+          "transformation": "Validate scope and expiry; reject disallowed categories",
+          "output": "approved records are stored under tenant acme; rejected candidates are not persisted",
+          "visualState": "Approved memory enters scoped storage; rejected item shows a reason"
+        },
+        {
+          "step": 3,
+          "title": "Retrieve within the tenant",
+          "narration": "The authenticated tenant scope is applied before similarity scoring. Another tenant's highly similar record never enters the candidate list.",
+          "input": "query=where is my delayed order?; tenant=acme",
+          "transformation": "Filter tenant, user, type, permission and expiry before ranking",
+          "output": "only active acme memories are eligible",
+          "visualState": "Authorized memories remain; cross-tenant and expired records are excluded"
+        },
+        {
+          "step": 4,
+          "title": "Rank and fit the context",
+          "narration": "A simple score combines relevance, reliability and recency. The assembler selects the highest-value evidence while staying under 120 tokens.",
+          "input": "A=0.955/25 tokens; B=0.650/80; C=0.855/35",
+          "transformation": "Score=0.5 relevance + 0.3 reliability + 0.2 recency; greedily fit the budget",
+          "output": "A+C selected for 60 tokens; B excluded",
+          "visualState": "Selected evidence fills the budget meter with source IDs"
+        },
+        {
+          "step": 5,
+          "title": "Consolidate and expire",
+          "narration": "A verified newer fact supersedes an old preference. Expired episodes and their derived summaries are removed from retrieval.",
+          "input": "old preference superseded; episode TTL elapsed",
+          "transformation": "Version facts, preserve provenance and propagate expiry/deletion to derived records",
+          "output": "only current authorized memories remain retrievable",
+          "visualState": "Expired record and derived summary disappear from the active index"
+        }
+      ],
+      "controls": [
+        {
+          "name": "memory_token_budget",
+          "min": 20,
+          "max": 200,
+          "defaultValue": 120,
+          "effect": "Changes how many ranked memory tokens can enter the assembled context."
+        },
+        {
+          "name": "recency_weight",
+          "min": 0,
+          "max": 0.5,
+          "defaultValue": 0.2,
+          "effect": "Changes the recency contribution; relevance and reliability remain visible."
+        },
+        {
+          "name": "include_expired",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 0,
+          "effect": "When enabled, expired records appear in a separate rejected lane but never enter context."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Five numbered stages provide the same candidate data, policy decisions, scores, token costs and lifecycle transitions as text. Each record lists scope and expiry explicitly. The animation is supplementary and does not rely on color."
+    }
+  },
+  "workedExample": {
+    "problem": "Select authorized memory records for a support request while respecting relevance, reliability, recency and a token budget.",
+    "input": "Budget=120 tokens. A: relevance .95, reliability 1.0, recency .9, cost 25. B: .80, .70, .30, cost 80. C: .85, .95, .80, cost 35.",
+    "steps": [
+      {
+        "operation": "Filter before ranking",
+        "reasoning": "The authenticated request is scoped to tenant acme and user 17. Expired, revoked and other-tenant memories are removed before any score is calculated.",
+        "result": "A, B and C are authorized and active; cross-tenant record X is excluded."
+      },
+      {
+        "operation": "Calculate candidate scores",
+        "reasoning": "Use teaching score 0.5×relevance + 0.3×reliability + 0.2×recency.",
+        "result": "A=.955; B=.650; C=.855."
+      },
+      {
+        "operation": "Fit token budget",
+        "reasoning": "Select high-scoring records while total token cost remains within 120.",
+        "result": "A+C use 25+35=60 tokens. B is lower priority and is omitted; 60 tokens remain."
+      },
+      {
+        "operation": "Attach provenance",
+        "reasoning": "The model must be able to distinguish a verified preference from a past event and inspect when it was observed.",
+        "result": "Context items include memory ID, source event, timestamp, type, confidence and expiry."
+      },
+      {
+        "operation": "Apply lifecycle rules",
+        "reasoning": "When a newer verified preference supersedes A, version the old fact and exclude it from future retrieval. A deletion request also removes derived summaries and embeddings.",
+        "result": "Current fact is active; superseded and deleted records are not retrievable."
+      }
+    ],
+    "expectedOutput": "The prompt receives only A and C (60 tokens) with provenance. Record X never enters ranking, and expired or deleted records are excluded from future context."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-06/memory.py",
+      "runCommand": "python examples/stage-06/memory.py",
+      "testsPath": "examples/stage-06/test_memory.py",
+      "expectedResult": "Typed in-memory records demonstrate capture, authorization, ranking, token budgeting, summarization metadata and expiry."
+    },
+    {
+      "language": "python",
+      "role": "production",
+      "path": "examples/stage-06/memory_production.py",
+      "runCommand": "python -m unittest discover -s examples/stage-06 -p 'test_memory_production.py' -v",
+      "testsPath": "examples/stage-06/test_memory_production.py",
+      "expectedResult": "Tenant-scoped memory service enforces access-before-retrieval, consent, TTL, provenance, deletion propagation and audit events."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Cross-tenant memory leakage",
+      "symptom": "A support response includes a different organization's customer details.",
+      "rootCause": "Retrieval searched a global index and relied on UI filtering after records were fetched.",
+      "recovery": "Require authenticated tenant scope in repository queries and database row-level policy before ranking or prompt assembly.",
+      "regressionTest": "Seed identical high-similarity records for two tenants and assert each caller can retrieve only its own record."
+    },
+    {
+      "name": "Stale semantic fact",
+      "symptom": "Agent uses an old contact preference after the user corrected it.",
+      "rootCause": "New observations were appended without superseding or versioning the prior fact.",
+      "recovery": "Store effective timestamps and provenance, apply conflict rules, and retrieve only the latest verified active version.",
+      "regressionTest": "Insert an older and newer fact and assert the newer fact wins while the old remains auditable but inactive."
+    },
+    {
+      "name": "Expired memory still retrieved",
+      "symptom": "A temporary case detail appears after its retention period.",
+      "rootCause": "TTL was applied only to a background cleanup job, not the retrieval query.",
+      "recovery": "Filter expires_at at query time and run cleanup asynchronously as defense in depth.",
+      "regressionTest": "Create an expired record and assert retrieval excludes it before cleanup runs."
+    },
+    {
+      "name": "Prompt budget overflow",
+      "symptom": "The assembled prompt exceeds the memory token allocation.",
+      "rootCause": "Selection used character count or ignored the actual token cost.",
+      "recovery": "Use tokenizer-specific token counts, reserve budget for mandatory context and omit lowest-ranked optional memories.",
+      "regressionTest": "Use candidate costs whose sum exceeds budget and assert selected cost never exceeds the configured limit."
+    },
+    {
+      "name": "Deletion leaves derived copies",
+      "symptom": "Deleted information reappears from a summary or vector index.",
+      "rootCause": "Deletion removed only the primary row and did not propagate to derived artifacts.",
+      "recovery": "Use tombstones and a durable deletion workflow covering summaries, embeddings, caches and indexes.",
+      "regressionTest": "Delete a source memory and assert all linked derived records are marked deleted and excluded."
+    }
+  ],
+  "practice": {
+    "guided": "Classify five examples into working, episodic or semantic memory. For each, specify owner scope, provenance, expiry and whether it should be retained at all.",
+    "independent": "Implement a tenant-scoped memory repository with authorization-before-retrieval, token-budget selection and TTL filtering. Add tests for cross-tenant leakage and stale facts.",
+    "realWorld": "Add memory to a support agent: preserve the current case state, retrieve prior case episodes, distill a verified customer preference and cite the source in the response.",
+    "expertExtension": "Compare recency-aware hybrid retrieval, maximal marginal relevance, temporal knowledge graphs and summarization hierarchies. Design deletion propagation across SQL, vector indexes, caches and backups.",
+    "guidedExercise": {
+      "title": "Build a token-budgeted memory selector",
+      "instructions": "Complete the selector. Filter by tenant and expiry before ranking, compute the weighted score, then add the highest-scoring items without exceeding the token budget. Keep each selected memory's source ID.",
+      "starterCode": "def select_memories(records, tenant_id, now, token_budget):\n    # TODO: filter tenant and expiry before ranking\n    # TODO: score relevance, reliability and recency\n    # TODO: sort deterministically and fit the token budget\n    raise NotImplementedError",
+      "solutionCode": "def select_memories(records, tenant_id, now, token_budget):\n    eligible = [r for r in records if r['tenant_id'] == tenant_id and not r['deleted'] and r['expires_at'] > now]\n    ranked = sorted(eligible, key=lambda r: (-(0.5*r['relevance'] + 0.3*r['reliability'] + 0.2*r['recency']), r['id']))\n    selected, used = [], 0\n    for record in ranked:\n        cost = record['token_cost']\n        if used + cost <= token_budget:\n            selected.append({'id':record['id'], 'source_id':record['source_id'], 'score':0.5*record['relevance']+0.3*record['reliability']+0.2*record['recency']})\n            used += cost\n    return selected, used",
+      "unitTests": "selected, used = select_memories(records, 'acme', now=100, token_budget=60)\nassert used <= 60\nassert all(item['source_id'] for item in selected)\nassert 'other-tenant-record' not in [item['id'] for item in selected]"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build a memory inspector that shows typed memory lanes, policy decisions, tenant filters, ranked evidence, token budget and lifecycle status.",
+      "steps": [
+        "Load the deterministic fixture and render working, episodic and semantic memory separately.",
+        "Add capture controls for tenant scope, consent, source ID and expiry; reject disallowed candidates before persistence.",
+        "Run tenant and expiry filtering before relevance scoring and display rejected reasons.",
+        "Adjust token budget and recency weight to see the selected evidence pack change.",
+        "Simulate summarization and supersession while retaining source provenance.",
+        "Delete a memory and verify its summary and embedding are also excluded from retrieval.",
+        "Add a cross-tenant attack test and a stale-fact regression test."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "A global vector search returns a highly similar memory from another tenant. What should happen?",
+        "options": [
+          "Include it because similarity is high",
+          "Filter it out only in the UI",
+          "Tenant authorization must exclude it before ranking and prompt assembly",
+          "Ask the model whether it is safe"
+        ],
+        "correctIndex": 2,
+        "explanation": "Authorization and tenant scope are hard boundaries. A record that is not authorized must never enter the candidate set or model context."
+      },
+      {
+        "question": "A user corrects a stored preference. How should semantic memory change?",
+        "options": [
+          "Append the new value and retrieve both equally",
+          "Version or supersede the old fact with the newer verified source",
+          "Keep the old value because it was stored first",
+          "Delete all user history automatically"
+        ],
+        "correctIndex": 1,
+        "explanation": "Memory needs conflict resolution and provenance. The newer verified fact becomes active while the old fact can remain auditable according to retention policy."
+      },
+      {
+        "question": "An episode is expired but its vector embedding remains in the index. Can retrieval return it?",
+        "options": [
+          "Yes, cleanup has not run yet",
+          "Only if similarity is above .9",
+          "No, query-time expiry filtering must exclude it",
+          "Yes, if the summary is shorter"
+        ],
+        "correctIndex": 2,
+        "explanation": "TTL must be enforced at retrieval time. Background cleanup is defense in depth, not the security or correctness gate."
+      },
+      {
+        "question": "The source memory is deleted but its summary remains active. Is deletion complete?",
+        "options": [
+          "Yes, the original row is gone",
+          "No, deletion must propagate to derived summaries, embeddings and caches",
+          "Yes, if the summary has no source ID",
+          "Only if the model forgets it"
+        ],
+        "correctIndex": 1,
+        "explanation": "Derived artifacts can still disclose deleted information. Use a durable deletion workflow and exclude all linked derived records."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Distinguish memory types and lifecycle",
+        "weight": 15,
+        "evidence": "Classify examples and justify retention and expiry"
+      },
+      {
+        "criterion": "Implement authorized retrieval and context budgeting",
+        "weight": 25,
+        "evidence": "Passing selector tests with exact token accounting"
+      },
+      {
+        "criterion": "Preserve provenance and resolve stale facts",
+        "weight": 20,
+        "evidence": "Versioned memory records and source-linked summaries"
+      },
+      {
+        "criterion": "Enforce tenant isolation, consent and deletion",
+        "weight": 25,
+        "evidence": "Cross-tenant, expiry and derived-deletion regression tests"
+      },
+      {
+        "criterion": "Evaluate usefulness, leakage and cost",
+        "weight": 15,
+        "evidence": "Benchmark with relevance, token cost and security metrics"
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Passing from-scratch and production memory tests",
+      "Cross-tenant retrieval denial and expired-record exclusion",
+      "Token budget never exceeded in fixture tests",
+      "Deletion propagation covers source and derived artifacts",
+      "Written explanation of provenance and conflict resolution"
+    ]
+  },
+  "references": [
+    {
+      "title": "MemGPT: Towards LLMs as Operating Systems",
+      "url": "https://arxiv.org/abs/2310.08560",
+      "sourceType": "paper",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "Generative Agents: Interactive Simulacra of Human Behavior",
+      "url": "https://arxiv.org/abs/2304.03442",
+      "sourceType": "paper",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "OWASP Top 10 for LLM Applications",
+      "url": "https://owasp.org/www-project-top-10-for-large-language-model-applications/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "eligible = [r for r in records if r['tenant_id'] == tenant_id and not r['deleted'] and r['expires_at'] > now]",
+      "explanation": "Authorization scope and expiry are applied before relevance scoring. This prevents an unauthorized record from ever becoming model-visible evidence."
+    },
+    {
+      "lines": "score = 0.5 * relevance + 0.3 * reliability + 0.2 * recency",
+      "explanation": "The teaching score makes ranking assumptions visible. Production weights must be evaluated against real retrieval labels and must never replace access control."
+    },
+    {
+      "lines": "if used + cost <= token_budget: selected.append(record)",
+      "explanation": "The assembler accounts for token cost before adding optional memory. The tokenizer used for the estimate must match the target model's context accounting."
+    },
+    {
+      "lines": "source_id = record['source_id']",
+      "explanation": "A memory without provenance is difficult to verify, correct or delete. Keep the source link through retrieval and summarization."
+    }
+  ]
+}
