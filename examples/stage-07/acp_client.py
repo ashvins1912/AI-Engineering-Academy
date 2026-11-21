@@ -65,7 +65,7 @@ class ACPConnection:
 
     def session_new(self, cwd, session_id, roots, mcp_servers=None):
         self._require_init()
-        if not self.agent_capabilities.get("session"):
+        if "session" not in self.agent_capabilities or self.agent_capabilities["session"] is None:
             raise PermissionError("agent did not advertise session capability")
         if not roots:
             raise ValueError("at least one workspace root is required")
