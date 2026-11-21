@@ -1,0 +1,13 @@
+flowchart LR
+  USER[Authenticated user] --> AUTH[Identity and tenant verification]
+  AUTH --> RET[Permission-aware retrieval]
+  RET --> LABEL[Provenance and untrusted labels]
+  LABEL --> CTX[Context minimization and redaction]
+  CTX --> LLM[LLM adapter]
+  LLM --> POLICY{Server-side capability policy}
+  POLICY -->|Allowed| TOOL[Least-privilege tool]
+  POLICY -->|Denied| DENY[No tool invocation]
+  TOOL --> OUT[Output classification and redaction]
+  DENY --> AUDIT[Privacy-safe audit]
+  OUT --> AUDIT
+  OUT --> USER
