@@ -112,19 +112,19 @@ This workbook turns each lesson into a verifiable practical task. Run exercises 
 
 ## cost — AI cost engineering
 
-**Implementation task:** Calculate end-to-end request cost across generation, embeddings, reranking and retries.
+**Implementation task:** Meter model input/output, embeddings, reranking, tools and every retry; calculate cost per successful task; estimate spend; add tenant/version-aware semantic cache keys, quality-gated model routing and server-side budget admission.
 
-**Worked fixture:** 1000 input tokens, 200 output tokens, one embedding call, one rerank; prices supplied as config.
+**Worked fixture:** Input 2,000 tokens at $2/M and output 500 at $8/M per attempt; 1,000 embedding tokens at $0.10/M; one rerank at $0.001; first model attempt fails and the retry succeeds.
 
-**Expected result:** Total cost is the sum of components; cost per successful task includes failed retries.
+**Expected result:** Model attempt costs $0.008; supporting services cost $0.0011; total task cost is $0.0171 including the failed attempt. Cache reuse is allowed only for matching tenant, ACL, model, prompt and index versions and valid freshness.
 
-**Verification tests:** Test prompt bloat, duplicate retries and cache hits.
+**Verification tests:** Run `python -m unittest discover -s examples/stage-10 -p 'test_*.py' -v`. Test component pricing, failed-task accounting, cache isolation/versioning, budget admission, token limits, quality-gated routing and negative usage.
 
-**Debugging checklist:** Reduce the example to the smallest failing input; inspect identity, permissions, data flow and intermediate state; reproduce the failure with a test; change one variable at a time and retain a regression test.
+**Debugging checklist:** Verify effective-dated rate card; reconcile provider usage against local token counts; group every attempt by task ID; check failed-attempt and tool/embedding costs; inspect cache tenant/ACL/version/freshness; review router quality decisions; inspect token/spend ceilings and retry budget.
 
-**Interview checks:** Why optimize cost per successful task instead of cost per request?
+**Interview checks:** Why is cost per successful task more useful than cost per request? What makes semantic cache reuse unsafe? Why can cheaper model routing increase total spend? How do you defend against denial of wallet? How should provider price changes affect forecasts?
 
-**Submission evidence:** Include implementation and architecture artifacts, a successful run, positive and negative tests, a short failure analysis, and a 3–5 sentence explanation of the operational trade-off.
+**Submission evidence:** Include rate card, usage ledger, component breakdown, cost-per-success calculation, cache-key isolation tests, budget/router decisions and a quality-aware optimization report.
 
 ---
 
