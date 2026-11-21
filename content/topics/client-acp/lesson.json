@@ -294,14 +294,11 @@
           "effect": "Whether the Client advertises terminal capability."
         },
         {
-          "name": "permission",
-          "options": [
-            "allow_once",
-            "reject_once",
-            "cancelled"
-          ],
-          "defaultValue": "allow_once",
-          "effect": "Controls whether the requested sensitive action proceeds."
+          "name": "permission_decision",
+          "min": 0,
+          "max": 2,
+          "defaultValue": 0,
+          "effect": "0=allow_once, 1=reject_once, 2=cancelled. Only the allow choice authorizes the exact operation."
         },
         {
           "name": "replay_history",
