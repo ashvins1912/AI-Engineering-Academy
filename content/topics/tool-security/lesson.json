@@ -1,0 +1,591 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "tool-security",
+    "title": "Tool Authorization and Sandboxing — least privilege for AI actions",
+    "stage": 10,
+    "estimatedMinutes": 360
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Distinguish model-proposed actions from capabilities granted by application policy.",
+      "Authorize every tool invocation using verified principal, action, resource, tenant, scope and execution context.",
+      "Design capability-based permissions with narrow schemas, expiry, budgets and explicit approval gates.",
+      "Contain untrusted code and file operations with isolated workspaces, resource limits and network-deny defaults.",
+      "Prevent path traversal, SSRF, replay, argument tampering, confused-deputy behavior and privilege escalation.",
+      "Build deterministic policy tests and safe execution simulations without running arbitrary learner code."
+    ],
+    "prerequisites": [
+      "Stage 6 agent tool calling and bounded execution",
+      "Stage 7 MCP tool schemas, scopes and consent",
+      "Stage 10 Topic 1 prompt-injection trust boundaries",
+      "Python, HTTP, authentication, authorization and basic operating-system concepts"
+    ],
+    "glossary": [
+      {
+        "term": "Authorization",
+        "definition": "A server-side decision that determines whether a verified principal may perform a specific action on a specific resource."
+      },
+      {
+        "term": "Capability",
+        "definition": "A narrowly scoped permission token or grant that enables one defined operation on an identified resource."
+      },
+      {
+        "term": "Sandbox",
+        "definition": "An isolated execution boundary that limits filesystem, process, network and resource access."
+      },
+      {
+        "term": "Confused deputy",
+        "definition": "A privileged service is tricked into using its own authority for a caller who lacks the required permission."
+      },
+      {
+        "term": "TOCTOU",
+        "definition": "Time-of-check to time-of-use race in which a resource changes after validation but before the operation."
+      },
+      {
+        "term": "SSRF",
+        "definition": "Server-side request forgery that makes a service contact unintended internal or external network destinations."
+      },
+      {
+        "term": "Idempotency key",
+        "definition": "A caller-supplied operation identifier used to prevent a retried request from repeating a side effect."
+      },
+      {
+        "term": "Policy decision point",
+        "definition": "The component that evaluates identity, action, resource and context and returns allow or deny."
+      },
+      {
+        "term": "Policy enforcement point",
+        "definition": "The component that blocks execution unless the policy decision explicitly permits the operation."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "An agent can propose a tool call with broad arguments, but a model response is not an authorization credential. If an application executes proposals using a powerful service identity, a malicious prompt, compromised tool or ordinary bug can read files, call internal services, overwrite data or spend money.",
+    "plainLanguage": "Imagine a support agent that can read a report, update a ticket and run a small analysis script. The model may propose any of those actions, but the application must decide whether the signed-in user may perform that exact action on that exact resource. Checking only the tool name is not enough: read and write are different permissions, report A and report B may have different owners, and a request to export data may require a separate approval.\n\nUse a policy decision point (PDP) and a policy enforcement point (PEP). The PDP evaluates a verified principal, action, resource attributes and context. The PEP sits immediately in front of the tool and refuses to call it unless the decision is allow. Never accept a role, tenant, user ID, permission list or approval claim merely because the model or browser supplied it. Derive identity from verified authentication and resolve resource ownership from the authoritative data store.\n\nPrefer capability grants over broad admin credentials. A grant should name one tool, one action, a limited resource set, expiry, maximum calls or cost, and optionally an approval ID. Validate arguments against a strict schema, reject unknown fields, canonicalize resource identifiers and bind the authorization decision to the exact normalized arguments. If arguments change after authorization, authorize again.\n\nA sandbox is a separate containment layer, not a replacement for authorization. Run untrusted code in an isolated process or container with a read-only base image, a temporary workspace, non-root identity, CPU/memory/time limits, process limits, no host socket, no cloud metadata access and network disabled by default. Mount only the files required for the task. Never assume a Python subprocess, working directory or container alone creates a secure sandbox; kernel, runtime and configuration matter.\n\nFor file tools, resolve paths against a fixed workspace after normalization and reject traversal, symlinks that escape the root and special files. For network tools, allow only explicitly approved hostnames and ports, resolve and re-check IP addresses to prevent DNS rebinding, and block loopback, link-local, private and metadata ranges unless a reviewed use case explicitly permits them. For side effects, require idempotency keys, bounded retries and approval for high-impact actions. Log decision IDs, policy version, tool name, resource reference and outcome without recording secrets or full sensitive arguments.\n\nFail closed when identity, policy, ownership, approval, sandbox health or audit persistence is unavailable. Separate the control plane that issues permissions from the data plane that executes tools. Revoke grants promptly and keep short expirations. Test both allowed workflows and hostile inputs such as path traversal, SSRF, replay, argument tampering, privilege escalation and resource exhaustion.",
+    "mentalModel": "Verified identity + normalized request → policy decision (principal, action, resource, context) → enforcement gate → narrow capability → isolated execution → output validation → privacy-safe audit.",
+    "limitations": [
+      "A sandbox reduces blast radius but cannot guarantee safety against kernel or runtime vulnerabilities.",
+      "A correct policy engine can still be bypassed if any tool path skips the enforcement point.",
+      "Network allowlists must account for DNS rebinding, redirects, IPv6 and proxy behavior.",
+      "Human approval does not replace resource ownership checks or argument validation.",
+      "Resource limits can reduce denial-of-service risk but must be calibrated to legitimate workloads.",
+      "A local simulator demonstrates policy logic; it is not a production-grade operating-system sandbox."
+    ],
+    "everydayAnalogy": "A hotel key card opens only the rooms and time window assigned to its guest. The guest cannot edit the lock system by writing a note, and the cleaning staff still checks the room number before entering. A sandbox is like a separate workshop with only the tools and materials needed for one job.",
+    "mathMadeSimple": "Suppose an agent has 5 tools, each with 3 actions, and can target 4 resource classes. A naive tool-name allowlist leaves 5 × 3 × 4 = 60 combinations to reason about. Narrowing the agent to 2 tools, one action each and one resource scope leaves 2 combinations. This count is an exposure inventory, not a probability of compromise.",
+    "productionImpact": "Use verified identity, per-action authorization, resource ownership checks, short-lived capabilities, strict schemas, isolated execution, network and filesystem restrictions, budgets, approvals, idempotency and audit evidence. A model may suggest an operation; only the server may grant it."
+  },
+  "useCase": {
+    "scenario": "Build a report assistant that can read report A, write report B only for its owner, and run bounded analysis in a temporary workspace. A model can propose calls but cannot grant itself access or escape the sandbox.",
+    "actors": [
+      "Authenticated user and identity verifier",
+      "Policy decision point",
+      "Policy enforcement point",
+      "Capability issuer",
+      "Report service",
+      "Isolated execution worker",
+      "Approval service and audit sink"
+    ],
+    "inputs": [
+      "Verified principal and server-derived tenant",
+      "Normalized tool name, action and strict arguments",
+      "Authoritative resource owner and classification",
+      "Short-lived capability and optional approval reference",
+      "Sandbox limits and network policy"
+    ],
+    "constraints": [
+      "Unknown tools, actions and argument fields fail closed.",
+      "Authorization binds to the normalized resource and exact operation.",
+      "Tenant and ownership are read from authoritative server state.",
+      "Sandbox has no host filesystem or network access by default.",
+      "Writes and exports require scoped permission and approval where configured.",
+      "Retries use idempotency keys and bounded budgets."
+    ],
+    "outputs": [
+      "Allow or deny decision with reason code",
+      "Tool execution result within the authorized scope",
+      "Sandbox resource-usage summary",
+      "Audit event with policy version and correlation ID"
+    ],
+    "successMetric": "Valid read of report A succeeds; unauthorized write, traversal, SSRF, replay and privilege escalation are denied before side effects occur."
+  },
+  "architecture": {
+    "diagram": "content/topics/tool-security/authorization-sandbox-flow.mmd",
+    "components": [
+      "Verified identity context",
+      "Request normalizer and schema validator",
+      "Policy decision point",
+      "Policy enforcement point",
+      "Capability issuer and revocation store",
+      "Narrow report and network adapters",
+      "Isolated execution worker",
+      "Output validator and audit sink"
+    ],
+    "dataFlow": [
+      {
+        "from": "API gateway",
+        "to": "Request normalizer",
+        "payload": "Verified subject, tenant and request ID",
+        "purpose": "Establish a trusted request context."
+      },
+      {
+        "from": "Request normalizer",
+        "to": "Policy decision point",
+        "payload": "Canonical tool, action, resource and validated arguments",
+        "purpose": "Evaluate the exact operation rather than model text."
+      },
+      {
+        "from": "Policy decision point",
+        "to": "Enforcement point",
+        "payload": "Decision ID, allow/deny, policy version and constraints",
+        "purpose": "Make the authorization result enforceable."
+      },
+      {
+        "from": "Capability issuer",
+        "to": "Narrow tool adapter",
+        "payload": "Short-lived capability bound to action and resource",
+        "purpose": "Limit downstream authority and expiry."
+      },
+      {
+        "from": "Enforcement point",
+        "to": "Sandbox worker",
+        "payload": "Approved job manifest and resource budget",
+        "purpose": "Execute untrusted work inside a constrained boundary."
+      },
+      {
+        "from": "Tool adapter",
+        "to": "Output validator",
+        "payload": "Result plus resource and provenance metadata",
+        "purpose": "Validate output and remove unauthorized data."
+      },
+      {
+        "from": "Output validator",
+        "to": "Audit sink",
+        "payload": "Safe decision metadata and correlation ID",
+        "purpose": "Provide traceability without leaking secrets."
+      }
+    ],
+    "trustBoundaries": [
+      "Model output and tool proposals are untrusted.",
+      "Identity claims are trusted only after cryptographic verification.",
+      "Resource ownership is trusted only from authoritative storage.",
+      "Capabilities are trusted only when signed, scoped, unexpired and revocable.",
+      "Sandbox output is untrusted until validated.",
+      "Audit records are access-controlled and redacted."
+    ],
+    "failurePaths": [
+      "Policy service unavailable: deny execution and return a retryable safe error.",
+      "Resource owner changes between check and use: enforce ownership atomically at data layer.",
+      "Capability expires or is revoked: reject before side effect.",
+      "Sandbox exceeds CPU, memory or wall-clock budget: terminate job and retain safe diagnostics.",
+      "Network redirect resolves to a blocked address: reject connection and record policy event.",
+      "Duplicate request reuses idempotency key: return original result without repeating side effect."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-10/tool-security/policy-scenarios.json",
+    "steps": [
+      {
+        "label": "Receive proposal",
+        "explanation": "The model proposes report.write on report-B; the proposal has no authority.",
+        "expectedState": "Untrusted request captured."
+      },
+      {
+        "label": "Normalize request",
+        "explanation": "Validate schema, canonicalize report ID and reject unknown argument fields.",
+        "expectedState": "Canonical operation ready for policy."
+      },
+      {
+        "label": "Evaluate policy",
+        "explanation": "Check verified subject, write scope, resource owner, approval and request budget.",
+        "expectedState": "Allow only if every required predicate is true."
+      },
+      {
+        "label": "Enforce capability",
+        "explanation": "Issue a short-lived grant bound to the exact action and resource.",
+        "expectedState": "Tool adapter receives narrow authority."
+      },
+      {
+        "label": "Execute in boundary",
+        "explanation": "Run the approved operation in a constrained workspace with network disabled.",
+        "expectedState": "No host or unrelated resource access."
+      },
+      {
+        "label": "Validate and audit",
+        "explanation": "Check result, usage and idempotency; emit redacted decision metadata.",
+        "expectedState": "Safe result or fail-closed denial."
+      }
+    ],
+    "accessibility": [
+      "Every animation step has a text explanation and expected state.",
+      "Color is not the only way to distinguish allow, deny and sandbox states.",
+      "Keyboard-accessible controls should support play, pause, reset and single-step navigation."
+    ],
+    "animation": {
+      "objective": "Animate how an untrusted model proposal becomes a narrowly authorized and sandboxed operation, or is denied before execution.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Untrusted proposal",
+          "narration": "A model asks to write report B; this is only a request, not permission.",
+          "input": "tool=report.write; resource=report-B",
+          "transformation": "Mark the proposal untrusted and preserve request identity.",
+          "output": "Untrusted proposal",
+          "visualState": "proposal"
+        },
+        {
+          "step": 2,
+          "title": "Normalize and validate",
+          "narration": "Reject unknown fields and canonicalize the resource before policy evaluation.",
+          "input": "Raw arguments",
+          "transformation": "Schema validation and canonicalization.",
+          "output": "Normalized request",
+          "visualState": "validated"
+        },
+        {
+          "step": 3,
+          "title": "Policy decision",
+          "narration": "Check identity, action scope, owner, approval, expiry and budget.",
+          "input": "Principal + request + resource metadata",
+          "transformation": "Evaluate every mandatory policy predicate.",
+          "output": "Allow or deny",
+          "visualState": "decision"
+        },
+        {
+          "step": 4,
+          "title": "Capability enforcement",
+          "narration": "Bind a short-lived capability to the exact tool action and resource.",
+          "input": "Allow decision",
+          "transformation": "Issue capability and enforce it at the tool boundary.",
+          "output": "Narrow grant",
+          "visualState": "capability"
+        },
+        {
+          "step": 5,
+          "title": "Sandboxed execution",
+          "narration": "Run only the approved task with bounded resources and default-deny network.",
+          "input": "Approved job manifest",
+          "transformation": "Isolated worker enforces filesystem, network and resource limits.",
+          "output": "Bounded result",
+          "visualState": "sandbox"
+        },
+        {
+          "step": 6,
+          "title": "Validate and audit",
+          "narration": "Validate output and write a redacted audit event without repeating side effects.",
+          "input": "Tool result and decision metadata",
+          "transformation": "Output checks, idempotency and safe telemetry.",
+          "output": "Safe response or denial",
+          "visualState": "complete"
+        }
+      ],
+      "controls": [
+        {
+          "name": "requested_action",
+          "min": 0,
+          "max": 2,
+          "defaultValue": 1,
+          "effect": "Switch among read, write and execute; policy must evaluate each action separately."
+        },
+        {
+          "name": "resource_owner",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 0,
+          "effect": "Switch resource owner between the current user and another tenant to demonstrate ownership enforcement."
+        },
+        {
+          "name": "sandbox_network",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 0,
+          "effect": "Toggle network access; default-deny mode blocks outbound requests unless explicitly allowlisted."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "The six states are narrated in text, expose expected state labels, and can be stepped without relying on color or motion."
+    }
+  },
+  "workedExample": {
+    "problem": "A signed-in user may read report A but may not write report B. The model proposes a write and then changes the target path after authorization.",
+    "input": "principal=user-17; scopes=[reports:read]; report-A.owner=user-17; report-B.owner=user-22",
+    "steps": [
+      {
+        "operation": "Normalize report.read(report-A)",
+        "reasoning": "Resolve the resource from the server and bind the operation to report-A.",
+        "result": "Canonical read request."
+      },
+      {
+        "operation": "Evaluate read permission",
+        "reasoning": "Principal has reports:read and owns report-A.",
+        "result": "ALLOW for report-A read."
+      },
+      {
+        "operation": "Evaluate report.write(report-B)",
+        "reasoning": "The principal lacks reports:write and does not own report-B.",
+        "result": "DENY before adapter invocation."
+      },
+      {
+        "operation": "Tamper target after decision",
+        "reasoning": "Changing report-A to report-B changes the normalized request and invalidates the prior decision.",
+        "result": "Require a new authorization decision; deny."
+      },
+      {
+        "operation": "Attempt ../secrets.txt in sandbox",
+        "reasoning": "Canonical path escapes the assigned workspace root.",
+        "result": "Reject path before opening a file."
+      }
+    ],
+    "expectedOutput": "Only report-A read is permitted. report-B write, post-check argument mutation and workspace traversal are denied before side effects."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-10/tool-security/policy_engine.py",
+      "runCommand": "python examples/stage-10/tool-security/policy_engine.py",
+      "testsPath": "examples/stage-10/test_tool_security.py",
+      "expectedResult": "Deterministic authorization simulator allows scoped report reads and denies unauthorized writes, path traversal, SSRF, replay and sandbox budget violations."
+    },
+    {
+      "language": "python",
+      "role": "production",
+      "path": "examples/stage-10/tool-security/README.md",
+      "runCommand": "python -m unittest discover -s examples/stage-10 -p 'test_*.py' -v",
+      "testsPath": "examples/stage-10/test_tool_security.py",
+      "expectedResult": "Production hardening guide explains PDP/PEP placement, capability expiry, atomic ownership checks and OS-level sandbox requirements without executing arbitrary code."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Model proposal treated as permission",
+      "symptom": "A tool executes because the assistant selected it.",
+      "rootCause": "The orchestrator trusts model output or tool name without a server-side policy gate.",
+      "recovery": "Route every proposal through a policy enforcement point with verified identity and exact action/resource checks.",
+      "regressionTest": "Unknown tool and unscoped action are denied before adapter invocation."
+    },
+    {
+      "name": "Path traversal",
+      "symptom": "A file tool reads outside its assigned workspace.",
+      "rootCause": "The application joins a user-controlled path without canonical root containment checks.",
+      "recovery": "Resolve canonical paths under a fixed root, reject traversal and escaping symlinks, and use isolated mounts.",
+      "regressionTest": "../secret and absolute host paths are rejected."
+    },
+    {
+      "name": "SSRF through URL or redirect",
+      "symptom": "A fetch tool reaches loopback, private network or metadata endpoints.",
+      "rootCause": "Only the initial hostname was checked; redirects or DNS answers were trusted.",
+      "recovery": "Use strict hostname/port allowlists, validate every resolved IP and redirect, and block private/link-local ranges.",
+      "regressionTest": "Loopback, private IP, metadata host and redirect-to-private cases are denied."
+    },
+    {
+      "name": "Replay duplicates side effects",
+      "symptom": "A retry creates two writes or two charges.",
+      "rootCause": "No idempotency key or durable operation state exists.",
+      "recovery": "Bind a unique key to principal, action and canonical arguments; return the first result on retry.",
+      "regressionTest": "Repeated identical key executes once; mismatched payload with same key is denied."
+    },
+    {
+      "name": "Argument tampering after authorization",
+      "symptom": "A permitted read decision is reused for a different resource or write.",
+      "rootCause": "Authorization was not bound to normalized arguments.",
+      "recovery": "Hash canonical arguments into the decision and re-authorize any mutation.",
+      "regressionTest": "Changing action, resource or arguments invalidates the prior decision."
+    },
+    {
+      "name": "Sandbox resource exhaustion",
+      "symptom": "A task consumes excessive CPU, memory, processes or wall time.",
+      "rootCause": "Worker has no enforceable resource budget or cancellation.",
+      "recovery": "Set OS-level cgroup/container limits, timeout, process count and kill-on-expiry behavior.",
+      "regressionTest": "Budget overrun terminates the simulated job and returns a bounded denial."
+    }
+  ],
+  "practice": {
+    "guided": "Run the policy simulator and inspect each decision trace. Compare a valid report read with a cross-owner write, then attempt path traversal and a blocked network target.",
+    "independent": "Add a delete action that requires a distinct scope, explicit approval and an idempotency key. Prove that read permission cannot authorize delete and that changing arguments after approval forces a new decision.",
+    "realWorld": "Threat-model a code-execution assistant from API gateway to policy service, capability issuer, worker, filesystem, network and audit sink. Identify which controls must be enforced by the operating system rather than Python application code.",
+    "expertExtension": "Add signed short-lived capability tokens, revocation, atomic compare-and-swap for idempotency, DNS rebinding tests, symlink race tests, seccomp/AppArmor profiles and sandbox escape incident drills.",
+    "guidedExercise": {
+      "title": "Build a fail-closed policy enforcement point",
+      "instructions": "Normalize the request, verify exact tool/action/resource grants, check authoritative ownership and deny unknown fields. The adapter must not run when any check fails.",
+      "starterCode": "def authorize(principal, request, resource):\n    raise NotImplementedError",
+      "solutionCode": "def authorize(principal, request, resource):\n    if request.tool != 'report.read' or request.action != 'read':\n        return False\n    if 'reports:read' not in principal.scopes:\n        return False\n    return principal.subject == resource.owner_id and principal.tenant_id == resource.tenant_id",
+      "unitTests": "assert authorize(user_a, read_report_a, report_a) is True\nassert authorize(user_a, write_report_b, report_b) is False\nassert authorize(user_a, traversal_request, workspace) is False"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build a tool security workbench that visualizes authorization decisions and sandbox containment using synthetic users, reports and network targets.",
+      "steps": [
+        "Create two synthetic users and reports with different owners and tenants.",
+        "Register narrow read and write capabilities with explicit scopes.",
+        "Normalize every model-proposed tool request against a strict schema.",
+        "Evaluate policy and record a decision before calling a tool adapter.",
+        "Simulate path traversal, SSRF, replay and argument-tampering attempts.",
+        "Apply sandbox network and resource budgets to an isolated job manifest.",
+        "Produce a redacted audit report with allow/deny reasons and regression results."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "A model emits a valid report.write tool call. What grants permission to execute it?",
+        "options": [
+          "Server-side policy decision",
+          "The model confidence score",
+          "A system prompt instruction",
+          "The tool schema alone"
+        ],
+        "correctIndex": 0,
+        "explanation": "A schema describes shape; only the server-side policy decision authorizes the exact action and resource."
+      },
+      {
+        "question": "What must happen when arguments change after authorization?",
+        "options": [
+          "Authorize the new request",
+          "Reuse the old decision",
+          "Trust the model retry",
+          "Skip the resource check"
+        ],
+        "correctIndex": 0,
+        "explanation": "Authorization must bind to canonical arguments. A changed resource or action requires a new decision."
+      },
+      {
+        "question": "What is the safest default for a code sandbox network?",
+        "options": [
+          "Deny outbound network",
+          "Allow every public host",
+          "Allow private IP ranges",
+          "Trust redirects automatically"
+        ],
+        "correctIndex": 0,
+        "explanation": "Network access should be disabled by default and enabled only through reviewed destination allowlists."
+      },
+      {
+        "question": "Why use an idempotency key for side-effecting tools?",
+        "options": [
+          "Prevent duplicate effects",
+          "Increase model accuracy",
+          "Replace user authentication",
+          "Avoid input validation"
+        ],
+        "correctIndex": 0,
+        "explanation": "Retries may repeat requests. A durable idempotency record ensures one operation is applied once."
+      },
+      {
+        "question": "Does a Python subprocess alone provide a secure sandbox?",
+        "options": [
+          "No, OS isolation matters",
+          "Yes, always isolated",
+          "Only with a timeout",
+          "Only when code is short"
+        ],
+        "correctIndex": 0,
+        "explanation": "A subprocess shares the host security boundary unless additional OS-level isolation and restrictions are applied."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Threat model and policy architecture",
+        "weight": 20,
+        "evidence": "Separates PDP and PEP, trusted identity, resource ownership and model proposals."
+      },
+      {
+        "criterion": "Correct authorization semantics",
+        "weight": 25,
+        "evidence": "Enforces tool/action/resource/scope/tenant and binds decisions to canonical arguments."
+      },
+      {
+        "criterion": "Sandbox containment",
+        "weight": 20,
+        "evidence": "Demonstrates workspace containment, network deny-by-default and bounded execution."
+      },
+      {
+        "criterion": "Adversarial regression coverage",
+        "weight": 20,
+        "evidence": "Tests traversal, SSRF, replay, argument tampering and privilege escalation."
+      },
+      {
+        "criterion": "Operational evidence and safe audit",
+        "weight": 15,
+        "evidence": "Uses expiry, idempotency, budgets and redacted policy decision telemetry."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "A valid scoped report read succeeds.",
+      "Cross-owner and cross-tenant writes are denied before adapter invocation.",
+      "Path traversal and private-network targets are rejected.",
+      "Repeated idempotency key does not repeat a side effect.",
+      "Changed arguments require a new authorization decision.",
+      "The guide clearly distinguishes a policy simulator from an OS-enforced production sandbox."
+    ]
+  },
+  "references": [
+    {
+      "title": "OWASP Top 10 for LLM Applications — Excessive Agency",
+      "url": "https://genai.owasp.org/llmrisk/llm062025-excessive-agency/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "OWASP GenAI Security Project",
+      "url": "https://genai.owasp.org/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "NIST SP 800-53 Security and Privacy Controls",
+      "url": "https://csrc.nist.gov/pubs/sp/800/53/r5/upd1/final",
+      "sourceType": "standard",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "NIST SP 800-190 Application Container Security Guide",
+      "url": "https://csrc.nist.gov/pubs/sp/800/190/final",
+      "sourceType": "standard",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "MITRE ATLAS — Adversarial Threat Landscape for AI Systems",
+      "url": "https://atlas.mitre.org/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "request = normalize_and_validate(model_proposal, TOOL_SCHEMAS)",
+      "explanation": "Treat the model proposal as untrusted input and canonicalize it before any permission check."
+    },
+    {
+      "lines": "resource = repository.load_authoritative_resource(request.resource_id)",
+      "explanation": "Resolve ownership and tenant from the authoritative store, never from prompt-supplied metadata."
+    },
+    {
+      "lines": "decision = policy.evaluate(principal, request, resource, context)",
+      "explanation": "The policy decision point checks identity, action, scope, resource and contextual constraints."
+    },
+    {
+      "lines": "if not decision.allowed: raise AuthorizationDenied(decision.reason)",
+      "explanation": "The enforcement point blocks all tool execution unless policy explicitly allows it."
+    },
+    {
+      "lines": "capability = issuer.issue(decision, ttl_seconds=60)",
+      "explanation": "Issue a short-lived capability bound to the exact action and resource."
+    },
+    {
+      "lines": "result = sandbox.execute(job, limits=policy_limits, network='deny')",
+      "explanation": "Execute untrusted work in an isolated worker with explicit filesystem and resource limits."
+    }
+  ]
+}

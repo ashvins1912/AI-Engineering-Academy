@@ -1,0 +1,20 @@
+flowchart TD
+  A[Model proposes tool call] --> B[Normalize strict schema]
+  B --> C[Verified identity + authoritative resource]
+  C --> D{Policy decision point}
+  D -->|deny| E[Reject before side effect]
+  D -->|allow| F[Short-lived scoped capability]
+  F --> G[Policy enforcement point]
+  G --> H[Narrow tool adapter]
+  G --> I[Isolated sandbox worker]
+  H --> J[Output validation]
+  I --> J
+  J --> K[Redacted audit event]
+  subgraph Trust boundaries
+    A
+    B
+    C
+    D
+    G
+    I
+  end
