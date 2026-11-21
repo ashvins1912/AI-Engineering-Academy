@@ -1,10 +1,11 @@
-import {useState} from 'react'
+import {useEffect,useState} from 'react'
 import {ArrowLeft,ArrowRight,Pause,Play,RotateCcw,Database,ShieldCheck,Clock3} from 'lucide-react'
 import lesson from '../../content/topics/state/lesson.json'
 import fixture from '../../examples/stage-06/fixtures/durable-state.json'
 export default function DurableStateVisualizer(){
  const [step,setStep]=useState(0),[playing,setPlaying]=useState(false),[crash,setCrash]=useState(true),[retry,setRetry]=useState(1),[owner,setOwner]=useState(0)
  const stages=lesson.visual.animation.stages
+ useEffect(()=>{if(!playing)return;const timer=window.setInterval(()=>setStep(current=>{if(current>=stages.length-1){setPlaying(false);return current}return current+1}),2400);return()=>window.clearInterval(timer)},[playing,stages.length])
  const lease=owner===0?fixture.workerA:fixture.workerB
  const key=fixture.idempotencyKey
  const move=(delta:number)=>{setPlaying(false);setStep(v=>Math.max(0,Math.min(stages.length-1,v+delta)))}
@@ -26,7 +27,7 @@ export default function DurableStateVisualizer(){
   <label><span>Lease owner</span><select value={owner} onChange={e=>setOwner(Number(e.target.value))}><option value={0}>Worker A · fence 7</option><option value={1}>Worker B · fence 8</option></select></label>
  </div>
  <div className="durable-retry-trace"><strong><Clock3 size={14}/> Recovery trace</strong><p>Operation key: <code>{key}</code></p><p>Retry attempts: {retry} · Provider operations: 1 · Current owner: {lease.id}</p><p>{crash?'A lost response is an unknown outcome. Reuse the key or query provider status before any new logical charge.':'No simulated crash. Persist the provider result and checkpoint before continuing.'}</p></div>
- <div className="agent-loop-controls"><button onClick={()=>move(-1)} disabled={step===0}><ArrowLeft size={14}/>Previous</button><button className="agent-loop-play" onClick={()=>setPlaying(v=>!v)}>{playing?<Pause size={14}/>:<Play size={14}/>} {playing?'Pause':'Play'}</button><button onClick={()=>move(1)} disabled={step===stages.length-1}>Next<ArrowRight size={14}/></button><button onClick={reset}><RotateCcw size={13}/>Reset</button></div>
+ <div className="agent-loop-controls"><button onClick={()=>move(-1)} disabled={step===0}><ArrowLeft size={14}/>Previous</button><button className="agent-loop-play" onClick={()=>{if(step===stages.length-1&&!playing)setStep(0);setPlaying(v=>!v)}}>{playing?<Pause size={14}/>:<Play size={14}/>} {playing?'Pause':'Play'}</button><button onClick={()=>move(1)} disabled={step===stages.length-1}>Next<ArrowRight size={14}/></button><button onClick={reset}><RotateCcw size={13}/>Reset</button></div>
  <p className="agent-loop-footnote"><ShieldCheck size={13}/> {status}. A checkpoint is durable local state; it cannot make a remote provider call atomic. Use idempotency, fencing and reconciliation.</p>
  </section>
 }
