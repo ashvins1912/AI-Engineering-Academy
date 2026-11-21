@@ -24,14 +24,15 @@ class RequestStateSigner:
 
 class MultiRoundTripEngine:
  def __init__(self,signer,max_rounds=4):self.signer=signer;self.max_rounds=max_rounds
- def start(self,call_id,order_id,amount,now):
-  token=self.signer.issue({"call_id":call_id,"order_id":order_id,"amount":amount,"round":1},now)
+ def start(self,call_id,order_id,amount,now,round_number=1):
+  if round_number>self.max_rounds:raise RequestStateError("maximum round trips exceeded")
+  token=self.signer.issue({"call_id":call_id,"order_id":order_id,"amount":amount,"round":round_number},now)
   return {"resultType":"input_required","inputRequests":{"refund_approval":{"method":"elicitation/create","params":{"mode":"form","message":f"Approve refund of INR {amount} for {order_id}?","requestedSchema":{"type":"object","properties":{"approved":{"type":"boolean"},"reason":{"type":"string"}},"required":["approved"]}}}},"requestState":token}
  def resume(self,request_state,input_responses,now):
   state=self.signer.verify(request_state,now)
   if state["round"]>self.max_rounds:raise RequestStateError("maximum round trips exceeded")
   response=input_responses.get("refund_approval")
-  if not response:return self.start(state["call_id"],state["order_id"],state["amount"],now)
+  if not response:return self.start(state["call_id"],state["order_id"],state["amount"],now,state["round"]+1)
   if response.get("kind")!="elicit":raise RequestStateError("unexpected input response kind")
   if response.get("action") in {"decline","cancel"}:
    return {"resultType":"complete","status":"CANCELLED","reason":"user declined or cancelled"}
