@@ -1,0 +1,36 @@
+{
+  "scenario": "A client discovers a refund specialist through its Agent Card, sends a task, follows status and receives a review artifact",
+  "protocolVersion": "1.0.0",
+  "interfaces": [
+    "JSONRPC"
+  ],
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false
+  },
+  "skills": [
+    "refund-review"
+  ],
+  "taskStates": [
+    "submitted",
+    "working",
+    "input-required",
+    "auth-required",
+    "completed",
+    "failed",
+    "canceled",
+    "rejected"
+  ],
+  "operations": [
+    "message/send",
+    "message/stream",
+    "tasks/get",
+    "tasks/cancel"
+  ],
+  "security": [
+    "HTTPS",
+    "Agent Card securitySchemes",
+    "per-request authentication",
+    "tenant/task authorization"
+  ]
+}
