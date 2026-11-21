@@ -60,4 +60,5 @@ class ModelPromptRegistryTests(unittest.TestCase):
   self.assertEqual(manifest["model"]["code_commit"],"commit-a")
   self.assertEqual(manifest["prompt"]["variables"],{"question":"string"})
   self.assertEqual(manifest["evaluation_hash"],"eval-h1")
-\nif __name__=="__main__":unittest.main()
+
+if __name__=="__main__":unittest.main()
