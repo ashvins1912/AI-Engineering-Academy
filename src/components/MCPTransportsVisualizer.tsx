@@ -1,6 +1,6 @@
 import {useEffect,useState} from 'react'
 import {ArrowLeft,ArrowRight,Pause,Play,RotateCcw,Network,ShieldCheck,Server,Terminal} from 'lucide-react'
-import lesson from '../../content/topics/mcp-transports/lesson.json'
+import lesson from '../../content/topics/mcp-transport/lesson.json'
 import fixture from '../../examples/stage-07/fixtures/mcp-transports.json'
 export default function MCPTransportsVisualizer(){
  const stages=lesson.visual.animation.stages

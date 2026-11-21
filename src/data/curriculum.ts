@@ -293,10 +293,10 @@ const curriculumSeed: Stage[] = [
  ]},
  {id:'stage-7',title:'MCP, A2A, ACP & Tool Ecosystems',outcome:'Connect tools and independent agents through secure interoperable protocols.',modules:[
   {id:'mcp',title:'Model Context Protocol (MCP)',description:'Learn protocol primitives, transport, lifecycle and trust boundaries.',lessons:[
-   lesson('mcp-architecture','MCP architecture and lifecycle','Host, client, server, initialization, capability negotiation and JSON-RPC.','Inspect an MCP session'),
+   lesson('mcp-architecture','MCP architecture and lifecycle','Host/client/server roles, stateless request metadata, capability discovery and JSON-RPC.','Inspect an MCP session'),
    lesson('mcp-primitives','Tools, resources and prompts','Discovery, schemas, invocation, resource templates and reusable prompts.','Build an MCP server'),
    lesson('mcp-advanced','MCP advanced capabilities','Sampling, elicitation, roots, notifications, progress and cancellation.','Build a client with capability handling'),
-   lesson('mcp-transport','Transport and deployment','STDIO, Streamable HTTP, sessions, auth and operational deployment.','Deploy a secured MCP service'),
+   lesson('mcp-transport','Transport and deployment','STDIO, stateless Streamable HTTP, edge security, scaling and operational deployment.','Deploy a secured MCP service'),
    lesson('mcp-security','MCP security engineering','OAuth, scopes, consent, confused-deputy risks, validation and audit logs.','Threat-model an MCP integration')
   ]},
   {id:'interop',title:'A2A and ACP interoperability',description:'Keep protocol names and scopes distinct; teach evolving specifications explicitly.',lessons:[

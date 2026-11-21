@@ -1,0 +1,540 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "mcp-transport",
+    "title": "Transport and deployment",
+    "stage": 7,
+    "estimatedMinutes": 210
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Compare STDIO and Streamable HTTP transports and select the right deployment boundary.",
+      "Implement safe JSONL STDIO parsing and stateless Streamable HTTP request routing.",
+      "Prevent DNS rebinding and host/origin confusion with explicit allow-lists.",
+      "Apply TLS, OAuth middleware, CORS, body limits, rate limits and secret redaction.",
+      "Deploy stateless MCP replicas without protocol session affinity and externalize application state."
+    ],
+    "prerequisites": [
+      "Stage 7 Topics 1–3: stateless MCP, primitives and OAuth authorization",
+      "HTTP, TLS, reverse proxies, JSON-RPC and container basics"
+    ],
+    "glossary": [
+      {
+        "term": "STDIO transport",
+        "definition": "A local transport where the host launches an MCP server process and exchanges newline-delimited JSON-RPC messages over standard input/output."
+      },
+      {
+        "term": "Streamable HTTP",
+        "definition": "An HTTP transport for remote MCP communication using POST requests and optional streaming responses."
+      },
+      {
+        "term": "DNS rebinding",
+        "definition": "An attack that makes a browser resolve an attacker-controlled origin to a private or trusted host, abusing ambient network access."
+      },
+      {
+        "term": "Origin validation",
+        "definition": "Checking the browser Origin header against an explicit allow-list to prevent cross-origin abuse."
+      },
+      {
+        "term": "Host validation",
+        "definition": "Checking the HTTP Host header against known service hostnames to prevent routing and DNS rebinding attacks."
+      },
+      {
+        "term": "Sticky session",
+        "definition": "A load-balancer behavior that pins one client to one server instance; stateless MCP should not require it."
+      },
+      {
+        "term": "Backpressure",
+        "definition": "A mechanism that limits queued work when consumers cannot process incoming requests fast enough."
+      },
+      {
+        "term": "Transport boundary",
+        "definition": "The edge where network identity, TLS, headers, body size, authentication and rate limits are enforced."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "An MCP server that works locally can become unsafe when exposed remotely. STDIO and Streamable HTTP have different threat models. Remote deployment introduces TLS termination, bearer credentials, host/origin validation, DNS rebinding, CORS, body limits, rate limiting, proxy trust and load-balancing concerns.",
+    "plainLanguage": "STDIO is useful when a host launches a local server process. The host and server exchange newline-delimited JSON-RPC messages over stdin/stdout. Keep stdout reserved for protocol messages; send diagnostics to stderr. The host controls process startup, environment variables, working directory, permissions and shutdown. Never expose secrets in command-line arguments or logs. A local process is not automatically safe: validate tool inputs and sandbox filesystem/network access where appropriate.\n\nStreamable HTTP is used for remote MCP servers. The current stateless 2026-07-28 request model fits horizontal scaling because each request carries its own protocol metadata; clients do not depend on a long-lived MCP-Session-Id. A typical deployment has a trusted edge proxy or gateway, TLS, authentication middleware, an MCP application, domain tool adapters and downstream services. The gateway validates method, path, content type, body size, Mcp-Method and Mcp-Name headers, Origin and Host before routing.\n\nHost and Origin validation defend against DNS rebinding and cross-origin abuse. Do not accept arbitrary Host headers or wildcard browser origins for credentialed endpoints. Configure CORS narrowly for known browser origins and required headers/methods. Validate forwarded headers only when they came from a trusted reverse proxy; otherwise an attacker can spoof client IP or scheme. Apply request-size limits, timeouts, connection limits and per-user/tenant rate limits.\n\nTerminate TLS at a trusted edge and protect traffic between edge and application where the network is not trusted. Require OAuth bearer tokens for protected resources and validate them on every request. Never log Authorization headers, cookies, authorization codes or PKCE verifiers. Store secrets in a secret manager or environment injection, not in container images or source control.\n\nSTDIO and HTTP should share the same domain authorization layer. The transport can authenticate a caller, but the tool gateway still enforces scopes, tenant ownership, business rules, idempotency and human approval. Do not implement security only in the browser or reverse proxy. A direct call to the application must still be safe.\n\nStateless MCP allows multiple replicas behind a load balancer without sticky sessions. Do not store business workflow state in process memory if it must survive restart. Use an external database, queue or object store for application state, explicit opaque handles for long-running operations, and idempotency for side effects. Horizontal scaling also needs bounded concurrency, backpressure, connection pools, graceful shutdown, health checks and observability.\n\nFor streaming responses, handle disconnects and cancellation without leaking background work. If the client disconnects, cancel work when safe or persist it as a durable job. Bound output size and stream duration. Use separate health endpoints that do not reveal secrets. A deployment checklist should include threat model, TLS, auth, origin/host allow-lists, quotas, secrets, logging, shutdown, recovery and rollback.",
+    "mentalModel": "Choose transport → harden edge → authenticate every request → validate headers/body → enforce domain policy → route to stateless replicas → externalize durable state.",
+    "limitations": [
+      "STDIO process isolation depends on host OS permissions and sandboxing.",
+      "CORS is a browser control, not an authentication or authorization mechanism.",
+      "TLS protects transport but does not prevent an authenticated user from making unsafe tool calls.",
+      "Stateless protocol requests do not mean application workflows have no state.",
+      "Horizontal scaling still needs shared durable application state, idempotency and rate limiting.",
+      "Streaming can consume resources indefinitely without deadlines and cancellation."
+    ],
+    "everydayAnalogy": "STDIO is like a private intercom between two programs on the same desk. Streamable HTTP is like a public service counter: it needs a verified address, guarded entrance, queue limits, identity checks and several service desks that share the same records.",
+    "mathMadeSimple": "If one replica safely handles 20 concurrent requests and the service has 3 replicas, theoretical concurrency is 60 only if downstream pools and quotas also support it. If a per-tenant limit is 10, adding replicas must not multiply that tenant's allowed concurrency to 30. Enforce quotas centrally or with a shared limiter. A 64 KiB request-body limit is 65,536 bytes; reject oversized requests before parsing or invoking tools.",
+    "productionImpact": "Production transports need TLS, trusted proxy configuration, strict Host/Origin allow-lists, CORS, OAuth middleware, body/time limits, rate and concurrency quotas, stdout/stderr separation, graceful shutdown, stateless load balancing, durable workflow state, idempotency and redacted observability."
+  },
+  "useCase": {
+    "scenario": "Run a local read-only MCP server over STDIO for development and deploy the same stateless tool service behind a secured Streamable HTTP gateway for remote users. Multiple replicas share durable domain services without sticky protocol sessions.",
+    "actors": [
+      "Local host process manager",
+      "STDIO server",
+      "Remote MCP client",
+      "TLS reverse proxy",
+      "HTTP gateway",
+      "OAuth middleware",
+      "Stateless MCP replicas",
+      "Domain services and durable store"
+    ],
+    "inputs": [
+      "Transport mode and endpoint path",
+      "Host/origin allow-lists",
+      "OAuth verifier and secret configuration",
+      "Body/concurrency/rate limits",
+      "Replica count and downstream pool limits"
+    ],
+    "constraints": [
+      "STDIO stdout carries only protocol JSON-RPC.",
+      "Remote HTTP uses TLS and strict Host/Origin validation.",
+      "Every protected request is authenticated.",
+      "Untrusted forwarded headers are ignored.",
+      "Replicas do not depend on MCP session affinity.",
+      "Durable application state and side effects are externalized."
+    ],
+    "outputs": [
+      "Local STDIO messages or remote HTTP response stream",
+      "Authenticated request context",
+      "Bounded tool execution and trace",
+      "Health, readiness and deployment telemetry"
+    ],
+    "successMetric": "The same domain policy behaves consistently over local and remote transports, with no cross-origin access, unbounded resource usage or session-affinity dependency."
+  },
+  "architecture": {
+    "diagram": "content/topics/mcp-transport/transport-architecture.mmd",
+    "components": [
+      "STDIO process adapter",
+      "Streamable HTTP adapter",
+      "TLS edge proxy",
+      "Host/origin validator",
+      "OAuth middleware",
+      "Body and rate limiter",
+      "Stateless MCP application replicas",
+      "Domain tool gateway",
+      "Durable state and audit store"
+    ],
+    "dataFlow": [
+      {
+        "from": "Local host",
+        "to": "STDIO adapter",
+        "payload": "newline-delimited JSON-RPC",
+        "purpose": "Run local process with protocol-only stdout."
+      },
+      {
+        "from": "Remote client",
+        "to": "TLS edge",
+        "payload": "HTTPS POST /mcp",
+        "purpose": "Encrypt transport and terminate at trusted boundary."
+      },
+      {
+        "from": "TLS edge",
+        "to": "HTTP gateway",
+        "payload": "trusted proxy headers + request",
+        "purpose": "Validate host, origin, method, content type and size."
+      },
+      {
+        "from": "HTTP gateway",
+        "to": "OAuth middleware",
+        "payload": "Bearer token + stateless request",
+        "purpose": "Authenticate and create verified identity context."
+      },
+      {
+        "from": "OAuth middleware",
+        "to": "MCP replica",
+        "payload": "verified subject + scopes + request",
+        "purpose": "Route to any healthy stateless instance."
+      },
+      {
+        "from": "MCP replica",
+        "to": "Domain gateway",
+        "payload": "tool proposal + trusted context",
+        "purpose": "Enforce tenant, business, approval and idempotency policy."
+      }
+    ],
+    "trustBoundaries": [
+      "STDIO server inherits host process permissions; sandbox and minimize environment secrets.",
+      "TLS edge is trusted only when proxy identity and forwarded headers are configured.",
+      "Host and Origin are checked against explicit allow-lists.",
+      "Bearer tokens are verified before tool routing and redacted from logs.",
+      "Domain gateway remains authoritative even if network middleware is bypassed.",
+      "Durable application state is external; protocol transport does not imply sticky sessions."
+    ],
+    "failurePaths": [
+      "Unexpected Host header: reject before routing.",
+      "Untrusted Origin: reject browser request and do not rely on CORS alone.",
+      "Oversized body: return 413 before JSON parsing.",
+      "Bearer missing/invalid: return 401 with PRM challenge.",
+      "Rate limit exceeded: return 429 with retry guidance.",
+      "Replica crash: retry safe idempotent work on another instance.",
+      "Client disconnect: cancel or persist durable work and release resources.",
+      "STDIO stdout contamination: protocol parser fails; route logs to stderr."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-07/fixtures/mcp-transports.json",
+    "steps": [
+      {
+        "label": "Select transport",
+        "explanation": "Choose STDIO for local process integration or Streamable HTTP for remote access.",
+        "expectedState": "transport selected"
+      },
+      {
+        "label": "Harden edge",
+        "explanation": "Validate TLS, host, origin, method, content type and body limits.",
+        "expectedState": "request accepted or rejected"
+      },
+      {
+        "label": "Authenticate",
+        "explanation": "Verify bearer token and attach identity context.",
+        "expectedState": "verified principal"
+      },
+      {
+        "label": "Route statelessly",
+        "explanation": "Send request to any healthy replica without MCP session affinity.",
+        "expectedState": "replica selected"
+      },
+      {
+        "label": "Persist and observe",
+        "explanation": "Use durable application state, idempotency and redacted telemetry.",
+        "expectedState": "safe bounded execution"
+      }
+    ],
+    "accessibility": [
+      "Transport paths and trust boundaries are described in text.",
+      "Every security control has a visible pass/fail label.",
+      "Replica count and concurrency assumptions are displayed numerically."
+    ],
+    "animation": {
+      "objective": "Compare STDIO and remote Streamable HTTP, then inspect edge security and horizontal stateless routing.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Select transport",
+          "narration": "Local development uses STDIO; remote deployment uses Streamable HTTP over HTTPS.",
+          "input": "transport=STDIO or HTTPS POST /mcp",
+          "transformation": "choose local process or remote edge",
+          "output": "transport adapter selected",
+          "visualState": "Transport chosen by deployment boundary"
+        },
+        {
+          "step": 2,
+          "title": "Harden edge",
+          "narration": "Gateway validates Host, Origin, content type, Mcp-Method, Mcp-Name and body size.",
+          "input": "host=mcp.example.com; origin=app.example.com; body=12KB",
+          "transformation": "allow-list + header consistency + 64KB cap",
+          "output": "request accepted or rejected before parsing",
+          "visualState": "Untrusted network input bounded"
+        },
+        {
+          "step": 3,
+          "title": "Authenticate",
+          "narration": "OAuth middleware verifies resource-bound token and injects subject/scopes.",
+          "input": "Authorization: Bearer [redacted]",
+          "transformation": "JWKS/introspection + policy",
+          "output": "subject=user-1; scopes=orders:read",
+          "visualState": "Verified request context"
+        },
+        {
+          "step": 4,
+          "title": "Route statelessly",
+          "narration": "Load balancer sends the request to any healthy replica; no sticky MCP session is required.",
+          "input": "replicas=3; sticky_sessions=false",
+          "transformation": "round-robin or least-loaded routing",
+          "output": "replica=instance-2",
+          "visualState": "Horizontal scaling without protocol affinity"
+        },
+        {
+          "step": 5,
+          "title": "Persist and observe",
+          "narration": "Domain services use durable state and idempotency; logs redact tokens and secrets.",
+          "input": "workflow_id + idempotency_key",
+          "transformation": "persist state + bounded work + redacted telemetry",
+          "output": "safe execution; trace_id=trace-42",
+          "visualState": "Recoverable and observable"
+        }
+      ],
+      "controls": [
+        {
+          "name": "origin_allowed",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "0 rejects cross-origin browser requests."
+        },
+        {
+          "name": "host_allowed",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "0 blocks host-header/DNS-rebinding attempts."
+        },
+        {
+          "name": "body_within_limit",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "0 returns 413 before parsing."
+        },
+        {
+          "name": "replica_count",
+          "min": 1,
+          "max": 6,
+          "defaultValue": 3,
+          "effect": "Changes horizontal replica count; protocol requests remain stateless."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Five stages show transport choice, edge checks, token verification, replica routing, durable state and secret redaction as text."
+    }
+  },
+  "workedExample": {
+    "problem": "Deploy one stateless MCP endpoint for local development and remote access without exposing it to arbitrary browser origins.",
+    "input": "Local host uses STDIO; remote endpoint is https://mcp.example.com/mcp; 3 replicas; max body=65,536 bytes.",
+    "steps": [
+      {
+        "operation": "Local mode",
+        "reasoning": "Host launches the server process and exchanges newline-delimited JSON-RPC; stdout remains protocol-only.",
+        "result": "stdio adapter; logs on stderr"
+      },
+      {
+        "operation": "Remote edge",
+        "reasoning": "TLS proxy validates Host and Origin allow-lists, path, content type and request size.",
+        "result": "POST /mcp; origin=allowed; body=12KB"
+      },
+      {
+        "operation": "Authenticate",
+        "reasoning": "OAuth middleware validates token before routing and redacts credential values from logs.",
+        "result": "subject=user-1; scope=orders:read"
+      },
+      {
+        "operation": "Scale",
+        "reasoning": "Load balancer selects any healthy stateless replica; application state is stored externally.",
+        "result": "replicas=3; sticky_sessions=false"
+      },
+      {
+        "operation": "Recover",
+        "reasoning": "A replica crash can be retried with stable idempotency key and durable workflow state.",
+        "result": "one logical side effect; trace retained"
+      }
+    ],
+    "expectedOutput": "Local and remote clients use the same domain authorization. Remote requests are bounded and authenticated; replicas require no sticky protocol session."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-07/mcp_transports.py",
+      "runCommand": "python examples/stage-07/mcp_transports.py",
+      "testsPath": "examples/stage-07/test_mcp_transports.py",
+      "expectedResult": "STDIO JSONL parser and stateless HTTP gateway with method/path, host/origin, content-type, size, header consistency and optional bearer verification."
+    },
+    {
+      "language": "python",
+      "role": "production",
+      "path": "examples/stage-07/mcp_transports_production.py",
+      "runCommand": "python -m unittest discover -s examples/stage-07 -p 'test_mcp_transports_production.py' -v",
+      "testsPath": "examples/stage-07/test_mcp_transports_production.py",
+      "expectedResult": "Immutable transport deployment policy validates host/origin allow-lists, body limits, CORS, trusted proxy assumptions and stateless replica readiness."
+    }
+  ],
+  "failures": [
+    {
+      "name": "DNS rebinding via Host",
+      "symptom": "Browser reaches an internal MCP service using an attacker-controlled hostname.",
+      "rootCause": "Gateway accepts arbitrary Host values or trusts proxy headers from untrusted clients.",
+      "recovery": "Allow-list Host and Origin; trust forwarded headers only from configured proxies.",
+      "regressionTest": "Send hostile Host and Origin and assert 403 before tool execution."
+    },
+    {
+      "name": "STDIO stdout contamination",
+      "symptom": "Client cannot parse messages because debug logs appear in stdout.",
+      "rootCause": "Application logs and protocol stream share stdout.",
+      "recovery": "Reserve stdout for JSON-RPC and route logs to stderr.",
+      "regressionTest": "Capture stdout and verify every line is valid JSON-RPC."
+    },
+    {
+      "name": "Oversized request exhaustion",
+      "symptom": "Large JSON body consumes memory before parser validation.",
+      "rootCause": "No request-size limit at edge or application.",
+      "recovery": "Enforce byte limits before parsing and bound concurrency.",
+      "regressionTest": "Send body over limit and assert 413 with zero handler calls."
+    },
+    {
+      "name": "Wildcard CORS",
+      "symptom": "Credentialed browser requests are accepted from arbitrary origins.",
+      "rootCause": "Wildcard origin policy used for convenience.",
+      "recovery": "Use exact origin allow-list and narrow methods/headers.",
+      "regressionTest": "Untrusted Origin receives 403 and no CORS permission."
+    },
+    {
+      "name": "Sticky-session dependency",
+      "symptom": "A request fails when load balancer routes to another replica.",
+      "rootCause": "Protocol/session state stored only in process memory.",
+      "recovery": "Use stateless requests and externalize durable application state.",
+      "regressionTest": "Alternate consecutive requests across replicas and assert success."
+    }
+  ],
+  "practice": {
+    "guided": "Choose STDIO or Streamable HTTP for three scenarios and list the trust boundary, authentication and operational controls for each.",
+    "independent": "Build an HTTP gateway that validates host/origin, body size, OAuth bearer token and MCP method/name headers before dispatch.",
+    "realWorld": "Deploy a stateless MCP server behind a TLS reverse proxy with exact Host/Origin allow-lists, OAuth, rate limits and three replicas; keep application state in a durable store.",
+    "expertExtension": "Add SSE/streaming cancellation, backpressure, per-tenant concurrency quotas, autoscaling, graceful drain, circuit breakers, distributed tracing and chaos tests for replica loss.",
+    "guidedExercise": {
+      "title": "Validate a remote MCP request at the edge",
+      "instructions": "Reject requests with a disallowed Host/Origin, an oversized body or mismatched Mcp-Method before invoking the server.",
+      "starterCode": "def validate_edge(headers, body, allowed_hosts, allowed_origins, max_bytes):\n    # validate Host and Origin\n    # validate request size\n    # parse JSON and compare Mcp-Method\n    raise NotImplementedError",
+      "solutionCode": "def validate_edge(headers, body, allowed_hosts, allowed_origins, max_bytes):\n    if headers.get('Host') not in allowed_hosts: return 403\n    origin = headers.get('Origin')\n    if origin and origin not in allowed_origins: return 403\n    if len(body.encode('utf-8')) > max_bytes: return 413\n    message = json.loads(body)\n    if headers.get('Mcp-Method') != message.get('method'): return 400\n    return 200",
+      "unitTests": "assert validate_edge(good_headers, good_body, hosts, origins, 65536) == 200\nassert validate_edge(hostile_headers, body, hosts, origins, 65536) == 403"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build a transport test harness that runs the same MCP request over STDIO and stateless HTTP.",
+      "steps": [
+        "Parse a JSONL STDIO stream and ensure logs never share stdout.",
+        "Send valid Streamable HTTP POST /mcp requests with stateless metadata.",
+        "Reject unknown Host, Origin, method, content type and oversized body.",
+        "Enable OAuth verifier and verify missing/invalid Bearer tokens are rejected.",
+        "Send mismatched Mcp-Method and Mcp-Name headers and assert no dispatch.",
+        "Route consecutive requests across three server replicas without sticky sessions.",
+        "Simulate replica restart and verify durable workflow state plus idempotency prevents duplicate side effects."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "Which transport is best for a locally spawned server process?",
+        "options": [
+          "STDIO",
+          "Public browser CORS",
+          "Database replication",
+          "WebSocket-only"
+        ],
+        "correctIndex": 0,
+        "explanation": "STDIO is a local process transport using stdin/stdout."
+      },
+      {
+        "question": "Is CORS an authorization system?",
+        "options": [
+          "Yes, it authenticates every client",
+          "No, it is a browser cross-origin control",
+          "Yes, it replaces OAuth",
+          "Only for local servers"
+        ],
+        "correctIndex": 1,
+        "explanation": "CORS does not replace authentication or domain authorization."
+      },
+      {
+        "question": "Why can stateless MCP replicas avoid sticky sessions?",
+        "options": [
+          "Every request carries its own protocol metadata",
+          "The load balancer stores all tool results",
+          "The model remembers server memory",
+          "All tools are public"
+        ],
+        "correctIndex": 0,
+        "explanation": "The current request model is stateless; durable application state must still be externalized."
+      },
+      {
+        "question": "Where should STDIO diagnostics be written?",
+        "options": [
+          "stdout",
+          "stderr",
+          "inside JSON-RPC body",
+          "tool result"
+        ],
+        "correctIndex": 1,
+        "explanation": "stdout is reserved for protocol messages; diagnostics belong on stderr."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Transport selection",
+        "weight": 15,
+        "evidence": "Explain STDIO and Streamable HTTP deployment fit."
+      },
+      {
+        "criterion": "Edge hardening",
+        "weight": 25,
+        "evidence": "Host, Origin, TLS, CORS, size and header checks are implemented."
+      },
+      {
+        "criterion": "Authentication and domain policy",
+        "weight": 20,
+        "evidence": "OAuth and tenant authorization are enforced on every request."
+      },
+      {
+        "criterion": "Stateless deployment",
+        "weight": 20,
+        "evidence": "Replicas route without sticky sessions and state is durable."
+      },
+      {
+        "criterion": "Operations and recovery",
+        "weight": 20,
+        "evidence": "Backpressure, redacted logs, graceful shutdown and idempotent retry are covered."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Both Python transport suites pass.",
+      "Host/origin/body/header attacks are rejected before handler dispatch.",
+      "OAuth failures return controlled responses.",
+      "Three replicas work without sticky protocol sessions.",
+      "Secrets are absent from logs and stdout remains protocol-only."
+    ]
+  },
+  "references": [
+    {
+      "title": "MCP 2026-07-28 transports specification",
+      "url": "https://modelcontextprotocol.io/specification/2026-07-28/basic/transports",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "MCP security best practices",
+      "url": "https://modelcontextprotocol.io/specification/2026-07-28/basic/security_best_practices",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    },
+    {
+      "title": "MCP Python SDK transport guide",
+      "url": "https://py.sdk.modelcontextprotocol.io/run/transport/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-21"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "if host not in allowed_hosts: reject(403)",
+      "explanation": "Host validation prevents routing abuse and DNS rebinding through arbitrary hostnames."
+    },
+    {
+      "lines": "if origin and origin not in allowed_origins: reject(403)",
+      "explanation": "Only known browser origins may call the remote endpoint; CORS is not authentication."
+    },
+    {
+      "lines": "if len(body) > max_body_bytes: reject(413)",
+      "explanation": "Bound memory and parser work before decoding untrusted request bodies."
+    },
+    {
+      "lines": "route to any healthy stateless replica",
+      "explanation": "Do not rely on sticky MCP sessions; persist business state outside process memory."
+    },
+    {
+      "lines": "stdout=protocol; stderr=diagnostics",
+      "explanation": "STDIO framing requires a clean protocol stream so diagnostics cannot corrupt JSON-RPC messages."
+    }
+  ]
+}

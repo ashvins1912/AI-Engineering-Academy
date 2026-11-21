@@ -1,0 +1,35 @@
+{
+  "scenario": "A refund review tool requests user input in-band, then resumes; a long-running export uses the Tasks extension",
+  "protocolVersion": "2026-07-28",
+  "multiRoundTrip": {
+    "initialResult": "input_required",
+    "inputRequest": "elicitation/create",
+    "retryOriginalCall": true,
+    "requestState": "signed opaque token",
+    "inputResponses": "user decision"
+  },
+  "tasksExtension": {
+    "capability": "io.modelcontextprotocol/tasks",
+    "statuses": [
+      "working",
+      "input_required",
+      "completed",
+      "failed",
+      "cancelled"
+    ],
+    "methods": [
+      "tasks/get",
+      "tasks/update",
+      "tasks/cancel",
+      "subscriptions/listen"
+    ],
+    "notifications": [
+      "notifications/tasks"
+    ]
+  },
+  "deprecated": {
+    "roots": "use tool parameters/resource URIs/server config",
+    "sampling": "call model provider directly",
+    "logging": "stderr/OpenTelemetry"
+  }
+}
