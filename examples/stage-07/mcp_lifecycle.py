@@ -32,10 +32,10 @@ class MCPServer:
   if version not in self.protocol_versions:raise RpcError(-32022,"unsupported protocol version")
   if not isinstance(caps,dict):raise RpcError(-32602,"clientCapabilities is required")
   if method=="server/discover":
-   result={"protocolVersions":self.protocol_versions,"serverInfo":{"name":self.name,"version":self.version},"capabilities":{"tools":{"listChanged":False}}}
+   result={"resultType":"complete","protocolVersions":self.protocol_versions,"serverInfo":{"name":self.name,"version":self.version},"capabilities":{"tools":{"listChanged":False}}}
   elif method=="tools/list":
    tools=[{"name":t.name,"description":t.description,"inputSchema":t.input_schema} for t in sorted(self.tools.values(),key=lambda x:x.name)]
-   result={"tools":tools,"ttlMs":30000,"cacheScope":"private"}
+   result={"resultType":"complete","tools":tools,"ttlMs":30000,"cacheScope":"private"}
   elif method=="tools/call":
    params=message.get("params",{});name=params.get("name");args=params.get("arguments",{})
    if headers.get("Mcp-Name")!=name:raise RpcError(-32020,"Mcp-Name header mismatch")
