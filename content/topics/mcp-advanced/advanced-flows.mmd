@@ -1,0 +1,16 @@
+sequenceDiagram
+ participant C as MCP Client/Host
+ participant S as Stateless MCP Server
+ participant U as User
+ participant T as Durable Task Store
+ C->>S: tools/call + stateless _meta
+ S-->>C: resultType=input_required + inputRequests + signed requestState
+ C->>U: Render elicitation form
+ U-->>C: Accept / decline / cancel
+ C->>S: Retry original tools/call + inputResponses + same requestState
+ S->>S: Verify signature, expiry, tenant and response schema
+ S-->>C: resultType=complete
+ C->>T: tasks/get or tasks/cancel
+ T-->>C: task status + result / cancel intent
+ C->>S: subscriptions/listen(task IDs)
+ S-->>C: notifications/tasks
