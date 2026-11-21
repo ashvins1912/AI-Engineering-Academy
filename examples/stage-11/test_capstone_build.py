@@ -90,14 +90,34 @@ class CapstoneVerticalSliceTests(unittest.TestCase):
 
     def test_admin_approval_executes_exact_mutation(self):
         proposal = ActionProposal("p4", "admin-A", "tenant-A", "order.update_status", "order-A17", "APPROVED")
-        approval = self.app.tools.approvals.issue(proposal, self.user_b) if False else self.app.tools.approvals.issue(
-            proposal, Principal("approver-A", "tenant-A")
-        ) if False else None
         # Use a separate approver account with tenant-admin membership.
         self.app.memberships._memberships[("approver-A", "tenant-A")] = frozenset({"admin"})
         approval = self.app.tools.approvals.issue(proposal, Principal("approver-A", "tenant-A"))
         result = self.app.execute_proposal(self.admin_a, proposal, "mut-3", approval)
         self.assertTrue(result.allowed)
+        self.assertEqual(self.app.tools.status["order-A17"], "APPROVED")
+
+    def test_committed_mutation_retry_replays_without_repeating_approval(self):
+        proposal = ActionProposal("p-retry", "admin-A", "tenant-A", "order.update_status", "order-A17", "APPROVED")
+        self.app.memberships._memberships[("approver-A", "tenant-A")] = frozenset({"admin"})
+        approval = self.app.tools.approvals.issue(proposal, Principal("approver-A", "tenant-A"))
+        first = self.app.execute_proposal(self.admin_a, proposal, "mutation-retry", approval)
+        second = self.app.execute_proposal(self.admin_a, proposal, "mutation-retry", None)
+        self.assertTrue(first.allowed)
+        self.assertTrue(second.allowed)
+        self.assertTrue(second.replayed)
+        self.assertEqual(self.app.tools.status["order-A17"], "APPROVED")
+
+    def test_same_idempotency_key_different_operation_does_not_replay(self):
+        proposal = ActionProposal("p-original", "admin-A", "tenant-A", "order.update_status", "order-A17", "APPROVED")
+        changed = ActionProposal("p-changed", "admin-A", "tenant-A", "order.update_status", "order-A17", "CANCELLED")
+        self.app.memberships._memberships[("approver-A", "tenant-A")] = frozenset({"admin"})
+        approval = self.app.tools.approvals.issue(proposal, Principal("approver-A", "tenant-A"))
+        first = self.app.execute_proposal(self.admin_a, proposal, "same-operation-key", approval)
+        second = self.app.execute_proposal(self.admin_a, changed, "same-operation-key", None)
+        self.assertTrue(first.allowed)
+        self.assertEqual(second.reason, "APPROVAL_REQUIRED")
+        self.assertFalse(second.replayed)
         self.assertEqual(self.app.tools.status["order-A17"], "APPROVED")
 
     def test_approval_cannot_be_reused_for_different_resource(self):
