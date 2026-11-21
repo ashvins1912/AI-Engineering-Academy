@@ -34,7 +34,7 @@ variable "private_subnet_cidrs" {
 variable "allowed_ingress_cidrs" {
   type        = list(string)
   description = "Restrict to approved client ranges in production; the example default is public HTTPS."
-  default     = ["0.0.0.0/0"]
+  default     = ["203.0.113.10/32"]
 }
 
 variable "certificate_arn" {
