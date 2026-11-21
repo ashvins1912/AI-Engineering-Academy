@@ -8,5 +8,6 @@
     "catalog_search",
     "apply_discount"
   ],
-  "maxSteps": 4
+  "maxSteps": 4,
+  "simulatedCatalogLatencyMs": 400
 }
