@@ -37,6 +37,11 @@ class ExperimentTrackingTests(unittest.TestCase):
   with self.assertRaises(ExperimentError):self.tracker.compare("run-1","run-3","accuracy")
  def test_secret_metadata_is_rejected(self):
   with self.assertRaises(ExperimentError):safe_metadata({"nested":{"access_token":"do-not-log"}})
+ def test_training_uses_manifest_train_and_validation_ids(self):
+  result=train_logistic_regression(self.records,train_ids=self.splits['train'],validation_ids=self.splits['validation'],epochs=2)
+  self.assertEqual(result['train_rows'],8);self.assertEqual(result['validation_rows'],2)
+ def test_secret_substrings_are_rejected(self):
+  with self.assertRaises(ExperimentError):safe_metadata({'client_secret':'hidden'})
  def test_training_is_reproducible_for_same_seed(self):
   a=train_logistic_regression(self.records,seed=42,learning_rate=0.1,epochs=5)
   b=train_logistic_regression(self.records,seed=42,learning_rate=0.1,epochs=5)
