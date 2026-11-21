@@ -6,6 +6,7 @@ tenant scope with authenticated server context and row-level security.
 """
 import json
 import sqlite3
+import time
 from typing import Any
 
 ALLOWED = {
@@ -19,7 +20,7 @@ ALLOWED = {
 
 class DurableWorkflowStore:
     def __init__(self, path=":memory:", clock=None):
-        self.clock = clock or (lambda: 0)
+        self.clock = clock or (lambda: int(time.time()))
         self.db = sqlite3.connect(path, isolation_level=None)
         self.db.row_factory = sqlite3.Row
         self.db.execute("PRAGMA foreign_keys=ON")
@@ -78,6 +79,8 @@ class DurableWorkflowStore:
         return result
 
     def claim(self, workflow_id: str, *, tenant_id: str, worker_id: str, lease_seconds: int):
+        if lease_seconds <= 0:
+            raise ValueError("lease duration must be positive")
         now = self.clock()
         self.db.execute("BEGIN IMMEDIATE")
         try:
@@ -145,6 +148,8 @@ class DurableWorkflowStore:
     def request_approval(self, approval_id: str, workflow_id: str, *, tenant_id: str,
                          action: str, expected_version: int, expires_at: int):
         current = self.load(workflow_id, tenant_id=tenant_id)
+        if expires_at <= self.clock():
+            raise ValueError("approval expiry must be in the future")
         if current["version"] != expected_version:
             raise RuntimeError("checkpoint version conflict")
         if current["state"] != "PAUSED_FOR_APPROVAL":
@@ -164,6 +169,8 @@ class DurableWorkflowStore:
                 raise KeyError("approval not found")
             if approver not in allowed_approvers:
                 raise PermissionError("approver is not authorized")
+            if decision not in {"approved", "rejected"}:
+                raise ValueError("decision must be approved or rejected")
             if approval["consumed"] or approval["expires_at"] <= self.clock():
                 raise PermissionError("approval expired or already consumed")
             if approval["action"] != action:
