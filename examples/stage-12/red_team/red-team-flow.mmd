@@ -1,0 +1,17 @@
+flowchart TD
+  A[Threat model and attack corpus] --> B[Untrusted input boundary]
+  B --> C{Prompt or retrieval injection?}
+  C -->|yes| D[Quarantine as untrusted evidence]
+  C -->|no| E[Continue normal evidence path]
+  D --> F[Server-side policy enforcement]
+  E --> F
+  F --> G{Tool identity scope tenant schema approval}
+  G -->|deny| H[Block before side effect]
+  G -->|allow| I[Bounded tool adapter]
+  I --> J[Output and canary inspection]
+  J --> K[Budget and artifact integrity checks]
+  H --> L[Redacted audit evidence]
+  K --> L
+  L --> M{Critical attack contained?}
+  M -->|no| N[Fail release gate]
+  M -->|yes| O[Regression suite and remediation]
