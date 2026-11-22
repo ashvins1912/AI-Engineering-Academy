@@ -1,0 +1,12 @@
+flowchart TD
+    A[Freeze candidate release and tenant context] --> B[Collect nine topic mastery records]
+    B --> C[Run clean-checkout acceptance]
+    C --> D[Inject cross-topic failures]
+    D --> E[Review tenant isolation and security]
+    E --> F[Conduct architecture defense]
+    F --> G{All evidence present, current and passing?}
+    G -- No --> H[Return blocking reason codes]
+    H --> B
+    G -- Yes --> I{Any unresolved high or critical finding?}
+    I -- Yes --> H
+    I -- No --> J[Issue Stage 12 certification decision]
