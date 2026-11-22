@@ -9,9 +9,9 @@ sys.path.insert(0, str(ROOT))
 from red_team_engine import (
     Approval, AttackScenario, Principal, RedTeamPolicy, RedTeamRunner,
     classify_retrieved_content, evaluate_red_team_gate, load_scenarios,
-    request_digest,\n)\nfrom red_team_policy import ToolEnforcementPoint\n\n#
+    request_digest,
 )
-
+from red_team_policy import ToolEnforcementPoint
 
 class PromptInjectionTests(unittest.TestCase):
     def test_retrieved_instructions_remain_untrusted_data(self):
