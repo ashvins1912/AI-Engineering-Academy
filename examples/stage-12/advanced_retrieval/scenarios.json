@@ -1,0 +1,18 @@
+{
+  "corpus": [
+    {"chunkId":"a-1","docId":"policy-A","tenant":"tenant-A","version":"v3","page":4,"acl":["user-A"],"text":"The current retention policy keeps records for 90 days."},
+    {"chunkId":"a-2","docId":"policy-A","tenant":"tenant-A","version":"v3","page":5,"acl":["user-A"],"text":"A legal hold pauses deletion until the hold is released."},
+    {"chunkId":"b-1","docId":"policy-B","tenant":"tenant-B","version":"v1","page":2,"acl":["user-B"],"text":"The current retention policy keeps records for 900 days."}
+  ],
+  "queries": [
+    {"query":"current retention policy","relevant":["a-1"],"mustReject":["b-1"]},
+    {"query":"what pauses deletion and why","relevant":["a-2"],"mustPreserveCitation":true}
+  ],
+  "failureInjection": [
+    {"name":"post-ranking-acl","change":"allow a cross-tenant candidate into scoring","expected":"test fails; ACL must run before ranker"},
+    {"name":"stale-index","change":"candidate index overlap below threshold","expected":"promotion blocked"},
+    {"name":"cache-policy-collision","change":"reuse cache key across policy versions","expected":"cache keys differ"},
+    {"name":"citation-offset-loss","change":"drop source offsets during compression","expected":"citation contract fails"},
+    {"name":"expired-policy","change":"set expires_at before as_of","expected":"chunk filtered before ranking"}
+  ]
+}

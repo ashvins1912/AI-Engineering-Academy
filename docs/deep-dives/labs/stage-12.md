@@ -38,6 +38,24 @@ Run all exercises locally with synthetic fixtures. The Academy service does not 
 
 ---
 
+## advanced-retrieval — Advanced Retrieval and Context Engineering
+
+**Implementation task:** Build an offline retrieval benchmark for lexical, dense, hybrid RRF and late-interaction strategies. Enforce tenant/document/subject/role and temporal filters before scoring. Add reranking, bounded graph expansion with evidence ACL re-checks, source-preserving compression, citation provenance, security-aware cache keys and shadow index migration gates.
+
+**Worked fixture:** Tenant-A asks for the current retention policy. A Tenant-B chunk has a stronger dense similarity score but must be filtered before ranking. A graph edge points to a related exception document that is also cross-tenant. The authorized source contains a sentence that must fit within a strict context budget while preserving document version, page and source offsets.
+
+**Expected result:** Unauthorized and stale chunks never enter the candidate ranker. Lexical, dense, hybrid and late-interaction strategies produce deterministic rankings on the fixture. Graph expansion includes only authorized evidence. Compression selects exact source sentences and preserves citation metadata. Cache keys change with tenant, ACL, model, embedding, index and policy versions. A candidate index with insufficient shadow overlap cannot be promoted; a promoted candidate can be rolled back.
+
+**Verification tests:** Run `python -m unittest discover -s examples/stage-12 -p 'test_*.py' -v`. Tests cover tenant/document/subject/role filters, pre-ranking candidate sets, temporal validity, lexical/dense/hybrid/late-interaction scoring, cosine and RRF arithmetic, reranking, graph ACL checks, hop bounds, token-budget compression, citation lineage, cache-key isolation, index promotion/rollback, Recall@K/MRR and gateway defense in depth.
+
+**Debugging checklist:** Inspect verified access context before query planning; confirm SQL/vector filters execute before top-k; compare lexical and dense rankings separately before RRF; validate vector dimensions and normalization; check reranker inputs contain only authorized candidates; inspect graph evidence ACLs and hop limits; compare compressed text to exact source spans; verify citation offsets and immutable versions; inspect every cache-key dimension; review shadow index overlap by query/tenant slice before promotion.
+
+**Interview checks:** Why is post-ranking ACL filtering unsafe? When does lexical retrieval beat dense retrieval? How does RRF combine incompatible score scales? What is the trade-off of late interaction? Why are graph edges not permissions? How do you preserve citation fidelity during compression? Which dimensions belong in a retrieval cache key? What evidence should gate an index migration?
+
+**Submission evidence:** Include an annotated synthetic corpus, score calculations, per-strategy rankings, pre-ranking ACL trace, graph expansion denial, compressed context with citations, cache-key isolation tests, shadow migration report and a short quality/latency/cost trade-off analysis.
+
+---
+
 ## Stage completion evidence
 
 - [ ] Topic 1 plan validator and coordinator pass all positive and negative tests from a clean checkout.
@@ -47,3 +65,4 @@ Run all exercises locally with synthetic fixtures. The Academy service does not 
 - [ ] Production limitations and external side-effect guarantees are explained accurately.
 - [ ] Topic 1 closed-book mastery defense is completed before Topic 2.
 - [ ] Topic 2 protocol contract tests and migration gap analysis pass before Topic 3.
+- [ ] Topic 3 ACL-before-ranking, retrieval quality, citation and index migration tests pass before Topic 4.

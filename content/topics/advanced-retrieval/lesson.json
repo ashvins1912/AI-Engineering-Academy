@@ -1,0 +1,576 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "advanced-retrieval",
+    "title": "Advanced Retrieval and Context Engineering",
+    "stage": 12,
+    "estimatedMinutes": 480
+  },
+  "state": "runnable",
+  "learning": {
+    "outcomes": [
+      "Apply tenant, document ACL, role, classification and temporal filters before retrieval scoring and top-k.",
+      "Compare lexical, dense, hybrid reciprocal-rank fusion and late-interaction retrieval with numerical examples.",
+      "Plan multi-part queries, rerank authorized candidates and expand graph evidence under bounded traversal.",
+      "Build context packs that preserve source text, immutable document versions, page numbers and source offsets.",
+      "Design retrieval cache keys that isolate tenant, ACL, freshness, model, embedding, index and policy versions.",
+      "Validate index migrations using shadow comparisons, quality thresholds, promotion gates and rollback."
+    ],
+    "prerequisites": [
+      "Stage 5 RAG ingestion, chunking, vector indexes, retrieval and evaluation",
+      "Stage 10 tenant isolation, prompt injection and tracing",
+      "Stage 12 Topic 1 durable execution and Topic 2 protocol identity boundaries",
+      "Basic probability, cosine similarity, ranking metrics and Python testing"
+    ],
+    "glossary": [
+      {
+        "term": "Hybrid retrieval",
+        "definition": "Combining lexical and semantic retrieval signals, often by fusing rankings rather than adding uncalibrated raw scores."
+      },
+      {
+        "term": "Reciprocal Rank Fusion",
+        "definition": "A rank aggregation method that adds 1/(k0 + rank) contributions for each result across multiple ranked lists."
+      },
+      {
+        "term": "Late interaction",
+        "definition": "A retrieval scoring approach that retains token-level vectors and aggregates token-to-token similarity, such as MaxSim."
+      },
+      {
+        "term": "Reranker",
+        "definition": "A more expensive relevance model applied to a bounded candidate set after initial retrieval."
+      },
+      {
+        "term": "Graph retrieval",
+        "definition": "Using entity and relation edges to discover connected evidence, while rechecking ACLs on every retrieved evidence chunk."
+      },
+      {
+        "term": "Temporal validity",
+        "definition": "The effective time interval during which a document version or evidence chunk is considered valid."
+      },
+      {
+        "term": "Citation lineage",
+        "definition": "Metadata linking an answer span to an immutable source version, page, chunk and character/token offsets."
+      },
+      {
+        "term": "Shadow index",
+        "definition": "A candidate index queried alongside the current index for quality comparison without serving user-visible results."
+      },
+      {
+        "term": "Context compression",
+        "definition": "Reducing the evidence context to fit a token budget while preserving supported source facts and citation lineage."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "A high vector similarity score does not prove relevance, freshness or authorization. Production retrieval systems fail when ACL filters run after top-k, cache keys omit tenant or policy versions, graph expansion follows unauthorized edges, compression loses source offsets, or an index is promoted without quality evidence. The goal is not just to retrieve similar text; it is to retrieve the best authorized, current and citable evidence within a measurable budget.",
+    "plainLanguage": "Begin with access, not embeddings. Resolve the user on the server and construct an access context containing tenant, subject, roles, allowed document set and as-of time. Filter the corpus using those predicates before ranking. If you rank first and filter later, unauthorized documents can occupy the top-k slots, affect result counts and leak information through scores or timing. Every secondary path—reranking, graph expansion, parent chunks and cache hits—must preserve the same access policy.\n\nDifferent retrieval methods solve different problems. Lexical retrieval is good at exact words, IDs, dates and rare terms. Dense retrieval finds semantically related passages even when wording differs, but can miss exact identifiers or retrieve a plausible yet wrong paragraph. Hybrid retrieval combines their rankings. Reciprocal Rank Fusion is useful when raw lexical and vector scores are not calibrated to the same scale: each result contributes 1/(k0+rank) from each ranked list. Multi-vector or late-interaction methods keep more token-level representation. A MaxSim-style score finds, for each query token vector, the best matching document token vector and aggregates those matches. It can improve fine-grained relevance at higher storage and compute cost.\n\nQuery planning identifies multiple information needs. Split a question into sub-queries, route exact identifier searches to lexical retrieval, use dense or hybrid retrieval for semantic questions, and request freshness-aware filtering for words such as current, latest or effective. Rerank only a bounded authorized candidate set. Graph retrieval can connect a policy to its exception or approval record, but a graph edge is a navigation hint, not a permission grant. Recheck the target evidence chunk's tenant, ACL and temporal validity before adding it.\n\nContext engineering is more than concatenating top-k chunks. Preserve document ID, immutable version, page, section, source offsets and retrieval metadata. Deduplicate overlapping passages, retain parent context where a child chunk needs it, order evidence by relevance and coverage, and compress only by selecting faithful source spans. Do not invent a shorter paraphrase and reuse the original citation as if the source said those words. If no authorized evidence fits the budget, abstain or ask for clarification.\n\nRetrieval caches are security-sensitive. Include tenant, subject or ACL scope, roles, allowed documents, freshness/as-of policy, model version, embedding version, index version and authorization policy version in the cache key. Invalidate on document deletion, permission changes, version updates and index promotion. A cache hit must not bypass current authorization.\n\nFor index migration, build a candidate in parallel, shadow the same authorized queries, compare result overlap and task quality by tenant and query slice, validate embedding dimensions and citation lineage, and require predeclared thresholds before promotion. Keep the old index compatible for rollback. A successful indexing job alone is not proof of a safe migration.",
+    "mentalModel": "Verified identity → access context → query plan → ACL/tenant/time filter → authorized candidates → lexical/dense/multi-vector retrieval → fusion/rerank → ACL-checked graph expansion → faithful context compression → versioned citations → grounded answer or abstention.",
+    "limitations": [
+      "Synthetic vectors and scoring functions teach mechanics but do not represent a real embedding model or production vector database benchmark.",
+      "RRF is a rank aggregation method, not a calibrated probability or guarantee of relevance.",
+      "Late interaction can improve token-level matching but increases storage, memory and query-time cost.",
+      "A graph edge may be stale or poisoned; every linked evidence chunk needs provenance, freshness and authorization checks.",
+      "Source-preserving sentence selection is not a general semantic compressor and may omit important context; evaluate faithfulness and coverage.",
+      "A cache key reduces cross-scope collisions but does not replace reauthorization or invalidation on data/ACL changes.",
+      "Shadow overlap is one migration signal; it must be combined with labeled relevance, citation correctness, freshness, latency and cost gates."
+    ],
+    "everydayAnalogy": "A librarian first checks whether a visitor is allowed into a restricted archive, then searches the catalog using exact titles and related concepts. A research assistant may follow a reference to another book, but the second book still needs its own access check. A summary card keeps the book edition and page number so the reader can verify the quotation.",
+    "mathMadeSimple": "For a query, lexical ranks are [A,B,C] and dense ranks are [B,C,A]. With k0=60, RRF(A)=1/61+1/63, RRF(B)=1/62+1/61, RRF(C)=1/63+1/62. B receives the highest fused score. RRF combines rank evidence without assuming raw BM25 and cosine scores share a common scale.",
+    "productionImpact": "Measure Recall@K, Precision@K, MRR/NDCG, citation correctness, faithfulness, abstention, freshness, p95 latency and cost by tenant and query slice. Apply ACL predicates before top-k; use ACL-aware cache keys and reauthorization; pin embedding/index versions; preserve citation offsets; test graph traversal and reranker inputs; and gate index promotion on shadow quality and rollback readiness."
+  },
+  "useCase": {
+    "scenario": "A multi-tenant policy assistant answers questions about current retention rules, exceptions and approval paths. It combines lexical and dense retrieval, fuses rankings, reranks authorized candidates, expands a policy graph, compresses evidence into a limited context and returns citations with exact document versions and page offsets.",
+    "actors": [
+      "Authenticated user and tenant membership service",
+      "Query planner and retrieval gateway",
+      "Relational metadata/ACL store",
+      "Lexical search index",
+      "Vector and multi-vector index",
+      "Reranker and graph relation store",
+      "Context assembler and citation validator",
+      "Index migration controller and evaluation harness"
+    ],
+    "inputs": [
+      "Query text and optional query/token vectors",
+      "Verified tenant, subject, roles and allowed document IDs",
+      "Document version, page, source offsets and temporal validity",
+      "Lexical, dense, multi-vector and graph retrieval indexes",
+      "Model, embedding, index and policy versions",
+      "Token budget and evaluation thresholds"
+    ],
+    "constraints": [
+      "Unauthorized or stale chunks are filtered before scoring and top-k.",
+      "Graph edges and cached evidence never grant access.",
+      "Reranking receives only authorized candidates.",
+      "Context compression preserves exact source text and citation lineage.",
+      "Cache keys bind security and version dimensions.",
+      "Index promotion requires shadow quality evidence and a rollback target."
+    ],
+    "outputs": [
+      "Ranked authorized evidence chunks",
+      "Retrieval scores and strategy trace",
+      "Compressed context with immutable source citations",
+      "Recall@K/MRR and migration overlap metrics",
+      "Cache key and index version metadata"
+    ],
+    "successMetric": "No unauthorized chunk enters the ranker or context; retrieval strategy returns relevant authorized evidence; citations resolve to source version/page/offset; context fits the token budget; cache keys isolate ACL/version changes; and a low-quality candidate index cannot be promoted."
+  },
+  "architecture": {
+    "diagram": "examples/stage-12/advanced_retrieval/retrieval-flow.mmd",
+    "components": [
+      "Verified access-context resolver",
+      "Query planner and decomposer",
+      "Tenant/ACL/temporal filter",
+      "Lexical retriever",
+      "Dense and multi-vector retriever",
+      "RRF fusion and reranker",
+      "Graph expansion adapter",
+      "Context compressor and citation lineage store",
+      "Security-aware cache",
+      "Shadow index migration controller"
+    ],
+    "dataFlow": [
+      {
+        "from": "Authenticated application",
+        "to": "Access-context resolver",
+        "payload": "Verified subject, tenant, roles and document permissions",
+        "purpose": "Build authoritative retrieval scope before query execution."
+      },
+      {
+        "from": "Query planner",
+        "to": "Retrieval filters",
+        "payload": "Subqueries, freshness requirements and strategy",
+        "purpose": "Plan retrieval while preserving authorization constraints."
+      },
+      {
+        "from": "ACL filter",
+        "to": "Lexical/vector retrievers",
+        "payload": "Authorized document IDs and effective-time range",
+        "purpose": "Remove unauthorized/stale candidates before scoring."
+      },
+      {
+        "from": "Retrievers",
+        "to": "RRF/reranker",
+        "payload": "Lexical, dense and multi-vector rankings",
+        "purpose": "Combine relevance signals and rerank a bounded authorized set."
+      },
+      {
+        "from": "Reranker",
+        "to": "Graph expansion",
+        "payload": "Seed chunk IDs and bounded relation paths",
+        "purpose": "Discover connected evidence and re-check every target ACL."
+      },
+      {
+        "from": "Context assembler",
+        "to": "Citation validator",
+        "payload": "Compressed source spans, version, page and offsets",
+        "purpose": "Keep answers grounded and verifiable under token budget."
+      },
+      {
+        "from": "Shadow index controller",
+        "to": "Migration gate",
+        "payload": "Old/new result overlap and quality slices",
+        "purpose": "Promote only after predeclared evidence thresholds pass."
+      }
+    ],
+    "trustBoundaries": [
+      "User query and retrieved text are untrusted input.",
+      "Identity and tenant scope come from verified server context.",
+      "Vector scores and graph edges do not grant authorization.",
+      "Reranker output cannot widen the authorized candidate set.",
+      "Cache hits are reauthorized against current policy and data versions.",
+      "Citation metadata is preserved from the source parser, not generated by the model."
+    ],
+    "failurePaths": [
+      "ACL predicate omitted before top-k: fail security acceptance and block retrieval.",
+      "Stale or expired document version: filter before ranking and invalidate cache.",
+      "Embedding dimension mismatch: reject index/query compatibility and route to known-good version.",
+      "Graph neighbor ACL denial: omit the neighbor and emit a safe audit reason.",
+      "Compression removes all supporting evidence: abstain rather than fabricate.",
+      "Cache key misses policy/index version: invalidate and recompute.",
+      "Candidate index quality below threshold: remain in shadow and do not promote."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-12/advanced_retrieval/scenarios.json",
+    "steps": [
+      {
+        "label": "Resolve access",
+        "explanation": "Build the access context from verified tenant, subject, roles, allowed documents and as-of time.",
+        "expectedState": "A trusted retrieval scope exists before search."
+      },
+      {
+        "label": "Plan query",
+        "explanation": "Split multi-part questions and select hybrid, freshness-aware or graph-assisted retrieval.",
+        "expectedState": "A query plan records subqueries and strategy."
+      },
+      {
+        "label": "Filter candidates",
+        "explanation": "Apply tenant, ACL, document and temporal predicates before any score is calculated.",
+        "expectedState": "Only authorized current chunks enter the ranker."
+      },
+      {
+        "label": "Fuse and rerank",
+        "explanation": "Combine lexical and dense ranks with RRF and rerank a bounded candidate set.",
+        "expectedState": "A stable relevance ordering is produced."
+      },
+      {
+        "label": "Expand and compress",
+        "explanation": "Follow bounded graph edges only when target evidence passes ACL, then select exact source sentences under token budget.",
+        "expectedState": "Context remains authorized and source-faithful."
+      },
+      {
+        "label": "Validate cache and index",
+        "explanation": "Bind cache keys to security/version metadata and gate candidate index promotion on shadow quality.",
+        "expectedState": "No cross-scope cache reuse; poor candidate index remains unpromoted."
+      }
+    ],
+    "accessibility": [
+      "Every retrieval stage displays authorized candidate count, rejected count and score provenance as text.",
+      "The animation exposes citation metadata and cache-key dimensions without color-only status cues."
+    ],
+    "animation": {
+      "objective": "Show how access filtering precedes retrieval scoring and how relevance fusion, graph expansion, context compression and index gates preserve security and provenance.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Trusted access context",
+          "narration": "Resolve the user's tenant, roles and allowed documents from verified server state before search.",
+          "input": "subject=user-A; tenant=tenant-A; allowedDocs=[policy-A]",
+          "transformation": "Construct immutable access context and effective date.",
+          "output": "Authorized search scope",
+          "visualState": "Tenant and ACL boundary is established."
+        },
+        {
+          "step": 2,
+          "title": "Query planning",
+          "narration": "Split the question and identify freshness or relationship requirements.",
+          "input": "current retention policy and related exception",
+          "transformation": "Create subqueries and choose hybrid plus bounded graph expansion.",
+          "output": "QueryPlan",
+          "visualState": "Subqueries branch to lexical and dense retrieval."
+        },
+        {
+          "step": 3,
+          "title": "Filter before ranking",
+          "narration": "A tenant-B chunk has a high vector score but is excluded before scoring.",
+          "input": "tenant-A chunk + tenant-B high-score chunk",
+          "transformation": "Apply tenant, document ACL and temporal predicates.",
+          "output": "only authorized candidate IDs",
+          "visualState": "Unauthorized candidate is removed before ranker."
+        },
+        {
+          "step": 4,
+          "title": "Fuse relevance signals",
+          "narration": "Lexical and dense rankings are combined using reciprocal-rank fusion.",
+          "input": "lexical=[A,B,C]; dense=[B,C,A]",
+          "transformation": "Sum 1/(k0+rank) contributions.",
+          "output": "fused ordering",
+          "visualState": "Two ranked lists merge into one candidate order."
+        },
+        {
+          "step": 5,
+          "title": "Graph and context",
+          "narration": "Follow a related policy edge only if the target evidence chunk passes ACL, then select exact source sentences.",
+          "input": "seed chunk + graph edge + token budget",
+          "transformation": "Recheck target ACL and compress source spans with citation offsets.",
+          "output": "bounded grounded context",
+          "visualState": "Authorized evidence carries page and offset citations."
+        },
+        {
+          "step": 6,
+          "title": "Cache and migration gate",
+          "narration": "Cache identity includes security and version dimensions; a weak shadow index is not promoted.",
+          "input": "tenant/ACL/model/index/policy key + old/new results",
+          "transformation": "Compare cache digests and shadow quality threshold.",
+          "output": "isolated cache; promote or rollback decision",
+          "visualState": "Candidate index remains in shadow until all gates pass."
+        }
+      ],
+      "controls": [
+        {
+          "name": "topK",
+          "min": 1,
+          "max": 10,
+          "defaultValue": 5,
+          "effect": "Change the number of authorized candidates passed to reranking; authorization still occurs before top-k."
+        },
+        {
+          "name": "contextBudget",
+          "min": 16,
+          "max": 256,
+          "defaultValue": 64,
+          "effect": "Change the token budget for exact-source context selection; citations remain attached to each selected span."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Each step lists candidate IDs, rejected count, score source and citation fields. Keyboard navigation and reduced-motion mode expose the same state transitions and text."
+    }
+  },
+  "workedExample": {
+    "problem": "Retrieve the current retention policy for a tenant-A user while a more similar tenant-B chunk exists, then compress the evidence without losing citation provenance.",
+    "input": "Lexical ranking [A,B,C], dense ranking [B,C,A], k0=60, access tenant-A/user-A/allowedDocs=[policy-A], context budget 24 tokens.",
+    "steps": [
+      {
+        "operation": "Filter before ranking",
+        "reasoning": "Tenant, document ACL, role and effective-date predicates are evaluated before lexical/vector scoring.",
+        "result": "Tenant-B chunk is excluded even though its dense score is high."
+      },
+      {
+        "operation": "Fuse lexical and dense ranks",
+        "reasoning": "RRF sums 1/(60+rank) contributions for each ranking.",
+        "result": "B may lead among authorized candidates; raw scores are not mixed."
+      },
+      {
+        "operation": "Rerank and graph expand",
+        "reasoning": "A bounded reranker receives only authorized candidates; linked exception evidence is checked again against ACL.",
+        "result": "Only authorized policy and exception chunks remain."
+      },
+      {
+        "operation": "Compress source context",
+        "reasoning": "Select exact sentences with query term overlap until the token budget is reached.",
+        "result": "Selected source text retains document ID, version, page and offsets."
+      },
+      {
+        "operation": "Bind cache key",
+        "reasoning": "Include tenant, subject, roles, allowed docs, as-of date, model, embedding, index and policy versions.",
+        "result": "A change in tenant or policy creates a different key."
+      }
+    ],
+    "expectedOutput": "No cross-tenant chunk is ranked or cited; the answer context fits 24 tokens; citation resolves to the source version/page/offset; and a candidate index below the overlap threshold cannot be promoted."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "path": "examples/stage-12/advanced_retrieval/retrieval_engine.py",
+      "runCommand": "python examples/stage-12/advanced_retrieval/retrieval_engine.py",
+      "testsPath": "examples/stage-12/test_advanced_retrieval.py",
+      "expectedResult": "Offline demo ranks authorized tenant-A evidence and reports the rejected cross-tenant candidate; retrieval metrics and index gates pass tests.",
+      "role": "from-scratch"
+    },
+    {
+      "language": "python",
+      "path": "examples/stage-12/advanced_retrieval/retrieval_gateway.py",
+      "runCommand": "python -m unittest discover -s examples/stage-12 -p 'test_*.py' -v",
+      "testsPath": "examples/stage-12/test_advanced_retrieval.py",
+      "expectedResult": "Gateway rechecks tenant, document, ACL and temporal validity before returning context evidence.",
+      "role": "production"
+    }
+  ],
+  "failures": [
+    {
+      "name": "Filter after top-k",
+      "symptom": "A tenant-B document displaces tenant-A evidence or appears in result metadata.",
+      "rootCause": "ACL is applied after vector or lexical top-k rather than in the candidate query.",
+      "recovery": "Push tenant/document ACL predicates into the retrieval query before ranking and verify with a ranker spy.",
+      "regressionTest": "Inject a higher-scoring cross-tenant chunk and assert it never appears in last_ranked_candidates."
+    },
+    {
+      "name": "Dense score misses exact identifier",
+      "symptom": "A semantically similar passage outranks the exact policy ID or product code.",
+      "rootCause": "Dense embeddings smooth rare identifiers and exact strings.",
+      "recovery": "Add lexical retrieval and fuse rankings with RRF; preserve exact identifier filters.",
+      "regressionTest": "Use a rare identifier query and assert lexical/hybrid retrieves the exact source."
+    },
+    {
+      "name": "Graph ACL bypass",
+      "symptom": "A related document from another tenant enters context through graph traversal.",
+      "rootCause": "The seed chunk was authorized but target evidence ACL was not rechecked.",
+      "recovery": "Treat edges as navigation only and authorize every target evidence chunk.",
+      "regressionTest": "Add cross-tenant graph evidence and assert it is omitted."
+    },
+    {
+      "name": "Citation lineage lost during compression",
+      "symptom": "The generated context cannot be traced to an immutable document version/page/offset.",
+      "rootCause": "Compression returns free-form paraphrases or drops source metadata.",
+      "recovery": "Select exact source spans and carry citation metadata through every transformation.",
+      "regressionTest": "Assert compressed evidence is a source substring and citation fields remain unchanged."
+    },
+    {
+      "name": "Cross-tenant cache collision",
+      "symptom": "A user receives a cached result created under another tenant or ACL.",
+      "rootCause": "Cache key omits tenant, subject, allowed docs or policy version.",
+      "recovery": "Bind cache identity to full access and model/index/policy version context and reauthorize hits.",
+      "regressionTest": "Change tenant, ACL, index or policy and assert cache keys differ."
+    },
+    {
+      "name": "Unsafe index promotion",
+      "symptom": "New index is promoted despite losing important authorized results.",
+      "rootCause": "Promotion depends on indexing success or aggregate overlap alone.",
+      "recovery": "Shadow representative queries, evaluate slices and require predeclared quality thresholds with rollback.",
+      "regressionTest": "Low overlap or a failing slice blocks promotion."
+    }
+  ],
+  "practice": {
+    "guided": "Run the tenant-A/tenant-B fixture. Print the candidate IDs immediately before scoring and prove the cross-tenant chunk is absent. Calculate one RRF score by hand.",
+    "independent": "Add document classification, a temporal valid_from/expires_at interval and a parent-child chunk relationship. Ensure parent context retrieval cannot bypass ACL and freshness.",
+    "realWorld": "Design hybrid retrieval for a multi-tenant legal-policy assistant. Specify ACL pushdown, embedding/index versioning, query routing, graph expansion, citation format, cache invalidation and index rollback.",
+    "expertExtension": "Add a real vector database adapter, multi-vector/ColBERT reranker, query-level evaluation dataset, latency/cost instrumentation, cache invalidation events and shadow migration by tenant/query slice.",
+    "guidedExercise": {
+      "title": "Prove ACL-before-ranking and citation preservation",
+      "instructions": "Build a two-tenant corpus, filter it using verified access context, rank only eligible chunks, then compress a source sentence under a token budget while preserving the source version, page and offsets.",
+      "starterCode": "def retrieve(query, chunks, access):\\n    # TODO: apply tenant/document/ACL/time filters first\\n    # TODO: score only the eligible candidate set\\n    # TODO: preserve citation metadata through context selection\\n    raise NotImplementedError",
+      "solutionCode": "def authorized(chunk, access):\\n    if chunk.tenant_id != access.tenant_id or chunk.doc_id not in access.allowed_doc_ids:\\n        return False\\n    if chunk.valid_from > access.as_of or (chunk.expires_at and access.as_of >= chunk.expires_at):\\n        return False\\n    if chunk.allowed_subjects or chunk.allowed_roles:\\n        return access.subject in chunk.allowed_subjects or bool(access.roles & chunk.allowed_roles)\\n    return True\\n\\ndef retrieve(query, chunks, access):\\n    candidates = [chunk for chunk in chunks if authorized(chunk, access)]\\n    return sorted(candidates, key=lambda chunk: chunk.chunk_id)",
+      "unitTests": "eligible = [c for c in chunks if authorized(c, access)]\\nassert all(c.tenant_id == access.tenant_id for c in eligible)\\nassert 'tenant-B' not in {c.tenant_id for c in eligible}"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build a retrieval workbench that shows access filtering, per-strategy ranking, fusion, reranking, graph expansion, context compression, citations and index migration decisions.",
+      "steps": [
+        "Load a synthetic multi-tenant corpus and verified access context.",
+        "Display rejected candidates before any scoring step.",
+        "Compare lexical, dense, hybrid and late-interaction rankings and calculate Recall@K/MRR.",
+        "Expand graph evidence with per-chunk ACL rechecks and show citations.",
+        "Compress exact source sentences under a configurable token budget.",
+        "Change cache/index/policy versions and demonstrate key isolation and migration rollback."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "A cross-tenant document has the highest cosine similarity. When must it be removed?",
+        "options": [
+          "After reranking",
+          "After generating the answer",
+          "Before retrieval scoring and top-k",
+          "Only when citations are rendered"
+        ],
+        "correctIndex": 2,
+        "explanation": "Authorization must constrain the candidate set before ranking. Post-ranking filtering can leak information and displace valid evidence."
+      },
+      {
+        "question": "Why use reciprocal-rank fusion for lexical and dense retrieval?",
+        "options": [
+          "It proves a result is correct",
+          "It combines rankings without assuming raw scores share a scale",
+          "It removes the need for ACL filters",
+          "It converts similarity into probability"
+        ],
+        "correctIndex": 1,
+        "explanation": "RRF aggregates rank positions and is useful when BM25-like and cosine scores are not calibrated to a common numeric scale."
+      },
+      {
+        "question": "A graph edge points from an authorized policy chunk to a restricted exception document. What should happen?",
+        "options": [
+          "Include it because the seed was authorized",
+          "Include only its title",
+          "Recheck the target evidence ACL and omit it if unauthorized",
+          "Treat the edge as an access grant"
+        ],
+        "correctIndex": 2,
+        "explanation": "Graph edges are navigation hints, not permissions. Every evidence chunk must independently pass tenant, ACL and freshness checks."
+      },
+      {
+        "question": "Which dimensions should affect a retrieval cache key?",
+        "options": [
+          "Only query text",
+          "Query, tenant/ACL, freshness, model, embedding, index and policy versions",
+          "Only vector similarity score",
+          "Only user-agent string"
+        ],
+        "correctIndex": 1,
+        "explanation": "A cache key must isolate security scope and every version dimension that can change retrieval semantics. Cache hits still require reauthorization."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Explain and calculate lexical, dense, hybrid and late-interaction retrieval",
+        "weight": 20,
+        "evidence": "Numerical scoring exercise and per-strategy comparison."
+      },
+      {
+        "criterion": "Demonstrate ACL/tenant/temporal filtering before ranking",
+        "weight": 25,
+        "evidence": "Candidate trace proving unauthorized evidence never reaches ranker."
+      },
+      {
+        "criterion": "Preserve citations through graph expansion and compression",
+        "weight": 20,
+        "evidence": "Exact source spans with immutable version/page/offset metadata."
+      },
+      {
+        "criterion": "Design cache isolation and index migration gates",
+        "weight": 20,
+        "evidence": "Cache-key tests, shadow report, promotion and rollback trace."
+      },
+      {
+        "criterion": "Evaluate quality, latency and cost trade-offs",
+        "weight": 15,
+        "evidence": "Recall@K/MRR report and production gap analysis."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Passing Stage 12 Topic 3 retrieval tests and demo output",
+      "Pre-ranking ACL trace, retrieval metric report, citation-preserving context and index migration evidence"
+    ]
+  },
+  "references": [
+    {
+      "title": "ColBERT: Efficient and Effective Passage Search via Contextualized Late Interaction over BERT",
+      "url": "https://arxiv.org/abs/2004.12832",
+      "sourceType": "paper",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "Elasticsearch documentation — Reciprocal Rank Fusion",
+      "url": "https://www.elastic.co/guide/en/elasticsearch/reference/current/rrf.html",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "Qdrant documentation — Hybrid Queries",
+      "url": "https://qdrant.tech/documentation/search/hybrid-queries/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "pgvector documentation",
+      "url": "https://github.com/pgvector/pgvector",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "candidates, rejected = filter_before_ranking(chunks, access)",
+      "explanation": "Resolve tenant, document ACL, subject/role and temporal validity before calculating any lexical or vector score. The rejected count is safe aggregate evidence, not the identities of unauthorized documents."
+    },
+    {
+      "lines": "scores = {c.chunk_id: cosine(query.vector, c.vector) ...}",
+      "explanation": "Dense similarity ranks semantic proximity but is not an authorization decision or calibrated probability of answer correctness."
+    },
+    {
+      "lines": "1.0 / (k0 + rank)",
+      "explanation": "RRF contributes a bounded rank-based score from each retrieval list and combines heterogeneous ranking signals without adding uncalibrated raw scores."
+    },
+    {
+      "lines": "late_interaction_score(query.token_vectors, chunk.token_vectors)",
+      "explanation": "For each query token vector, compute its maximum similarity to document token vectors and aggregate those maxima. This retains fine-grained matching at greater storage/compute cost."
+    },
+    {
+      "lines": "evidence = graph_expand(seed_hits, edges, chunks_by_id, access, max_hops)",
+      "explanation": "Graph traversal is bounded and each target evidence chunk passes the same authorization check. A relationship edge never grants access."
+    },
+    {
+      "lines": "Citation(doc_id, version, page, start_offset, end_offset, chunk_id)",
+      "explanation": "Citation lineage travels with the exact selected source span, allowing a downstream answer to be verified against the immutable source version."
+    },
+    {
+      "lines": "retrieval_cache_key(... tenant, ACL, model, embedding, index, policy ...)",
+      "explanation": "Cache identity changes whenever access scope, freshness or retrieval semantics change. Cache hits still need current authorization."
+    },
+    {
+      "lines": "if min(self.overlaps) < self.min_overlap: reject()",
+      "explanation": "An index candidate remains in shadow until measured query overlap meets the predeclared gate. Production promotion also needs relevance, freshness, citation, latency and cost evidence."
+    }
+  ]
+}
