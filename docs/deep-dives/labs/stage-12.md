@@ -38,12 +38,33 @@ Run all exercises locally with synthetic fixtures. The Academy service does not 
 
 ---
 
+## advanced-retrieval — Advanced Retrieval and Context Engineering
+
+**Implementation task:** Build an offline hybrid retrieval engine with BM25 and dense cosine ranking, weighted reciprocal-rank fusion, pre-ranking tenant/user/group ACL filtering, optional parent-context expansion with an independent ACL check, a token-budget context packer and citation lineage.
+
+**Worked fixture:** Tenant A's analyst Alice asks about retention policy. Tenant B has a secret chunk with the strongest lexical and vector match; Tenant A also has a legal-only chunk and an authorized child chunk whose parent is restricted. A stale corpus revision is then loaded while the same query cache is reused.
+
+**Expected result:** Tenant B and legal-only chunks never enter Alice's candidate set; restricted parent text is not expanded; cache entries do not cross tenant, subject, group, policy-version or corpus-revision boundaries; returned citations retain document version, page and offsets; context stays within budget; no authorized evidence produces an explicit abstention.
+
+**Verification tests:** Run `python -m unittest discover -s examples/stage-12 -p 'test_*.py' -v` and `python examples/stage-12/advanced_retrieval/retrieval_engine.py`. Tests cover BM25, cosine dimensions, zero vectors, RRF, tenant/user/group filtering, pre-ranking isolation, cache partitioning and invalidation, parent ACL, citation metadata, context budget, abstention, request validation and Recall@K/MRR/NDCG.
+
+**Debugging checklist:** Inspect verified identity resolution; confirm ACL predicates are pushed into candidate generation before top-k; compare lexical and dense candidate sets; inspect RRF ranks rather than raw score sums; verify parent ACL separately; compare cache keys and corpus revisions; trace source hash/version/page/offset; check tokenizer budget and abstention threshold; measure candidate recall before reranker lift.
+
+**Interview checks:** Why is post-top-k filtering unsafe? When is BM25 useful alongside dense search? Why use RRF? What does a reranker fail to fix? Why must parent context be re-authorized? What do Recall@K, MRR and NDCG measure? Which dimensions prevent retrieval-cache leakage?
+
+**Submission evidence:** Include the hybrid ranking trace, ACL-before-ranking negative test, tenant-safe cache test, restricted-parent denial, citation lineage sample, bounded context output, fixed relevance judgments and a slice-level retrieval metrics report. Document which guarantees require a production database/vector index rather than the local simulator.
+
+---
+
 ## Stage completion evidence
 
-- [ ] Topic 1 plan validator and coordinator pass all positive and negative tests from a clean checkout.
-- [ ] Worker concurrency never exceeds the configured bound; dependency barriers are demonstrated.
-- [ ] Restart and idempotency behavior is demonstrated with a persisted journal.
-- [ ] Failure handling blocks dependents and records reverse-order compensation.
-- [ ] Production limitations and external side-effect guarantees are explained accurately.
+- [x] Topic 1 plan validator and coordinator pass all positive and negative tests from a clean checkout.
+- [x] Worker concurrency never exceeds the configured bound; dependency barriers are demonstrated.
+- [x] Restart and idempotency behavior is demonstrated with a persisted journal.
+- [x] Failure handling blocks dependents and records reverse-order compensation.
+- [x] Production limitations and external side-effect guarantees are explained accurately.
 - [ ] Topic 1 closed-book mastery defense is completed before Topic 2.
-- [ ] Topic 2 protocol contract tests and migration gap analysis pass before Topic 3.
+- [x] Topic 2 protocol contract tests and migration gap analysis pass before Topic 3.
+- [ ] Topic 3 hybrid retrieval tests, ACL-before-ranking checks and citation lineage pass from a clean checkout.
+- [ ] Topic 3 retrieval benchmark reports Recall@K, MRR and NDCG on fixed relevance judgments.
+- [ ] Topic 3 parent-context, cache isolation and context-budget failure labs pass.
