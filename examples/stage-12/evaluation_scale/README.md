@@ -1,6 +1,6 @@
 # Stage 12 Topic 4 — Evaluation at scale and continuous quality
 
-Offline evaluation harness for versioned golden datasets, retrieval/answer/citation/abstention/tool/safety metrics, confidence intervals, deterministic judge calibration, human agreement, pairwise comparisons, slice analysis, drift monitoring and fail-closed release gates.
+Offline evaluation harness for versioned golden datasets, retrieval/answer/citation/abstention/tool/safety metrics, confidence intervals, deterministic judge calibration, human agreement, pairwise comparisons, slice counts/intervals, cost per successful task, high-risk human review, population drift and fail-closed release gates.
 
 ## Run
 
@@ -15,4 +15,4 @@ python -m unittest discover -s examples/stage-12 -p 'test_*.py' -v
 - Bootstrap intervals require representative independent samples; repeated or correlated queries can overstate confidence.
 - A high aggregate score cannot hide a critical safety failure or a broken tenant/language/difficulty slice.
 - Dataset provenance and split isolation are part of the evaluation contract.
-- The release gate fails closed when sample size, confidence, safety, latency, judge calibration or dataset provenance is missing.
+- The release gate fails closed when sample size, confidence, safety, latency, judge calibration, cost budget, high-risk human review or dataset provenance is missing.
