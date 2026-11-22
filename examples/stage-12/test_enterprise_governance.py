@@ -11,6 +11,8 @@ from governance_engine import (
     ReleaseManifest, RiskItem, validate_dossier,
 )
 
+from governance_release_gate import GovernanceReleaseGate
+
 
 NOW = 1_800_000_000
 DIGEST = hashlib.sha256(b"synthetic governance artifact").hexdigest()
@@ -173,6 +175,43 @@ class AuditAndLifecycleTests(unittest.TestCase):
         lifecycle = LifecycleManager()
         with self.assertRaisesRegex(ValueError, "LIFECYCLE_TRANSITION_INVALID"):
             lifecycle.transition("release")
+
+
+class GovernedReleaseTests(unittest.TestCase):
+    def test_valid_dossier_still_requires_approved_lifecycle_state(self):
+        lifecycle = LifecycleManager()
+        audit = AuditLedger()
+        gate = GovernanceReleaseGate(lifecycle, audit)
+        decision = gate.evaluate_and_release(complete_dossier(), now=NOW, actor="release-bot")
+        self.assertFalse(decision.passed)
+        self.assertIn("LIFECYCLE_NOT_APPROVED", decision.reasons)
+        self.assertEqual(lifecycle.state, "draft")
+        self.assertTrue(audit.verify())
+
+    def test_approved_dossier_transitions_to_released_and_is_audited(self):
+        lifecycle = LifecycleManager()
+        lifecycle.transition("submit")
+        lifecycle.transition("approve")
+        audit = AuditLedger()
+        gate = GovernanceReleaseGate(lifecycle, audit)
+        decision = gate.evaluate_and_release(complete_dossier(), now=NOW, actor="release-bot")
+        self.assertTrue(decision.passed)
+        self.assertEqual(lifecycle.state, "released")
+        self.assertTrue(audit.verify())
+        self.assertEqual(audit.events[-1]["action"], "release.promoted")
+
+    def test_failed_governance_gate_does_not_release(self):
+        lifecycle = LifecycleManager()
+        lifecycle.transition("submit")
+        lifecycle.transition("approve")
+        audit = AuditLedger()
+        gate = GovernanceReleaseGate(lifecycle, audit)
+        dossier = complete_dossier(legal_review_reference=None)
+        decision = gate.evaluate_and_release(dossier, now=NOW, actor="release-bot")
+        self.assertFalse(decision.passed)
+        self.assertEqual(lifecycle.state, "approved")
+        self.assertIn("JURISDICTION_LEGAL_REVIEW_MISSING", decision.reasons)
+        self.assertTrue(audit.verify())
 
 
 if __name__ == "__main__":
