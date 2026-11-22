@@ -147,3 +147,49 @@ async def test_get_rejects_a_mismatched_provider_run_id(monkeypatch):
     provider = HttpsRunnerProvider("https://runner.example", "s" * 32)
     with pytest.raises(RunnerProtocolError, match="mismatched run ID"):
         await provider.get(requested_id)
+
+
+@pytest.mark.asyncio
+async def test_runner_rejects_oversized_stream_before_json_parsing(monkeypatch):
+    import app.runner_provider as module
+
+    class OversizedStream(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            yield b'{"run_id":"'
+            yield b"x" * (128 * 1024)
+
+        async def aclose(self):
+            return None
+
+    async def handler(request):
+        return httpx.Response(200, stream=OversizedStream())
+
+    original_client = httpx.AsyncClient
+    monkeypatch.setattr(
+        module.httpx, "AsyncClient",
+        lambda **kwargs: original_client(transport=httpx.MockTransport(handler), **kwargs),
+    )
+    provider = HttpsRunnerProvider("https://runner.example", "s" * 32)
+    with pytest.raises(RunnerProtocolError, match="response-size limit"):
+        await provider.get(uuid4())
+
+
+@pytest.mark.asyncio
+async def test_runner_rejects_oversized_declared_content_length(monkeypatch):
+    import app.runner_provider as module
+
+    async def handler(request):
+        return httpx.Response(
+            200,
+            headers={"Content-Length": str(128 * 1024 + 1)},
+            content=b'{"run_id":"x","status":"running"}',
+        )
+
+    original_client = httpx.AsyncClient
+    monkeypatch.setattr(
+        module.httpx, "AsyncClient",
+        lambda **kwargs: original_client(transport=httpx.MockTransport(handler), **kwargs),
+    )
+    provider = HttpsRunnerProvider("https://runner.example", "s" * 32)
+    with pytest.raises(RunnerProtocolError, match="response-size limit"):
+        await provider.get(uuid4())

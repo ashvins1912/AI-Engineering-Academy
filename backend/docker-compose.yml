@@ -14,6 +14,7 @@ services:
       - ./migrations/003_raw_object_retention.sql:/docker-entrypoint-initdb.d/003_raw_object_retention.sql:ro
       - ./migrations/004_distributed_rate_limits.sql:/docker-entrypoint-initdb.d/004_distributed_rate_limits.sql:ro
       - ./migrations/005_code_runs.sql:/docker-entrypoint-initdb.d/005_code_runs.sql:ro
+      - ./migrations/006_code_run_reconciliation.sql:/docker-entrypoint-initdb.d/006_code_run_reconciliation.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres_admin -d academy"]
       interval: 5s
@@ -48,6 +49,20 @@ services:
       ACADEMY_INGESTION_JOB_LEASE_SECONDS: "900"
       ACADEMY_MALWARE_SCAN_REQUIRED: "false"
     volumes: ["academy-private-uploads:/app/var/private-uploads"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+  code-run-reconciler:
+    build: .
+    profiles: ["code-run-reconciler"]
+    command: ["python", "-m", "app.code_run_reconciler", "--tenant-id", "${ACADEMY_WORKER_TENANT_ID:?Set a trusted worker tenant ID}"]
+    environment:
+      ACADEMY_DATABASE_URL: postgresql+asyncpg://academy_app:academy-app-local-only@postgres:5432/academy
+      ACADEMY_WORKER_TENANT_ID: ${ACADEMY_WORKER_TENANT_ID:?Set a trusted worker tenant ID}
+      ACADEMY_CODE_EXECUTION_ENABLED: ${ACADEMY_CODE_EXECUTION_ENABLED:-false}
+      ACADEMY_CODE_RUNNER_URL: ${ACADEMY_CODE_RUNNER_URL:-}
+      ACADEMY_CODE_RUNNER_TOKEN: ${ACADEMY_CODE_RUNNER_TOKEN:-}
+      ACADEMY_CODE_RUN_RECONCILE_LEASE_SECONDS: "60"
     depends_on:
       postgres:
         condition: service_healthy
