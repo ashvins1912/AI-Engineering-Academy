@@ -240,6 +240,24 @@ Run all exercises locally with synthetic fixtures. The Academy service does not 
 
 ---
 
+## multimodal-systems — Multimodal AI Systems: Vision, Audio and Video
+
+**Implementation task:** Normalize synthetic OCR regions, tables, transcript segments and video frames into provenance-preserving evidence spans. Retain page/region, timestamps, speaker, confidence, modality, tenant and ACL metadata; align transcript/frame evidence only within a declared tolerance.
+
+**Worked fixture:** A scanned policy PDF has two OCR blocks and a table; a meeting transcript contains speaker/time segments; a training video has sampled frames. One OCR block has low confidence, one frame is outside alignment tolerance, and another tenant has a stronger matching phrase.
+
+**Expected result:** OCR blocks retain page and bounding box in reading order; table rows/columns remain intact; audio retains exact offsets and speaker; video citations use only frames within tolerance; low-confidence evidence is excluded; cross-tenant content is filtered before ranking; citations preserve exact source locations; missing evidence causes abstention.
+
+**Verification tests:** Run `python examples/stage-12/multimodal_systems/multimodal_pipeline.py` and `python -m unittest discover -s examples/stage-12 -p 'test_multimodal_systems.py' -v`. Tests cover OCR order and bbox validation, table structure, audio time/speaker, video sampling, temporal alignment, WER/CER, tenant/user ACLs, confidence thresholds, page/region/time citations, media injection trust labels and abstention.
+
+**Debugging checklist:** Verify source asset/version; inspect OCR page/region and reading order; preserve table structure; compare transcript offsets and speaker IDs with source; check frame interval and alignment tolerance; inspect modality confidence; confirm ACLs filter before ranking; verify citations retain page/region/time; abstain rather than invent uncertain or unauthorized evidence.
+
+**Interview checks:** How does layout-aware OCR differ from plain OCR? Why keep bounding boxes? What does diarization add? How is transcript/video alignment validated? Why can WER be low while semantic errors remain? How do modality-specific confidence and tenant ACLs affect retrieval?
+
+**Submission evidence:** Include normalized OCR/table output, audio/video alignment trace, WER/CER report, location-aware citations, low-confidence abstention, cross-tenant denial and a production adapter/privacy/retention gap analysis.
+
+---
+
 ## Stage completion evidence
 
 - [x] Topic 1 plan validator and coordinator pass all positive and negative tests from a clean checkout.
@@ -251,7 +269,7 @@ Run all exercises locally with synthetic fixtures. The Academy service does not 
 - [x] Topic 2 protocol contract tests and migration gap analysis pass before Topic 3.
 - [x] Topic 3 ACL-before-ranking, retrieval quality, citation and index migration tests pass before Topic 4.
 - [x] Topic 4 dataset, confidence, judge-calibration, slice and fail-closed release-gate tests pass before Topic 5.
-- [ ] Topic 5 adversarial attack coverage, remediation and regression tests pass before Topic 6.
+- [x] Topic 5 adversarial attack coverage, remediation and regression tests pass before Topic 6.
 - [ ] Topic 6 KV capacity, fairness, deadline, cache isolation and overload recovery tests pass before Topic 7.
 - [ ] Topic 7 OCR/audio/video provenance, alignment, confidence, ACL and retention tests pass before Topic 8.
 
