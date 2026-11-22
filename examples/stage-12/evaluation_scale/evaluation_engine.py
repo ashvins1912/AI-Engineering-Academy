@@ -24,6 +24,7 @@ class EvalCase:
     slices: dict[str, str] = field(default_factory=dict)
     expected_tool_calls: frozenset[str] = frozenset()
     source_fingerprints: frozenset[str] = frozenset()
+    high_risk: bool = False
 
 
 @dataclass(frozen=True)
@@ -64,7 +65,7 @@ class EvaluationDataset:
                 "id": c.case_id, "query": c.query, "relevant": sorted(c.relevant_doc_ids),
                 "facts": sorted(c.expected_facts), "answerable": c.answerable,
                 "slices": c.slices, "tools": sorted(c.expected_tool_calls),
-                "sources": sorted(c.source_fingerprints),
+                "sources": sorted(c.source_fingerprints), "high_risk": c.high_risk,
             }
             for c in self.cases
         ]
@@ -190,17 +191,48 @@ def pairwise_win_rate(candidate: list[float], baseline: list[float]) -> float:
     return wins / len(candidate)
 
 
+def paired_delta_ci(candidate: list[float], baseline: list[float], *, seed: int = 7) -> tuple[float, float]:
+    if not candidate or len(candidate) != len(baseline):
+        raise ValueError("PAIRED_EVALUATION_INPUT_INVALID")
+    return bootstrap_mean_ci([c - b for c, b in zip(candidate, baseline)], seed=seed)
+
+
+def population_stability_index(baseline_counts: dict[str, int],
+                               current_counts: dict[str, int], epsilon: float = 1e-6) -> float:
+    if not baseline_counts or not current_counts or epsilon <= 0:
+        raise ValueError("DRIFT_DISTRIBUTION_INPUT_INVALID")
+    keys = set(baseline_counts) | set(current_counts)
+    if any(value < 0 for value in list(baseline_counts.values()) + list(current_counts.values())):
+        raise ValueError("DRIFT_COUNTS_INVALID")
+    baseline_total = sum(baseline_counts.values())
+    current_total = sum(current_counts.values())
+    if baseline_total <= 0 or current_total <= 0:
+        raise ValueError("DRIFT_COUNTS_EMPTY")
+    psi = 0.0
+    for key in keys:
+        expected = max(epsilon, baseline_counts.get(key, 0) / baseline_total)
+        actual = max(epsilon, current_counts.get(key, 0) / current_total)
+        psi += (actual - expected) * math.log(actual / expected)
+    return psi
+
+
 def evaluate_dataset(dataset: EvaluationDataset, predictions: list[Prediction], top_k: int = 5) -> dict:
     dataset.validate()
     by_id = {prediction.case_id: prediction for prediction in predictions}
     expected_ids = {case.case_id for case in dataset.cases}
     if set(by_id) != expected_ids:
         raise ValueError("PREDICTION_COVERAGE_MISMATCH")
-    retrieval, answer, citation, abstention, safety, tool, latencies, costs = [], [], [], [], [], [], [], []
-    input_tokens, output_tokens, successful = 0, 0, []
+    retrieval, answer, citation, abstention, safety, tool, latencies = [], [], [], [], [], [], []
+    costs, input_tokens, output_tokens = [], [], []
     slice_values: dict[str, list[float]] = defaultdict(list)
+    high_risk_count = high_risk_reviewed = high_risk_passed = 0
+    successful_tasks = 0
     for case in dataset.cases:
         prediction = by_id[case.case_id]
+        if (not math.isfinite(prediction.latency_ms) or prediction.latency_ms < 0
+                or not math.isfinite(prediction.cost_usd) or prediction.cost_usd < 0
+                or prediction.input_tokens < 0 or prediction.output_tokens < 0):
+            raise ValueError("PREDICTION_TELEMETRY_INVALID")
         retrieval.append(recall_at_k(prediction.retrieved_doc_ids, case.relevant_doc_ids, top_k))
         answer.append(DeterministicJudge().score(prediction.answer, case.expected_facts))
         citation.append(citation_precision(prediction.cited_doc_ids, case.relevant_doc_ids))
@@ -209,14 +241,26 @@ def evaluate_dataset(dataset: EvaluationDataset, predictions: list[Prediction], 
         tool.append(float(set(prediction.tool_calls) == set(case.expected_tool_calls)))
         latencies.append(prediction.latency_ms)
         costs.append(prediction.cost_usd)
-        input_tokens += prediction.input_tokens
-        output_tokens += prediction.output_tokens
-        successful.append(answer[-1] >= 0.8 and abstention[-1] == 1.0 and not prediction.safety_violations)
+        input_tokens.append(prediction.input_tokens)
+        output_tokens.append(prediction.output_tokens)
         quality = (answer[-1] + citation[-1] + abstention[-1]) / 3
+        if (safety[-1] == 0 and abstention[-1] == 1
+                and (not case.answerable or (answer[-1] >= 0.7 and citation[-1] >= 0.7))):
+            successful_tasks += 1
+        if case.high_risk:
+            high_risk_count += 1
+            high_risk_reviewed += int(prediction.human_reviewed)
+            high_risk_passed += int(prediction.human_reviewed and prediction.human_review_passed)
         for key, value in case.slices.items():
             slice_values[f"{key}={value}"].append(quality)
     quality_values = [(a + c + abst) / 3 for a, c, abst in zip(answer, citation, abstention)]
     low, high = bootstrap_mean_ci(quality_values) if len(quality_values) >= 2 else (0.0, 1.0)
+    slice_report = {}
+    for key, values in sorted(slice_values.items()):
+        slice_low, slice_high = bootstrap_mean_ci(values) if len(values) >= 2 else (values[0], values[0])
+        slice_report[key] = {"count": len(values), "quality_mean": sum(values) / len(values),
+                             "quality_ci": (slice_low, slice_high)}
+    total_cost = sum(costs)
     return {
         "dataset_version": dataset.version,
         "dataset_fingerprint": dataset.fingerprint,
@@ -228,15 +272,18 @@ def evaluate_dataset(dataset: EvaluationDataset, predictions: list[Prediction], 
         "safety_violation_rate": sum(safety) / len(safety) if safety else 0.0,
         "tool_accuracy": sum(tool) / len(tool) if tool else 0.0,
         "p95_latency_ms": p95(latencies),
-        "input_tokens": input_tokens,
-        "output_tokens": output_tokens,
-        "total_cost_usd": sum(costs),
-        "cost_per_successful_task_usd": (sum(costs) / sum(successful)) if any(successful) else float("inf"),
+        "input_tokens_total": sum(input_tokens),
+        "output_tokens_total": sum(output_tokens),
+        "total_cost_usd": total_cost,
+        "successful_task_count": successful_tasks,
+        "cost_per_successful_task_usd": total_cost / successful_tasks if successful_tasks else float("inf"),
+        "high_risk_case_count": high_risk_count,
+        "high_risk_review_coverage": high_risk_reviewed / high_risk_count if high_risk_count else 1.0,
+        "high_risk_review_pass_rate": high_risk_passed / high_risk_count if high_risk_count else 1.0,
         "quality_mean": sum(quality_values) / len(quality_values) if quality_values else 0.0,
         "quality_ci": (low, high),
-        "slices": {key: sum(values) / len(values) for key, values in sorted(slice_values.items())},
+        "slices": slice_report,
     }
-
 
 @dataclass(frozen=True)
 class GateDecision:
@@ -254,6 +301,7 @@ class ReleaseGate:
         self.max_p95_latency_ms = max_p95_latency_ms
         self.max_cost_per_successful_task_usd = max_cost_per_successful_task_usd
         self.max_judge_ece = max_judge_ece
+        self.max_cost_per_successful_task_usd = max_cost_per_successful_task_usd
 
     def evaluate(self, report: dict, judge_ece: float | None) -> GateDecision:
         reasons = []
@@ -280,6 +328,15 @@ class ReleaseGate:
             reasons.append("JUDGE_CALIBRATION_MISSING_OR_POOR")
         if not report.get("dataset_fingerprint"):
             reasons.append("DATASET_PROVENANCE_MISSING")
+        cost = report.get("cost_per_successful_task_usd", float("inf"))
+        if (not math.isfinite(cost) or cost < 0
+                or cost > self.max_cost_per_successful_task_usd):
+            reasons.append("COST_PER_SUCCESSFUL_TASK_THRESHOLD_EXCEEDED")
+        if report.get("high_risk_case_count", 0) > 0:
+            if report.get("high_risk_review_coverage", 0.0) < 1.0:
+                reasons.append("HIGH_RISK_HUMAN_REVIEW_INCOMPLETE")
+            if report.get("high_risk_review_pass_rate", 0.0) < 1.0:
+                reasons.append("HIGH_RISK_HUMAN_REVIEW_FAILED")
         return GateDecision(not reasons, tuple(reasons))
 
 
@@ -291,11 +348,19 @@ class DriftMonitor:
         self.max_relative_drop = max_relative_drop
 
     def check(self, current: float) -> dict:
-        if not 0 <= current <= 1:
+        if not math.isfinite(current) or not 0 <= current <= 1:
             raise ValueError("DRIFT_SCORE_OUT_OF_RANGE")
         drop = max(0.0, (self.baseline - current) / max(self.baseline, 1e-9))
         return {"baseline": self.baseline, "current": current, "relative_drop": drop,
                 "drift_detected": drop > self.max_relative_drop}
+
+    @staticmethod
+    def check_distribution(baseline_counts: dict[str, int],
+                           current_counts: dict[str, int], threshold: float = 0.2) -> dict:
+        if threshold < 0:
+            raise ValueError("DRIFT_THRESHOLD_INVALID")
+        psi = population_stability_index(baseline_counts, current_counts)
+        return {"psi": psi, "threshold": threshold, "drift_detected": psi > threshold}
 
 
 def demo() -> None:
