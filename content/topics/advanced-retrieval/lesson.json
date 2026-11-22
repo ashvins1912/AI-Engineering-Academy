@@ -360,7 +360,7 @@
     {
       "language": "python",
       "path": "examples/stage-12/advanced_retrieval/retrieval_service.py",
-      "runCommand": "python -m unittest examples.stage-12.test_advanced_retrieval",
+      "runCommand": "python -m unittest discover -s examples/stage-12 -p 'test_advanced_retrieval.py' -v",
       "testsPath": "examples/stage-12/test_advanced_retrieval.py",
       "expectedResult": "Service boundary rejects client-controlled identity, invalid budgets and top-k while preserving trusted tenant isolation.",
       "role": "production"
