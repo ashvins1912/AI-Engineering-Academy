@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from hashlib import sha256
 import json
+import math
 import re
 from typing import Any
 
@@ -136,7 +137,7 @@ class RedTeamPolicy:
         return ToolDecision(True, "ALLOW")
 
     def check_budget(self, input_tokens: int, output_tokens: int, cost_usd: float) -> ToolDecision:
-        if input_tokens < 0 or output_tokens < 0 or cost_usd < 0:
+        if (input_tokens < 0 or output_tokens < 0 or not math.isfinite(cost_usd) or cost_usd < 0):
             return ToolDecision(False, "BUDGET_INPUT_INVALID")
         if input_tokens > self.max_input_tokens or output_tokens > self.max_output_tokens:
             return ToolDecision(False, "TOKEN_BUDGET_EXCEEDED")
@@ -173,14 +174,21 @@ class RedTeamRunner:
         if scenario.kind in {"direct_injection", "indirect_injection", "retrieval_poisoning"}:
             text = str(payload.get("text", ""))
             classification = classify_retrieved_content(text)
-            blocked = classification["trust"] == "untrusted-data" and not classification["may_grant_tool_authority"]
-            reason = "UNTRUSTED_INSTRUCTION_QUARANTINED" if blocked else "UNTRUSTED_CONTENT_ESCAPED"
+            blocked = bool(classification["instruction_like"]) and not classification["may_grant_tool_authority"]
+            reason = "UNTRUSTED_INSTRUCTION_QUARANTINED" if blocked else "BENIGN_UNTRUSTED_EVIDENCE"
             evidence = f"trust={classification['trust']}; instruction_like={classification['instruction_like']}"
         elif scenario.kind == "tool_authorization":
             principal_data = payload.get("principal", {})
             principal = Principal(principal_data.get("subject", ""),
                                   principal_data.get("tenant_id", ""),
                                   frozenset(principal_data.get("scopes", [])))
+            approval_data = payload.get("approval")
+            if approval_data:
+                self.policy.approvals[approval_data["approval_id"]] = Approval(
+                    approval_id=approval_data["approval_id"], subject=approval_data["subject"],
+                    tenant_id=approval_data["tenant_id"], request_digest=approval_data["request_digest"],
+                    expires_at=int(approval_data["expires_at"]), used=bool(approval_data.get("used", False)),
+                )
             decision = self.policy.authorize_tool(
                 principal, payload.get("tool", ""), payload.get("action", ""),
                 payload.get("resource_id", ""), payload.get("arguments", {}),
@@ -233,6 +241,8 @@ def evaluate_red_team_gate(scenarios: list[AttackScenario],
     expected = {scenario.scenario_id: scenario for scenario in scenarios}
     observed = {result.scenario_id: result for result in results}
     reasons = []
+    if len(observed) != len(results):
+        reasons.append("DUPLICATE_ATTACK_RESULT_ID")
     if set(expected) != set(observed):
         reasons.append("ATTACK_COVERAGE_MISMATCH")
     for scenario_id, scenario in expected.items():
