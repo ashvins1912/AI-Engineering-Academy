@@ -185,3 +185,5 @@ python -m unittest discover -s examples/stage-12 -p 'test_enterprise_governance.
 
 **Submission evidence:** Include a complete passing dossier, at least five blocked negative fixtures, reason-code output, approval/version matrix, risk register, retention/deletion evidence, audit-chain tamper test, architecture diagram and a production gap analysis.
 
+
+- [ ] Topic 8 governance evidence, approval expiry, retention, deletion and audit tampering tests pass before Topic 9.
