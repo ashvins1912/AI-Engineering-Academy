@@ -74,6 +74,17 @@ class ReleaseEvidenceTests(unittest.TestCase):
         result = validate_dossier(complete_dossier(artifacts=tuple(artifacts)), now=NOW)
         self.assertTrue(any("ARTIFACT_VERSION_MISMATCH" in reason for reason in result.reasons))
 
+    def test_missing_version_binding_blocks_release(self):
+        artifacts = list(complete_dossier().artifacts)
+        first = artifacts[0]
+        artifacts[0] = GovernanceArtifact(
+            first.artifact_id, first.artifact_type, first.version, first.owner,
+            first.source_ref, first.sha256_digest, first.created_at,
+            first.expires_at, {"model": "model-v3"},
+        )
+        result = validate_dossier(complete_dossier(artifacts=tuple(artifacts)), now=NOW)
+        self.assertTrue(any("ARTIFACT_VERSION_BINDING_INCOMPLETE" in reason for reason in result.reasons))
+
     def test_expired_artifact_and_missing_legal_review_block(self):
         artifacts = list(complete_dossier().artifacts)
         first = artifacts[0]
@@ -130,6 +141,11 @@ class DataLifecycleTests(unittest.TestCase):
         result = validate_dossier(complete_dossier(data_assets=(asset,)), now=NOW)
         self.assertIn("PERSONAL_DATA_CONSENT_MISSING:customer-data", result.reasons)
 
+    def test_personal_data_requires_provenance_even_when_consent_exists(self):
+        asset = DataAsset("customer-data", "restricted", True, True, 365, NOW - 10)
+        result = validate_dossier(complete_dossier(data_assets=(asset,)), now=NOW)
+        self.assertIn("PERSONAL_DATA_PROVENANCE_MISSING:customer-data", result.reasons)
+
     def test_expired_retention_requires_deletion(self):
         asset = DataAsset("old-data", "confidential", False, True, 30, NOW - 90 * 86400)
         result = validate_dossier(complete_dossier(data_assets=(asset,)), now=NOW)
@@ -141,7 +157,8 @@ class DataLifecycleTests(unittest.TestCase):
         result = validate_dossier(complete_dossier(data_assets=(pending,)), now=NOW)
         self.assertIn("DATA_DELETION_PENDING:delete-me", result.reasons)
         completed = DataAsset("delete-me", "restricted", True, True, 365, NOW - 10,
-                              deletion_requested_at=NOW - 2, deleted_at=NOW - 1)
+                              deletion_requested_at=NOW - 2, deleted_at=NOW - 1,
+                              provenance_ref="synthetic://consent/customer-data")
         self.assertTrue(validate_dossier(complete_dossier(data_assets=(completed,)), now=NOW).passed)
 
     def test_cross_border_transfer_requires_reviewed_mechanism(self):
