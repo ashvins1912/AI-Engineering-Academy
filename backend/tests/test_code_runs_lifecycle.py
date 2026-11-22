@@ -224,3 +224,132 @@ async def test_get_run_query_allows_tenant_admin_to_view_other_owner(monkeypatch
 
 async def _noop_tenant_context(_session, _tenant_id):
     return None
+
+
+@pytest.mark.asyncio
+async def test_stuck_submitting_replay_reuses_durable_run_id(monkeypatch):
+    import app.code_runs as module
+    from app.runner_provider import RunnerResult
+    from app.schemas import CodeRunCreate
+
+    principal = _principal()
+    key = uuid4()
+    source = "print('retry')"
+    existing = _run(
+        tenant_id=principal.tenant_id,
+        owner_id=principal.user_id,
+        idempotency_key=key,
+        source=source,
+        status="submitting",
+    )
+    session = FakeSession([existing])
+    monkeypatch.setattr(module, "set_tenant_context", _noop_tenant_context)
+    monkeypatch.setattr(module, "get_settings", lambda: Settings(_env_file=None, code_execution_enabled=True))
+    seen = {}
+
+    class Provider:
+        async def submit(self, run_id, submission):
+            seen["run_id"] = run_id
+            seen["source"] = submission.source
+            return RunnerResult(
+                provider_run_id=str(run_id), status="queued",
+            )
+
+    monkeypatch.setattr(module, "_provider_from_settings", lambda _settings: Provider())
+    result = await module.submit_code_run(
+        body=CodeRunCreate(runtime_id="python-3.11", lesson_id="python-basics", source=source),
+        idempotency_key=key,
+        principal=principal,
+        session=session,
+    )
+    assert seen == {"run_id": existing.id, "source": source}
+    assert result.id == existing.id
+    assert result.status == "queued"
+    assert session.commits == 1
+
+
+@pytest.mark.asyncio
+async def test_runner_unavailable_keeps_run_retryable_and_sanitizes_error(monkeypatch):
+    import app.code_runs as module
+    from app.runner_provider import RunnerUnavailable
+    from app.schemas import CodeRunCreate
+
+    principal = _principal()
+    session = FakeSession([None, 0, 0])
+    monkeypatch.setattr(module, "set_tenant_context", _noop_tenant_context)
+    monkeypatch.setattr(module, "get_settings", lambda: Settings(_env_file=None, code_execution_enabled=True))
+
+    class Provider:
+        async def submit(self, *_args, **_kwargs):
+            raise RunnerUnavailable("private upstream details")
+
+    monkeypatch.setattr(module, "_provider_from_settings", lambda _settings: Provider())
+    with pytest.raises(HTTPException) as error:
+        await module.submit_code_run(
+            body=CodeRunCreate(runtime_id="python-3.11", lesson_id="python-basics", source="print(2)"),
+            idempotency_key=uuid4(),
+            principal=principal,
+            session=session,
+        )
+    assert error.value.status_code == 503
+    run = session.added[0]
+    assert run.status == "submitting"
+    assert run.error_code == "runner_unavailable"
+    assert "private upstream" not in run.error_code
+    assert session.commits == 2
+
+
+@pytest.mark.asyncio
+async def test_runner_rejection_marks_run_failed_with_sanitized_code(monkeypatch):
+    import app.code_runs as module
+    from app.runner_provider import RunnerRejected
+    from app.schemas import CodeRunCreate
+
+    principal = _principal()
+    session = FakeSession([None, 0, 0])
+    monkeypatch.setattr(module, "set_tenant_context", _noop_tenant_context)
+    monkeypatch.setattr(module, "get_settings", lambda: Settings(_env_file=None, code_execution_enabled=True))
+
+    class Provider:
+        async def submit(self, *_args, **_kwargs):
+            raise RunnerRejected("do not expose runner response")
+
+    monkeypatch.setattr(module, "_provider_from_settings", lambda _settings: Provider())
+    with pytest.raises(HTTPException) as error:
+        await module.submit_code_run(
+            body=CodeRunCreate(runtime_id="python-3.11", lesson_id="python-basics", source="print(3)"),
+            idempotency_key=uuid4(),
+            principal=principal,
+            session=session,
+        )
+    assert error.value.status_code == 502
+    assert session.added[0].status == "failed"
+    assert session.added[0].error_code == "runner_rejected"
+
+
+@pytest.mark.asyncio
+async def test_runner_protocol_error_marks_run_failed_without_leaking_payload(monkeypatch):
+    import app.code_runs as module
+    from app.runner_provider import RunnerProtocolError
+    from app.schemas import CodeRunCreate
+
+    principal = _principal()
+    session = FakeSession([None, 0, 0])
+    monkeypatch.setattr(module, "set_tenant_context", _noop_tenant_context)
+    monkeypatch.setattr(module, "get_settings", lambda: Settings(_env_file=None, code_execution_enabled=True))
+
+    class Provider:
+        async def submit(self, *_args, **_kwargs):
+            raise RunnerProtocolError("sensitive malformed response")
+
+    monkeypatch.setattr(module, "_provider_from_settings", lambda _settings: Provider())
+    with pytest.raises(HTTPException) as error:
+        await module.submit_code_run(
+            body=CodeRunCreate(runtime_id="python-3.11", lesson_id="python-basics", source="print(4)"),
+            idempotency_key=uuid4(),
+            principal=principal,
+            session=session,
+        )
+    assert error.value.status_code == 502
+    assert session.added[0].status == "failed"
+    assert session.added[0].error_code == "runner_protocol_error"
