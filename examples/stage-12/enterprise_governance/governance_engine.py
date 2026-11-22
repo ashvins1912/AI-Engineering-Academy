@@ -81,6 +81,7 @@ class DataAsset:
     deleted_at: int | None = None
     cross_border_transfer: bool = False
     transfer_mechanism_approved: bool = False
+    provenance_ref: str | None = None
 
 
 @dataclass(frozen=True)
@@ -109,7 +110,8 @@ def _valid_digest(value: str) -> bool:
 def validate_dossier(dossier: GovernanceDossier, *, now: int) -> GateDecision:
     reasons: list[str] = []
     manifest = dossier.manifest
-    if not manifest.release_id or not manifest.model_version or not manifest.dataset_version:
+    if not all((manifest.release_id, manifest.model_version, manifest.dataset_version,
+                manifest.prompt_version, manifest.index_version)):
         reasons.append("RELEASE_MANIFEST_INCOMPLETE")
     if not _valid_digest(manifest.code_digest):
         reasons.append("RELEASE_CODE_DIGEST_INVALID")
@@ -138,6 +140,8 @@ def validate_dossier(dossier: GovernanceDossier, *, now: int) -> GateDecision:
             "prompt": manifest.prompt_version,
             "index": manifest.index_version,
         }
+        if set(artifact.bound_versions) != set(expected):
+            reasons.append(f"ARTIFACT_VERSION_BINDING_INCOMPLETE:{artifact.artifact_type}")
         for key, value in artifact.bound_versions.items():
             if key in expected and value != expected[key]:
                 reasons.append(f"ARTIFACT_VERSION_MISMATCH:{artifact.artifact_type}:{key}")
@@ -148,6 +152,8 @@ def validate_dossier(dossier: GovernanceDossier, *, now: int) -> GateDecision:
     for approval in dossier.approvals:
         approvals_by_type.setdefault(approval.artifact_type, []).append(approval)
         artifact = artifacts_by_type.get(approval.artifact_type)
+        if not approval.reviewer:
+            reasons.append(f"APPROVAL_REVIEWER_MISSING:{approval.artifact_type}")
         if artifact is None or artifact.version != approval.artifact_version:
             reasons.append(f"APPROVAL_ARTIFACT_BINDING_MISMATCH:{approval.artifact_type}")
         if approval.decision != "approved":
@@ -197,6 +203,12 @@ def validate_dossier(dossier: GovernanceDossier, *, now: int) -> GateDecision:
             reasons.append(f"DATA_LIFECYCLE_POLICY_INVALID:{asset.asset_id}")
         if asset.contains_personal_data and not asset.consent_recorded:
             reasons.append(f"PERSONAL_DATA_CONSENT_MISSING:{asset.asset_id}")
+        if asset.contains_personal_data and not asset.provenance_ref:
+            reasons.append(f"PERSONAL_DATA_PROVENANCE_MISSING:{asset.asset_id}")
+        if asset.deletion_requested_at is not None and asset.deletion_requested_at > now:
+            reasons.append(f"DATA_DELETION_REQUEST_IN_FUTURE:{asset.asset_id}")
+        if asset.deleted_at is not None and asset.deleted_at > now:
+            reasons.append(f"DATA_DELETION_TIMESTAMP_IN_FUTURE:{asset.asset_id}")
         if asset.deletion_requested_at is not None:
             if asset.deleted_at is None or asset.deleted_at < asset.deletion_requested_at:
                 reasons.append(f"DATA_DELETION_PENDING:{asset.asset_id}")
