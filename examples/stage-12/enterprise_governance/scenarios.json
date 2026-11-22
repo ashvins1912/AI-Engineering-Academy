@@ -1,0 +1,25 @@
+{
+  "version": "stage12-governance-v1",
+  "description": "Synthetic governance release dossier and lifecycle failure cases.",
+  "requiredEvidence": [
+    "model_card", "dataset_card", "risk_assessment", "privacy_review",
+    "security_review", "evaluation_report", "retention_schedule", "third_party_inventory"
+  ],
+  "releaseVersions": {
+    "model": "model-v3",
+    "dataset": "dataset-v4",
+    "prompt": "prompt-v2",
+    "index": "index-v5"
+  },
+  "failureCases": [
+    {"id":"missing-model-card","trigger":"release dossier omits model card","expected":"block release"},
+    {"id":"stale-approval","trigger":"privacy approval has expired","expected":"block release"},
+    {"id":"version-mismatch","trigger":"evaluation report refers to previous model version","expected":"block release"},
+    {"id":"unowned-critical-risk","trigger":"critical risk has no mitigation, test or owner","expected":"block release"},
+    {"id":"personal-data-consent","trigger":"personal data lacks consent/provenance record","expected":"block release"},
+    {"id":"retention-expiry","trigger":"retention period elapsed without deletion evidence","expected":"block release"},
+    {"id":"cross-border-transfer","trigger":"transfer has no reviewed mechanism","expected":"block release"},
+    {"id":"audit-tampering","trigger":"audit event payload changes after append","expected":"integrity verification fails"},
+    {"id":"lifecycle-bypass","trigger":"draft attempts direct release","expected":"reject transition"}
+  ]
+}
