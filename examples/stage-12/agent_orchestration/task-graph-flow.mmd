@@ -1,0 +1,14 @@
+flowchart TD
+    A[Typed task request] --> B{Plan valid?}
+    B -->|No| X[Reject duplicate, missing edge or cycle]
+    B -->|Yes| C[Dependency-ready queue]
+    C --> D[Bounded worker pool]
+    D --> E[Registered operation]
+    E --> F[Idempotency ledger]
+    F --> G[Atomic checkpoint]
+    G --> H{All dependencies complete?}
+    H -->|Yes| C
+    H -->|No, failure| I[Stop new dispatch]
+    I --> J[Block dependents]
+    J --> K[Compensate in reverse order]
+    K --> L[Audited failed outcome]

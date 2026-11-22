@@ -283,8 +283,15 @@ const lessonOverrides: Record<string, Partial<Lesson>> = {
     intuition: 'RAG evaluation separates retrieval quality from answer quality. Retrieval metrics assess whether useful evidence was found and ranked; generation metrics assess whether the answer is correct, supported, cited and appropriately withheld.',
     workedExample: 'If relevant documents appear at ranks 1 and 3 in a top-3 list, Recall@3 is 1 when both gold documents were found, Precision@3 is 2/3, and reciprocal rank is 1 because the first relevant result is at rank 1. NDCG additionally rewards placing relevant items near the top.',
     workflow: ['Build a versioned golden dataset with answerable and unanswerable questions', 'Annotate relevant source IDs, expected facts and citation spans', 'Measure Recall@K, Precision@K, MRR and NDCG for retrievers', 'Measure answer correctness, faithfulness, citation precision and abstention', 'Track p50/p95 latency, token usage, cost and failure rates', 'Slice results by source type, language, tenant, freshness and query difficulty']
-  }
-
+  },
+  'agent-orchestration': {
+    intuition: 'An agent can propose a plan, but a deterministic orchestrator validates and executes typed task data. Model the work as a DAG: a directed edge A→B means B cannot start until A completes. The scheduler dispatches only dependency-ready tasks and never exceeds its worker, queue, deadline or retry budgets. Durable checkpoints preserve completed results; destination-native idempotency protects side effects when acknowledgements are lost. Compensation is an explicit new business action, not a time-travel rollback.',
+    workedExample: 'A research workflow has collect; draft depends on collect; review depends on collect; publish depends on draft and review. With max_workers=2, collect runs first, draft and review may run together, and publish waits for both. With retry_limit=1, each task gets at most two attempts. If review fails permanently after draft completes, publish is blocked and completed compensatable actions are reversed in completion order.',
+    workflow: ['Translate the objective into typed task records with stable IDs, registered operation names, payload schemas and dependency edges', 'Validate unique IDs, known dependencies, no self-edge, no cycles and allowed operation names before dispatch', 'Compute dependency-ready tasks and submit only up to the configured worker and queue limits', 'Propagate deadlines and cancellation; classify transient, permanent and ambiguous failures', 'Bind every side effect to a stable idempotency key and canonical payload digest at the destination', 'Persist task transitions, attempts, results and audit correlation; resume by reconciling interrupted work', 'On terminal failure, stop new dispatch, block dependents and run explicit compensations in reverse completion order'],
+    exercises: ['Draw the four-node collect/draft/review/publish DAG and calculate the maximum active worker count', 'Create duplicate IDs, a missing dependency and a cycle; prove all are rejected before any operation runs', 'Inject one transient failure and prove total attempts do not exceed one plus retry_limit', 'Restart with a persisted journal and prove completed tasks are skipped and their original results reused', 'Replay the same idempotency key with identical and changed payloads; prove replay succeeds and payload mismatch is denied', 'Fail a dependent task and prove compensations run in reverse completion order'],
+    assessment: 'Pass when the learner can defend the workflow-versus-agent boundary, validate a DAG, demonstrate bounded concurrency, recover from a checkpoint, prevent duplicate side effects with destination idempotency, and explain compensation and distributed transaction limitations.',
+    productionNote: 'The local reference journal is educational only. Production requires durable shared state, destination-native idempotency, transactional outbox/inbox, lease ownership and fencing, bounded retries/deadlines, reconciliation for ambiguous outcomes, per-tenant fairness, audit retention and human escalation for failed compensation.'
+  },
 }
 
 
@@ -433,6 +440,11 @@ const curriculumSeed: Stage[] = [
    lesson('capstone-design','Architecture and threat model','Requirements, boundaries, ADRs, tenancy, protocols and failure modes.','Produce architecture and threat model'),
    lesson('capstone-build','Build RAG and agent services','Ingestion, hybrid retrieval, visual evidence, MCP tools and A2A specialist agents.','Implement the platform vertical slice'),
    lesson('capstone-delivery','Deploy and operate','CI/CD, observability, evaluation gates, rollout, rollback and cost controls.','Deploy and demonstrate production readiness')
+  ]}
+ ]},
+ {id:'stage-12',title:'Advanced AI Engineering & Production Mastery',outcome:'Engineer durable, interoperable, measurable and secure AI systems under realistic production constraints.',modules:[
+  {id:'agent-orchestration',title:'Advanced agent orchestration',description:'Coordinate multi-step and multi-agent work with bounded execution, durable state and recovery.',lessons:[
+   lesson('agent-orchestration','Advanced Agent Orchestration and Durable Execution','Task DAGs, supervisor/worker patterns, dependency scheduling, bounded concurrency, checkpoints, idempotency, retries, compensation, cancellation and recovery.','Build a durable task coordinator with failure injection')
   ]}
  ]}
 ]

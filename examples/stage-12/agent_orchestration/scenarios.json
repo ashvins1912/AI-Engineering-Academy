@@ -1,0 +1,16 @@
+{
+  "scenario": "A research assistant collects sources, drafts a report, runs an independent policy review, then publishes only after both branches complete.",
+  "tasks": [
+    {"id":"collect","dependsOn":[],"operation":"collect_sources","status":"pending"},
+    {"id":"draft","dependsOn":["collect"],"operation":"draft_report","status":"pending"},
+    {"id":"review","dependsOn":["collect"],"operation":"policy_review","status":"pending"},
+    {"id":"publish","dependsOn":["draft","review"],"operation":"publish_report","status":"pending"}
+  ],
+  "controls": {"maxWorkers":2,"retryLimit":1,"checkpointAfterEveryTransition":true},
+  "failureInjection": [
+    {"name":"cycle","change":"make collect depend on publish","expected":"DEPENDENCY_CYCLE"},
+    {"name":"worker-timeout","change":"fail draft once","expected":"bounded retry then completion"},
+    {"name":"policy-rejection","change":"fail review permanently","expected":"publish blocked and compensations reversed"},
+    {"name":"replay","change":"rerun completed plan with same journal","expected":"no duplicate operation"}
+  ]
+}
