@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "tenant": "tenant-practicum-A",
+  "release": "stage12-practicum-v1",
+  "required_capabilities": [
+    "agent_orchestration",
+    "protocol_interop",
+    "advanced_retrieval",
+    "evaluation_scale",
+    "ai_red_team",
+    "inference_simulator",
+    "capacity_sweep",
+    "multimodal_systems",
+    "enterprise_governance",
+    "stage11_capstone"
+  ],
+  "negative_cases": [
+    {"id":"missing-evaluation","mutation":"remove evaluation_scale evidence","expected":"REQUIRED_CAPABILITY_MISSING"},
+    {"id":"cross-tenant","mutation":"replace one evidence tenant with tenant-attacker","expected":"EVIDENCE_TENANT_MISMATCH"},
+    {"id":"stale-version","mutation":"bind one evidence record to an older release","expected":"EVIDENCE_VERSION_MISMATCH"},
+    {"id":"critical-finding","mutation":"add unresolved critical red-team finding","expected":"UNRESOLVED_CRITICAL_FINDING"},
+    {"id":"failed-demo","mutation":"mark multimodal demo as failed","expected":"CAPABILITY_FAILED"}
+  ]
+}
