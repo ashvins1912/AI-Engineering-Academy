@@ -24,6 +24,7 @@ from .security import Principal, current_principal, require_admin
 from .middleware import PostgresRateLimitMiddleware
 from .request_limits import RequestBodyLimitMiddleware
 from .jobs import cancel_queued_job, mark_raw_object_deleted, replay_dead_job
+from .code_runs import router as code_runs_router
 
 cfg = get_settings()
 logger = logging.getLogger('academy.api')
@@ -33,7 +34,8 @@ async def lifespan(app: FastAPI):
     yield
     await engine.dispose()
 
-app = FastAPI(title="AI Engineering Academy Ingestion API", version="0.2.0", lifespan=lifespan)
+app = FastAPI(title="AI Engineering Academy Ingestion API", version="0.3.0", lifespan=lifespan)
+app.include_router(code_runs_router)
 origins = [origin.strip() for origin in cfg.cors_origins.split(",") if origin.strip()]
 app.add_middleware(PostgresRateLimitMiddleware)
 app.add_middleware(RequestBodyLimitMiddleware)
