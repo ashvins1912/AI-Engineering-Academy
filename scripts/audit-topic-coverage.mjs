@@ -73,6 +73,8 @@ const missingFoundationLabs = requiredFoundationLabs.filter(id => !foundationLab
 if(missingFoundationLabs.length) { console.error('FAIL missing Stage 1 numerical/data simulators: ' + missingFoundationLabs.join(', ')); process.exit(1) }
 
 const specialistRouter = read('src/components/TopicSpecialistLab.tsx')
+const productionLab = read('src/components/ProductionTopicLab.tsx')
+const capstoneLab = read('src/components/CapstoneTopicLab.tsx')
 const requiredStageRoutes = [
   [6, ['agent-loop','planning','memory','state','human-loop','patterns','langgraph','frameworks','agent-eval']],
   [7, ['mcp-architecture','mcp-primitives','mcp-advanced','mcp-transport','mcp-security','a2a','ibm-acp','client-acp','tooling']],
@@ -83,6 +85,11 @@ const requiredStageRoutes = [
   [12, ['agent-orchestration','protocol-interop','advanced-retrieval','evaluation-scale','ai-red-team','inference-performance','multimodal-systems','enterprise-governance','advanced-practicum']]
 ]
 if(!studio.includes("stage === 2 && <Stage2MasteryLabs initialTopic={topicId}/>") || !studio.includes("stage === 3 && <Stage3MasteryLabs initialTopic={topicId}/>") || !studio.includes("stage === 4 && <Stage4MasteryLabs initialTopic={stage4Topic}/>") || !studio.includes("stage === 5 && <Stage5MasteryLabs initialTopic={topicId}/>") || !studio.includes('<TopicSpecialistLab stage={stage} topicId={topicId}/>')) { console.error('FAIL stage 2–8 lesson lab routing is incomplete'); process.exit(1) }
+const requiredProductionTopics = ['kubernetes','serving','rollouts','prompt-injection','tool-security','tenant-security','supply-chain','tracing','slos','cost','incidents']
+const requiredCapstoneTopics = [[11,['capstone-design','capstone-build','capstone-delivery']],[12,['agent-orchestration','protocol-interop','advanced-retrieval','evaluation-scale','ai-red-team','inference-performance','multimodal-systems','enterprise-governance','advanced-practicum']]]
+const missingProduction = requiredProductionTopics.filter(id => !productionLab.includes("topicId==='" + id + "'"))
+const missingCapstone = requiredCapstoneTopics.flatMap(([stage,ids]) => ids.filter(id => !capstoneLab.includes('stage===' + stage + "&&topicId==='" + id + "'")).map(id => 'stage ' + stage + ': ' + id))
+if(missingProduction.length || missingCapstone.length) { console.error('FAIL production/capstone topic simulators missing: ' + [...missingProduction,...missingCapstone].join(', ')); process.exit(1) }
 const missingRoutes = requiredStageRoutes.flatMap(([stage, ids]) => ids.filter(id => !specialistRouter.includes("'" + id + "'")).map(id => 'stage ' + stage + ': ' + id))
 if(missingRoutes.length) { console.error('FAIL missing specialist lesson routes: ' + missingRoutes.join(', ')); process.exit(1) }
 
