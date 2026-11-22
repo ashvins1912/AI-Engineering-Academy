@@ -467,10 +467,10 @@
       {
         "question": "Which metric measures word-level ASR recognition errors?",
         "options": [
-          "CER",
-          "WER",
-          "Recall@K",
-          "NDCG"
+          "Character error rate (CER)",
+          "Word error rate (WER)",
+          "Recall at K",
+          "Normalized discounted cumulative gain (NDCG)"
         ],
         "correctIndex": 1,
         "explanation": "WER measures word insertions, deletions and substitutions. It does not alone measure semantic or factual correctness."
