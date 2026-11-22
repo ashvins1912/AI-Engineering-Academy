@@ -101,6 +101,11 @@ class TaskCoordinator:
         if existing.get("status") == "completed":
             return task.task_id, existing.get("result"), None
         attempts = int(existing.get("attempts", 0))
+        if existing.get("status") == "running":
+            # Recover an interrupted attempt; destination idempotency is still
+            # required for any external side effect that may already have committed.
+            attempts = max(0, attempts - 1)
+            self.journal.update_task(task.task_id, status="pending", attempts=attempts)
         while attempts <= task.retry_limit:
             attempts += 1
             self.journal.update_task(task.task_id, status="running", attempts=attempts, last_error=None)
@@ -122,7 +127,8 @@ class TaskCoordinator:
 
     def _compensate(self, completed: list[str]) -> list[str]:
         compensated = []
-        for task_id in reversed(completed):
+        ordered = sorted(completed, key=lambda item: self.journal.task(item).get("completed_at", 0))
+        for task_id in reversed(ordered):
             task = self.tasks[task_id]
             if not task.compensation:
                 continue
