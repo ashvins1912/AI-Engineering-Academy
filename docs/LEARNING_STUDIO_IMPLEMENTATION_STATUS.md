@@ -33,6 +33,6 @@ The coverage command reports remaining content-artifact gaps rather than fabrica
 - The first implementation commit passed the full repository CI run, including TypeScript, build, Python examples and backend tests.
 - The numerical foundation-lab and Stage 2–5 integration commits passed CI runs for TypeScript/build and repository checks.
 - Stage 6–9 specialist routing passed TypeScript and production-build checks; Stage 10–12 lab commits also passed TypeScript/build checks in their latest observed runs.
-- The latest full CI run for the updated router/coverage audit is still in progress; verify its final result before merging.
+- Full CI run **45029744965** completed successfully on the commit containing the Stage 1–12 route audit and production/capstone simulator checks: topic coverage audit, TypeScript typecheck, production build, Python examples for all 12 stages, and backend tests including PostgreSQL RLS integration all passed.
 - Browser interaction, mobile and manual accessibility testing have not yet been performed.
 - Do not merge until CI is green and any failures are resolved.
