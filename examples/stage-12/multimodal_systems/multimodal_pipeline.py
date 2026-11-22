@@ -220,7 +220,7 @@ class MultimodalPipeline:
         ranked = [item for _, _, _, item in sorted(scored, key=lambda row: (-row[0], -row[1], row[2]))[:top_k]]
         citations = tuple(Citation(item.evidence_id, item.asset_id, item.modality, item.source_ref,
                                    item.page, item.bbox, item.start_ms, item.end_ms,
-                                   item.speaker, item.confidence) for item in ranked)
+                                   item.speaker, item.confidence, item.asset_version) for item in ranked)
         context = "\n".join(f"[{item.evidence_id} | {item.modality}] {item.text}" for item in ranked)
         return RetrievalResult(tuple(ranked), citations, context, not bool(ranked))
 
