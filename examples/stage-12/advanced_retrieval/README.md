@@ -4,6 +4,7 @@
 
 ```bash
 python examples/stage-12/advanced_retrieval/retrieval_engine.py
+python examples/stage-12/advanced_retrieval/benchmark.py
 python -m unittest discover -s examples/stage-12 -p 'test_*.py' -v
 ```
 
