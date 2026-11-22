@@ -160,7 +160,7 @@ Run all exercises locally with synthetic fixtures. The Academy service does not 
 - [ ] Topic 7 OCR/audio/video provenance, alignment, confidence, ACL and retention tests pass before Topic 8.
 
 
-## Topic 8 — Enterprise AI Governance, Risk and Lifecycle Controls
+## enterprise-governance — Enterprise AI Governance, Risk and Lifecycle Controls
 
 **Implementation task:** Build a version-bound release dossier that binds code, model, dataset, prompt and retrieval-index versions to model/dataset cards, risk assessment, privacy/security reviews, evaluation evidence, retention schedule and third-party inventory. Validate artifact digests, ownership, expiry, approval role, decision and version binding before promotion.
 
