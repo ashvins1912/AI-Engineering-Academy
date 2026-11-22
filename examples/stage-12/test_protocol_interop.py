@@ -133,8 +133,10 @@ class ACPContractTests(unittest.TestCase):
             client.client_file_read("/workspace/a.txt", {"/workspace/a.txt": "safe"})
         with self.assertRaisesRegex(ProtocolError, "ACP_TERMINAL_NOT_ADVERTISED"):
             client.request_terminal_permission(True)
+        terminal_client = AgentClientSession()
+        terminal_client.initialize(1, ACP_VERSION, {"terminal": True})
         with self.assertRaisesRegex(ProtocolError, "ACP_PERMISSION_DENIED"):
-            AgentClientSession().request_terminal_permission(False)
+            terminal_client.request_terminal_permission(False)
 
     def test_workspace_boundary_and_cancellation(self):
         client = AgentClientSession()
