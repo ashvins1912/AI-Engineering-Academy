@@ -98,7 +98,7 @@
     "successMetric": "All valid synthetic dossiers pass; each missing, expired, mismatched or unauthorized evidence fixture is rejected."
   },
   "architecture": {
-    "diagram": "docs/roadmaps/stage-12-advanced-ai-engineering.md#topic-8",
+    "diagram": "examples/stage-12/enterprise_governance/governance-flow.mmd",
     "components": [
       "Release manifest registry",
       "Evidence and artifact registry",
