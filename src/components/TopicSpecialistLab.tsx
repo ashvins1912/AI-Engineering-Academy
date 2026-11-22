@@ -56,6 +56,9 @@ import CICDVisualizer from './CICDVisualizer'
 import CICDLessonDetails from './CICDLessonDetails'
 import IaCVisualizer from './IaCVisualizer'
 import IaCLessonDetails from './IaCLessonDetails'
+import ProductionLabs from './ProductionLabs'
+import ArchitectureFlow from './ArchitectureFlow'
+import AgenticInterviewStudio from './AgenticInterviewStudio'
 
 type Props = { stage:number; topicId:string }
 
@@ -106,5 +109,8 @@ export default function TopicSpecialistLab({stage,topicId}:Props) {
       case 'infra': return <><IaCVisualizer/><IaCLessonDetails/></>
     }
   }
+  if(stage===10 && ['prompt-injection','tool-security','tenant-security','supply-chain','tracing','slos','cost','incidents'].includes(topicId)) return <ProductionLabs/>
+  if(stage===11 && ['capstone-design','capstone-build','capstone-delivery'].includes(topicId)) return <ArchitectureFlow/>
+  if(stage===12 && ['agent-orchestration','protocol-interop','advanced-retrieval','evaluation-scale','ai-red-team','inference-performance','multimodal-systems','enterprise-governance','advanced-practicum'].includes(topicId)) return <AgenticInterviewStudio/>
   return null
 }
