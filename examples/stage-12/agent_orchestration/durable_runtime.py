@@ -31,6 +31,7 @@ class ExecutionJournal:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
+        self._key_locks: dict[str, threading.Lock] = {}
         if self.path.exists():
             self.data = json.loads(self.path.read_text(encoding="utf-8"))
             if self.data.get("version") != 1:
@@ -67,15 +68,21 @@ class ExecutionJournal:
             raise ValueError("IDEMPOTENCY_KEY_REQUIRED")
         digest = sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
         with self._lock:
-            previous = self.data["idempotency"].get(key)
-            if previous:
-                if previous["digest"] != digest:
-                    raise ValueError("IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_PAYLOAD")
-                return previous["result"], False
+            key_lock = self._key_locks.setdefault(key, threading.Lock())
+        # Different keys execute concurrently; the same key is serialized so a
+        # duplicate delivery cannot run the operation twice in this process.
+        with key_lock:
+            with self._lock:
+                previous = self.data["idempotency"].get(key)
+                if previous:
+                    if previous["digest"] != digest:
+                        raise ValueError("IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_PAYLOAD")
+                    return previous["result"], False
             result = operation()
             # Persist the result before returning it to the task coordinator.
-            self.data["idempotency"][key] = {"digest": digest, "result": result}
-            self._save()
+            with self._lock:
+                self.data["idempotency"][key] = {"digest": digest, "result": result}
+                self._save()
             return result, True
 
 
@@ -156,7 +163,7 @@ class TaskCoordinator:
                     ready = []
                     for task_id, task in self.tasks.items():
                         state = self.journal.task(task_id).get("status")
-                        if state in {"completed", "compensated", "blocked", "failed", "running"}:
+                        if task_id in in_flight.values() or state in {"completed", "compensated", "blocked", "failed", "running"}:
                             continue
                         if all(self.journal.task(dep).get("status") == "completed" for dep in task.dependencies):
                             ready.append(task)
