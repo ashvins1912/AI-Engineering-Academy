@@ -65,6 +65,7 @@ jobs:
       - run: python examples/stage-12/protocol_interop/protocol_lab.py
       - run: python examples/stage-12/advanced_retrieval/retrieval_engine.py
       - run: python examples/stage-12/evaluation_scale/evaluation_engine.py
+      - run: python examples/stage-12/red_team/red_team_engine.py
       - run: python examples/stage-11/capstone-design/architecture_gate.py
       - run: python examples/stage-11/capstone-build/capstone_app.py
       - run: python examples/stage-11/capstone-delivery/release_gate.py
