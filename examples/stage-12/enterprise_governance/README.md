@@ -25,10 +25,11 @@ A release binds code, model, dataset, prompt and index versions to evidence:
 - Release lifecycle transitions are explicit: draft → review → approved → released → retired, with reject/withdraw/suspend paths.
 - High/critical risks require an owner, mitigation and test evidence; accepted residual risk also requires an acceptance owner.
 - High-risk systems require a separate human-oversight approval.
-- Personal data requires a consent/provenance record.
+- Personal data requires both a consent record and an explicit provenance reference.
+- Every evidence artifact must bind all four candidate dimensions: model, dataset, prompt and index versions.
 - Expired retention, pending deletion and unreviewed cross-border transfers block the dossier.
 - The audit ledger demonstrates hash-chain tamper evidence.
 
 ## Important limitations
 
-Approval signatures are represented by a boolean fixture, not real cryptographic verification. The in-memory audit chain is not tamper-proof against an attacker who can rewrite the whole store. Production needs authenticated identities, signed approvals, durable append-only/WORM audit, policy versioning, deletion proofs, access-controlled evidence, data lineage and jurisdiction-specific legal/privacy review. This is engineering guidance, not legal advice or a compliance certification.
+Approval signatures are represented by a boolean fixture, not real cryptographic verification. The in-memory audit chain is not tamper-proof against an attacker who can rewrite the whole store. Missing model/dataset/prompt/index bindings and missing personal-data provenance are rejected. Production needs authenticated identities, signed approvals, durable append-only/WORM audit, policy versioning, deletion proofs, access-controlled evidence, data lineage and jurisdiction-specific legal/privacy review. This is engineering guidance, not legal advice or a compliance certification.
