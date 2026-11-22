@@ -4,6 +4,7 @@
 
 ```bash
 python examples/stage-12/inference_performance/inference_simulator.py
+python examples/stage-12/inference_performance/capacity_sweep.py
 python -m unittest discover -s examples/stage-12 -p 'test_inference_performance.py' -v
 ```
 
