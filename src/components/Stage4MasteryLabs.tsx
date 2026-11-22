@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 type Id='tokenization'|'embeddings'|'attention'|'masking'|'multihead'|'block'|'decoding'|'engineering'
 type Topic={id:Id;label:string;title:string;question:string;options:string[];answer:number;explanation:string;evidence:string[]}
@@ -14,8 +14,9 @@ const topics:Topic[]=[
 ]
 const softmax=(xs:number[])=>{const m=Math.max(...xs),e=xs.map(x=>Math.exp(x-m)),s=e.reduce((a,b)=>a+b,0);return e.map(x=>x/s)}
 const dot=(a:number[],b:number[])=>a.reduce((s,x,i)=>s+x*b[i],0)
-export default function Stage4MasteryLabs(){
- const [active,setActive]=useState<Id>('tokenization')
+export default function Stage4MasteryLabs({initialTopic='tokenization'}:{initialTopic?:string}){
+ const [active,setActive]=useState<Id>(()=>topics.some(t=>t.id===initialTopic)?initialTopic as Id:'tokenization')
+ useEffect(()=>{if(topics.some(t=>t.id===initialTopic))setActive(initialTopic as Id)},[initialTopic])
  const [answers,setAnswers]=useState<Record<string,number>>({})
  const [checked,setChecked]=useState<Record<string,boolean>>({})
  const [evidence,setEvidence]=useState<Record<string,string[]>>({})
