@@ -49,6 +49,11 @@ class Settings(BaseSettings):
     ingestion_raw_object_retention_days: int = 30
     ingestion_cleanup_batch_size: int = 100
     ingestion_cleanup_lease_seconds: int = 300
+    code_execution_enabled: bool = False
+    code_runner_url: str = ""
+    code_runner_token: str = ""
+    code_run_max_per_hour: int = 10
+    code_run_max_per_day: int = 30
 
 @lru_cache
 def get_settings() -> Settings:
