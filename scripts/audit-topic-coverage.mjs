@@ -28,10 +28,10 @@ const labPack = stage => {
   return existsSync(path) ? readFileSync(path,'utf8') : ''
 }
 const requiredLabSections = ['**Implementation task:**','**Worked fixture:**','**Expected result:**','**Verification tests:**','**Debugging checklist:**','**Interview checks:**','**Submission evidence:**']
-const practiceSpec = id => practice.includes("'" + id + "': {") || practice.includes(id + ': {')\n)\\s*(?:'"+id.replace(/[.*+?^${}()|[\\]\\\\]/g,'\\$&')+"'|"+id.replace(/[.*+?^${}()|[\\]\\\\]/g,'\\$&')+")\\s*:\\s*\\{").test(practice)
+const practiceSpec = id => practice.includes("'" + id + "': {") || practice.includes(id + ': {')
 const rows = lessons.map(topic => {
   const pack = labPack(topic.stage)
-  const section = pack.split(/\\n(?=## [\\w-]+ — )/).find(block => block.startsWith('## ' + topic.id + ' —')) ?? ''
+  const section = pack.split(/\n(?=## [\w-]+ — )/).find(block => block.startsWith('## ' + topic.id + ' —')) ?? ''
   const content = existsSync(new URL('content/topics/' + topic.id + '/lesson.json', root))
   const studioWired = app.includes("import TopicLearningStudio from './components/TopicLearningStudio'") && app.includes('<TopicLearningStudio lesson={selectedLesson}/>')
   const workflow = curriculum.slice(curriculum.indexOf("lesson('" + topic.id + "'"), curriculum.indexOf("lesson('" + topic.id + "'") + 5000)
