@@ -277,6 +277,72 @@ python -m unittest discover -s examples/stage-12 -p 'test_*.py' -v
 
 The deterministic harness covers injection, poisoning, cross-tenant access, tool policy, approval/idempotency, canary redaction, budget exhaustion, artifact digest/source/signature/provenance and remediation coverage.
 
+## Topic 6 — Inference Performance and Capacity Engineering
+
+### 1. Separate prefill from decode
+
+Prefill processes the input prompt and builds attention state; decode generates output tokens autoregressively. Time to first token (TTFT) includes queue wait plus prefill. Inter-token latency and output throughput describe decode. Report these separately: one average latency hides whether users wait before the first token or between generated tokens.
+
+### 2. Estimate KV-cache memory
+
+For a simplified decoder-only model:
+
+`KV bytes = 2 × layers × KV heads × head dimension × bytes/value × sequence tokens × concurrent sequences`
+
+The factor 2 stores keys and values. For 32 layers, 8 KV heads, head dimension 128 and FP16 values (2 bytes), one token needs 128 KiB. A 4,096-token sequence therefore needs about 512 MiB of KV cache; two concurrent sequences need about 1 GiB before weights, activations, fragmentation, runtime buffers and other overhead.
+
+Real capacity depends on GQA/MQA, cache layout, paged allocation, tensor parallelism, quantization metadata and serving engine. The formula is an estimate, not a device memory guarantee.
+
+### 3. Schedule bounded work
+
+Batching improves utilization but changes queue wait and fairness. Static batches wait for the slowest sequence; continuous batching admits and retires sequences dynamically. A safe scheduler bounds queue depth, batch size, context length, active KV memory, per-tenant concurrency and deadlines. Reject or defer work before allocation when budgets are exceeded. Bound retries to prevent retry storms.
+
+### 4. Understand optimization trade-offs
+
+- **Prefix caching:** avoids repeated prefill for common prefixes; keys must include tenant, model and prompt version.
+- **Paged attention:** manages KV blocks to reduce fragmentation; it does not eliminate the underlying KV memory requirement.
+- **Quantization:** reduces weight or KV storage and may improve bandwidth, but must be evaluated for task quality and numerical stability.
+- **Speculative decoding:** a draft model proposes tokens and a target verifies them; speedup depends on acceptance and verification overhead.
+- **Load shedding:** reject work predictably when queue, memory or deadline budgets are exhausted.
+
+### 5. Capacity experiments
+
+Sweep prompt/output lengths, arrival rate, concurrency, batch size, queue capacity, precision and prefix-cache hit rate. Report TTFT, inter-token latency, p50/p95, throughput, queue wait, rejected requests, KV memory and quality deltas. A throughput improvement that breaches quality or tail-latency SLOs is not an optimization.
+
+### Implementation lab
+
+Run:
+
+```bash
+python examples/stage-12/inference_performance/inference_simulator.py
+python examples/stage-12/inference_performance/capacity_sweep.py
+python -m unittest discover -s examples/stage-12 -p 'test_inference_performance.py' -v
+```
+
+The simulator is hardware-independent. It demonstrates KV arithmetic, prefill/decode latency, tenant-scoped prefix cache, quantization assumptions, speculative acceptance, bounded queue/batch admission and overload rejection. It does not allocate GPU memory or load model weights.
+
+### Production hardening checklist
+
+- Benchmark the exact model, tokenizer, engine, kernels, hardware and workload distribution.
+- Include weights, activations, runtime buffers, allocator fragmentation and KV cache in memory headroom.
+- Measure TTFT and inter-token latency separately, including p95/p99.
+- Use continuous batching with bounded queue, context, concurrency and per-tenant fairness.
+- Partition prefix caches by tenant and model/prompt version.
+- Validate quantization and speculative decoding against held-out task quality and safety.
+- Define admission, load-shedding, deadline and retry policies before overload.
+- Compare simulator estimates with measured production telemetry before capacity decisions.
+
+### Mastery defense
+
+1. Why are TTFT and inter-token latency different?
+2. Derive KV memory for a model with given layers, KV heads, head dimension, precision and sequence length.
+3. What memory is missing from a KV-only estimate?
+4. How does continuous batching differ from static batching?
+5. Why must prefix cache keys include tenant and model/prompt version?
+6. What quality checks are required before accepting quantization?
+7. When can speculative decoding make latency worse?
+8. Which queue, memory, deadline and fairness guardrails prevent cascading overload?
+
 ## Stage 12 sequencing
 
-Topics 1 and 2 are merged. Topic 5 is the current implementation gate; Topics 6–9 follow only after each preceding topic passes its tests and review. Topic 9 integrates all prior topics in the Advanced Production Practicum. A lesson is not complete merely because its content file exists; it must run from a clean checkout, pass positive and negative tests, demonstrate failure recovery and satisfy its assessment.
+Topics 1–5 are merged and CI-validated. Topic 6 is the current implementation gate; Topics 7–9 follow only after each preceding topic passes its tests and review. Topic 9 integrates all prior topics in the Advanced Production Practicum. A lesson is not complete merely because its content file exists; it must run from a clean checkout, pass positive and negative tests, demonstrate failure recovery and satisfy its assessment.

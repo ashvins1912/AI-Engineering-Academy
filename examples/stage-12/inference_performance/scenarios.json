@@ -1,0 +1,17 @@
+{
+  "version": "stage12-inference-v1",
+  "description": "Synthetic serving profile and workload. No GPU or model weights are allocated.",
+  "model": {"layers": 32, "kv_heads": 8, "head_dim": 128, "quantization_bits": 16},
+  "defaultWorkload": [
+    {"request_id":"r1","tenant_id":"tenant-A","prompt_tokens":1024,"output_tokens":128,"arrival_ms":0,"priority":1,"prefix_key":"system-v1","prefix_tokens":256},
+    {"request_id":"r2","tenant_id":"tenant-A","prompt_tokens":2048,"output_tokens":256,"arrival_ms":10,"priority":0,"prefix_key":"system-v1","prefix_tokens":256},
+    {"request_id":"r3","tenant_id":"tenant-B","prompt_tokens":1024,"output_tokens":64,"arrival_ms":20,"priority":0}
+  ],
+  "failureCases": [
+    {"id":"kv-exhaustion","trigger":"concurrent KV cache estimate exceeds memory budget","expected":"reject batch before scheduling"},
+    {"id":"queue-overload","trigger":"pending requests exceed max_queue","expected":"reject excess requests with QUEUE_CAPACITY_EXCEEDED"},
+    {"id":"deadline-miss","trigger":"TTFT plus decode latency exceeds request deadline","expected":"mark deadline_missed"},
+    {"id":"prefix-cache-isolation","trigger":"same prefix key requested by different tenants","expected":"cache hit only for original tenant"},
+    {"id":"quantization-regression","trigger":"reduce KV precision","expected":"memory falls while modeled quality penalty rises"}
+  ]
+}

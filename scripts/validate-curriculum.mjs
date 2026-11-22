@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 const source = readFileSync(new URL('../src/data/curriculum.ts', import.meta.url), 'utf8')
 const stageIds = [...source.matchAll(/id:\s*'stage-\d+'/g)].map(match => match[0])
 const lessonIds = [...source.matchAll(/lesson\('([^']+)'/g)].map(match => match[1])
-const required = ['vectors', 'calculus', 'linear-regression', 'attention', 'chunking', 'visual-rag', 'agent-loop', 'mcp-architecture', 'a2a', 'ibm-acp', 'client-acp', 'capstone-design', 'agent-orchestration', 'protocol-interop', 'advanced-retrieval', 'evaluation-scale', 'ai-red-team']
+const required = ['vectors', 'calculus', 'linear-regression', 'attention', 'chunking', 'visual-rag', 'agent-loop', 'mcp-architecture', 'a2a', 'ibm-acp', 'client-acp', 'capstone-design', 'agent-orchestration', 'protocol-interop', 'advanced-retrieval', 'evaluation-scale', 'ai-red-team', 'inference-performance']
 const missing = required.filter(id => !lessonIds.includes(id))
 const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8')
 const practice = readFileSync(new URL('../src/components/LessonPractice.tsx', import.meta.url), 'utf8')

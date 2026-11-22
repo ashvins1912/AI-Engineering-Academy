@@ -47,12 +47,15 @@ class DurableCoordinatorTests(unittest.TestCase):
         lock = threading.Lock()
         active = 0
         maximum = 0
+        parallel_start = threading.Barrier(2)
         def op(payload, key, journal):
             nonlocal active, maximum
             with lock:
                 active += 1
                 maximum = max(maximum, active)
-            time.sleep(0.025)
+            if payload["name"] in {"a", "b"}:
+                parallel_start.wait(timeout=2)
+            time.sleep(0.005)
             with lock:
                 active -= 1
             return {"task": payload["name"]}
