@@ -511,6 +511,9 @@ const curriculumSeed: Stage[] = [
   ]},
   {id:'multimodal-systems',title:'Multimodal AI systems',description:'Normalize and retrieve document, image, audio and video evidence with confidence, provenance and access controls.',lessons:[
    lesson('multimodal-systems','Multimodal AI Systems: Vision, Audio and Video','OCR and document layout, tables, visual grounding, audio transcripts, diarization, WER/CER, video frame sampling, temporal alignment, cross-modal retrieval, citation lineage, confidence, tenant ACL and retention.','Build an offline multimodal evidence pipeline')
+  ]},
+  {id:'enterprise-governance',title:'Enterprise AI governance and lifecycle controls',description:'Require version-bound evidence, independent approvals, risk ownership, privacy controls and auditable release decisions.',lessons:[
+   lesson('enterprise-governance','Enterprise AI Governance, Risk and Lifecycle Controls','Data classification, model and dataset cards, provenance, retention/deletion, consent, risk registers, human oversight, policy-as-code, separation of duties, approval expiry, audit evidence, third-party risk and change management.','Build a version-bound AI release dossier and fail-closed governance gate')
   ]}
  ]}
 ]
