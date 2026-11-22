@@ -49,7 +49,7 @@ _MAX_TESTS = 100
 
 def _validate_base_url(value: str) -> str:
     parsed = urlparse(value)
-    if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
+    if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password or parsed.path not in ("", "/"):
         raise ValueError("Runner URL must be an HTTPS origin without embedded credentials")
     if parsed.query or parsed.fragment:
         raise ValueError("Runner URL cannot contain a query or fragment")
@@ -63,7 +63,7 @@ def _parse_result(payload: Any) -> RunnerResult:
     status = payload.get("status")
     if not isinstance(run_id, str) or not run_id or len(run_id) > 128:
         raise RunnerProtocolError("Runner response has an invalid run ID")
-    if status not in _ALLOWED_STATES:
+    if not isinstance(status, str) or status not in _ALLOWED_STATES:
         raise RunnerProtocolError("Runner response has an unknown state")
     stdout = payload.get("stdout", "")
     stderr = payload.get("stderr", "")
