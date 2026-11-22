@@ -8,7 +8,71 @@ from inference_simulator import (
     InferenceSimulator, ModelProfile, PrefixCache, Request, ServingConfig,
 )
 from serving_policy import CapacityGuard
+from capacity_planner import (
+    PagedKVAllocator, TenantFairScheduler, little_law, plan_capacity, versioned_prefix_key,
+)
 
+
+class CapacityPlanningTests(unittest.TestCase):
+    def test_capacity_plan_estimates_concurrency_and_utilization(self):
+        simulator = InferenceSimulator(ModelProfile(32, 8, 128), ServingConfig(decode_tokens_per_second=50))
+        plan = plan_capacity(simulator, total_memory_mb=8192, model_weights_mb=2048,
+                             runtime_reserve_mb=1024, max_sequence_tokens=4096,
+                             arrival_rate_rps=0.2, average_output_tokens=100,
+                             average_latency_ms=1000)
+        self.assertEqual(plan.kv_bytes_per_sequence, 512 * 1024 * 1024)
+        self.assertEqual(plan.max_concurrent_sequences, 10)
+        self.assertAlmostEqual(plan.estimated_service_rate_rps, 0.5)
+        self.assertAlmostEqual(plan.estimated_utilization, 0.4)
+        self.assertAlmostEqual(plan.little_law_concurrency, 0.2)
+        self.assertFalse(plan.overload_risk)
+
+    def test_capacity_plan_flags_overload_and_invalid_memory(self):
+        simulator = InferenceSimulator(config=ServingConfig(decode_tokens_per_second=10))
+        plan = plan_capacity(simulator, total_memory_mb=4096, model_weights_mb=1024,
+                             runtime_reserve_mb=512, max_sequence_tokens=1024,
+                             arrival_rate_rps=1.0, average_output_tokens=100,
+                             average_latency_ms=2000)
+        self.assertTrue(plan.overload_risk)
+        with self.assertRaisesRegex(ValueError, "CAPACITY_PLAN_INPUT_INVALID"):
+            plan_capacity(simulator, total_memory_mb=100, model_weights_mb=80,
+                          runtime_reserve_mb=30, max_sequence_tokens=1024,
+                          arrival_rate_rps=1, average_output_tokens=100, average_latency_ms=100)
+
+    def test_little_law_and_versioned_prefix_cache_key(self):
+        self.assertAlmostEqual(little_law(2.0, 500), 1.0)
+        base = versioned_prefix_key("tenant-A", "model-v1", "prompt-v1", "policy-v1", "system")
+        self.assertNotEqual(base, versioned_prefix_key("tenant-B", "model-v1", "prompt-v1", "policy-v1", "system"))
+        self.assertNotEqual(base, versioned_prefix_key("tenant-A", "model-v2", "prompt-v1", "policy-v1", "system"))
+        self.assertNotEqual(base, versioned_prefix_key("tenant-A", "model-v1", "prompt-v1", "policy-v2", "system"))
+
+    def test_tenant_fair_scheduler_round_robins_busy_tenant(self):
+        scheduler = TenantFairScheduler(max_queue=8)
+        for request in [
+            Request("a1", "A", 10, 10), Request("a2", "A", 10, 10),
+            Request("a3", "A", 10, 10), Request("b1", "B", 10, 10),
+            Request("c1", "C", 10, 10),
+        ]:
+            self.assertTrue(scheduler.submit(request))
+        batch = scheduler.next_batch(3)
+        self.assertEqual([request.request_id for request in batch], ["a1", "b1", "c1"])
+        self.assertEqual(scheduler.queue_depth, 2)
+
+    def test_fair_scheduler_queue_is_bounded(self):
+        scheduler = TenantFairScheduler(max_queue=1)
+        self.assertTrue(scheduler.submit(Request("a", "A", 1, 1)))
+        self.assertFalse(scheduler.submit(Request("b", "B", 1, 1)))
+        self.assertEqual(scheduler.queue_depth, 1)
+
+    def test_paged_kv_allocator_tracks_allocation_and_release(self):
+        allocator = PagedKVAllocator(total_pages=4, page_size_tokens=16)
+        self.assertEqual(allocator.allocate("r1", 17), 2)
+        self.assertEqual(allocator.allocate("r2", 16), 1)
+        self.assertEqual(allocator.free_pages, 1)
+        with self.assertRaisesRegex(MemoryError, "KV_PAGES_EXHAUSTED"):
+            allocator.allocate("r3", 32)
+        self.assertEqual(allocator.release("r1"), 2)
+        self.assertEqual(allocator.free_pages, 3)
 
 class MemoryAndConfigurationTests(unittest.TestCase):
     def test_kv_cache_memory_formula_matches_hand_calculation(self):
@@ -127,6 +191,23 @@ class SchedulingAndAdmissionTests(unittest.TestCase):
         self.assertEqual(guard.admit_batch(requests, queue_depth=1).reason, "QUEUE_CAPACITY_EXCEEDED")
         self.assertEqual(guard.admit_batch(requests + [Request("c", "A", 10, 10)]).reason,
                          "QUEUE_CAPACITY_EXCEEDED")
+
+    def test_capacity_guard_enforces_per_tenant_concurrency(self):
+        simulator = InferenceSimulator(config=ServingConfig(max_batch_size=4, max_queue=8))
+        guard = CapacityGuard(simulator)
+        requests = [Request("a1", "A", 10, 10), Request("a2", "A", 10, 10)]
+        decision = guard.admit_batch(requests, active_by_tenant={"A": 1}, max_active_per_tenant=2)
+        self.assertFalse(decision.admitted)
+        self.assertEqual(decision.reason, "TENANT_CONCURRENCY_LIMIT")
+
+    def test_capacity_guard_rejects_unachievable_deadline(self):
+        simulator = InferenceSimulator(config=ServingConfig(
+            prefill_tokens_per_second=10, decode_tokens_per_second=1,
+        ))
+        guard = CapacityGuard(simulator)
+        decision = guard.admit_batch([Request("late", "A", 100, 100, deadline_ms=100)])
+        self.assertFalse(decision.admitted)
+        self.assertEqual(decision.reason, "DEADLINE_UNACHIEVABLE")
 
     def test_request_validation_rejects_negative_values(self):
         simulator = InferenceSimulator()
