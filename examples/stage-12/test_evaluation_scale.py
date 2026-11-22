@@ -66,6 +66,9 @@ class MetricTests(unittest.TestCase):
         self.assertEqual(recall_at_k(("a", "x", "b"), frozenset({"a", "b"}), 2), 0.5)
         self.assertAlmostEqual(mean_reciprocal_rank([["x", "a"], ["b"]], [{"a"}, {"b"}]), 0.75)
 
+    def test_mean_reciprocal_rank(self):
+        self.assertAlmostEqual(mean_reciprocal_rank([["x", "a"], ["b"]], [{"a"}, {"b"}]), 0.75)
+
     def test_citation_precision_and_abstention(self):
         self.assertEqual(citation_precision(("good", "wrong"), frozenset({"good"})), 0.5)
         dataset = sample_dataset()
