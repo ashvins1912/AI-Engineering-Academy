@@ -153,6 +153,7 @@ class Citation:
     end_ms: int | None
     speaker: str | None
     confidence: float
+    asset_version: str
 
 
 @dataclass(frozen=True)
@@ -170,8 +171,12 @@ class MultimodalPipeline:
         if len(ids) != len(set(ids)):
             raise ValueError("DUPLICATE_EVIDENCE_ID")
         for item in self.evidence:
-            if not item.tenant_id or not item.asset_id or not item.source_ref:
+            if not item.tenant_id or not item.asset_id or not item.asset_version or not item.source_ref:
                 raise ValueError("EVIDENCE_PROVENANCE_REQUIRED")
+            if item.modality not in {"document", "image", "audio", "video", "table"}:
+                raise ValueError("EVIDENCE_MODALITY_INVALID")
+            if not item.untrusted_data:
+                raise ValueError("EVIDENCE_TRUST_LABEL_INVALID")
             if not 0 <= item.confidence <= 1:
                 raise ValueError("EVIDENCE_CONFIDENCE_INVALID")
             if item.page is not None and item.page < 1:
