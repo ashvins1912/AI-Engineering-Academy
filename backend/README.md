@@ -83,3 +83,8 @@ Run `python -m pytest tests -q` from this directory. Unit tests cover RS256 toke
 - Run migration verification, load/security tests, backup/restore drills and independent security review.
 
 No cloud resources, external model APIs or paid hosting were provisioned. This API is not yet production-certified or deployed. The local SentenceTransformer, OCR and parsing can exceed a 512 MB Render Free memory budget. Remote embeddings reduce model memory but do not remove OCR/worker CPU, queue, storage and database constraints.
+
+
+## Secure Python playground foundation
+
+The first code-playground milestone adds `app/code_execution_contract.py`, a metadata-only validator for an allowlisted `python-3.11` runtime, lesson/test-suite IDs and a 32 KiB UTF-8 source limit. It does not execute, compile or import learner code, and no code-run API or runner is enabled. Its unit tests run with the existing backend pytest suite. See [the milestone plan](../docs/SECURE_PYTHON_PLAYGROUND_MILESTONE_1.md) for the isolation, authorization, quota and security gates required before enabling execution.
