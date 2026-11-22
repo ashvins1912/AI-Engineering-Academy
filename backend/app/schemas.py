@@ -58,3 +58,26 @@ class AnswerOut(BaseModel):
     reason: str | None = None
     retrieval_count: int
     model: str | None = None
+
+
+class CodeRunCreate(BaseModel):
+    model_config = {"extra": "forbid"}
+    runtime_id: str = Field(min_length=1, max_length=40)
+    lesson_id: str = Field(min_length=1, max_length=120)
+    source: str = Field(min_length=1, max_length=32768)
+    test_suite_id: str | None = Field(default=None, max_length=80)
+
+
+class CodeRunOut(BaseModel):
+    id: UUID
+    status: str
+    runtime_id: str
+    lesson_id: str
+    stdout: str = ""
+    stderr: str = ""
+    exit_code: int | None = None
+    duration_ms: int | None = None
+    test_results: list[dict] = Field(default_factory=list)
+    error_code: str | None = None
+    created_at: str | None = None
+    completed_at: str | None = None
