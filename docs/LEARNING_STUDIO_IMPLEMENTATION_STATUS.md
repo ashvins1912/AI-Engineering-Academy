@@ -12,7 +12,7 @@
 - Explicitly labels the experience as a conceptual simulation; it does not claim to execute code or recalculate algorithms.
 - Added `FoundationTopicLab` for all seven Stage 1 topics: vector dot product/cosine similarity, Bayes posterior, analytic-vs-finite-difference derivatives, gradient-descent trajectories, Python record validation/missing-value policy, NumPy/Pandas vectorized filtering and aggregation, and data-quality/leakage gates.
 - Wired those numerical labs into the shared lesson studio by topic ID.
-- Added lesson-aware entry points to Stage 2 and Stage 3 mastery workbenches. The selected lesson now determines the active algorithm/architecture lab, and the active tab resynchronizes when learners switch lessons without leaving the stage; all other stage topics remain switchable from the workbench.
+- Added lesson-aware entry points to Stage 2–5 mastery workbenches. The selected lesson determines the active algorithm, architecture, transformer or RAG lab; the active tab resynchronizes when learners switch lessons without leaving the stage, and other stage topics remain switchable.
 - Preserved the existing `LessonPractice` workbench and all specialized stage/topic visualizers.
 - Added `npm run audit:topic-coverage` and a CI step to report topic JSON, lab-pack, tailored-code and shared-studio coverage by stage.
 
@@ -20,7 +20,7 @@
 
 The shared conceptual studio is a baseline, not a bespoke algorithm simulator for every topic. The editable scenario is displayed as learner context; it is not parsed or executed. Existing specialized visualizers remain available where already wired.
 
-The coverage command reports gaps but does not fabricate missing content or declare topics mastered. All seven Stage 1 topics now have a focused interactive playground. Stage 2 and Stage 3 are wired to existing topic-specific mastery workbenches, but their full content and numerical coverage still need a deeper quality audit. Stages 4–12 still need topic-specific simulator coverage or richer existing-lab integration. Full JSON content migration, executable code sandboxes, additional failure injection, assessment rubrics and learner validation remain staged work.
+The coverage command reports gaps but does not fabricate missing content or declare topics mastered. All seven Stage 1 topics now have a focused interactive playground. Stage 2 and Stage 3 are wired to existing topic-specific mastery workbenches, but their full content and numerical coverage still need a deeper quality audit. Stages 4–5 are now wired to their existing mastery labs. Stages 6–12 still need topic-specific simulator coverage or richer existing-lab integration. Full JSON content migration, executable code sandboxes, additional failure injection, assessment rubrics and learner validation remain staged work.
 
 ## Verification status
 
