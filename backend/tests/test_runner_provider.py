@@ -34,8 +34,11 @@ def test_runner_requires_operator_secret_and_bounded_timeout():
 
 @pytest.mark.asyncio
 async def test_submit_uses_fixed_endpoint_and_idempotency_key(monkeypatch):
+    import app.runner_provider as module
+
     run_id = uuid4()
     seen = {}
+    original_client = httpx.AsyncClient
 
     async def handler(request):
         seen["url"] = str(request.url)
@@ -44,7 +47,10 @@ async def test_submit_uses_fixed_endpoint_and_idempotency_key(monkeypatch):
         seen["payload"] = json.loads(request.content)
         return httpx.Response(202, json={"run_id": str(run_id), "status": "queued"})
 
-    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: httpx.AsyncClient(transport=httpx.MockTransport(handler), **kwargs))
+    monkeypatch.setattr(
+        module.httpx, "AsyncClient",
+        lambda **kwargs: original_client(transport=httpx.MockTransport(handler), **kwargs),
+    )
     provider = HttpsRunnerProvider("https://runner.example", "s" * 32)
     result = await provider.submit(
         run_id,
