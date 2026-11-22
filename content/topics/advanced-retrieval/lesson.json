@@ -1,0 +1,583 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "advanced-retrieval",
+    "title": "Advanced Retrieval and Context Engineering",
+    "stage": 12,
+    "estimatedMinutes": 480
+  },
+  "state": "runnable",
+  "learning": {
+    "outcomes": [
+      "Compare lexical, dense, hybrid, graph-assisted and reranked retrieval using reproducible relevance judgments.",
+      "Implement BM25, cosine similarity and reciprocal-rank fusion and explain their assumptions and score behavior.",
+      "Apply tenant, document and user/group ACL predicates before candidate generation, ranking and top-k selection.",
+      "Preserve document version, page, character offsets and stable chunk identifiers through citation and context assembly.",
+      "Engineer parent-child expansion, query decomposition, context compression and token-budget packing without widening access.",
+      "Evaluate Recall@K, MRR and NDCG by query slice and identify stale-index, cache-isolation and citation-drift failures."
+    ],
+    "prerequisites": [
+      "Stage 5 embeddings, vector search and RAG fundamentals",
+      "Stage 10 tenant isolation and authorization",
+      "Stage 12 Topic 1 durable orchestration and Topic 2 protocol boundaries",
+      "Python, basic probability, vectors and ranking metrics"
+    ],
+    "glossary": [
+      {
+        "term": "BM25",
+        "definition": "A lexical ranking function that scores query-term matches using term frequency, inverse document frequency and document-length normalization."
+      },
+      {
+        "term": "Dense retrieval",
+        "definition": "Retrieval that compares learned vector representations so semantically related text can match without exact keyword overlap."
+      },
+      {
+        "term": "Hybrid retrieval",
+        "definition": "A retrieval strategy that combines lexical and dense candidate rankings or scores to capture exact terms and semantic similarity."
+      },
+      {
+        "term": "Reciprocal-rank fusion",
+        "definition": "A rank aggregation method that adds reciprocal rank contributions and avoids assuming different retrievers have calibrated score scales."
+      },
+      {
+        "term": "Reranker",
+        "definition": "A second-stage model or function that reorders a bounded candidate set using richer query-document interaction."
+      },
+      {
+        "term": "Parent-child chunking",
+        "definition": "A retrieval design that searches small child chunks but may attach a larger parent context after independently checking its access policy."
+      },
+      {
+        "term": "Citation lineage",
+        "definition": "Stable provenance linking an answer to a document version, page, chunk and source character or region offsets."
+      },
+      {
+        "term": "Recall@K",
+        "definition": "The fraction of known relevant items retrieved within the first K ranked results."
+      },
+      {
+        "term": "MRR",
+        "definition": "Mean reciprocal rank, which averages the reciprocal position of the first relevant result across queries."
+      },
+      {
+        "term": "NDCG",
+        "definition": "Normalized discounted cumulative gain, which rewards relevant items near the top while supporting graded relevance judgments."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "A RAG system can return plausible but incomplete or unauthorized evidence even when its vector database is healthy. Lexical search misses paraphrases, dense search can miss exact identifiers, rerankers can hide poor candidate recall, and context assembly can accidentally reintroduce a parent document that the user cannot access. A cache key that omits tenant or policy version can turn a correct retrieval into a cross-user data leak.",
+    "plainLanguage": "Treat retrieval as a pipeline of independently testable decisions. First authenticate the user and resolve tenant, groups and document permissions from trusted server state. Apply those filters before the search engine generates or ranks candidates; filtering only after top-k is too late because unauthorized chunks can occupy the candidate slots.\\n\\nLexical retrieval such as BM25 is strong for exact names, IDs and rare terms. Dense retrieval compares query and document vectors and can find paraphrases, but depends on the embedding model, vector normalization and index version. Hybrid retrieval combines both. Reciprocal-rank fusion is useful because BM25 and cosine values are not naturally calibrated to the same scale: for each result, add a weighted 1/(k + rank) contribution from each ranking. A reranker may improve ordering, but it cannot recover a relevant chunk that was never retrieved. Measure candidate recall before celebrating reranker lift.\\n\\nChunking is a quality and provenance decision. Small child chunks improve precision; a parent chunk can restore context. However, parent expansion is another data access: re-check the parent's tenant and ACL independently. Keep immutable source identity, document version, page, chunk ID and character or region offsets with every result. If a document is re-ingested, citations to the old version must remain distinguishable from the new index.\\n\\nContext engineering decides what reaches the model. Decompose compound questions only when the decomposition is evaluated; retrieve for each sub-question; deduplicate overlapping passages; preserve source labels; order evidence deliberately; and pack under a tokenizer-aware budget. Compression must not erase negation, dates, conditions or citation anchors. If no authorized evidence clears the acceptance threshold, abstain rather than manufacture a citation.\\n\\nEvaluate on a versioned query set with human relevance labels. Recall@K measures whether relevant evidence appears at all; MRR rewards the first relevant result; NDCG handles multiple and graded relevant results. Slice results by tenant, query type, freshness, document class and language. Also measure citation correctness, authorization violations, latency and cost. Average relevance metrics never compensate for a single cross-tenant disclosure.",
+    "mentalModel": "Verified principal → pre-filter authorized corpus → lexical and dense candidate retrieval → rank fusion → optional reranking → independently authorized context expansion → deduplication and budget packing → citation verification → answer or abstention.",
+    "limitations": [
+      "A local BM25 implementation is educational and does not reproduce Lucene/Elasticsearch analyzer, field or distributed-index behavior.",
+      "Precomputed vectors make tests deterministic but do not evaluate embedding-model quality or drift.",
+      "RRF improves rank combination but does not guarantee better relevance; tune on held-out judgments.",
+      "A reranker cannot recover evidence missing from the candidate set and may introduce its own bias or latency.",
+      "Whitespace token counts are not equivalent to a model tokenizer; production budgets must use the deployed tokenizer.",
+      "The simulator's in-memory filter is not proof of database-level row security or vector-index isolation.",
+      "Graph retrieval and contextual compression need separate quality, provenance and security tests before production use."
+    ],
+    "everydayAnalogy": "Imagine a librarian who first checks your membership and document permissions, then searches both the exact catalog and a semantic subject index. A second librarian reorders the shortlist, but cannot add a book that was never found. If a short excerpt points to a larger chapter, the librarian checks your access to that chapter again before attaching it. Every quotation keeps its edition and page number.",
+    "mathMadeSimple": "For RRF with k=60, a chunk ranked first by BM25 and third by dense search receives 1/61 + 1/63 = 0.032522. A chunk ranked second in both receives 1/62 + 1/62 = 0.032258. The first chunk wins by rank evidence, without comparing raw BM25 and cosine scales. For cosine, q=[1,0,0] and d=[0.8,0.6,0] yield 0.8.",
+    "productionImpact": "Push tenant and ACL predicates into the database/vector query before ANN candidate generation; version embedding/index/chunker/parser configurations; measure candidate recall and reranker lift; bind cache entries to principal, policy and corpus version; preserve citation offsets; use tokenizer-aware context budgets; and make unauthorized/no-evidence outcomes fail closed."
+  },
+  "useCase": {
+    "scenario": "A multi-tenant policy assistant answers questions about retention and audit requirements. It combines exact clause search with semantic retrieval, reranks a small candidate set, expands child chunks into parent context only when permitted, and returns citations tied to immutable document versions.",
+    "actors": [
+      "Authenticated user and membership resolver",
+      "Tenant-aware lexical index",
+      "Tenant-aware vector index",
+      "Hybrid rank-fusion service",
+      "Optional reranker",
+      "Context packer and citation verifier",
+      "Evaluation harness and audit sink"
+    ],
+    "inputs": [
+      "Verified principal, tenant and group membership",
+      "Query text and versioned query embedding",
+      "Versioned document chunks with ACL metadata and source offsets",
+      "Corpus/index revision and explicit top-k/context budgets",
+      "Human relevance judgments for evaluation"
+    ],
+    "constraints": [
+      "Tenant and ACL filters are applied before ranking and top-k.",
+      "Parent chunks are authorized independently from child chunks.",
+      "Cache keys include principal, policy version and corpus revision.",
+      "Citations preserve source version, page and offsets.",
+      "No evidence or unauthorized evidence produces abstention.",
+      "Context packing never exceeds its configured budget."
+    ],
+    "outputs": [
+      "Ranked authorized chunks with lexical, dense and fused scores",
+      "Context with stable source labels and verified citations",
+      "Abstention when authorized evidence is insufficient",
+      "Slice-level Recall@K, MRR and NDCG report"
+    ],
+    "successMetric": "All cross-tenant and unauthorized-parent tests deny; citations resolve to the correct version/page/offset; retrieval metrics are reproducible on the synthetic judgment set."
+  },
+  "architecture": {
+    "diagram": "examples/stage-12/advanced_retrieval/retrieval-flow.mmd",
+    "components": [
+      "Verified identity and tenant resolver",
+      "Pre-ranking tenant/document ACL filter",
+      "BM25 lexical retriever",
+      "Dense vector retriever",
+      "Weighted reciprocal-rank fusion",
+      "Optional reranker",
+      "ACL-checked parent/context expander",
+      "Token-budget context packer",
+      "Citation verifier and evaluation harness"
+    ],
+    "dataFlow": [
+      {
+        "from": "Identity resolver",
+        "to": "Retrieval gateway",
+        "payload": "Verified subject, tenant, groups and policy version",
+        "purpose": "Establish authoritative access context."
+      },
+      {
+        "from": "Retrieval gateway",
+        "to": "ACL filter",
+        "payload": "Normalized query and trusted access predicates",
+        "purpose": "Restrict the searchable corpus before candidate generation."
+      },
+      {
+        "from": "ACL filter",
+        "to": "BM25 and vector retrievers",
+        "payload": "Authorized document/chunk candidate scope",
+        "purpose": "Prevent unauthorized candidates from occupying top-k."
+      },
+      {
+        "from": "BM25 and vector retrievers",
+        "to": "RRF fusion",
+        "payload": "Independent ranked chunk IDs and scores",
+        "purpose": "Combine exact lexical and semantic evidence."
+      },
+      {
+        "from": "RRF fusion",
+        "to": "Context expander",
+        "payload": "Bounded candidate list with source metadata",
+        "purpose": "Rerank and optionally expand parent context under fresh ACL checks."
+      },
+      {
+        "from": "Context expander",
+        "to": "Context packer",
+        "payload": "Authorized deduplicated passages and citations",
+        "purpose": "Fit evidence into a bounded context window."
+      },
+      {
+        "from": "Context packer",
+        "to": "Citation verifier",
+        "payload": "Versioned source offsets and packed evidence",
+        "purpose": "Validate provenance and abstain on insufficient evidence."
+      }
+    ],
+    "trustBoundaries": [
+      "User query and supplied metadata are untrusted input.",
+      "Identity, tenant and group membership come from verified server context.",
+      "Index metadata and embeddings are data, not authorization grants.",
+      "Parent context is separately access-controlled.",
+      "Retrieved text is untrusted and cannot issue tool instructions.",
+      "Cache entries and citation lineage are tenant- and version-sensitive."
+    ],
+    "failurePaths": [
+      "ACL filter applied after top-k: unauthorized chunks can crowd out authorized evidence; move filtering into candidate generation.",
+      "Parent document is less restricted than its child: omit parent text unless it independently passes ACL.",
+      "Cache key omits tenant or policy version: reject the cache design and invalidate affected entries.",
+      "Embedding/index version mismatch: reject mixed dimensions or stale index metadata and rebuild through a versioned migration.",
+      "Context exceeds model budget: trim by explicit priority while retaining citations and semantic qualifiers.",
+      "Reranker score rises while candidate recall falls: diagnose first-stage retrieval before tuning the reranker."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-12/advanced_retrieval/scenarios.json",
+    "steps": [
+      {
+        "label": "Resolve trusted access",
+        "explanation": "Identity and tenant are supplied by the server, not the query payload.",
+        "expectedState": "A trusted principal and policy version are available."
+      },
+      {
+        "label": "Filter before retrieval",
+        "explanation": "Remove chunks outside tenant, user and group ACL scope before lexical or vector ranking.",
+        "expectedState": "Only authorized candidates enter retrieval."
+      },
+      {
+        "label": "Retrieve and fuse",
+        "explanation": "BM25 and dense rankings contribute weighted reciprocal-rank scores.",
+        "expectedState": "A deterministic hybrid ranking is produced."
+      },
+      {
+        "label": "Expand and pack context",
+        "explanation": "Parent text is checked again, duplicates are removed and context fits a token budget.",
+        "expectedState": "Every packed passage remains authorized and attributable."
+      },
+      {
+        "label": "Verify citations",
+        "explanation": "Check document version, page and offsets before returning evidence.",
+        "expectedState": "Citations preserve immutable source lineage."
+      },
+      {
+        "label": "Answer or abstain",
+        "explanation": "No authorized evidence or insufficient confidence yields an explicit abstention.",
+        "expectedState": "No unsupported citation is fabricated."
+      }
+    ],
+    "accessibility": [
+      "Each animation stage includes a text explanation and expected state.",
+      "Previous/next controls and reduced-motion mode preserve the same numerical sequence."
+    ],
+    "animation": {
+      "objective": "Animate a fixed synthetic query through ACL filtering, lexical/dense rankings, RRF fusion, context packing and citation verification.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Resolve identity",
+          "narration": "Alice belongs to tenant A and the analysts group. The server supplies this context; the user cannot override it in the query body.",
+          "input": "subject=alice; tenant=tenant-A; group=analysts",
+          "transformation": "Resolve trusted principal and policy version before search.",
+          "output": "trusted principal: alice@tenant-A",
+          "visualState": "Identity badge is fixed; user payload remains untrusted."
+        },
+        {
+          "step": 2,
+          "title": "Filter before ranking",
+          "narration": "The corpus contains a high-scoring secret from tenant B and a legal-only chunk. Both are removed before either retriever ranks candidates.",
+          "input": "6 chunks; 2 unauthorized",
+          "transformation": "Apply tenant, user and group predicates before candidate generation.",
+          "output": "4 authorized chunks remain",
+          "visualState": "Unauthorized rows are excluded before score columns appear."
+        },
+        {
+          "step": 3,
+          "title": "Run two retrievers",
+          "narration": "BM25 rewards exact retention and policy terms. Dense similarity finds semantically related audit evidence.",
+          "input": "query=retention policy; vector=[1,0,0]",
+          "transformation": "Compute independent lexical and cosine rankings on authorized candidates.",
+          "output": "lexical and dense ranked lists",
+          "visualState": "Two ranked lists appear side by side."
+        },
+        {
+          "step": 4,
+          "title": "Fuse ranks",
+          "narration": "RRF adds reciprocal rank contributions. It does not compare raw BM25 values to cosine values.",
+          "input": "k=60; chunk c1 ranks 1 and 3",
+          "transformation": "1/61 + 1/63",
+          "output": "fused score=0.032522",
+          "visualState": "Rank contributions combine into one ordered list."
+        },
+        {
+          "step": 5,
+          "title": "Pack grounded context",
+          "narration": "Parent context is independently checked; the packer enforces a fixed budget and keeps source labels.",
+          "input": "ranked chunks plus parent IDs",
+          "transformation": "ACL check, deduplicate and pack within 90 tokens.",
+          "output": "bounded context with source labels",
+          "visualState": "A token budget meter stops at its configured limit."
+        },
+        {
+          "step": 6,
+          "title": "Verify or abstain",
+          "narration": "Each citation carries document version, page and character offsets. If no authorized evidence remains, the system abstains.",
+          "input": "chunk ID, version, page and offsets",
+          "transformation": "Verify source lineage and evidence sufficiency.",
+          "output": "citations or abstained=true",
+          "visualState": "Grounded citations appear or the no-evidence path is selected."
+        }
+      ],
+      "controls": [
+        {
+          "name": "topK",
+          "min": 1,
+          "max": 10,
+          "defaultValue": 4,
+          "effect": "Changing topK changes the maximum number of returned authorized chunks; it never bypasses the ACL filter."
+        },
+        {
+          "name": "contextBudget",
+          "min": 20,
+          "max": 180,
+          "defaultValue": 90,
+          "effect": "Changing the context budget changes how many authorized tokens can be packed while preserving source labels."
+        },
+        {
+          "name": "lexicalWeight",
+          "min": 0,
+          "max": 2,
+          "defaultValue": 1,
+          "effect": "Changing lexical weight changes the contribution of the BM25 ranking to RRF without changing candidate authorization."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Each frame has narrated input, transformation and output. Keyboard controls support play, pause, reset and single-step movement; reduced-motion mode retains the complete textual and numerical trace."
+    }
+  },
+  "workedExample": {
+    "problem": "Combine two ranked lists using reciprocal-rank fusion and explain why rank fusion is safer than adding uncalibrated raw scores.",
+    "input": "k=60; lexical ranking=[c1,c2,c3]; dense ranking=[c2,c3,c1]",
+    "steps": [
+      {
+        "operation": "Score c1",
+        "reasoning": "c1 is rank 1 lexically and rank 3 densely.",
+        "result": "1/61 + 1/63 = 0.032522..."
+      },
+      {
+        "operation": "Score c2",
+        "reasoning": "c2 is rank 2 in both independent retrievers.",
+        "result": "1/62 + 1/62 = 0.032258..."
+      },
+      {
+        "operation": "Score c3",
+        "reasoning": "c3 is rank 3 lexically and rank 2 densely.",
+        "result": "1/63 + 1/62 = 0.032010..."
+      },
+      {
+        "operation": "Order candidates",
+        "reasoning": "Sort by fused score, then stable chunk ID for deterministic ties.",
+        "result": "c1 > c2 > c3"
+      }
+    ],
+    "expectedOutput": "c1 ranks first because its strong lexical position outweighs its third-place dense position; no raw BM25/cosine calibration is assumed."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "path": "examples/stage-12/advanced_retrieval/retrieval_engine.py",
+      "runCommand": "python examples/stage-12/advanced_retrieval/retrieval_engine.py",
+      "testsPath": "examples/stage-12/test_advanced_retrieval.py",
+      "expectedResult": "Offline hybrid retrieval returns only authorized chunks with deterministic RRF scores, versioned citations and bounded context.",
+      "role": "from-scratch"
+    },
+    {
+      "language": "python",
+      "path": "examples/stage-12/advanced_retrieval/retrieval_service.py",
+      "runCommand": "python -m unittest examples.stage-12.test_advanced_retrieval",
+      "testsPath": "examples/stage-12/test_advanced_retrieval.py",
+      "expectedResult": "Service boundary rejects client-controlled identity, invalid budgets and top-k while preserving trusted tenant isolation.",
+      "role": "production"
+    }
+  ],
+  "failures": [
+    {
+      "name": "Filter after top-k",
+      "symptom": "Authorized results disappear when an unauthorized chunk has a high score.",
+      "rootCause": "ACL filtering happens after the ANN or lexical engine has already selected a bounded candidate list.",
+      "recovery": "Push tenant and ACL predicates into the database/vector candidate query before ranking and top-k.",
+      "regressionTest": "Insert a forbidden high-score chunk and assert it never enters candidate IDs or displaces an authorized result."
+    },
+    {
+      "name": "Cross-tenant cache collision",
+      "symptom": "A second tenant receives a cached passage from the first tenant.",
+      "rootCause": "Cache key omits tenant, subject, group membership or policy version.",
+      "recovery": "Bind cache keys to verified principal, groups, policy version, query, vector, corpus revision and budgets.",
+      "regressionTest": "Run identical queries for two tenants through one cache and assert result sets remain disjoint."
+    },
+    {
+      "name": "Parent-context leakage",
+      "symptom": "A visible child chunk causes restricted parent text to enter the prompt.",
+      "rootCause": "Parent expansion assumes child access implies parent access.",
+      "recovery": "Resolve and authorize every parent independently before context assembly.",
+      "regressionTest": "Give the user access to a child but deny its parent; assert parent text is absent."
+    },
+    {
+      "name": "Stale embedding/index version",
+      "symptom": "Search returns inconsistent results or dimension errors after re-embedding.",
+      "rootCause": "Queries and stored vectors come from incompatible embedding/index revisions.",
+      "recovery": "Version model, dimensions, normalization, chunker and corpus; use a staged index migration.",
+      "regressionTest": "Reject mismatched vector dimensions and invalidate cache when corpus revision changes."
+    },
+    {
+      "name": "Citation offset drift",
+      "symptom": "A citation points to the wrong page or passage after document replacement.",
+      "rootCause": "Citation metadata is keyed only by document name rather than immutable version and chunk offsets.",
+      "recovery": "Carry source hash/version, page, stable chunk ID and offsets through every transformation.",
+      "regressionTest": "Re-ingest a new version and assert the old and new citations remain distinguishable."
+    },
+    {
+      "name": "Context overflow or semantic loss",
+      "symptom": "Prompt exceeds budget or compression removes a critical negation/date.",
+      "rootCause": "Packing uses character counts or naive truncation without tokenizer and semantic checks.",
+      "recovery": "Use the deployed tokenizer, preserve citations and critical qualifiers, and re-evaluate compressed context.",
+      "regressionTest": "Assert the configured budget is respected and negation/date/source anchors survive the compression fixture."
+    },
+    {
+      "name": "Reranker masks poor recall",
+      "symptom": "Top results look polished but relevant evidence is missing.",
+      "rootCause": "Reranker is evaluated only on its selected candidate set and first-stage recall is not measured.",
+      "recovery": "Measure candidate Recall@K before reranking and compare against a held-out relevance set.",
+      "regressionTest": "Create a relevant chunk omitted from candidates and verify reranker metrics do not claim retrieval success."
+    }
+  ],
+  "practice": {
+    "guided": "Calculate BM25 term-frequency and length-normalization effects, compare cosine scores, then combine two ranked lists by hand using RRF.",
+    "independent": "Extend the offline retriever with a graded relevance judgment set and compare lexical-only, dense-only and hybrid Recall@K, MRR and NDCG.",
+    "realWorld": "Design a tenant-aware hybrid retrieval endpoint for policy documents, including index migration, cache invalidation, parent expansion and citation verification.",
+    "expertExtension": "Add graph neighborhood retrieval and a cross-encoder adapter behind a strict candidate cap; run slice-based quality, latency and cost experiments without changing authorization semantics.",
+    "guidedExercise": {
+      "title": "Build a pre-filtered hybrid retrieval pipeline",
+      "instructions": "Complete the authorized candidate filter, independent lexical/dense ranking and RRF fusion. Do not score or rank any chunk outside the verified principal's tenant and ACL scope. Preserve source lineage in the returned result.",
+      "starterCode": "def retrieve(principal, query, query_vector, chunks):\\n    # TODO: filter by tenant and ACL before either retriever runs\\n    # TODO: produce lexical and dense rankings\\n    # TODO: fuse ranks and preserve source citations\\n    raise NotImplementedError",
+      "solutionCode": "def retrieve(principal, query, query_vector, chunks):\\n    authorized = [c for c in chunks if c.tenant_id == principal.tenant_id and (not c.allowed_users or principal.subject in c.allowed_users)]\\n    lexical = bm25_scores(query, authorized)\\n    dense = {c.chunk_id: cosine_similarity(query_vector, c.embedding) for c in authorized}\\n    lexical_rank = sorted((k for k,v in lexical.items() if v > 0), key=lambda k: (-lexical[k], k))\\n    dense_rank = sorted((k for k,v in dense.items() if v > 0), key=lambda k: (-dense[k], k))\\n    fused = reciprocal_rank_fusion([lexical_rank, dense_rank])\\n    return sorted(fused, key=lambda k: (-fused[k], k))",
+      "unitTests": "assert all(chunks_by_id[item].tenant_id == principal.tenant_id for item in retrieve(principal, query, vector, chunks))\\nassert retrieve(principal, query, vector, chunks) == expected_ranked_ids"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Add a retrieval inspector that displays candidate filters, lexical/dense ranks, fused score, context budget and citation provenance for a synthetic tenant-aware corpus.",
+      "steps": [
+        "Load a versioned synthetic corpus with tenant/user/group ACLs and source offsets.",
+        "Run lexical and dense retrieval only after server-derived ACL filtering, then fuse and optionally rerank a bounded candidate list.",
+        "Display citations and context token budget; run Recall@K/MRR/NDCG against fixed relevance judgments.",
+        "Inject cross-tenant, stale-cache, parent-access and citation-drift failures and show their regression tests."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "A tenant-B chunk has the highest vector similarity, but the caller belongs to tenant A. When must it be filtered?",
+        "options": [
+          "After the final answer is generated",
+          "Before candidate generation and ranking",
+          "Only when citations are rendered",
+          "After reranking if it remains top-1"
+        ],
+        "correctIndex": 1,
+        "explanation": "Filtering after top-k is too late: a forbidden chunk can consume candidate capacity and displace authorized evidence. Push the predicate into the search query."
+      },
+      {
+        "question": "BM25 and cosine scores have different scales. Which baseline combines their ranked lists without assuming score calibration?",
+        "options": [
+          "Add raw scores directly",
+          "Reciprocal-rank fusion",
+          "Average document lengths",
+          "Drop lexical retrieval"
+        ],
+        "correctIndex": 1,
+        "explanation": "RRF aggregates reciprocal rank contributions, so it uses ordering rather than assuming BM25 and cosine scores share a common scale."
+      },
+      {
+        "question": "A child chunk is readable but its parent contains restricted information. What should parent expansion do?",
+        "options": [
+          "Include parent because child is authorized",
+          "Trust the vector database score",
+          "Re-check the parent ACL independently",
+          "Remove the citation and include parent silently"
+        ],
+        "correctIndex": 2,
+        "explanation": "Parent expansion is a separate data access. The parent must independently pass tenant and ACL checks."
+      },
+      {
+        "question": "A reranker improves NDCG on its candidate set, but relevant evidence was not retrieved. What metric reveals the upstream problem?",
+        "options": [
+          "Candidate Recall@K",
+          "GPU utilization",
+          "Number of prompt templates",
+          "Average document size"
+        ],
+        "correctIndex": 0,
+        "explanation": "A reranker can only reorder candidates it receives. Candidate Recall@K measures whether relevant evidence entered the candidate set in the first place."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Explain lexical, dense and hybrid retrieval trade-offs",
+        "weight": 15,
+        "evidence": "Closed-book design defense with a worked example."
+      },
+      {
+        "criterion": "Implement stable BM25/cosine/RRF scoring and tests",
+        "weight": 20,
+        "evidence": "Numerical fixture and deterministic unit tests."
+      },
+      {
+        "criterion": "Enforce pre-ranking tenant/ACL isolation and safe cache keys",
+        "weight": 25,
+        "evidence": "Cross-tenant, user/group, cache and parent-expansion negative tests."
+      },
+      {
+        "criterion": "Preserve citation lineage and context budgets",
+        "weight": 15,
+        "evidence": "Version/page/offset checks and budget assertions."
+      },
+      {
+        "criterion": "Evaluate Recall@K, MRR and NDCG by slice",
+        "weight": 15,
+        "evidence": "Reproducible benchmark report with relevance judgments."
+      },
+      {
+        "criterion": "Diagnose retrieval failures and production limitations",
+        "weight": 10,
+        "evidence": "Failure-lab report and adapter gap analysis."
+      }
+    ],
+    "passThreshold": 85,
+    "evidence": [
+      "Passing offline retrieval and authorization test suite.",
+      "Benchmark report with fixed corpus/query judgments and per-slice metrics.",
+      "Citation lineage and context-budget evidence.",
+      "Written explanation of ANN/database pre-filtering and production adapter limitations."
+    ]
+  },
+  "references": [
+    {
+      "title": "The Probabilistic Relevance Framework: BM25 and Beyond",
+      "url": "https://doi.org/10.1561/1500000019",
+      "sourceType": "paper",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "Reciprocal Rank Fusion outperforms Condorcet and individual Rank Learning Methods",
+      "url": "https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf",
+      "sourceType": "paper",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "BEIR: A Heterogeneous Benchmark for Zero-shot Evaluation of Information Retrieval Models",
+      "url": "https://arxiv.org/abs/2104.08663",
+      "sourceType": "paper",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "Qdrant filtering documentation",
+      "url": "https://qdrant.tech/documentation/concepts/filtering/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "Elasticsearch hybrid search",
+      "url": "https://www.elastic.co/guide/en/elasticsearch/reference/current/rrf.html",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "authorized = [chunk for chunk in chunks if acl_allows(principal, chunk)]",
+      "explanation": "The access predicate is evaluated before lexical scoring, vector similarity, candidate ranking or top-k. This is the most important retrieval security invariant."
+    },
+    {
+      "lines": "lexical = bm25_scores(query, authorized); dense = cosine_scores(query_vector, authorized)",
+      "explanation": "Two retrieval channels operate over the same authorized corpus. BM25 is sensitive to exact term statistics; cosine measures vector direction and depends on the embedding space."
+    },
+    {
+      "lines": "fused = reciprocal_rank_fusion([lexical_rank, dense_rank], k=60)",
+      "explanation": "RRF combines rank positions, avoiding direct addition of scores that have different scales and distributions."
+    },
+    {
+      "lines": "citation = Citation(document_version, page, start_char, end_char)",
+      "explanation": "A citation is a provenance record, not just a document title. Version and offsets make it possible to resolve the exact source passage."
+    },
+    {
+      "lines": "if not hits: return abstain()",
+      "explanation": "If no authorized evidence survives retrieval and quality gates, the safe outcome is no answer rather than fabricated evidence."
+    }
+  ]
+}
