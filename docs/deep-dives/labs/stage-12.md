@@ -155,4 +155,6 @@ Run all exercises locally with synthetic fixtures. The Academy service does not 
 - [x] Topic 2 protocol contract tests and migration gap analysis pass before Topic 3.
 - [x] Topic 3 ACL-before-ranking, retrieval quality, citation and index migration tests pass before Topic 4.
 - [x] Topic 4 dataset, confidence, judge-calibration, slice and fail-closed release-gate tests pass before Topic 5.
-- [ ] Topic 5 adversarial attack coverage, remediation and regression tests pass before Topic 6.
+- [x] Topic 5 adversarial attack coverage, remediation and regression tests pass before Topic 6.
+- [x] Topic 6 KV capacity, fairness, deadline, cache isolation and overload recovery tests pass before Topic 7.
+- [ ] Topic 7 OCR/audio/video provenance, alignment, confidence, ACL and retention tests pass before Topic 8.
