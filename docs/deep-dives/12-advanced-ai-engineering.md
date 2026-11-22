@@ -142,6 +142,56 @@ python -m unittest discover -s examples/stage-12 -p 'test_*.py' -v
 
 The simulator checks MCP modern/legacy version behavior, header routing, tool schema and OAuth issuer checks, MRTR input completion, A2A Agent Card/task/idempotency/streaming/capability rules, ACP v2 session and client permission boundaries, IBM/BeeAI ACP message mapping and trusted identity normalization. It does not open sockets or claim complete wire conformance.
 
+## Topic 3 — Advanced Retrieval and Context Engineering
+
+### 1. Security before similarity
+
+A vector score is not an access-control decision. Resolve the authenticated principal, tenant, roles, allowed document set, classification and effective date before retrieval. Apply these predicates before candidate scoring and top-k. Filtering only after ranking can leak document existence, displace authorized evidence and contaminate reranker/context caches. Graph neighbors, parent chunks and cached results must pass the same authorization boundary.
+
+### 2. Combine retrieval signals
+
+- **Lexical retrieval** is strong for exact names, identifiers, dates, legal phrases and rare terms.
+- **Dense retrieval** captures semantic similarity but can miss exact identifiers and may rank semantically related but incorrect passages.
+- **Hybrid retrieval** combines independent rankings. Reciprocal Rank Fusion (RRF) gives each result a contribution (1/(k_0 + rank)) per ranking and avoids pretending lexical and vector scores share a calibrated scale.
+- **Multi-vector / late interaction** preserves token-level representations. A MaxSim-style score can sum or average, for each query token vector, its maximum similarity to document token vectors. This can improve fine-grained matching but increases storage and compute.
+- **Reranking** applies a more expensive relevance model to a bounded, already-authorized candidate set. It cannot repair an authorization filter that ran too late.
+
+### 3. Query planning and graph expansion
+
+Decompose multi-part questions into sub-queries, route exact identifier lookups differently from broad semantic questions, and request freshness-aware retrieval for “current/latest/as of” queries. Graph retrieval can add linked evidence such as policy → exception → approval, but graph edges are navigation hints, not permission grants. Re-check the ACL and freshness of every evidence chunk reached by graph expansion and bound traversal depth.
+
+### 4. Context engineering
+
+A good context pack is not simply the top-k chunks concatenated. Preserve document ID, immutable version, page, source offsets, section and retrieval score. Rerank authorized candidates, deduplicate overlapping chunks, retain parent context when required, compress only by selecting faithful source spans, and fit the final evidence within a measured token budget. If evidence is missing, stale, contradictory or over budget, abstain or ask a clarifying question rather than inventing a citation.
+
+### 5. Cache isolation and freshness
+
+A retrieval cache key must include normalized query plus tenant, subject/role/ACL scope, document set, as-of/freshness policy, model version, embedding version, index version and authorization-policy version. A cache key that omits tenant or ACL can turn a correct retrieval result into a cross-tenant disclosure. Invalidate on document version changes, deletion, permission changes and index promotion.
+
+### 6. Index migration
+
+Build a candidate index alongside the current one. Shadow the same authorized queries, compare overlap and quality slices, check embedding dimensions and source lineage, and require a minimum sample size and predeclared thresholds before promotion. Keep a compatible previous index for rollback. Do not switch solely because indexing completed successfully.
+
+## Worked retrieval score
+
+Suppose the query has two relevant chunks. Lexical ranking is [A, B, C] and dense ranking is [B, C, A]. With (k_0=60):
+- RRF(A) = (1/61 + 1/63)
+- RRF(B) = (1/62 + 1/61)
+- RRF(C) = (1/63 + 1/62)
+
+B ranks slightly above A because it appears first in the dense ranking and second in lexical. The fused score is a ranking signal, not a calibrated probability of correctness.
+
+## Topic 3 lab
+
+Run:
+
+```bash
+python examples/stage-12/advanced_retrieval/retrieval_engine.py
+python -m unittest discover -s examples/stage-12 -p 'test_*.py' -v
+```
+
+The local corpus tests lexical, dense, hybrid RRF and late-interaction ranking; tenant/document/subject/role and temporal filters before scoring; graph ACL re-checks; exact-source compression and citations; cache-key isolation; shadow-index promotion and rollback; and Recall@K/MRR metrics.
+
 ## Stage 12 sequencing
 
-Topics 1 and 2 are implemented in sequence. Topic 3 begins only after Topic 2 passes its tests and review; remaining topics follow the same gate. Topic 9 integrates all prior topics in the Advanced Production Practicum. A lesson is not complete merely because its content file exists; it must run from a clean checkout, pass positive and negative tests, demonstrate failure recovery and satisfy its assessment.
+Topics 1 and 2 are merged. Topic 3 is the current implementation gate; Topics 4–9 follow only after each preceding topic passes its tests and review. Topic 9 integrates all prior topics in the Advanced Production Practicum. A lesson is not complete merely because its content file exists; it must run from a clean checkout, pass positive and negative tests, demonstrate failure recovery and satisfy its assessment.
