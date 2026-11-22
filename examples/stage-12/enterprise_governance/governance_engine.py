@@ -158,7 +158,11 @@ def validate_dossier(dossier: GovernanceDossier, *, now: int) -> GateDecision:
             reasons.append(f"APPROVAL_SIGNATURE_INVALID:{approval.artifact_type}")
         expected_role = REQUIRED_APPROVAL_ROLES.get(approval.artifact_type)
         if expected_role and approval.role != expected_role:
-            reasons.append(f"APPROVAL_ROLE_INVALID:{approval.artifact_type}")
+            is_additional_human_oversight = (
+                approval.artifact_type == "risk_assessment" and approval.role == "human_oversight"
+            )
+            if not is_additional_human_oversight:
+                reasons.append(f"APPROVAL_ROLE_INVALID:{approval.artifact_type}")
     for artifact_type, role in REQUIRED_APPROVAL_ROLES.items():
         if artifact_type in artifacts_by_type and not any(
             item.role == role and item.decision == "approved" and item.expires_at > now
