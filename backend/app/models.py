@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from pgvector.sqlalchemy import Vector
 from .config import get_settings
@@ -71,3 +71,28 @@ class IngestionJob(Base):
     raw_object_deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     raw_object_delete_lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     __table_args__ = ()
+
+
+class CodeRun(Base):
+    """Tenant-scoped execution metadata; learner source is never persisted."""
+    __tablename__ = "code_runs"
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    tenant_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False, index=True)
+    owner_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False, index=True)
+    idempotency_key: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    runtime_id: Mapped[str] = mapped_column(String(40), nullable=False)
+    lesson_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    test_suite_id: Mapped[str | None] = mapped_column(String(80))
+    source_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(24), nullable=False, default="submitting")
+    stdout: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    stderr: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    exit_code: Mapped[int | None] = mapped_column(Integer)
+    duration_ms: Mapped[int | None] = mapped_column(Integer)
+    test_results: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    error_code: Mapped[str | None] = mapped_column(String(80))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "owner_id", "idempotency_key", name="uq_code_runs_owner_idempotency"),
+    )
