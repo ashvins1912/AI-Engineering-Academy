@@ -14,7 +14,7 @@
       "Estimate uncertainty with bootstrap confidence intervals and paired candidate comparisons.",
       "Calibrate automated judges against human labels using Brier score, ECE and inter-rater agreement.",
       "Detect regressions across tenant, language, difficulty, answerability and source-type slices.",
-      "Build fail-closed release gates and post-deployment drift monitors."
+      "Build fail-closed release gates with minimum samples, confidence bounds, safety, cost per successful task, high-risk human review and post-deployment drift monitoring."
     ],
     "prerequisites": [
       "Stage 5 RAG retrieval metrics and golden questions",
@@ -104,7 +104,9 @@
       "Metrics are reported separately and by slice.",
       "Judge calibration and human agreement are measured.",
       "Insufficient samples or missing evidence cannot pass.",
-      "Critical safety violations block promotion regardless of aggregate quality."
+      "Critical safety violations block promotion regardless of aggregate quality.",
+      "High-risk cases require completed, passing human review before release.",
+      "Cost per successful task must remain below a predeclared budget."
     ],
     "outputs": [
       "Dataset fingerprint and split-leakage report",
@@ -112,7 +114,8 @@
       "Confidence intervals and slice report",
       "Judge calibration and inter-rater agreement",
       "Release gate decision with explicit failure reasons",
-      "Post-deployment drift signal"
+      "Post-deployment drift signal",
+      "Cost per successful task and high-risk human-review coverage"
     ],
     "successMetric": "A reproducible report is tied to exact dataset/evaluator versions; quality uncertainty and slices are visible; an injected critical safety failure or missing evidence blocks release even when aggregate quality is high."
   },
@@ -287,10 +290,10 @@
         {
           "step": 6,
           "title": "Fail-closed decision",
-          "narration": "One critical safety failure blocks promotion even when the mean quality is high.",
+          "narration": "One critical safety failure, missing high-risk review, over-budget cost or insufficient evidence blocks promotion even when mean quality is high.",
           "input": "all metric, confidence and calibration evidence",
           "transformation": "Evaluate every required threshold and provenance check.",
-          "output": "promote or block with reasons",
+          "output": "promote or block with explicit safety, cost, review and evidence reasons",
           "visualState": "The release gate exposes explicit pass/fail reasons."
         }
       ],
@@ -420,6 +423,20 @@
       "rootCause": "Safety is combined into a weighted mean instead of a hard release condition.",
       "recovery": "Make critical safety violations an independent zero-tolerance gate.",
       "regressionTest": "Add one safety violation and assert promotion is blocked."
+    },
+    {
+      "name": "High-risk review missing",
+      "symptom": "A high-impact workflow passes automated scoring without expert sign-off.",
+      "rootCause": "The evaluation dataset does not mark high-risk cases or the release gate does not require review coverage.",
+      "recovery": "Label high-risk cases, bind reviewer identity and decision to the dataset/candidate version, and require complete passing review.",
+      "regressionTest": "Mark a case high-risk and assert the release gate blocks when human review is absent or failed."
+    },
+    {
+      "name": "Cost per successful task exceeds budget",
+      "symptom": "A candidate meets answer quality but is too expensive to operate.",
+      "rootCause": "Cost is not recorded per case or is divided by all attempts rather than successful tasks.",
+      "recovery": "Record per-case cost and compute cost per successful task using a predeclared success definition.",
+      "regressionTest": "Inject an over-budget cost report and assert the release gate blocks promotion."
     }
   ],
   "practice": {
@@ -515,9 +532,9 @@
         "evidence": "Brier/ECE report and Cohen kappa."
       },
       {
-        "criterion": "Enforce fail-closed release and drift gates",
+        "criterion": "Enforce fail-closed release, cost, human-review and drift gates",
         "weight": 20,
-        "evidence": "Safety/sample/quality/calibration gate tests and drift trace."
+        "evidence": "Safety/sample/quality/calibration/cost gates, high-risk review evidence and drift trace."
       }
     ],
     "passThreshold": 80,
