@@ -495,14 +495,14 @@ const curriculumSeed: Stage[] = [
   {id:'evaluation-scale',title:'Evaluation at scale and continuous quality',description:'Measure AI quality, uncertainty, judge reliability, slice regressions and release readiness.',lessons:[
    lesson('evaluation-scale','Evaluation at Scale and Continuous Quality','Golden dataset versioning, split leakage, retrieval/answer/trajectory metrics, LLM judge calibration, pairwise evaluation, bootstrap confidence intervals, human agreement, online drift, slice analysis and fail-closed release gates.','Build a confidence-aware AI evaluation and release gate')
   ]},
-  {id:'inference-performance',title:'Inference performance and capacity engineering',description:'Model serving memory, latency, batching, caching, fairness and capacity without requiring a GPU.',lessons:[
-   lesson('inference-performance','Inference Performance and Capacity Engineering','Prefill/decode, TTFT/ITL, KV-cache memory, paged allocation, continuous batching, queueing, admission control, quantization, speculative decoding, prefix caching, tenant fairness and load shedding.','Build a hardware-independent inference and capacity simulator')
-  ]},
   {id:'ai-red-team',title:'AI red teaming and adversarial validation',description:'Attack the complete AI trust chain and verify controls with regression evidence.',lessons:[
    lesson('ai-red-team','AI Red Teaming and Adversarial Validation','Threat models and attack trees, direct/indirect prompt injection, retrieval poisoning, cross-tenant abuse, tool authorization bypass, data exfiltration, jailbreaks, denial of wallet, model supply-chain attacks and remediation verification.','Build a deterministic adversarial attack runner')
   ]},
   {id:'inference-performance',title:'Inference performance and capacity engineering',description:'Optimize latency, throughput and memory under explicit quality, fairness and capacity constraints.',lessons:[
    lesson('inference-performance','Inference Performance and Capacity Engineering','Prefill/decode, TTFT, inter-token latency, KV-cache memory, continuous batching, paged attention, prefix caching, quantization, speculative decoding, queueing, admission control, load shedding and capacity sweeps.','Build a hardware-independent serving and capacity simulator')
+  ]},
+  {id:'inference-performance',title:'Inference performance and capacity engineering',description:'Model serving memory, latency, batching, caching, fairness and capacity without requiring a GPU.',lessons:[
+   lesson('inference-performance','Inference Performance and Capacity Engineering','Prefill/decode, TTFT/ITL, KV-cache memory, paged allocation, continuous batching, queueing, admission control, quantization, speculative decoding, prefix caching, tenant fairness and load shedding.','Build a hardware-independent inference and capacity simulator')
   ]}
  ]}
 ]
