@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 type Id='perceptron'|'forward'|'backprop'|'optimizers'|'cnn'|'sequence'|'training'
 type Topic={id:Id;label:string;title:string;question:string;options:string[];answer:number;explanation:string;evidence:string[]}
@@ -14,6 +14,7 @@ const topics:Topic[]=[
 const sigmoid=(x:number)=>1/(1+Math.exp(-Math.max(-30,Math.min(30,x))))
 export default function Stage3MasteryLabs({initialTopic='perceptron'}:{initialTopic?:string}){
  const [active,setActive]=useState<Id>(()=>topics.some(t=>t.id===initialTopic)?initialTopic as Id:'perceptron')
+ useEffect(()=>{if(topics.some(t=>t.id===initialTopic))setActive(initialTopic as Id)},[initialTopic])
  const [answers,setAnswers]=useState<Record<string,number>>({})
  const [checked,setChecked]=useState<Record<string,boolean>>({})
  const [evidence,setEvidence]=useState<Record<string,string[]>>({})
