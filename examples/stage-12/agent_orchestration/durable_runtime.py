@@ -153,7 +153,8 @@ class TaskCoordinator:
         return compensated
 
     def run(self) -> dict:
-        completed = sorted((task_id for task_id in self.tasks if self.journal.task(task_id).get("status") == "completed"),\n                           key=lambda item: self.journal.task(item).get("completed_at", 0))
+        completed = sorted((task_id for task_id in self.tasks if self.journal.task(task_id).get("status") == "completed"),
+                           key=lambda item: self.journal.task(item).get("completed_at", 0))
         failed = []
         in_flight: dict[Future, str] = {}
         stop_dispatch = False
