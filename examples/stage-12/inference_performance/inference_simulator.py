@@ -169,7 +169,7 @@ class InferenceSimulator:
         results: list[RequestEstimate] = []
         clock = 0.0
         for batch in batches:
-            start = max(clock, min(item.arrival_ms for item in batch))
+            start = max(clock, max(item.arrival_ms for item in batch))
             try:
                 estimates = self.simulate_batch(batch, start_ms=start)
             except MemoryError:
