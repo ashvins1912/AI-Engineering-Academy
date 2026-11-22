@@ -192,6 +192,51 @@ python -m unittest discover -s examples/stage-12 -p 'test_*.py' -v
 
 The local corpus tests lexical, dense, hybrid RRF and late-interaction ranking; tenant/document/subject/role and temporal filters before scoring; graph ACL re-checks; exact-source compression and citations; cache-key isolation; shadow-index promotion and rollback; and Recall@K/MRR metrics.
 
+## Topic 4 — Evaluation at Scale and Continuous Quality
+
+### 1. Version the evidence, not just the score
+
+A golden dataset is a versioned artifact: stable case IDs, query, answerability, expected facts, relevant source IDs, expected tool calls, source fingerprints and slices such as tenant, language, difficulty and source type. Record the dataset fingerprint with every report. Keep train, validation, test and golden splits distinct; detect query/source leakage before scoring. A score without dataset identity cannot be reproduced or audited.
+
+### 2. Evaluate each layer separately
+
+- Retrieval: Recall@K, Precision@K, MRR and NDCG.
+- Answer: correctness, completeness and groundedness against expected facts.
+- Citations: precision, recall and source/version/page/offset correctness.
+- Abstention: correct refusal when evidence is missing or the question is unanswerable.
+- Agent/tool trajectory: correct tool choice, arguments, permissions, retries and task completion.
+- Safety: policy violations, sensitive-data exposure and unsafe actions.
+- Operations: p50/p95 latency, token usage, cost per successful task, retries and failure rates.
+
+Do not collapse all dimensions into one score too early. A safety violation can be a hard release blocker even when answer quality is high.
+
+### 3. Judges are systems to evaluate
+
+A model-based judge can be inconsistent, biased toward verbosity or manipulated by candidate text. Keep the rubric outside candidate-controlled content. Calibrate judge scores against human labels using Brier score, Expected Calibration Error (ECE), pairwise agreement and inter-rater metrics such as Cohen's kappa. Record judge model/version, prompt, sampling settings and dataset version. A deterministic local judge is useful for mechanics but does not prove a production LLM judge is reliable.
+
+### 4. Quantify uncertainty
+
+A point estimate hides sample size. Bootstrap the evaluation cases to estimate a confidence interval for mean quality; compare candidates with paired samples when both are run on the same cases. Small or correlated samples can create false confidence. Require a minimum sample count and report the interval, not just the mean. Use representative sampling across tenants, languages, query difficulty, answerability and source types.
+
+### 5. Slice and monitor
+
+Report aggregate and per-slice metrics. A strong overall score can conceal one failing language, tenant or document type. Monitor quality drift after release using a stable baseline and a predeclared relative-drop threshold. Keep human review for high-risk decisions and investigate data distribution changes separately from model regressions.
+
+### 6. Fail-closed release gate
+
+A release gate should require: exact dataset fingerprint, minimum sample size, quality lower confidence bound, citation/abstention requirements, zero tolerance for critical safety violations, latency/cost thresholds and calibrated judge evidence. Missing or underpowered evidence is not a pass. Preserve the failed report, slice breakdown and regression cases for diagnosis.
+
+## Topic 4 lab
+
+Run:
+
+```bash
+python examples/stage-12/evaluation_scale/evaluation_engine.py
+python -m unittest discover -s examples/stage-12 -p 'test_*.py' -v
+```
+
+The local harness covers dataset versioning/leakage, retrieval and answer metrics, citation and abstention, deterministic judge scoring, bootstrap intervals, calibration, Cohen's kappa, pairwise comparisons, slice analysis, drift and fail-closed release gates.
+
 ## Stage 12 sequencing
 
-Topics 1 and 2 are merged. Topic 3 is the current implementation gate; Topics 4–9 follow only after each preceding topic passes its tests and review. Topic 9 integrates all prior topics in the Advanced Production Practicum. A lesson is not complete merely because its content file exists; it must run from a clean checkout, pass positive and negative tests, demonstrate failure recovery and satisfy its assessment.
+Topics 1 and 2 are merged. Topic 4 is the current implementation gate; Topics 5–9 follow only after each preceding topic passes its tests and review. Topic 9 integrates all prior topics in the Advanced Production Practicum. A lesson is not complete merely because its content file exists; it must run from a clean checkout, pass positive and negative tests, demonstrate failure recovery and satisfy its assessment.
