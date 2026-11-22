@@ -506,13 +506,12 @@ const curriculumSeed: Stage[] = [
   {id:'ai-red-team',title:'AI red teaming and adversarial validation',description:'Attack the complete AI trust chain and verify controls with regression evidence.',lessons:[
    lesson('ai-red-team','AI Red Teaming and Adversarial Validation','Threat models and attack trees, direct/indirect prompt injection, retrieval poisoning, cross-tenant abuse, tool authorization bypass, data exfiltration, jailbreaks, denial of wallet, model supply-chain attacks and remediation verification.','Build a deterministic adversarial attack runner')
   ]},
-  {id:'multimodal-systems',title:'Multimodal AI systems',description:'Normalize and retrieve document, image, audio and video evidence with confidence, provenance and access controls.',lessons:[
-   lesson('multimodal-systems','Multimodal AI Systems: Vision, Audio and Video','OCR and document layout, tables, visual grounding, audio transcripts, diarization, WER/CER, video frame sampling, temporal alignment, cross-modal retrieval, citation lineage, confidence, tenant ACL and retention.','Build an offline multimodal evidence pipeline')
-  ]},
   {id:'inference-performance',title:'Inference performance and capacity engineering',description:'Optimize latency, throughput and memory under explicit quality, fairness and capacity constraints.',lessons:[
    lesson('inference-performance','Inference Performance and Capacity Engineering','Prefill/decode, TTFT, inter-token latency, KV-cache memory, continuous batching, paged attention, prefix caching, quantization, speculative decoding, queueing, admission control, load shedding and capacity sweeps.','Build a hardware-independent serving and capacity simulator')
   ]},
-
+  {id:'multimodal-systems',title:'Multimodal AI systems',description:'Normalize and retrieve document, image, audio and video evidence with confidence, provenance and access controls.',lessons:[
+   lesson('multimodal-systems','Multimodal AI Systems: Vision, Audio and Video','OCR and document layout, tables, visual grounding, audio transcripts, diarization, WER/CER, video frame sampling, temporal alignment, cross-modal retrieval, citation lineage, confidence, tenant ACL and retention.','Build an offline multimodal evidence pipeline')
+  ]}
  ]}
 ]
 
