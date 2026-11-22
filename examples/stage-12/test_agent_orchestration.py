@@ -102,6 +102,17 @@ class DurableCoordinatorTests(unittest.TestCase):
         self.assertEqual(second["status"], "completed")
         self.assertEqual(calls, ["task:a", "task:b"])
 
+    def test_interrupted_running_task_is_resumed(self):
+        journal = ExecutionJournal(self.journal_path)
+        journal.update_task("a", status="running", attempts=1)
+        calls = []
+        def op(payload, key, journal):
+            calls.append(key)
+            return {"recovered": True}
+        result = TaskCoordinator([TaskSpec("a", "op")], {"op": op}, journal).run()
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(calls, ["task:a"])
+
     def test_idempotency_replay_returns_original_result(self):
         calls = []
         journal = ExecutionJournal(self.journal_path)
