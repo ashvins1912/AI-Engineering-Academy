@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, ArrowRight, BookOpen, CheckCircle2, CircleHelp, Pause, Play, RotateCcw, Sparkles } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BookOpen, CircleHelp, Pause, Play, RotateCcw, Sparkles } from 'lucide-react'
 import type { Lesson } from '../data/curriculum'
 
 type Props = { lesson: Lesson }
