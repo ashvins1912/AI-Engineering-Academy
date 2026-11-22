@@ -1,0 +1,12 @@
+flowchart TD
+    A[Query + verified access context] --> B[Query planner]
+    B --> C[Tenant / ACL / time filters]
+    C --> D[Authorized candidate set]
+    D --> E[Lexical / dense / multi-vector retrieval]
+    E --> F[Hybrid fusion and reranking]
+    F --> G[Bounded graph expansion]
+    G --> H[Context compression under token budget]
+    H --> I[Citations with version / page / offsets]
+    I --> J[Grounded answer or abstention]
+    K[Cache key: tenant + ACL + model + index + policy] -. controls .-> E
+    L[Shadow index migration] -. quality gate .-> F
