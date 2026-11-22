@@ -1,0 +1,587 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "protocol-interop",
+    "title": "Agent Protocol Interoperability: MCP, A2A and ACP",
+    "stage": 12,
+    "estimatedMinutes": 480
+  },
+  "state": "runnable",
+  "learning": {
+    "outcomes": [
+      "Choose MCP, A2A or Agent Client Protocol based on the actual communication boundary and required interaction semantics.",
+      "Explain the MCP 2026-07-28 stateless protocol, version negotiation, tools/resources/prompts, routing headers, MRTR and authorization changes.",
+      "Implement A2A 1.0 Agent Card validation, message/task lifecycle, artifacts, streaming and capability-aware delivery.",
+      "Implement Agent Client Protocol v2 initialization, session, prompt, notification and client permission flows.",
+      "Distinguish IBM/BeeAI Agent Communication Protocol from Agent Client Protocol and explain the IBM/BeeAI ACP migration into A2A.",
+      "Preserve verified identity, tenant, scopes, correlation and resource authorization across protocol adapters without trusting peer-supplied claims."
+    ],
+    "prerequisites": [
+      "Stage 6 agent tools and delegation",
+      "Stage 7 MCP, A2A and ACP foundations",
+      "Stage 10 tool authorization, OAuth/OIDC and trust boundaries",
+      "JSON-RPC 2.0, HTTP, JSON Schema and basic asynchronous programming"
+    ],
+    "glossary": [
+      {
+        "term": "MCP",
+        "definition": "Model Context Protocol connects a model host or client to servers exposing tools, resources and prompts."
+      },
+      {
+        "term": "A2A",
+        "definition": "Agent2Agent is an open protocol for independent agents to discover capabilities and exchange messages, tasks and artifacts."
+      },
+      {
+        "term": "Agent Client Protocol",
+        "definition": "A client-to-coding-agent protocol used by IDEs and editors to manage sessions, prompts, updates and permissions."
+      },
+      {
+        "term": "IBM/BeeAI ACP",
+        "definition": "A legacy agent-to-agent Agent Communication Protocol whose work is now part of the A2A migration path."
+      },
+      {
+        "term": "Agent Card",
+        "definition": "A2A discovery document describing an agent's identity, skills, supported interfaces, capabilities and authentication requirements."
+      },
+      {
+        "term": "Task",
+        "definition": "A2A's stateful unit of work with an identifier, status, history and optional artifacts."
+      },
+      {
+        "term": "Artifact",
+        "definition": "A structured A2A task output containing one or more content parts, distinct from conversational messages."
+      },
+      {
+        "term": "MRTR",
+        "definition": "MCP Multi Round-Trip Requests let a server request missing input and let the client resume the original call with structured responses."
+      },
+      {
+        "term": "Capability negotiation",
+        "definition": "The exchange and validation of supported protocol features before invoking optional operations."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "AI systems use several protocols that look similar because they exchange JSON and messages, but they connect different trust boundaries. Confusing MCP with A2A can turn a context server into an assumed peer agent; confusing Agent Client Protocol with IBM/BeeAI ACP can produce invalid session, permission or migration logic. Version drift adds another risk: a client written for a session-based MCP revision may fail against the 2026-07-28 stateless protocol.",
+    "plainLanguage": "First ask who is talking to whom. MCP is usually a host or model client talking to a context server. The server exposes tools the model can call, resources the client can read, and prompts that can be reused. It is not a general peer-agent delegation protocol. The 2026-07-28 MCP revision changes the modern core to stateless request handling: old initialize/session headers are removed, requests carry version and client context, and an optional server/discover call can inspect capabilities. Header routing, cache hints and Multi Round-Trip Requests change how gateways and clients must behave. Older MCP versions still exist, so adapters must negotiate versions rather than assume one lifecycle.\n\nA2A is for independent agents that may be built by different teams or frameworks. A client discovers an Agent Card, validates the peer and selects a supported interface. It sends a Message; the agent may return a direct Message or create a Task for longer work. A Task has a stable ID, context ID, status and history. Results belong in Artifacts, not hidden inside arbitrary status messages. A client can poll, stream or receive push notifications only when the agent advertises those capabilities. State transitions and terminal behavior matter: a completed task is not silently reopened by sending another message.\n\nAgent Client Protocol is different again: it connects an IDE/editor client to a coding agent. The JSON-RPC flow negotiates protocol version and capabilities, may authenticate, creates or resumes a session, sends prompts, receives session updates and permission requests, and can cancel foreground work. The client advertises which filesystem and terminal capabilities it supports. The agent must not read or write host files or launch commands simply because it is a coding agent; it must use the client-mediated capabilities and permission flow.\n\nThe acronym ACP also refers to IBM/BeeAI Agent Communication Protocol, an older agent-to-agent protocol. IBM Research now identifies that work as part of A2A under the Linux Foundation. It is not Agent Client Protocol. A migration mapper may preserve message text and a context identifier, but authentication, task lifecycle, artifacts, streaming, discovery and errors may need redesign. Treat migration as a semantic upgrade, not a rename.\n\nA protocol gateway should validate the wire contract and then normalize the request into an internal intent containing verified identity, tenant, scopes, resource, action, protocol version and correlation ID. The identity must come from the authenticated server context, never from model output or a peer's arbitrary JSON field. After normalization, application policy independently authorizes the operation. Protocol support does not grant resource access.",
+    "mentalModel": "Identify caller and receiver → choose protocol boundary → pin version and transport → negotiate advertised capabilities → validate envelope and payload → authenticate peer → normalize trusted identity/context → authorize action/resource → execute bounded operation → preserve task/session state and audit evidence.",
+    "limitations": [
+      "A simulator of selected fields and state transitions is not full protocol wire conformance or a substitute for official conformance suites.",
+      "MCP 2026-07-28 and earlier handshake-based versions have different lifecycle semantics; a single undifferentiated client is unsafe.",
+      "A2A Agent Card metadata is discovery input, not authorization; TLS, server identity and runtime policy still matter.",
+      "A2A streaming or push delivery can disconnect or duplicate events; durable task state and event ordering need independent validation.",
+      "Agent Client Protocol client capabilities do not prove a filesystem path is safe; workspace boundaries and permission checks remain necessary.",
+      "Legacy IBM/BeeAI ACP migration is not guaranteed to be lossless; task, auth, artifact and streaming semantics must be mapped explicitly.",
+      "The local lab does not run real OAuth, TLS, signed Agent Card verification, IDE subprocesses or network transports."
+    ],
+    "everydayAnalogy": "MCP is like a librarian exposing a catalog and request desk to one researcher. A2A is like two independent research teams exchanging a job ticket and finished report. Agent Client Protocol is like an editor controlling a contractor's access to a particular project folder and terminal. IBM/BeeAI ACP was an earlier team-to-team message system now being migrated into A2A.",
+    "mathMadeSimple": "A gateway that supports 3 protocol families, 4 version families and 5 optional capability combinations has up to 3×4×5=60 compatibility cases before authentication and payload schemas are considered. Capability negotiation and a versioned test matrix reduce the combinations actually enabled. This is a test-space count, not a probability of failure.",
+    "productionImpact": "Pin released protocol versions and SDKs; negotiate capabilities; verify TLS/server identity and OAuth issuer/audience; enforce request-size and schema limits; preserve request/task/session IDs; enforce per-operation authorization; use idempotency and durable task state; validate event ordering; apply client permissions to file/terminal access; and test real peers before claiming interoperability."
+  },
+  "useCase": {
+    "scenario": "An IDE user asks a coding agent to update a service. The agent reads only client-approved workspace files through Agent Client Protocol, queries an approved internal API catalog through an MCP context server, and delegates a policy review to a separately operated A2A agent. A legacy IBM/BeeAI ACP peer is being migrated to A2A.",
+    "actors": [
+      "IDE/editor client",
+      "Coding agent process",
+      "MCP host/client and context server",
+      "A2A client and independent policy-review agent",
+      "Legacy IBM/BeeAI ACP peer",
+      "Identity provider and application policy gateway",
+      "Workspace filesystem and terminal permission broker"
+    ],
+    "inputs": [
+      "Pinned protocol versions and supported transport bindings",
+      "MCP tool/resource/prompt catalog and OAuth issuer metadata",
+      "A2A Agent Card, supported interfaces, skills and capabilities",
+      "ACP client filesystem/terminal capabilities and session state",
+      "Verified principal, tenant, scopes, resource ownership and correlation IDs"
+    ],
+    "constraints": [
+      "Protocol name and version must match the actual communication boundary.",
+      "Optional capabilities may be invoked only when advertised and supported.",
+      "Wire-supplied tenant, role or identity fields are not trusted authority.",
+      "MCP tool schemas and routing headers must agree.",
+      "A2A terminal tasks cannot be silently restarted or mutated.",
+      "ACP file and terminal operations require advertised client capabilities and permission.",
+      "Legacy IBM/BeeAI ACP mapping must preserve migration warnings and semantic gaps."
+    ],
+    "outputs": [
+      "Validated protocol requests and negotiated capability sets",
+      "MCP tool result or structured input_required challenge",
+      "A2A task, status events and artifact output",
+      "ACP session updates and permission decisions",
+      "Normalized trusted application intent and allow/deny policy decision"
+    ],
+    "successMetric": "Valid protocol exchanges succeed with version and capability checks; malformed, unauthorized, cross-tenant or unadvertised operations fail before side effects; task/session state and identity survive adapter boundaries."
+  },
+  "architecture": {
+    "diagram": "examples/stage-12/protocol_interop/protocol-boundaries.mmd",
+    "components": [
+      "Protocol version registry",
+      "MCP request validator and tool adapter",
+      "A2A Agent Card and task adapter",
+      "Agent Client Protocol session adapter",
+      "IBM/BeeAI ACP migration bridge",
+      "Verified identity resolver",
+      "Normalized intent gateway",
+      "Application policy enforcement point",
+      "Task/session audit store"
+    ],
+    "dataFlow": [
+      {
+        "from": "IDE host",
+        "to": "ACP client adapter",
+        "payload": "JSON-RPC initialize, session and prompt messages",
+        "purpose": "Negotiate coding-agent session and client capabilities."
+      },
+      {
+        "from": "Coding agent host",
+        "to": "MCP adapter",
+        "payload": "Versioned tools/call with routing headers and arguments",
+        "purpose": "Invoke a registered context-server tool under verified identity."
+      },
+      {
+        "from": "Agent orchestrator",
+        "to": "A2A adapter",
+        "payload": "Message, task request and context ID",
+        "purpose": "Delegate bounded work to an independent agent."
+      },
+      {
+        "from": "A2A adapter",
+        "to": "Task store",
+        "payload": "Task state, ordered events and artifacts",
+        "purpose": "Persist long-running work and support polling or streaming."
+      },
+      {
+        "from": "Legacy IBM/BeeAI ACP",
+        "to": "Migration bridge",
+        "payload": "Legacy agent message and session metadata",
+        "purpose": "Map message context to A2A while recording semantic gaps."
+      },
+      {
+        "from": "Protocol adapters",
+        "to": "Normalized intent gateway",
+        "payload": "Protocol, version, request ID and verified principal context",
+        "purpose": "Separate wire validation from application authorization."
+      },
+      {
+        "from": "Normalized intent gateway",
+        "to": "Policy enforcement point",
+        "payload": "Action, resource, tenant and required scope",
+        "purpose": "Authorize the operation independently of protocol claims."
+      }
+    ],
+    "trustBoundaries": [
+      "MCP server descriptions, resources and tool results are untrusted input.",
+      "A2A Agent Cards and peer messages are discovery/content data, not grants.",
+      "Agent Client Protocol client capabilities are explicit but still require workspace and path validation.",
+      "IBM/BeeAI legacy fields are untrusted until authenticated and mapped.",
+      "Verified identity and tenant context are supplied by the application authentication layer.",
+      "Only the policy enforcement point grants application access."
+    ],
+    "failurePaths": [
+      "MCP version/header mismatch: reject before invoking a tool.",
+      "MCP OAuth issuer mismatch or unregistered tool: fail closed.",
+      "A2A Agent Card invalid or capability absent: do not invoke unsupported operations.",
+      "A2A terminal task receives another message: reject and create a new task only through an explicit new interaction.",
+      "A2A event sequence is out of order: flag protocol violation and reconcile task state.",
+      "ACP filesystem/terminal capability absent or permission denied: do not access host resource.",
+      "Legacy ACP migration loses semantic fields: quarantine for explicit mapping instead of silently dropping them."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-12/protocol_interop/scenarios.json",
+    "steps": [
+      {
+        "label": "Identify the boundary",
+        "explanation": "Classify whether the caller needs a context server, an independent agent or a coding-agent client.",
+        "expectedState": "MCP, A2A or Agent Client Protocol selected for the correct boundary."
+      },
+      {
+        "label": "Negotiate version",
+        "explanation": "Pin a released protocol version and inspect the peer's supported interfaces and capabilities.",
+        "expectedState": "Only compatible advertised features are enabled."
+      },
+      {
+        "label": "Validate MCP",
+        "explanation": "Check modern stateless request version, client metadata, routing headers, tool schema and authorization issuer.",
+        "expectedState": "Valid tool call reaches only the registered adapter."
+      },
+      {
+        "label": "Run A2A task",
+        "explanation": "Validate Agent Card, create a task, transition state and emit ordered artifact/status events.",
+        "expectedState": "Task state and artifact are durable and capability-aware."
+      },
+      {
+        "label": "Run ACP session",
+        "explanation": "Negotiate IDE client capabilities, create a session, prompt the coding agent and request explicit permission.",
+        "expectedState": "Only client-advertised and approved operations are available."
+      },
+      {
+        "label": "Bridge and authorize",
+        "explanation": "Map legacy IBM/BeeAI ACP message context to A2A, normalize verified identity and apply application policy.",
+        "expectedState": "Semantic gaps are recorded and unauthorized resources remain denied."
+      }
+    ],
+    "accessibility": [
+      "Every protocol step includes a text description of caller, receiver, version and expected state.",
+      "Keyboard navigation must expose all protocol states and errors without relying on color."
+    ],
+    "animation": {
+      "objective": "Trace three distinct protocol boundaries and a legacy ACP migration path while preserving version, capability and identity constraints.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Choose the boundary",
+          "narration": "MCP, A2A and Agent Client Protocol are selected by who communicates with whom.",
+          "input": "model↔context server; agent↔agent; IDE↔coding agent",
+          "transformation": "Classify the caller, receiver and required interaction.",
+          "output": "MCP / A2A / ACP client",
+          "visualState": "Three separate lanes appear with distinct endpoints."
+        },
+        {
+          "step": 2,
+          "title": "Negotiate version",
+          "narration": "A peer must advertise a compatible version and optional capability before the client uses it.",
+          "input": "MCP 2026-07-28; A2A 1.0.0; Agent Client Protocol v2",
+          "transformation": "Validate version and capability intersection.",
+          "output": "Compatible feature set",
+          "visualState": "Unsupported features are disabled before sending."
+        },
+        {
+          "step": 3,
+          "title": "MCP stateless call",
+          "narration": "The modern MCP request carries protocol context and routing headers; the server validates the registered tool schema.",
+          "input": "tools/call + Mcp-Method + Mcp-Name + OAuth issuer",
+          "transformation": "Check version, header/body agreement, tool schema and issuer.",
+          "output": "Tool result or structured input_required",
+          "visualState": "MCP request is validated and routed to a single tool adapter."
+        },
+        {
+          "step": 4,
+          "title": "A2A task lifecycle",
+          "narration": "An independent agent returns a Task for long-running work and publishes ordered status and artifact events.",
+          "input": "Agent Card + Message + contextId",
+          "transformation": "Create task, transition state and append artifact event.",
+          "output": "Task + ordered events + Artifact",
+          "visualState": "Task lane progresses through submitted, working and completed."
+        },
+        {
+          "step": 5,
+          "title": "ACP session permission",
+          "narration": "The IDE client advertises filesystem and terminal capabilities and approves specific operations.",
+          "input": "initialize → session/new → session/prompt",
+          "transformation": "Check client capability and explicit permission before access.",
+          "output": "Session updates or permission denial",
+          "visualState": "Only approved workspace operations become available."
+        },
+        {
+          "step": 6,
+          "title": "Normalize and authorize",
+          "narration": "Legacy IBM/BeeAI ACP messages are mapped with migration warnings; trusted identity is resolved separately from wire data.",
+          "input": "Legacy message + verified principal + tenant",
+          "transformation": "Normalize action/resource and apply server-side policy.",
+          "output": "Allow or deny with preserved correlation",
+          "visualState": "All protocol lanes converge on the policy enforcement point."
+        }
+      ],
+      "controls": [
+        {
+          "name": "protocolVersion",
+          "min": 1,
+          "max": 3,
+          "defaultValue": 2,
+          "effect": "Select an illustrative protocol family/version lane; the adapter must reject versions outside its pinned compatibility matrix."
+        },
+        {
+          "name": "capabilityEnabled",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "Disable an optional advertised capability and observe the adapter reject an operation that depends on it."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Each step states the protocol boundary, pinned version, capability decision and result. Keyboard users can move through the same protocol state sequence; reduced-motion mode retains the full textual trace."
+    }
+  },
+  "workedExample": {
+    "problem": "Route a coding-agent workflow through ACP, MCP and A2A without confusing protocol roles or expanding permissions.",
+    "input": "IDE client has filesystem read but no terminal capability; coding agent uses MCP search tool; policy agent is discovered through A2A 1.0.0; legacy IBM/BeeAI ACP message must be migrated.",
+    "steps": [
+      {
+        "operation": "Initialize Agent Client Protocol",
+        "reasoning": "The IDE client and coding agent negotiate protocol version and client capabilities before session creation.",
+        "result": "Session can prompt and read only the advertised workspace capability; terminal remains unavailable."
+      },
+      {
+        "operation": "Call MCP search tool",
+        "reasoning": "The modern MCP request carries the version, client context and method/tool routing headers; OAuth issuer and tool argument schema are validated.",
+        "result": "The registered search tool returns a result; mismatched header or issuer fails before execution."
+      },
+      {
+        "operation": "Delegate with A2A",
+        "reasoning": "The independent policy agent's Agent Card advertises task and streaming capabilities; the client sends a Message and tracks the Task.",
+        "result": "A2A Task transitions submitted → working → completed and returns a policy Artifact."
+      },
+      {
+        "operation": "Migrate legacy ACP message",
+        "reasoning": "IBM/BeeAI ACP content and session context are mapped to A2A Message/Context fields while auth and task semantics are reviewed separately.",
+        "result": "A2A message retains content/context and includes a migration warning."
+      },
+      {
+        "operation": "Authorize normalized intent",
+        "reasoning": "The application resolves the verified user and tenant, then checks scope and resource ownership independent of protocol metadata.",
+        "result": "Unapproved terminal, file-write or cross-tenant access is denied."
+      }
+    ],
+    "expectedOutput": "MCP tool call succeeds only with correct version, headers, schema and issuer; A2A task completes with ordered artifact events; ACP session uses only client-advertised capabilities; legacy ACP mapping preserves context and migration warnings."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "path": "examples/stage-12/protocol_interop/protocol_lab.py",
+      "runCommand": "python examples/stage-12/protocol_interop/protocol_lab.py",
+      "testsPath": "examples/stage-12/test_protocol_interop.py",
+      "expectedResult": "MCP tool call, A2A task and ACP session complete; legacy IBM/BeeAI ACP message maps to A2A with explicit migration warning.",
+      "role": "from-scratch"
+    },
+    {
+      "language": "python",
+      "path": "examples/stage-12/protocol_interop/protocol_gateway.py",
+      "runCommand": "python -m unittest discover -s examples/stage-12 -p 'test_*.py' -v",
+      "testsPath": "examples/stage-12/test_protocol_interop.py",
+      "expectedResult": "Normalized protocol intents preserve verified identity and tenant; policy denies missing scope and cross-tenant resources.",
+      "role": "production"
+    }
+  ],
+  "failures": [
+    {
+      "name": "MCP version-era mismatch",
+      "symptom": "A request fails because the client sends initialize to a stateless endpoint or omits legacy session state.",
+      "rootCause": "The adapter assumes one MCP lifecycle for every protocol version.",
+      "recovery": "Pin and negotiate the version; use modern stateless request metadata or the correct legacy handshake.",
+      "regressionTest": "Assert modern initialize is rejected and a legacy call without initialize is rejected."
+    },
+    {
+      "name": "MCP routing header tampering",
+      "symptom": "Gateway routes a tool call differently from the JSON-RPC body.",
+      "rootCause": "Mcp-Method or Mcp-Name disagrees with the method or tool name in the request.",
+      "recovery": "Require header/body agreement before parsing or dispatching the tool.",
+      "regressionTest": "Change either header and assert no handler invocation."
+    },
+    {
+      "name": "OAuth issuer mix-up",
+      "symptom": "A token minted by one authorization server is accepted by another MCP resource server.",
+      "rootCause": "The client validates token signature but not issuer binding.",
+      "recovery": "Validate issuer, audience, resource and scope; never reuse credentials across issuers.",
+      "regressionTest": "Use a token from issuer B with expected issuer A and assert denial."
+    },
+    {
+      "name": "A2A capability overreach",
+      "symptom": "Client attempts streaming or push notifications that the Agent Card does not advertise.",
+      "rootCause": "The client assumes optional protocol features are universally supported.",
+      "recovery": "Negotiate the Agent Card capability set and reject unsupported methods.",
+      "regressionTest": "Disable streaming/push and assert capability errors."
+    },
+    {
+      "name": "A2A terminal task mutation",
+      "symptom": "A completed task is accidentally reopened by a late message or duplicate request.",
+      "rootCause": "Task state transitions and idempotency keys are not enforced.",
+      "recovery": "Reject transitions from terminal states and create a new task for a new interaction.",
+      "regressionTest": "Complete a task then attempt working transition and assert failure."
+    },
+    {
+      "name": "ACP client capability bypass",
+      "symptom": "Coding agent reads a host file or invokes terminal despite the IDE not advertising permission.",
+      "rootCause": "Agent assumes host filesystem or terminal access from its own runtime privilege.",
+      "recovery": "Use client-advertised capabilities and explicit permission flow; constrain workspace paths.",
+      "regressionTest": "Disable fs/terminal capabilities and assert no access."
+    },
+    {
+      "name": "Legacy IBM ACP semantic loss",
+      "symptom": "Migrated agent loses task, auth or artifact behavior even though the message text still arrives.",
+      "rootCause": "Migration treated ACP as a wire-compatible rename to A2A.",
+      "recovery": "Map message/context deliberately and redesign task, auth, streaming and artifact semantics.",
+      "regressionTest": "Require migration warning and test every mapped/unmapped field."
+    }
+  ],
+  "practice": {
+    "guided": "Inspect one valid request for each protocol and label its caller, receiver, version, request ID, capability set and trust boundary. Reject one deliberately malformed request before dispatch.",
+    "independent": "Add a second MCP tool with a strict schema, an A2A skill with a separate auth scheme and an ACP filesystem write operation. Prove each feature requires explicit registration, capability and authorization.",
+    "realWorld": "Design a cross-team support workflow: a desktop client uses ACP for a coding agent, MCP for read-only knowledge tools, and A2A for a separate ticket-resolution agent. Draw identity propagation and permission checks at every boundary.",
+    "expertExtension": "Implement real SDK adapters behind an optional integration profile, run official protocol conformance suites, verify signed Agent Cards, validate OAuth resource indicators and issuer binding, add event replay protection and a compatibility matrix across versions.",
+    "guidedExercise": {
+      "title": "Build a version-aware protocol router",
+      "instructions": "Classify the request boundary, validate the pinned protocol version and capability set, check JSON-RPC IDs and route metadata, then normalize the request using a verified identity. Do not read tenant or role authority from the request body.",
+      "starterCode": "def route_protocol(request, verified_identity):\\n    # TODO: classify MCP vs A2A vs Agent Client Protocol\\n    # TODO: validate version, capabilities and request envelope\\n    # TODO: normalize verified identity and authorize the action\\n    raise NotImplementedError",
+      "solutionCode": "def normalize_request(protocol, request_id, verified_identity, action, resource_id):\\n    if not verified_identity.subject or not verified_identity.tenant_id:\\n        raise ValueError('TRUSTED_CONTEXT_INCOMPLETE')\\n    if not isinstance(request_id, (str, int)) or isinstance(request_id, bool):\\n        raise ValueError('INVALID_REQUEST_ID')\\n    return {\\n        'protocol': protocol, 'request_id': request_id,\\n        'subject': verified_identity.subject, 'tenant_id': verified_identity.tenant_id,\\n        'scopes': verified_identity.scopes, 'action': action, 'resource_id': resource_id\\n    }",
+      "unitTests": "intent = normalize_request('a2a', 'rpc-1', VerifiedIdentity('user-1','tenant-A',frozenset({'agent:delegate'})), 'delegate', 'agent-B')\\nassert intent['tenant_id'] == 'tenant-A'\\nassert intent['subject'] == 'user-1'"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build a protocol workbench that displays three distinct communication lanes, version/capability negotiation, request validation, task/session state and authorization decisions.",
+      "steps": [
+        "Load a versioned protocol fixture and identify the caller/receiver boundary.",
+        "Validate protocol version, JSON-RPC envelope, routing headers, Agent Card or client capabilities.",
+        "Simulate an MCP tool call and MRTR input_required round trip.",
+        "Simulate A2A task creation, streaming updates, artifact output and terminal-state denial.",
+        "Simulate an ACP session and client-mediated file/terminal permission denial.",
+        "Map a legacy IBM/BeeAI ACP message and export a compatibility-gap report."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "A model host wants to discover tools and resources exposed by a context server. Which protocol boundary is appropriate?",
+        "options": [
+          "A2A because every tool is an independent agent",
+          "MCP because it connects a host/client to context servers",
+          "Agent Client Protocol because the host is an IDE",
+          "IBM/BeeAI ACP because it replaces all other protocols"
+        ],
+        "correctIndex": 1,
+        "explanation": "MCP standardizes model-host/client to context-server interactions such as tools, resources and prompts. It is not the general peer-agent task protocol."
+      },
+      {
+        "question": "A policy-review agent is independently operated and returns a long-running task with an artifact. Which protocol best fits?",
+        "options": [
+          "A2A with Agent Card, Task and Artifact",
+          "MCP tools/list only",
+          "Agent Client Protocol session/prompt",
+          "An MCP initialize notification"
+        ],
+        "correctIndex": 0,
+        "explanation": "A2A is designed for independent agents and models task lifecycle, messages, artifacts, discovery and capability-aware updates."
+      },
+      {
+        "question": "An IDE client does not advertise terminal capability. The coding agent requests terminal execution. What should happen?",
+        "options": [
+          "Run it because the agent is trusted",
+          "Assume terminal is available on all desktops",
+          "Reject the operation because the client did not advertise the capability",
+          "Translate the request to an A2A artifact"
+        ],
+        "correctIndex": 2,
+        "explanation": "Agent Client Protocol capabilities are negotiated from the client. The agent must not assume host terminal access or bypass the client permission boundary."
+      },
+      {
+        "question": "What is the correct treatment of IBM/BeeAI ACP in a current architecture?",
+        "options": [
+          "It is the same protocol as JetBrains Agent Client Protocol",
+          "It is an older agent-to-agent protocol whose work is migrating into A2A",
+          "It is the modern MCP stateless version",
+          "It is an A2A transport binding that needs no migration"
+        ],
+        "correctIndex": 1,
+        "explanation": "IBM Research identifies its Agent Communication Protocol as now part of A2A under the Linux Foundation. Agent Client Protocol is a separate IDE-to-coding-agent protocol."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Select and explain the correct protocol boundary",
+        "weight": 20,
+        "evidence": "Protocol comparison and architecture diagram defense."
+      },
+      {
+        "criterion": "Validate MCP versions, routing, tools and authorization",
+        "weight": 20,
+        "evidence": "Passing modern/legacy and negative request tests."
+      },
+      {
+        "criterion": "Implement A2A discovery, task lifecycle and delivery capability checks",
+        "weight": 20,
+        "evidence": "Agent Card, task state, event order and artifact trace."
+      },
+      {
+        "criterion": "Implement ACP client session and permission boundaries",
+        "weight": 20,
+        "evidence": "Capability negotiation, prompt and file/terminal denial evidence."
+      },
+      {
+        "criterion": "Preserve trusted identity and document IBM ACP migration gaps",
+        "weight": 20,
+        "evidence": "Cross-protocol policy test and migration gap report."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Passing Stage 12 Topic 2 protocol tests and demo output",
+      "Version compatibility matrix, protocol-boundary diagram and migration gap analysis"
+    ]
+  },
+  "references": [
+    {
+      "title": "Model Context Protocol — 2026-07-28 specification overview",
+      "url": "https://modelcontextprotocol.io/specification/2026-07-28",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22",
+      "version": "2026-07-28"
+    },
+    {
+      "title": "Model Context Protocol — 2026-07-28 release notes",
+      "url": "https://blog.modelcontextprotocol.io/posts/2026-07-28/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22",
+      "version": "2026-07-28"
+    },
+    {
+      "title": "Agent2Agent Protocol — v1.0.0 specification",
+      "url": "https://a2a-protocol.org/v1.0.0/specification/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22",
+      "version": "1.0.0"
+    },
+    {
+      "title": "Agent Client Protocol — v2 overview",
+      "url": "https://agentclientprotocol.com/protocol/v2/overview",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22",
+      "version": "2"
+    },
+    {
+      "title": "IBM Research — Agent Communication Protocol and A2A migration",
+      "url": "https://research.ibm.com/projects/agent-communication-protocol",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "version = headers.get('MCP-Protocol-Version')",
+      "explanation": "A protocol adapter must identify the actual wire revision before interpreting lifecycle, session and capability fields. Modern stateless MCP and earlier handshake versions are not interchangeable."
+    },
+    {
+      "lines": "if headers['Mcp-Method'] != request.method: reject()",
+      "explanation": "Modern MCP routing metadata must agree with the JSON-RPC method. Header/body disagreement is rejected before dispatch so a gateway cannot route one operation while the payload requests another."
+    },
+    {
+      "lines": "if token_issuer != expected_issuer: reject()",
+      "explanation": "Issuer binding prevents accepting credentials minted by an unrelated authorization server. Signature verification alone does not establish the intended issuer/resource relationship."
+    },
+    {
+      "lines": "task = A2ATask(task_id, context_id, state='submitted')",
+      "explanation": "A2A separates a stable task identity from a context grouping. The task lifecycle and its artifacts are durable concepts; a Message is not a substitute for a Task result."
+    },
+    {
+      "lines": "if next_state not in A2A_TRANSITIONS[current_state]: reject()",
+      "explanation": "Explicit state transitions prevent terminal tasks from being silently reopened and ensure interrupted states such as input-required or auth-required are handled deliberately."
+    },
+    {
+      "lines": "if not client_capabilities['fs']['readTextFile']: reject()",
+      "explanation": "Agent Client Protocol permissions are client-advertised capabilities. The coding agent cannot assume filesystem or terminal access merely because its process could technically reach the host."
+    },
+    {
+      "lines": "intent = normalize_intent(protocol, request_id, verified_identity, action, resource)",
+      "explanation": "The normalized intent carries trusted identity from the authentication layer. A peer or model may propose action/resource values but cannot choose the authoritative subject, tenant or scopes."
+    }
+  ]
+}

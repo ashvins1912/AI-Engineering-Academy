@@ -1,0 +1,17 @@
+{
+  "protocols": {
+    "mcp": {"modernVersion":"2026-07-28","legacyVersions":["2025-11-25","2025-06-18","2025-03-26","2024-11-05"],"modernMode":"stateless","legacyMode":"initialize-handshake"},
+    "a2a": {"version":"1.0.0","taskStates":["submitted","working","input_required","auth_required","completed","failed","canceled","rejected"],"delivery":["poll","stream","push"]},
+    "agentClientProtocol": {"version":2,"direction":"IDE-client-to-coding-agent","transport":"JSON-RPC 2.0"},
+    "ibmBeeAIACP": {"status":"migrating-into-A2A","direction":"legacy-agent-to-agent"}
+  },
+  "securityFixtures": [
+    {"name":"mcp-method-header-tamper","expected":"MCP_METHOD_ROUTING_HEADER_MISMATCH"},
+    {"name":"mcp-tool-name-header-tamper","expected":"MCP_TOOL_ROUTING_HEADER_MISMATCH"},
+    {"name":"mcp-token-issuer-mixup","expected":"MCP_AUTHORIZATION_ISSUER_MISMATCH"},
+    {"name":"a2a-unadvertised-stream","expected":"A2A_STREAMING_NOT_ADVERTISED"},
+    {"name":"a2a-terminal-task-restart","expected":"A2A_INVALID_TASK_STATE_TRANSITION"},
+    {"name":"acp-unadvertised-terminal","expected":"ACP_TERMINAL_NOT_ADVERTISED"},
+    {"name":"acp-outside-workspace","expected":"ACP_CWD_OUTSIDE_WORKSPACE"}
+  ]
+}
