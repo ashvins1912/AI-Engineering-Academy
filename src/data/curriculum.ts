@@ -484,11 +484,11 @@ const curriculumSeed: Stage[] = [
   {id:'advanced-retrieval',title:'Advanced retrieval and context engineering',description:'Optimize retrieval quality without weakening authorization, freshness or citation provenance.',lessons:[
    lesson('advanced-retrieval','Advanced Retrieval and Context Engineering','Hybrid retrieval and RRF, multi-vector and late-interaction scoring, query planning, reranking, graph expansion, temporal freshness, ACL-before-ranking, context compression, citation lineage, cache isolation and index migration.','Build an offline retrieval benchmark with security and quality gates')
   ]},
-  {id:'ai-red-team',title:'AI red teaming and adversarial validation',description:'Attack the complete AI trust chain and verify controls with regression evidence.',lessons:[
-   lesson('ai-red-team','AI Red Teaming and Adversarial Validation','Threat models and attack trees, direct/indirect prompt injection, retrieval poisoning, cross-tenant abuse, tool authorization bypass, data exfiltration, jailbreaks, denial of wallet, model supply-chain attacks and remediation verification.','Build a deterministic adversarial attack runner')
-  ]},
   {id:'evaluation-scale',title:'Evaluation at scale and continuous quality',description:'Measure AI quality, uncertainty, judge reliability, slice regressions and release readiness.',lessons:[
    lesson('evaluation-scale','Evaluation at Scale and Continuous Quality','Golden dataset versioning, split leakage, retrieval/answer/trajectory metrics, LLM judge calibration, pairwise evaluation, bootstrap confidence intervals, human agreement, online drift, slice analysis and fail-closed release gates.','Build a confidence-aware AI evaluation and release gate')
+  ]},
+  {id:'ai-red-team',title:'AI red teaming and adversarial validation',description:'Attack the complete AI trust chain and verify controls with regression evidence.',lessons:[
+   lesson('ai-red-team','AI Red Teaming and Adversarial Validation','Threat models and attack trees, direct/indirect prompt injection, retrieval poisoning, cross-tenant abuse, tool authorization bypass, data exfiltration, jailbreaks, denial of wallet, model supply-chain attacks and remediation verification.','Build a deterministic adversarial attack runner')
   ]}
  ]}
 ]
