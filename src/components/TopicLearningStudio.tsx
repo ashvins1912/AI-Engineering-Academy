@@ -4,6 +4,8 @@ import type { Lesson } from '../data/curriculum'
 import FoundationTopicLab from './FoundationTopicLab'
 import Stage2MasteryLabs from './Stage2MasteryLabs'
 import Stage3MasteryLabs from './Stage3MasteryLabs'
+import Stage4MasteryLabs from './Stage4MasteryLabs'
+import Stage5MasteryLabs from './Stage5MasteryLabs'
 
 type Props = { lesson: Lesson }
 
@@ -29,6 +31,7 @@ export default function TopicLearningStudio({ lesson }: Props) {
   const [checked, setChecked] = useState(false)
   const stage = stageFromId(lesson.id)
   const topicId = slugFromId(lesson.id)
+  const stage4Topic = ({decoder:'decoding',sampling:'decoding',finetuning:'engineering',inference:'engineering'} as Record<string,string>)[topicId] ?? topicId
   const current = steps[step]
   const nextIndex = Math.min(step + 1, steps.length - 1)
   const options = useMemo(() => {
@@ -83,6 +86,8 @@ export default function TopicLearningStudio({ lesson }: Props) {
     <FoundationTopicLab topicId={topicId}/>
     {stage === 2 && <Stage2MasteryLabs initialTopic={topicId}/>}
     {stage === 3 && <Stage3MasteryLabs initialTopic={topicId}/>}
+    {stage === 4 && <Stage4MasteryLabs initialTopic={stage4Topic}/>}
+    {stage === 5 && <Stage5MasteryLabs initialTopic={topicId}/>}
 
     <div className="topic-studio-tabs" aria-label="Learning studio sections">
       <span className="active"><BookOpen size={14}/> Explore</span>
