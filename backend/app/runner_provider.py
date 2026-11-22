@@ -124,7 +124,10 @@ class HttpsRunnerProvider:
         return parsed
 
     async def get(self, run_id: UUID) -> RunnerResult:
-        return _parse_result(await self._request("GET", f"/v1/runs/{run_id}"))
+        parsed = _parse_result(await self._request("GET", f"/v1/runs/{run_id}"))
+        if parsed.provider_run_id != str(run_id):
+            raise RunnerProtocolError("Runner returned a mismatched run ID")
+        return parsed
 
     async def _request(self, method: str, path: str, **kwargs: Any) -> dict[str, Any]:
         try:
