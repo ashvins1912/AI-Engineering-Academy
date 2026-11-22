@@ -61,6 +61,7 @@ class ServingConfig:
 @dataclass(frozen=True)
 class RequestEstimate:
     request_id: str
+    output_tokens: int
     queue_wait_ms: float
     ttft_ms: float
     decode_ms: float
@@ -142,7 +143,7 @@ class InferenceSimulator:
         if request.prefix_key:
             self.prefix_cache.add(request.tenant_id, request.prefix_key)
         return RequestEstimate(
-            request.request_id, queue_wait_ms, ttft, decode_ms, total,
+            request.request_id, request.output_tokens, queue_wait_ms, ttft, decode_ms, total,
             self.kv_cache_bytes(total_context), effective_prompt, cache_hit,
             self.QUALITY_PENALTY[self.config.quantization_bits], deadline_missed,
         )
