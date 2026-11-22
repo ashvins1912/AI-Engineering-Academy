@@ -1,0 +1,18 @@
+flowchart TD
+  A[Release manifest] --> B[Evidence registry]
+  B --> C[Model and dataset cards]
+  B --> D[Privacy and security reviews]
+  B --> E[Evaluation and risk evidence]
+  B --> F[Retention and third-party inventory]
+  C --> G[Version binding]
+  D --> G
+  E --> G
+  F --> G
+  G --> H[Approval and human oversight]
+  H --> I{Governance gate}
+  I -->|missing or stale evidence| J[Block release]
+  I -->|approved| K[Release lifecycle]
+  K --> L[Append-only audit evidence]
+  M[Data assets] --> N[Consent and retention policy]
+  N --> O[Deletion and transfer controls]
+  O --> L

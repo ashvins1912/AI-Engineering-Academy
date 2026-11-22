@@ -158,3 +158,32 @@ Run all exercises locally with synthetic fixtures. The Academy service does not 
 - [x] Topic 5 adversarial attack coverage, remediation and regression tests pass before Topic 6.
 - [x] Topic 6 KV capacity, fairness, deadline, cache isolation and overload recovery tests pass before Topic 7.
 - [ ] Topic 7 OCR/audio/video provenance, alignment, confidence, ACL and retention tests pass before Topic 8.
+
+
+## enterprise-governance — Enterprise AI Governance, Risk and Lifecycle Controls
+
+**Implementation task:** Build a version-bound release dossier that binds code, model, dataset, prompt and retrieval-index versions to model/dataset cards, risk assessment, privacy/security reviews, evaluation evidence, retention schedule and third-party inventory. Validate artifact digests, ownership, expiry, approval role, decision and version binding before promotion.
+
+**Worked fixture:** A customer-support assistant candidate has eight required evidence artifacts and five independent approvals. The privacy approval is expired, one dataset is past retention, and a high-risk item has no mitigation test. The release gate must report all blocking reasons and must not promote the candidate.
+
+**Expected result:** A complete synthetic dossier passes only when every required artifact is present and bound to the candidate, every approval is role-correct and unexpired, high/critical risks have an owner plus mitigation/test evidence or authorized residual-risk acceptance, personal data has consent/provenance, and no retention/deletion/transfer blocker remains. A passing dossier still cannot release unless the lifecycle state is approved.
+
+**Run locally:**
+
+```bash
+python examples/stage-12/enterprise_governance/governance_engine.py
+python -m unittest discover -s examples/stage-12 -p 'test_enterprise_governance.py' -v
+```
+
+**Verification tests:** Cover missing/duplicate artifacts, digest and manifest-version mismatch, wrong reviewer role, rejected or expired approval, unowned critical risk, absent mitigation evidence, missing consent/provenance, expired retention, pending deletion, unreviewed cross-border transfer, invalid lifecycle transition, audit event tampering and release-gate denial.
+
+**Debugging checklist:** Inspect the release manifest first; compare every artifact's bound versions; check approval role, decision, expiry and artifact version; inspect each risk's owner and evidence; verify consent, retention and deletion state; confirm the lifecycle is approved; then inspect audit sequence and previous-hash linkage. Do not weaken a gate to make a fixture pass.
+
+**Production boundary:** The local simulator uses synthetic data and in-memory evidence. Production requires authenticated identity and role mapping, cryptographic signatures, durable append-only audit storage, evidence access controls, policy versioning, storage-specific deletion receipts, legal/privacy/security review and an independently protected audit trust boundary.
+
+**Interview checks:** Why should approval bind to a digest rather than a display name? Why is a release gate a conjunction rather than a weighted score? How do separation of duties and approval expiry reduce risk? What can a hash chain prove and what can it not prove? How do retention, deletion and consent affect model/data lineage? Why does a passing dossier not automatically constitute legal compliance?
+
+**Submission evidence:** Include a complete passing dossier, at least five blocked negative fixtures, reason-code output, approval/version matrix, risk register, retention/deletion evidence, audit-chain tamper test, architecture diagram and a production gap analysis.
+
+
+- [ ] Topic 8 governance evidence, approval expiry, retention, deletion and audit tampering tests pass before Topic 9.
