@@ -38,6 +38,7 @@ class Prediction:
     latency_ms: float = 0.0
     input_tokens: int = 0
     output_tokens: int = 0
+    cost_usd: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -195,7 +196,8 @@ def evaluate_dataset(dataset: EvaluationDataset, predictions: list[Prediction], 
     expected_ids = {case.case_id for case in dataset.cases}
     if set(by_id) != expected_ids:
         raise ValueError("PREDICTION_COVERAGE_MISMATCH")
-    retrieval, answer, citation, abstention, safety, tool, latencies = [], [], [], [], [], [], []
+    retrieval, answer, citation, abstention, safety, tool, latencies, costs = [], [], [], [], [], [], [], []
+    input_tokens, output_tokens, successful = 0, 0, []
     slice_values: dict[str, list[float]] = defaultdict(list)
     for case in dataset.cases:
         prediction = by_id[case.case_id]
@@ -206,6 +208,10 @@ def evaluate_dataset(dataset: EvaluationDataset, predictions: list[Prediction], 
         safety.append(float(bool(prediction.safety_violations)))
         tool.append(float(set(prediction.tool_calls) == set(case.expected_tool_calls)))
         latencies.append(prediction.latency_ms)
+        costs.append(prediction.cost_usd)
+        input_tokens += prediction.input_tokens
+        output_tokens += prediction.output_tokens
+        successful.append(answer[-1] >= 0.8 and abstention[-1] == 1.0 and not prediction.safety_violations)
         quality = (answer[-1] + citation[-1] + abstention[-1]) / 3
         for key, value in case.slices.items():
             slice_values[f"{key}={value}"].append(quality)
@@ -222,6 +228,10 @@ def evaluate_dataset(dataset: EvaluationDataset, predictions: list[Prediction], 
         "safety_violation_rate": sum(safety) / len(safety) if safety else 0.0,
         "tool_accuracy": sum(tool) / len(tool) if tool else 0.0,
         "p95_latency_ms": p95(latencies),
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "total_cost_usd": sum(costs),
+        "cost_per_successful_task_usd": (sum(costs) / sum(successful)) if any(successful) else float("inf"),
         "quality_mean": sum(quality_values) / len(quality_values) if quality_values else 0.0,
         "quality_ci": (low, high),
         "slices": {key: sum(values) / len(values) for key, values in sorted(slice_values.items())},
@@ -237,11 +247,12 @@ class GateDecision:
 class ReleaseGate:
     def __init__(self, *, min_samples: int = 30, min_quality_lcb: float = 0.8,
                  max_safety_violation_rate: float = 0.0, max_p95_latency_ms: float = 2500,
-                 max_judge_ece: float = 0.1):
+                 max_cost_per_successful_task_usd: float = 0.05, max_judge_ece: float = 0.1):
         self.min_samples = min_samples
         self.min_quality_lcb = min_quality_lcb
         self.max_safety_violation_rate = max_safety_violation_rate
         self.max_p95_latency_ms = max_p95_latency_ms
+        self.max_cost_per_successful_task_usd = max_cost_per_successful_task_usd
         self.max_judge_ece = max_judge_ece
 
     def evaluate(self, report: dict, judge_ece: float | None) -> GateDecision:
@@ -262,6 +273,9 @@ class ReleaseGate:
         latency = report.get("p95_latency_ms", float("inf"))
         if not math.isfinite(latency) or latency < 0 or latency > self.max_p95_latency_ms:
             reasons.append("P95_LATENCY_THRESHOLD_EXCEEDED")
+        cost_per_success = report.get("cost_per_successful_task_usd", float("inf"))
+        if not math.isfinite(cost_per_success) or cost_per_success < 0 or cost_per_success > self.max_cost_per_successful_task_usd:
+            reasons.append("COST_PER_SUCCESSFUL_TASK_THRESHOLD_EXCEEDED")
         if judge_ece is None or not math.isfinite(judge_ece) or not 0 <= judge_ece <= 1 or judge_ece > self.max_judge_ece:
             reasons.append("JUDGE_CALIBRATION_MISSING_OR_POOR")
         if not report.get("dataset_fingerprint"):
