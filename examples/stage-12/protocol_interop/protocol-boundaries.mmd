@@ -1,0 +1,18 @@
+flowchart LR
+    U[User / Application] --> H[Host or IDE Client]
+    H -->|MCP JSON-RPC| M[MCP Context Server]
+    M --> T[Tools / Resources / Prompts]
+    H -->|A2A message / task| A[Independent A2A Agent]
+    A -->|Agent Card / Task / Artifact| H
+    H -->|ACP v2 JSON-RPC| C[Coding Agent]
+    C -->|Permission request / session updates| H
+    B[Legacy IBM/BeeAI ACP] -. migration mapping .-> A
+    subgraph Trust boundaries
+      M
+      A
+      C
+      T
+    end
+    H -. verified identity and policy .-> M
+    H -. verified identity and policy .-> A
+    H -. client capabilities and approval .-> C
