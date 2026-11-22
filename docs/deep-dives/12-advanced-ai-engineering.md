@@ -86,6 +86,62 @@ The reference implementation demonstrates graph validation, bounded worker concu
 9. What do fencing tokens protect against?
 10. Which properties must be enforced by the destination service?
 
+## Topic 2 — Agent Protocol Interoperability: MCP, A2A and ACP
+
+### 1. Pick the protocol by the boundary
+
+These protocols are complementary, not synonyms:
+
+| Protocol | Communication boundary | Main abstraction |
+|---|---|---|
+| Model Context Protocol (MCP) | Model host/client ↔ context server | Tools, resources and prompts |
+| Agent2Agent (A2A) | Independent agent ↔ independent agent | Agent Cards, messages, tasks and artifacts |
+| Agent Client Protocol (ACP) | IDE/editor client ↔ coding agent | JSON-RPC sessions, prompts, updates and client permissions |
+| IBM/BeeAI Agent Communication Protocol (legacy ACP) | Historical agent ↔ agent | Legacy message interoperability now migrating into A2A |
+
+The acronym ACP is overloaded. Every lesson, diagram and code sample must spell out which ACP is meant. IBM/BeeAI ACP is not Agent Client Protocol.
+
+### 2. MCP version-aware engineering
+
+The current MCP specification used by this lesson is **2026-07-28**. Its modern core is stateless: the old `initialize`/`initialized` exchange and `Mcp-Session-Id` session header are removed for this version. Requests carry protocol/version and client context per request; `server/discover` is an optional capability probe. Streamable HTTP requests use `Mcp-Method` and `Mcp-Name` routing headers. The modern protocol supports Multi Round-Trip Requests (MRTR): a tool can return `input_required`, and the client retries with `inputResponses`. List results can include `ttlMs` and `cacheScope` hints. OAuth hardening includes issuer validation and a move away from Dynamic Client Registration toward Client ID Metadata Documents. The legacy HTTP+SSE transport and roots/sampling/logging features are deprecated in this revision; do not teach them as the default for new integrations.
+
+Earlier versions (for example 2025-11-25) still use the initialization/session model. Version negotiation must be explicit. Do not apply modern stateless assumptions to a legacy connection or send a legacy initialize handshake to a modern stateless endpoint.
+
+MCP tools are callable capabilities, not trusted simply because they were discovered. Validate JSON-RPC envelopes, request IDs, protocol version, routing headers, tool name, argument schema, authorization issuer, scopes, resource ownership and output. Treat tool descriptions and server-provided content as untrusted input.
+
+### 3. A2A 1.0 task interoperability
+
+A2A 1.0.0 connects independent agents without requiring one agent to expose its internal memory or tools. An Agent Card describes identity, supported interfaces, skills, capabilities and authentication requirements. A client discovers or configures the card, verifies the peer and selects a supported protocol binding.
+
+A message may return an immediate Message for a simple interaction or a Task for work that continues asynchronously. Tasks have stable IDs and context IDs, a state, history and artifacts. Artifacts are outputs; Messages are communication and should not be confused with durable task results. Task updates can be polled, streamed or pushed when the agent advertises the relevant capability. Streaming events must remain ordered. Terminal tasks cannot be restarted by sending another message to the same terminal task.
+
+Model the task lifecycle explicitly: submitted → working → completed/failed/canceled/rejected, with input-required and auth-required interruption states. Validate state transitions, media types, task ownership, authentication and authorization. A signed Agent Card is evidence to verify, not a reason to skip TLS or runtime authorization. Keep task IDs and context IDs distinct, and do not use a caller-controlled context ID as an authorization grant.
+
+### 4. Agent Client Protocol v2
+
+Agent Client Protocol is an IDE/editor-to-coding-agent protocol. Both sides exchange JSON-RPC 2.0 requests, responses and notifications. A typical flow negotiates protocol version and capabilities, completes any advertised authentication, creates or resumes a session, sends prompts, receives session updates and permission requests, and can cancel foreground work. Request IDs are string or integer values; do not reuse an outstanding ID. ACP does not use JSON-RPC batches.
+
+The client advertises capabilities such as filesystem read/write and terminal support. The agent must not assume those capabilities exist. Permission requests are explicit: the client decides whether to allow a requested operation. A coding agent running as a subprocess is not automatically authorized to read arbitrary host paths or launch arbitrary terminal commands. Keep filesystem roots, command allowlists, approval scope and cancellation behavior explicit.
+
+### 5. IBM/BeeAI ACP migration
+
+IBM Research identifies its Agent Communication Protocol as now part of A2A under the Linux Foundation. Treat IBM/BeeAI ACP as a legacy agent-to-agent lineage and use the official migration guidance when upgrading. A message mapper can preserve sender, receiver, conversation/context and content, but migration is not a field rename: authentication, task lifecycle, streaming, artifacts, error semantics, discovery and authorization may differ. Record every semantic gap and test it; do not claim wire compatibility from a successful message conversion.
+
+### 6. Cross-protocol gateway
+
+Normalize each inbound request into an internal envelope containing the verified principal, tenant, protocol/version, request ID, action, resource scope, correlation ID, deadline and capability evidence. Keep the verified identity outside model-generated or peer-supplied payloads. Protocol adapters validate wire semantics; the policy enforcement point independently decides whether the operation is allowed. Preserve protocol-specific state and errors rather than flattening everything into an untyped chat string.
+
+## Topic 2 lab
+
+Run:
+
+```bash
+python examples/stage-12/protocol_interop/protocol_lab.py
+python -m unittest discover -s examples/stage-12 -p 'test_*.py' -v
+```
+
+The simulator checks MCP modern/legacy version behavior, header routing, tool schema and OAuth issuer checks, MRTR input completion, A2A Agent Card/task/idempotency/streaming/capability rules, ACP v2 session and client permission boundaries, IBM/BeeAI ACP message mapping and trusted identity normalization. It does not open sockets or claim complete wire conformance.
+
 ## Stage 12 sequencing
 
-Topic 1 is the first mastery gate. Topics 2–8 follow only after each preceding topic passes its tests and review. Topic 9 integrates all prior topics in the Advanced Production Practicum. A lesson is not complete merely because its content file exists; it must run from a clean checkout, pass positive and negative tests, demonstrate failure recovery and satisfy its assessment.
+Topics 1 and 2 are implemented in sequence. Topic 3 begins only after Topic 2 passes its tests and review; remaining topics follow the same gate. Topic 9 integrates all prior topics in the Advanced Production Practicum. A lesson is not complete merely because its content file exists; it must run from a clean checkout, pass positive and negative tests, demonstrate failure recovery and satisfy its assessment.
