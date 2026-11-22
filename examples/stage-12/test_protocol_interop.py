@@ -3,7 +3,8 @@ from pathlib import Path
 import unittest
 
 sys.path.insert(0, str(Path(__file__).parent / "protocol_interop"))
-from protocol_gateway import ProtocolGateway\nfrom protocol_lab import (
+from protocol_gateway import ProtocolGateway
+from protocol_lab import (
     A2AAdapter, ACP_VERSION, AgentCard, AgentClientSession, IBMACPToA2ABridge,
     MCPAdapter, MCPRequest, MCPTool, NormalizedIntent, ProtocolError,
     VerifiedIdentity, normalize_intent,
