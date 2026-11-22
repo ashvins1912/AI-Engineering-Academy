@@ -207,3 +207,33 @@ python -m unittest discover -s examples/stage-12 -p 'test_enterprise_governance.
 
 
 - [ ] Topic 9 integrated clean-checkout acceptance, negative release-gate tests and architecture defense pass before Stage 12 completion.
+
+
+---
+
+## Final mastery and production-readiness certification
+
+This certification is a post-topic gate, not a tenth topic. Automated CI success does not complete learner mastery defenses. Keep the existing unchecked learner-defense items open until actual evidence has been reviewed.
+
+**Required evidence (all bound to one learner/tenant and candidate release):**
+- [ ] Topic 1 — orchestration closed-book defense, including ambiguous timeout, idempotency and compensation.
+- [ ] Topic 2 — MCP/A2A/ACP protocol selection and trust-boundary defense.
+- [ ] Topic 3 — retrieval ranking, ACL-before-scoring and citation-lineage defense.
+- [ ] Topic 4 — metric interpretation, confidence intervals and release-gate defense.
+- [ ] Topic 5 — adversarial attack walkthrough, containment and regression defense.
+- [ ] Topic 6 — KV-cache/capacity arithmetic, fairness and overload recovery defense.
+- [ ] Topic 7 — OCR/audio/video provenance, alignment and retention defense.
+- [ ] Topic 8 — governance dossier, approvals, deletion and audit-integrity defense.
+- [ ] Topic 9 — integrated practicum and architecture defense.
+- [ ] Clean-checkout acceptance report from the candidate commit.
+- [ ] Cross-topic failure-injection report with expected fail-closed outcomes.
+- [ ] Tenant-isolation/security review with negative cross-tenant evidence.
+- [ ] Final architecture defense reviewed by an assessor.
+
+**Certification gate:** Run `python -m unittest discover -s examples/stage-12 -p 'test_*.py' -v`. The certification tests exercise complete and incomplete synthetic evidence. They do not generate learner evidence. The final decision requires all thirteen records, non-empty evidence references, a single tenant and release version, human assessor attribution for the required defenses, and zero unresolved high/critical findings.
+
+**Failure-injection minimum set:** stale release evidence; cross-tenant retrieval/cache access; forged or mismatched protocol identity; tool permission denial; interrupted workflow with ambiguous side effect; retrieval poisoning; low-confidence evaluation slice; inference overload; multimodal provenance/retention failure; expired governance approval; and rollback after a failed canary.
+
+**Architecture defense rubric (100 points):** correctness and trade-offs (20), identity/tenant/security boundaries (20), durable execution and recovery (15), retrieval/evaluation quality (15), inference capacity and cost (10), observability/incident response (10), governance/lineage/retention (10). A score alone cannot override a critical security or safety failure.
+
+**Certification status:** Pending until learner evidence is submitted and reviewed. Passing CI means the repository's automated checks pass; it does not mean the learner has completed the human defenses or that a live production deployment has been validated.
