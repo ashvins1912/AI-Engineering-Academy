@@ -36,3 +36,10 @@ The coverage command reports remaining content-artifact gaps rather than fabrica
 - Full CI run **45029744965** completed successfully on the commit containing the Stage 1–12 route audit and production/capstone simulator checks: topic coverage audit, TypeScript typecheck, production build, Python examples for all 12 stages, and backend tests including PostgreSQL RLS integration all passed.
 - Browser interaction, mobile and manual accessibility testing have not yet been performed.
 - Do not merge until CI is green and any failures are resolved.
+
+
+## Assessment and secure execution follow-up
+
+- Added a per-topic formative assessment engine using each lesson's own workflow steps, explanatory feedback and a four-part self-assessment rubric.
+- Saves the latest attempt per lesson in browser local storage. The pass rule is a perfect workflow quiz plus at least three rubric checks; this is explicitly not a proctored credential or server-authoritative mastery record.
+- Added the secure code-execution boundary and proposed API contract to `docs/SECURE_CODE_EXECUTION_AND_ASSESSMENT.md`. Learner code is still not executed: no isolated runner, cloud resource or paid provider was provisioned. Enabling execution without a separately isolated runner would be unsafe.
