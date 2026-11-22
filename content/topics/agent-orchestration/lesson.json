@@ -1,0 +1,560 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "agent-orchestration",
+    "title": "Advanced Agent Orchestration and Durable Execution",
+    "stage": 12,
+    "estimatedMinutes": 420
+  },
+  "state": "visualized",
+  "learning": {
+    "outcomes": [
+      "Distinguish autonomous agent reasoning from deterministic workflow orchestration and choose the correct boundary.",
+      "Represent plans as typed dependency graphs and reject cycles, unknown dependencies, duplicate IDs and invalid task contracts.",
+      "Execute independent tasks with bounded concurrency, deadlines, retry budgets and explicit cancellation or escalation policies.",
+      "Persist task state as checkpoints and resume interrupted work without repeating committed side effects.",
+      "Design idempotent task handlers, compensation and failure propagation for partial multi-step workflows.",
+      "Prevent delegated agents from expanding the initiating principal's authority and preserve traceable execution evidence."
+    ],
+    "prerequisites": [
+      "Stage 6 agent loop, planning, state and human approval",
+      "Stage 8 event-driven workflows, queues, retries and sagas",
+      "Stage 9 deployment and reliability foundations",
+      "Python functions, exceptions, dataclasses, JSON and basic concurrency"
+    ],
+    "glossary": [
+      {
+        "term": "Orchestrator",
+        "definition": "A coordinator that validates a plan, schedules tasks, tracks state and applies execution policies."
+      },
+      {
+        "term": "DAG",
+        "definition": "A directed acyclic graph; dependencies point from prerequisite tasks to tasks that may run afterward."
+      },
+      {
+        "term": "Checkpoint",
+        "definition": "A durable snapshot of workflow state that supports recovery after process interruption."
+      },
+      {
+        "term": "Idempotency",
+        "definition": "The property that repeating the same logical operation does not repeat its side effect."
+      },
+      {
+        "term": "Compensation",
+        "definition": "A corrective action that semantically reverses or offsets an earlier completed step when a workflow cannot continue."
+      },
+      {
+        "term": "Fan-out/fan-in",
+        "definition": "A pattern that runs independent branches and waits for required results before a dependent step."
+      },
+      {
+        "term": "Backpressure",
+        "definition": "A mechanism that limits accepted work when downstream capacity is constrained."
+      },
+      {
+        "term": "Lease",
+        "definition": "A time-bounded claim to work that can expire and be safely reassigned after worker failure."
+      },
+      {
+        "term": "Authority propagation",
+        "definition": "Passing only the caller's verified, bounded permissions to delegated work rather than granting a worker ambient privilege."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "An agent that plans and calls tools can become an unreliable distributed program: tasks run twice after retries, dependencies are skipped, parallel work grows without bounds, a process crash loses progress, and a specialist agent accidentally receives broader authority than the user. Production orchestration must make state, dependencies, budgets and recovery explicit.",
+    "plainLanguage": "Think of a complex request such as preparing a customer report. It may require ingesting source files, retrieving relevant records, calculating metrics and drafting a response. Some tasks depend on earlier results; others can run independently. A free-form agent loop can decide what to do next, but it is difficult to prove which steps completed, which may safely retry and what happens after a crash. A workflow orchestrator turns the plan into named tasks with typed inputs, explicit dependencies and bounded execution rules.\\n\\nRepresent the plan as a directed acyclic graph (DAG). An edge A → B means B cannot start until A succeeds. Before execution, validate unique task IDs, known dependencies, valid action names, positive retry limits and absence of cycles. A cycle such as A → B → A has no valid starting order and must be rejected before any side effect.\\n\\nThe scheduler repeatedly finds tasks whose dependencies succeeded. It submits no more than the configured worker bound. If a prerequisite fails, dependent tasks are marked blocked rather than run with missing or partial data. Retries are bounded and should distinguish transient failures from permanent validation or authorization errors. Deadlines, cancellation and per-task budgets prevent an agent from looping forever or consuming unbounded resources.\\n\\nA checkpoint records task status, attempts, result references and error state. A real system persists it transactionally and uses leases or compare-and-swap to coordinate multiple workers. After a process restart, completed tasks remain completed and only eligible pending tasks resume. Never persist secrets or unbounded model transcripts in a checkpoint; store protected references and versioned state.\\n\\nRetries create a difficult edge case: a downstream side effect may commit, but the worker can crash before recording success. The task will be retried. Give each logical operation a stable idempotency key bound to its canonical payload, and make the destination enforce that key atomically. Reusing a key with a different payload must fail. For multi-step business operations, define compensating actions and decide which steps are reversible, retryable or require human intervention.\\n\\nMulti-agent delegation does not change authorization. A supervisor may assign a specialist a bounded subtask, but the specialist receives only the caller's permitted data and capabilities. It cannot mint new permissions, widen tenant scope or turn retrieved text into authority. Propagate correlation IDs, task IDs, deadlines, tenant context and a scoped capability reference; validate them at each service boundary.\\n\\nThis lesson's implementation is a deterministic local simulator. It demonstrates DAG validation, bounded task batches, retry accounting, checkpoint serialization and idempotency. It does not claim to be a distributed workflow engine: production systems additionally need transactional persistence, worker leases, durable queues, atomic idempotency storage, cancellation propagation, observability and security isolation.",
+    "mentalModel": "Typed task graph → validate DAG and contracts → schedule ready tasks within concurrency/budget limits → execute idempotently → checkpoint outcomes → retry, block, compensate or escalate → resume safely.",
+    "limitations": [
+      "The local checkpoint is an in-memory teaching object; a production checkpoint store must be durable, transactional and concurrency-safe.",
+      "The local idempotency ledger is process-local; production deduplication must be atomic and shared by every worker that can execute the operation.",
+      "Thread-pool concurrency demonstrates a worker bound, not distributed scheduling, process isolation or fairness across tenants.",
+      "The simulator does not implement hard deadlines, OS-level cancellation, leases or compensation execution; these are required production extensions.",
+      "A DAG is not appropriate for every adaptive agent plan; dynamic replanning must still validate new tasks, permissions, budgets and cycles before execution.",
+      "Exactly-once side effects cannot be guaranteed by retry logic alone; use destination-side idempotency or transactional outbox/inbox patterns."
+    ],
+    "everydayAnalogy": "A restaurant kitchen has tickets, dependencies and stations. The dough must be prepared before baking, while salad and drinks can be prepared in parallel. The head chef limits how many tickets each station accepts, records completed steps and prevents a duplicate order from being charged twice.",
+    "mathMadeSimple": "If a plan has 8 ready independent tasks and max_workers=3, at most 3 tasks are submitted in one scheduler batch. The number of batches is at least ceil(8/3)=3. If each task has max_attempts=2, no task may be attempted more than twice. These bounds constrain work; they do not guarantee a latency target.",
+    "productionImpact": "Use durable workflow state, atomic idempotency, bounded concurrency, explicit retry classification, deadlines, cancellation, leases, compensation, tenant-aware authorization and traceable task events. Treat orchestration as a security and reliability boundary, not merely a loop around an LLM."
+  },
+  "useCase": {
+    "scenario": "A tenant-scoped research assistant must ingest a set of documents, retrieve evidence, calculate a metric and draft a cited report. Retrieval and metric calculation can run independently after ingestion; drafting waits for both. A worker crashes after committing a write but before acknowledging completion.",
+    "actors": [
+      "Authenticated user and server-side tenant resolver",
+      "Planner that emits a typed task graph",
+      "Graph validator and bounded scheduler",
+      "Independent task workers with scoped capabilities",
+      "Durable checkpoint and idempotency store",
+      "Tool adapters and authoritative data services",
+      "Audit and tracing collector"
+    ],
+    "inputs": [
+      "Verified principal and tenant context",
+      "Typed task definitions, dependencies and action names",
+      "Per-task retry and resource budgets",
+      "Versioned checkpoint and idempotency keys",
+      "Scoped tool capabilities and deadline"
+    ],
+    "constraints": [
+      "Reject invalid plans before any task starts.",
+      "Never exceed configured in-flight worker count.",
+      "A failed dependency blocks its dependents.",
+      "Retries must not repeat committed side effects.",
+      "Checkpoint state must not contain raw credentials or secrets.",
+      "Delegated work cannot expand tenant, action or resource permissions."
+    ],
+    "outputs": [
+      "Validated execution plan and deterministic task order",
+      "Task journal with attempts, terminal status and result references",
+      "Checkpoint snapshot suitable for serialization",
+      "Bounded failure and retry outcomes",
+      "Audit events with task and correlation identifiers"
+    ],
+    "successMetric": "A valid DAG completes within the worker bound; an interrupted completed task is not repeated after resume; cycles and invalid dependencies are rejected before side effects; failed prerequisites prevent dependent execution."
+  },
+  "architecture": {
+    "diagram": "content/topics/agent-orchestration/orchestration-flow.mmd",
+    "components": [
+      "Typed planner output",
+      "DAG validator",
+      "Bounded scheduler",
+      "Task workers",
+      "Idempotency ledger",
+      "Checkpoint journal",
+      "Compensation and escalation handler",
+      "Audit and trace collector"
+    ],
+    "dataFlow": [
+      {
+        "from": "Planner",
+        "to": "DAG validator",
+        "payload": "Typed tasks, dependencies and action contracts",
+        "purpose": "Reject malformed or cyclic plans before execution."
+      },
+      {
+        "from": "DAG validator",
+        "to": "Scheduler",
+        "payload": "Validated dependency graph",
+        "purpose": "Expose only runnable work."
+      },
+      {
+        "from": "Scheduler",
+        "to": "Workers",
+        "payload": "Bounded task batch and scoped context",
+        "purpose": "Limit concurrency and preserve task boundaries."
+      },
+      {
+        "from": "Workers",
+        "to": "Idempotency ledger",
+        "payload": "Stable task key and canonical payload digest",
+        "purpose": "Prevent duplicate side effects on retry."
+      },
+      {
+        "from": "Workers",
+        "to": "Checkpoint journal",
+        "payload": "Task status, attempt, result reference and error",
+        "purpose": "Persist progress for restart recovery."
+      },
+      {
+        "from": "Checkpoint journal",
+        "to": "Scheduler",
+        "payload": "Restored task state",
+        "purpose": "Resume pending work without replaying completed tasks."
+      }
+    ],
+    "trustBoundaries": [
+      "Planner and model-generated task descriptions are untrusted input.",
+      "Task action names and arguments are validated against server-owned contracts.",
+      "Tenant and principal context are derived from verified identity, not plan text.",
+      "Worker capabilities are scoped and cannot be widened by delegated agents.",
+      "Checkpoint and audit stores are access-controlled and secrets are excluded."
+    ],
+    "failurePaths": [
+      "Dependency cycle or unknown dependency: reject plan before execution.",
+      "Worker transient failure: retry only within the task attempt budget.",
+      "Permanent task failure: mark dependents blocked and invoke configured escalation.",
+      "Crash after side effect: destination idempotency returns the original result on retry.",
+      "Stale or incompatible checkpoint: reject restore and require explicit migration or restart.",
+      "Worker saturation: stop scheduling new work and apply backpressure."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-12/orchestration-scenarios.json",
+    "steps": [
+      {
+        "label": "Define the plan",
+        "explanation": "Three typed tasks form a dependency graph: ingest, retrieve and answer.",
+        "expectedState": "Task contracts and edges are explicit."
+      },
+      {
+        "label": "Validate dependencies",
+        "explanation": "Check task IDs, action contracts, missing edges and cycles before execution.",
+        "expectedState": "Invalid graph is rejected with no side effects."
+      },
+      {
+        "label": "Schedule bounded work",
+        "explanation": "Submit only ready tasks and never exceed the worker limit.",
+        "expectedState": "In-flight work stays within max_workers."
+      },
+      {
+        "label": "Execute and checkpoint",
+        "explanation": "Workers execute tasks with stable idempotency keys and record outcomes.",
+        "expectedState": "Successful work is recorded in the journal."
+      },
+      {
+        "label": "Inject a failure",
+        "explanation": "A worker fails; retries are bounded and dependents remain blocked.",
+        "expectedState": "No dependent task runs on failed prerequisite."
+      },
+      {
+        "label": "Recover after restart",
+        "explanation": "Restore the checkpoint and resume only pending tasks.",
+        "expectedState": "Completed side effects are not duplicated."
+      }
+    ],
+    "accessibility": [
+      "Each stage has a textual explanation and expected state.",
+      "Playback can be controlled without relying on color or animation.",
+      "Task states are named in text: PENDING, SUCCEEDED and FAILED."
+    ],
+    "animation": {
+      "objective": "Trace a typed task graph from validation through bounded scheduling, failure and checkpoint recovery.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Typed task graph",
+          "narration": "The planner proposes ingest, retrieve and answer with explicit dependencies.",
+          "input": "ingest; retrieve depends on ingest; answer depends on retrieve",
+          "transformation": "Represent tasks and dependency edges.",
+          "output": "Candidate DAG",
+          "visualState": "plan"
+        },
+        {
+          "step": 2,
+          "title": "Validate before effects",
+          "narration": "Reject unknown dependencies, duplicate IDs and cycles before execution.",
+          "input": "Candidate DAG",
+          "transformation": "Validate graph and action contracts.",
+          "output": "Validated graph or rejection",
+          "visualState": "validated"
+        },
+        {
+          "step": 3,
+          "title": "Bounded scheduling",
+          "narration": "Only ready tasks enter a worker batch, capped by max_workers.",
+          "input": "Ready tasks and worker limit",
+          "transformation": "Select at most the configured number of tasks.",
+          "output": "Bounded worker batch",
+          "visualState": "scheduled"
+        },
+        {
+          "step": 4,
+          "title": "Idempotent execution",
+          "narration": "Each task uses a stable key and canonical payload to avoid duplicate effects.",
+          "input": "Task and idempotency key",
+          "transformation": "Execute once or return prior committed result.",
+          "output": "Task result",
+          "visualState": "executed"
+        },
+        {
+          "step": 5,
+          "title": "Checkpoint and failure",
+          "narration": "Persist attempts and terminal state; block dependent work after a failure.",
+          "input": "Task result or error",
+          "transformation": "Update checkpoint and propagate dependency state.",
+          "output": "Recoverable journal",
+          "visualState": "checkpoint"
+        },
+        {
+          "step": 6,
+          "title": "Resume safely",
+          "narration": "Restore the journal and run only pending tasks whose dependencies succeeded.",
+          "input": "Serialized checkpoint",
+          "transformation": "Restore state and schedule eligible tasks.",
+          "output": "Resumed workflow",
+          "visualState": "recovered"
+        }
+      ],
+      "controls": [
+        {
+          "name": "max_workers",
+          "min": 1,
+          "max": 4,
+          "defaultValue": 2,
+          "effect": "Change the maximum number of tasks submitted in one scheduler batch."
+        },
+        {
+          "name": "failure_mode",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 1,
+          "effect": "Inject a worker failure to observe bounded retries and dependency blocking."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Six narrated stages expose task graph, scheduler bound, task state and recovery outcome in text."
+    }
+  },
+  "workedExample": {
+    "problem": "A report workflow has three tasks: ingest, retrieve and answer. Retrieve depends on ingest; answer depends on retrieve. The scheduler is configured for two workers.",
+    "input": "Tasks = [ingest, retrieve→ingest, answer→retrieve]; max_workers=2.",
+    "steps": [
+      "Validate all IDs and dependencies; the graph is acyclic.",
+      "Initially only ingest is ready, so one worker runs it.",
+      "After ingest succeeds, retrieve becomes ready; answer remains blocked.",
+      "After retrieve succeeds, answer becomes ready and runs.",
+      "If retrieve fails permanently, answer is marked FAILED with DEPENDENCY_FAILED and is never invoked.",
+      "If a task's side effect committed before a crash, retry uses the same idempotency key and returns the stored result."
+    ],
+    "expectedOutput": "The valid workflow completes in dependency order. The scheduler never submits more than two tasks at once. Invalid graphs are rejected before execution, and completed side effects are not repeated on resume."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "role": "from-scratch",
+      "path": "examples/stage-12/agent_orchestration.py",
+      "runCommand": "python examples/stage-12/agent_orchestration.py",
+      "testsPath": "examples/stage-12/test_agent_orchestration.py",
+      "expectedResult": "Prints a deterministic ingest → retrieve → answer execution journal with successful checkpoints."
+    },
+    {
+      "language": "python",
+      "role": "production",
+      "path": "examples/stage-12/README.md",
+      "runCommand": "python -m unittest discover -s examples/stage-12 -p 'test_*.py' -v",
+      "testsPath": "examples/stage-12/test_agent_orchestration.py",
+      "expectedResult": "Explains production hardening for durable persistence, atomic idempotency, worker leases, distributed scheduling, cancellation, compensation and authority propagation."
+    }
+  ],
+  "failures": [
+    {
+      "name": "Dependency cycle",
+      "symptom": "No task can become runnable or the plan loops.",
+      "rootCause": "The graph contains a directed cycle.",
+      "recovery": "Run cycle detection before execution and return the cycle path.",
+      "regressionTest": "A → B → A is rejected before any handler runs."
+    },
+    {
+      "name": "Unknown dependency",
+      "symptom": "A task waits forever for a prerequisite that does not exist.",
+      "rootCause": "Planner output references an absent task ID.",
+      "recovery": "Validate every dependency against the declared task set.",
+      "regressionTest": "Unknown dependency returns UNKNOWN_DEPENDENCY."
+    },
+    {
+      "name": "Unbounded fan-out",
+      "symptom": "Worker count and memory grow with the number of planned tasks.",
+      "rootCause": "The scheduler submits every ready task at once.",
+      "recovery": "Use a bounded queue and fixed worker/admission limit.",
+      "regressionTest": "Submitted batch never exceeds max_workers."
+    },
+    {
+      "name": "Duplicate side effect after crash",
+      "symptom": "A retry repeats a write that already committed.",
+      "rootCause": "The worker crashed before recording task completion and destination lacks idempotency.",
+      "recovery": "Use a stable idempotency key and atomic destination-side deduplication.",
+      "regressionTest": "A resumed task returns the original result and executes the handler once."
+    },
+    {
+      "name": "Dependent task runs after prerequisite failure",
+      "symptom": "A report is drafted from missing or partial retrieval output.",
+      "rootCause": "Scheduler checks only whether a task was attempted, not whether dependencies succeeded.",
+      "recovery": "Require SUCCEEDED for every dependency; mark descendants blocked on terminal failure.",
+      "regressionTest": "A failed prerequisite prevents dependent handler invocation."
+    },
+    {
+      "name": "Privilege expansion during delegation",
+      "symptom": "A specialist worker accesses a tenant or tool outside the initiating request.",
+      "rootCause": "Worker receives ambient service credentials or trusts planner-supplied role claims.",
+      "recovery": "Propagate verified identity and narrow, resource-bound capabilities; reauthorize at each boundary.",
+      "regressionTest": "A delegated task cannot widen tenant or action scope."
+    },
+    {
+      "name": "Checkpoint incompatibility",
+      "symptom": "A restarted worker restores stale or unknown task state.",
+      "rootCause": "Checkpoint has no schema/version validation or refers to a different plan.",
+      "recovery": "Bind checkpoint to plan/version digest and reject incompatible state.",
+      "regressionTest": "Unknown task IDs and nonterminal states are rejected on restore."
+    }
+  ],
+  "practice": {
+    "guided": "Run the local orchestration demo. Follow the task journal and explain why retrieve cannot start before ingest succeeds. Change max_workers and observe the scheduler's bounded batch.",
+    "independent": "Add a parallel sentiment-analysis task that depends on ingestion but not retrieval. Make answer depend on both retrieve and sentiment. Inject one transient failure and verify bounded retry.",
+    "realWorld": "Design a durable order-processing workflow with payment authorization, inventory reservation, shipment booking and notification. Identify idempotency boundaries, compensation steps, irreversible actions and human escalation.",
+    "expertExtension": "Add versioned checkpoint digests, a durable SQL journal, worker leases, transactional outbox/inbox, cancellation propagation, tenant fairness and a distributed idempotency store. Prove crash recovery with process-kill tests.",
+    "guidedExercise": {
+      "title": "Build and validate a bounded task graph",
+      "instructions": "Create three tasks with dependencies, reject a cycle, execute only ready tasks, serialize the checkpoint and restore it without repeating a completed side effect.",
+      "starterCode": "tasks = [Task('ingest', 'ingest'), Task('retrieve', 'retrieve', ('ingest',)), Task('answer', 'answer', ('retrieve',))]\n# Validate, execute, snapshot and restore.",
+      "solutionCode": "journal = AgentOrchestrator(tasks, handlers, max_workers=2).run()\nrestored = Checkpoint.restore(journal.snapshot())\nresumed = AgentOrchestrator(tasks, handlers, max_workers=2).run(restored)",
+      "unitTests": "assert journal.records['answer'].status == 'SUCCEEDED'\nassert restored.snapshot() == journal.snapshot()\nassert cycle_plan_is_rejected"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build a workflow workbench that visualizes a task DAG, worker bound, checkpoint journal and recovery behavior.",
+      "steps": [
+        "Create typed task contracts and dependencies.",
+        "Validate task IDs, action names and acyclic graph structure.",
+        "Schedule ready tasks with a bounded worker pool.",
+        "Inject transient and terminal failures.",
+        "Persist and restore a checkpoint snapshot.",
+        "Verify idempotent retries and dependency failure propagation.",
+        "Produce a traceable execution report and production gap analysis."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "What must be true before a dependent task is scheduled?",
+        "options": [
+          "Every dependency succeeded",
+          "Every dependency was attempted",
+          "The model is confident",
+          "The task has the highest priority"
+        ],
+        "correctIndex": 0,
+        "explanation": "A dependent task must not run on failed, pending or partial prerequisites."
+      },
+      {
+        "question": "Why validate a DAG before executing any task?",
+        "options": [
+          "To reject cycles and unknown dependencies before side effects",
+          "To increase model temperature",
+          "To avoid checkpointing",
+          "To let workers choose permissions"
+        ],
+        "correctIndex": 0,
+        "explanation": "Invalid plans should fail before they cause irreversible operations."
+      },
+      {
+        "question": "What does max_workers=3 guarantee in this simulator?",
+        "options": [
+          "At most three tasks are submitted in a batch",
+          "Every task completes in three seconds",
+          "Exactly three workers always run",
+          "The workflow is distributed across three machines"
+        ],
+        "correctIndex": 0,
+        "explanation": "It is a concurrency bound, not a latency or distribution guarantee."
+      },
+      {
+        "question": "A write commits, then the worker crashes before acknowledging success. What prevents duplicate effects?",
+        "options": [
+          "Destination-side idempotency",
+          "A larger retry count",
+          "A longer prompt",
+          "A new task ID on every retry"
+        ],
+        "correctIndex": 0,
+        "explanation": "The same logical operation must reuse a stable key that the destination enforces atomically."
+      },
+      {
+        "question": "Can a delegated agent grant itself broader permissions?",
+        "options": [
+          "No; authority must be verified and scoped by the server",
+          "Yes, if its plan includes an admin role",
+          "Yes, if a supervisor asks it",
+          "Only when retrieval returns a permission"
+        ],
+        "correctIndex": 0,
+        "explanation": "Delegation transfers bounded work, not ambient authority."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Threat model and policy architecture",
+        "weight": 20,
+        "evidence": "Separates PDP and PEP, trusted identity, resource ownership and model proposals."
+      },
+      {
+        "criterion": "Correct authorization semantics",
+        "weight": 25,
+        "evidence": "Enforces tool/action/resource/scope/tenant and binds decisions to canonical arguments."
+      },
+      {
+        "criterion": "Sandbox containment",
+        "weight": 20,
+        "evidence": "Demonstrates workspace containment, network deny-by-default and bounded execution."
+      },
+      {
+        "criterion": "Adversarial regression coverage",
+        "weight": 20,
+        "evidence": "Tests traversal, SSRF, replay, argument tampering and privilege escalation."
+      },
+      {
+        "criterion": "Operational evidence and safe audit",
+        "weight": 15,
+        "evidence": "Uses expiry, idempotency, budgets and redacted policy decision telemetry."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "A valid scoped report read succeeds.",
+      "Cross-owner and cross-tenant writes are denied before adapter invocation.",
+      "Path traversal and private-network targets are rejected.",
+      "Repeated idempotency key does not repeat a side effect.",
+      "Changed arguments require a new authorization decision.",
+      "The guide clearly distinguishes a policy simulator from an OS-enforced production sandbox."
+    ]
+  },
+  "references": [
+    {
+      "title": "Temporal documentation — durable execution concepts",
+      "url": "https://docs.temporal.io/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "AWS Builders' Library — Making retries safe with idempotent APIs",
+      "url": "https://aws.amazon.com/builders-library/making-retries-safe-with-idempotent-APIs/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "Python concurrent.futures documentation",
+      "url": "https://docs.python.org/3/library/concurrent.futures.html",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "Saga pattern — Microsoft architecture guidance",
+      "url": "https://learn.microsoft.com/en-us/azure/architecture/patterns/saga",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "self._validate_graph()",
+      "explanation": "Validate task identifiers, action contracts, dependency references and cycles before any handler is called."
+    },
+    {
+      "lines": "ready = [task for task in pending if all(dependency_succeeded)]",
+      "explanation": "A task becomes runnable only after every declared prerequisite reaches SUCCEEDED."
+    },
+    {
+      "lines": "batch = ready[:self.max_workers]",
+      "explanation": "The scheduler enforces a hard upper bound on submitted work."
+    },
+    {
+      "lines": "ledger.execute_once(stable_key, canonical_payload, handler)",
+      "explanation": "The logical operation is bound to a stable key and payload digest so retries do not repeat committed side effects."
+    },
+    {
+      "lines": "journal.records[task_id] = terminal_record",
+      "explanation": "The journal stores attempts, result and failure state so execution can resume from a checkpoint."
+    },
+    {
+      "lines": "Checkpoint.restore(snapshot)",
+      "explanation": "A restart reconstructs task state; production code must additionally verify plan digest and schema version."
+    }
+  ]
+}
