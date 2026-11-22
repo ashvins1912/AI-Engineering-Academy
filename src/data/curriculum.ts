@@ -434,6 +434,11 @@ const curriculumSeed: Stage[] = [
    lesson('capstone-build','Build RAG and agent services','Ingestion, hybrid retrieval, visual evidence, MCP tools and A2A specialist agents.','Implement the platform vertical slice'),
    lesson('capstone-delivery','Deploy and operate','CI/CD, observability, evaluation gates, rollout, rollback and cost controls.','Deploy and demonstrate production readiness')
   ]}
+ ]},
+ {id:'stage-12',title:'Advanced AI Engineering & Production Mastery',outcome:'Engineer durable, interoperable, measurable and secure AI systems under realistic production constraints.',modules:[
+  {id:'agent-orchestration',title:'Advanced agent orchestration',description:'Coordinate multi-step and multi-agent work with bounded execution, durable state and recovery.',lessons:[
+   lesson('agent-orchestration','Advanced Agent Orchestration and Durable Execution','Task DAGs, supervisor/worker patterns, dependency scheduling, bounded concurrency, checkpoints, idempotency, retries, compensation, cancellation and recovery.','Build a durable task coordinator with failure injection')
+  ]}
  ]}
 ]
 
