@@ -10,6 +10,7 @@ from evaluation_engine import (
     citation_precision, cohen_kappa, evaluate_dataset, mean_reciprocal_rank,
     paired_delta_ci, pairwise_win_rate, population_stability_index, recall_at_k, token_f1,
 )
+from release_gate import evaluate_release
 
 
 def sample_dataset():
@@ -102,7 +103,7 @@ class MetricTests(unittest.TestCase):
         self.assertEqual(report["slices"]["tenant=A"]["count"], 2)
         self.assertEqual(len(report["slices"]["tenant=A"]["quality_ci"]), 2)
         self.assertEqual(report["successful_task_count"], 2)
-        self.assertEqual(report["cost_per_successful_task_usd"], 0.0)
+        self.assertAlmostEqual(report["cost_per_successful_task_usd"], 0.015)
 
     def test_paired_delta_interval_uses_matched_cases(self):
         low, high = paired_delta_ci([0.9, 0.8, 0.7], [0.8, 0.7, 0.6], seed=4)
