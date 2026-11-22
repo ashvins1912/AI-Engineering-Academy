@@ -187,3 +187,23 @@ python -m unittest discover -s examples/stage-12 -p 'test_enterprise_governance.
 
 
 - [ ] Topic 8 governance evidence, approval expiry, retention, deletion and audit tampering tests pass before Topic 9.
+
+
+## advanced-practicum — Advanced Production Practicum: Integrated Enterprise AI Operations Platform
+
+**Implementation task:** Build a fixed-command acceptance runner that executes the repository-owned deterministic demos for durable orchestration, protocol interoperability, advanced retrieval, evaluation, red teaming, inference simulation, capacity sweep, multimodal evidence and governance, plus the Stage 11 integrated capstone. Convert each exit result into an evidence envelope bound to one tenant and release version. Apply a fail-closed release gate requiring all ten capabilities and no unresolved high/critical finding.
+
+**Worked fixture:** Ten local demos succeed, but one evidence envelope belongs to another tenant and another refers to a previous candidate version. The integrated release must be denied even though every subprocess exited successfully. A second fixture adds an unresolved critical red-team finding and must also be denied.
+
+**Expected result:** A clean-checkout run produces a machine-readable report with ten capability results. Release passes only when all required demos pass, each evidence reference is non-empty, all records match the same tenant and release version, no duplicate or unexpected capability exists, and unresolved high/critical findings are absent.
+
+**Verification tests:** Run `python -m unittest discover -s examples/stage-12 -p 'test_advanced_practicum.py' -v` and `python examples/stage-12/advanced_practicum/practicum_acceptance.py`. Tests cover all demo paths, full acceptance, missing capability, failed demo, duplicate evidence, tenant mismatch, version mismatch and unresolved critical findings.
+
+**Debugging checklist:** Inspect the fixed command manifest; verify each script exists; run the failing demo directly; check return code and captured stderr; inspect the capability name; compare tenant and release version; check duplicate and missing evidence; review unresolved high/critical findings. Never skip a failed demo or turn a blocking security finding into a warning to make the gate green.
+
+**Interview checks:** Why can isolated unit tests pass while an integrated platform fails? Why is release evidence bound to both tenant and candidate version? Why is a ten-of-ten capability gate not a weighted score? What does subprocess timeout protect against? Which guarantees still require a real service mesh, signed attestations, durable storage and production SLO measurements?
+
+**Submission evidence:** Include the ten-step acceptance JSON report, positive and negative gate test output, tenant/version evidence matrix, architecture diagram, clean-checkout instructions, resource-boundary analysis, rollback/incident notes and a production gap assessment.
+
+
+- [ ] Topic 9 integrated clean-checkout acceptance, negative release-gate tests and architecture defense pass before Stage 12 completion.

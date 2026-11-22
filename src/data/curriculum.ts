@@ -514,6 +514,9 @@ const curriculumSeed: Stage[] = [
   ]},
   {id:'enterprise-governance',title:'Enterprise AI governance and lifecycle controls',description:'Require version-bound evidence, independent approvals, risk ownership, privacy controls and auditable release decisions.',lessons:[
    lesson('enterprise-governance','Enterprise AI Governance, Risk and Lifecycle Controls','Data classification, model and dataset cards, provenance, retention/deletion, consent, risk registers, human oversight, policy-as-code, separation of duties, approval expiry, audit evidence, third-party risk and change management.','Build a version-bound AI release dossier and fail-closed governance gate')
+  ]},
+  {id:'advanced-practicum',title:'Advanced production practicum',description:'Integrate agent orchestration, protocols, retrieval, evaluation, security, inference, multimodal evidence and governance into one reproducible vertical slice.',lessons:[
+   lesson('advanced-practicum','Advanced Production Practicum — Integrated Enterprise AI Operations Platform','Integrated request path, trusted identity propagation, durable orchestration, MCP/A2A/ACP, tenant-safe retrieval, continuous evaluation, adversarial release gates, bounded inference, multimodal provenance, version-bound governance and clean-checkout acceptance.','Build and defend an integrated enterprise AI operations platform')
   ]}
  ]}
 ]

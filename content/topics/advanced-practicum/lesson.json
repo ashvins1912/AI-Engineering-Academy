@@ -1,0 +1,533 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "advanced-practicum",
+    "title": "Advanced Production Practicum — Integrated Enterprise AI Operations Platform",
+    "stage": 12,
+    "estimatedMinutes": 480
+  },
+  "state": "runnable",
+  "learning": {
+    "outcomes": [
+      "Integrate durable agent orchestration, protocol interoperability, secure retrieval and evaluation into one reproducible vertical slice.",
+      "Preserve verified tenant identity, scoped capabilities and citation provenance across protocol, retrieval and tool boundaries.",
+      "Demonstrate fail-closed red-team controls, bounded inference admission and multimodal evidence confidence handling.",
+      "Assemble a release dossier whose evidence is complete, passing and bound to one tenant and candidate version.",
+      "Run end-to-end acceptance from a clean checkout and diagnose failures without bypassing security or quality gates.",
+      "Defend operational limits, rollback behavior, residual risks and the boundary between deterministic simulation and production deployment."
+    ],
+    "prerequisites": [
+      "Stage 11 integrated enterprise capstone acceptance",
+      "Stage 12 Topics 1–8 and their local labs",
+      "Python subprocess, dataclasses, JSON, hashing and unit testing",
+      "Tenant isolation, release promotion, evaluation metrics and incident response"
+    ],
+    "glossary": [
+      {
+        "term": "Vertical slice",
+        "definition": "A thin but complete user-facing path that crosses the system layers from request intake through authorization, execution, evidence and outcome."
+      },
+      {
+        "term": "Integrated acceptance",
+        "definition": "A reproducible set of positive and negative checks proving that independently built components work together under explicit release conditions."
+      },
+      {
+        "term": "Evidence envelope",
+        "definition": "A record binding a capability result to a tenant, release version, evidence reference and pass/fail outcome."
+      },
+      {
+        "term": "Fail-closed release gate",
+        "definition": "A policy decision that denies promotion whenever required evidence is missing, failed, stale, mismatched or unsafe."
+      },
+      {
+        "term": "Operational budget",
+        "definition": "A finite limit on resources such as workers, queue depth, tokens, latency, memory, retries or spend."
+      },
+      {
+        "term": "Clean-checkout acceptance",
+        "definition": "A test run that starts from a fresh repository checkout and relies only on declared dependencies and deterministic local fixtures."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "A platform can pass every component's isolated unit tests and still fail as a system: tenant identity may be lost between services, citations may no longer match the retrieved evidence, one subsystem may use a stale release version, or an unresolved security finding may be ignored by a downstream release process.",
+    "plainLanguage": "Build one small request path that crosses the major system boundaries. A verified tenant request enters a durable coordinator. The coordinator schedules only registered operations and uses bounded retries and checkpoints. Protocol adapters normalize the request while preserving trusted identity and scopes. Retrieval filters by tenant and ACL before ranking, then returns source-linked evidence. Evaluation checks the expected quality and citation behavior. Red-team controls verify that retrieved instructions cannot grant tool authority and that critical attack findings remain visible. Inference admission enforces queue, memory, context and deadline budgets. Multimodal evidence keeps page, region, timestamp, speaker, confidence and asset-version metadata. Governance binds the final code, model, dataset, prompt and index versions to required reviews and approvals. The release gate accepts the candidate only when all capability evidence is present, passing, tenant-matched and version-matched, and no unresolved high or critical finding remains. The practicum invokes the repository's deterministic local topic demos and records their outcomes as synthetic evidence; it does not claim to benchmark hosted models or deploy a real service.",
+    "mentalModel": "One request → verified identity → durable plan → protocol adapters → ACL-safe evidence → evaluation → adversarial checks → bounded inference → multimodal provenance → governance dossier → integrated release decision.",
+    "limitations": [
+      "The acceptance runner executes deterministic local demos as subprocesses; it does not connect their in-memory state into a live distributed service mesh.",
+      "Synthetic evidence envelopes demonstrate tenant and version binding but are not signed attestations or a production artifact registry.",
+      "The simulator does not prove real model quality, provider latency, GPU capacity, protocol wire conformance or production availability.",
+      "Subprocess execution is limited to repository-owned fixed commands; it is not a learner-code sandbox or a general job execution service.",
+      "Production rollout still requires real identity, secrets management, durable storage, observability, network policy, backups, incident ownership and security review."
+    ],
+    "everydayAnalogy": "Think of an airport journey: identity is checked at entry, the boarding pass scopes the passenger to a flight, baggage is screened, capacity is controlled, each transfer preserves the bag tag, and the final boarding gate checks every prerequisite. A successful baggage scan alone cannot authorize boarding when identity or flight details do not match.",
+    "mathMadeSimple": "The integrated gate requires ten capabilities. If nine pass and one is missing, the result is 9/10 evidence but still DENY. Let C be the required capability set and E the accepted evidence set. Promotion requires C = E, every evidence item to match the candidate tenant and release version, and the unresolved high/critical finding set H to be empty.",
+    "productionImpact": "Integrated acceptance catches contract drift between teams and prevents a locally green component from masking a system-level release blocker. Binding evidence to tenant and release version prevents cross-tenant or stale-evidence reuse. Fixed commands and deterministic fixtures make CI reproducible. Production systems must replace these teaching adapters with authenticated service identities, durable state, cryptographically verifiable attestations and measured SLOs."
+  },
+  "useCase": {
+    "scenario": "An enterprise team is preparing a tenant-aware AI operations assistant that delegates work, calls approved tools, retrieves private knowledge, analyzes multimodal documents and proposes a release. The practicum validates the entire local vertical slice before a candidate can be considered ready.",
+    "actors": [
+      "End user",
+      "Tenant identity provider",
+      "Workflow coordinator",
+      "Protocol gateway",
+      "Retrieval service",
+      "Evaluation and red-team owners",
+      "Inference platform",
+      "Governance reviewers",
+      "Release authority"
+    ],
+    "inputs": [
+      "Verified tenant and subject context",
+      "Typed task plan and registered operations",
+      "Authorized evidence with source lineage",
+      "Evaluation and red-team reports",
+      "Inference and capacity results",
+      "Multimodal evidence records",
+      "Version-bound governance dossier"
+    ],
+    "constraints": [
+      "No untrusted model or retrieved text grants execution authority",
+      "Tenant and ACL filters run before ranking and are preserved through caching",
+      "All work and resource budgets are bounded",
+      "Evidence must match candidate tenant and release version",
+      "Any failed required demo or unresolved high/critical finding blocks release"
+    ],
+    "outputs": [
+      "Per-capability execution report",
+      "Machine-readable release decision and reason codes",
+      "Reproducible clean-checkout acceptance evidence"
+    ],
+    "successMetric": "All ten required capability demos pass, all evidence is tenant/version-bound, all negative release-gate tests deny, and the integrated gate returns PASS."
+  },
+  "architecture": {
+    "diagram": "examples/stage-12/advanced_practicum/practicum-architecture.mmd",
+    "components": [
+      "Verified request boundary",
+      "Durable task coordinator",
+      "MCP/A2A/ACP protocol adapters",
+      "Tenant/ACL-aware retrieval",
+      "Evaluation harness",
+      "Red-team policy engine",
+      "Inference capacity controller",
+      "Multimodal evidence normalizer",
+      "Governance evidence registry",
+      "Integrated release gate"
+    ],
+    "dataFlow": [
+      {
+        "from": "User request",
+        "to": "Verified request boundary",
+        "payload": "subject, tenant and requested intent",
+        "purpose": "Establish trusted identity from server-side authentication"
+      },
+      {
+        "from": "Verified request boundary",
+        "to": "Durable coordinator",
+        "payload": "typed task graph and trusted context",
+        "purpose": "Validate dependencies and schedule bounded work"
+      },
+      {
+        "from": "Protocol adapters",
+        "to": "Retrieval and tool services",
+        "payload": "normalized intent, verified scopes and trace context",
+        "purpose": "Preserve identity and least privilege across protocols"
+      },
+      {
+        "from": "Retrieval service",
+        "to": "Evaluation harness",
+        "payload": "authorized evidence and citation lineage",
+        "purpose": "Measure relevance, grounding and abstention"
+      },
+      {
+        "from": "All topic demos",
+        "to": "Integrated release gate",
+        "payload": "capability, result, tenant, version and evidence reference",
+        "purpose": "Require complete and candidate-bound acceptance evidence"
+      }
+    ],
+    "trustBoundaries": [
+      "User input, model output and retrieved content are untrusted data",
+      "Protocol claims are normalized against verified server identity and scopes",
+      "Tenant ACLs are enforced before ranking and rechecked for expanded evidence",
+      "Tool execution is limited to registered operations and approved capabilities",
+      "Release evidence is untrusted until tenant, version, pass state and provenance are validated"
+    ],
+    "failurePaths": [
+      "Missing or invalid identity rejects request before tool or retrieval access",
+      "Dependency failure blocks dependent tasks and triggers bounded recovery",
+      "Cross-tenant evidence is rejected before it enters the release dossier",
+      "Evaluation or red-team failure blocks promotion",
+      "Queue, context or KV capacity exhaustion triggers admission denial or safe load shedding",
+      "Low-confidence multimodal evidence is excluded or causes abstention",
+      "Missing, failed, stale or mismatched governance evidence denies release"
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-12/advanced_practicum/scenarios.json",
+    "steps": [
+      {
+        "label": "Authenticate",
+        "explanation": "Resolve subject and tenant from verified identity, not model-generated claims.",
+        "expectedState": "Trusted request context exists."
+      },
+      {
+        "label": "Orchestrate",
+        "explanation": "Validate the task DAG and dispatch only registered operations within worker and retry bounds.",
+        "expectedState": "Bounded tasks execute with durable checkpoints."
+      },
+      {
+        "label": "Retrieve and evaluate",
+        "explanation": "Apply tenant ACL before ranking, preserve citations and score the result against the evaluation contract.",
+        "expectedState": "Only authorized, sufficiently grounded evidence is accepted."
+      },
+      {
+        "label": "Red-team and serve",
+        "explanation": "Deny privilege escalation and enforce inference queue, memory and deadline budgets.",
+        "expectedState": "Unsafe actions are blocked and resource usage remains bounded."
+      },
+      {
+        "label": "Normalize multimodal evidence",
+        "explanation": "Preserve source, page, bounding box, timestamp, speaker, confidence and asset version.",
+        "expectedState": "Citations retain modality provenance."
+      },
+      {
+        "label": "Govern and release",
+        "explanation": "Bind every capability result to the same tenant and release version, then evaluate all release blockers.",
+        "expectedState": "Release passes only with complete valid evidence and no unresolved high/critical findings."
+      }
+    ],
+    "accessibility": [
+      "Every stage has a text explanation and expected state; the diagram is accompanied by a linear workflow description.",
+      "Release acceptance is communicated through explicit reason codes and never color alone."
+    ],
+    "animation": {
+      "objective": "Trace a candidate request across ten capabilities and show how missing, failed or mismatched evidence prevents release.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Establish identity",
+          "narration": "The tenant and subject are verified before the workflow begins.",
+          "input": "Authenticated request",
+          "transformation": "Resolve trusted subject, tenant and scopes",
+          "output": "tenant-practicum-A",
+          "visualState": "Identity context is trusted."
+        },
+        {
+          "step": 2,
+          "title": "Execute bounded work",
+          "narration": "The coordinator validates dependencies and dispatches registered operations within limits.",
+          "input": "Typed task DAG",
+          "transformation": "Validate graph, worker count, retry and checkpoint policy",
+          "output": "Bounded execution trace",
+          "visualState": "No arbitrary model-generated code executes."
+        },
+        {
+          "step": 3,
+          "title": "Retrieve and evaluate",
+          "narration": "Authorization filters run before ranking and evidence retains citation lineage.",
+          "input": "Tenant-scoped query",
+          "transformation": "ACL filter, rank, cite and evaluate",
+          "output": "Authorized evidence report",
+          "visualState": "Grounding and access checks pass."
+        },
+        {
+          "step": 4,
+          "title": "Apply safety and capacity",
+          "narration": "Red-team checks deny untrusted authority while serving admission enforces resource budgets.",
+          "input": "Tool proposal and request load",
+          "transformation": "Policy decision plus queue/KV/deadline checks",
+          "output": "Safe action and bounded admission",
+          "visualState": "Unsafe or overloaded work is denied safely."
+        },
+        {
+          "step": 5,
+          "title": "Preserve media provenance",
+          "narration": "OCR, audio and video evidence keep source offsets, confidence and asset versions.",
+          "input": "Synthetic document and media fixture",
+          "transformation": "Normalize and align modality evidence",
+          "output": "Provenance-rich citations",
+          "visualState": "Evidence can be traced to page, region or timestamp."
+        },
+        {
+          "step": 6,
+          "title": "Evaluate release",
+          "narration": "Every capability record must pass and match the candidate tenant and version.",
+          "input": "Ten capability evidence records",
+          "transformation": "Validate completeness, tenant, version and unresolved findings",
+          "output": "PASS or explicit DENY reasons",
+          "visualState": "Release decision is fail-closed."
+        }
+      ],
+      "controls": [
+        {
+          "name": "Required capabilities",
+          "min": 1,
+          "max": 10,
+          "defaultValue": 10,
+          "effect": "Reducing accepted capability evidence below ten causes a missing-capability denial."
+        },
+        {
+          "name": "Unresolved high-risk findings",
+          "min": 0,
+          "max": 3,
+          "defaultValue": 0,
+          "effect": "Any unresolved high or critical finding blocks release regardless of the number of passing capabilities."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "The six stages are available as text with labeled inputs, transformations and outputs. The release gate uses explicit reason codes, and all animation controls have descriptive labels."
+    }
+  },
+  "workedExample": {
+    "problem": "A candidate has ten passing capability demos, but one evidence record belongs to a different tenant and another refers to an older release version. Decide whether the release can proceed.",
+    "input": "Required capabilities = 10; passing demo count = 10; one evidence tenant = tenant-attacker; one evidence version = stage12-practicum-v0.",
+    "steps": [
+      {
+        "operation": "Check capability completeness",
+        "reasoning": "All ten required capability names are present.",
+        "result": "Completeness passes."
+      },
+      {
+        "operation": "Check execution outcomes",
+        "reasoning": "Every demo returned a successful exit status.",
+        "result": "Execution status passes."
+      },
+      {
+        "operation": "Check tenant binding",
+        "reasoning": "One evidence record does not belong to tenant-practicum-A.",
+        "result": "EVIDENCE_TENANT_MISMATCH is raised."
+      },
+      {
+        "operation": "Check release version binding",
+        "reasoning": "One record refers to an earlier candidate version.",
+        "result": "EVIDENCE_VERSION_MISMATCH is raised."
+      },
+      {
+        "operation": "Evaluate integrated release gate",
+        "reasoning": "Every evidence record must match the same candidate context; passing counts cannot override mismatch findings.",
+        "result": "Release denied with both reason codes."
+      }
+    ],
+    "expectedOutput": "passed=false; accepted_capabilities excludes mismatched evidence; release is not promoted."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "path": "examples/stage-12/advanced_practicum/practicum_acceptance.py",
+      "runCommand": "python examples/stage-12/advanced_practicum/practicum_acceptance.py",
+      "testsPath": "examples/stage-12/test_advanced_practicum.py",
+      "expectedResult": "All ten fixed local demos execute successfully and produce a candidate-bound integrated acceptance report.",
+      "role": "from-scratch"
+    },
+    {
+      "language": "python",
+      "path": "examples/stage-12/advanced_practicum/practicum_release_gate.py",
+      "runCommand": "python -m unittest discover -s examples/stage-12 -p 'test_advanced_practicum.py' -v",
+      "testsPath": "examples/stage-12/test_advanced_practicum.py",
+      "expectedResult": "Missing, failed, duplicate, cross-tenant, stale-version and unresolved high/critical evidence are denied.",
+      "role": "production"
+    }
+  ],
+  "failures": [
+    {
+      "name": "Tenant context lost",
+      "symptom": "Evidence from a different tenant appears in the final candidate report.",
+      "rootCause": "A downstream adapter trusted an unverified tenant field or failed to bind evidence to the original context.",
+      "recovery": "Rebuild evidence from verified identity and reject all mismatched records.",
+      "regressionTest": "Inject tenant-attacker into one evidence record and assert EVIDENCE_TENANT_MISMATCH."
+    },
+    {
+      "name": "Stale capability evidence",
+      "symptom": "A previous candidate's passing report is reused for a new release.",
+      "rootCause": "Evidence is not bound to an immutable release version.",
+      "recovery": "Rerun the capability check and bind its result to the current candidate version.",
+      "regressionTest": "Change one evidence release_version and assert EVIDENCE_VERSION_MISMATCH."
+    },
+    {
+      "name": "Partial platform acceptance",
+      "symptom": "The platform releases despite one required demo missing or failing.",
+      "rootCause": "The release gate treats component success as a score instead of a required conjunction.",
+      "recovery": "Require the complete required capability set and deny missing or failed records.",
+      "regressionTest": "Remove evaluation_scale or mark multimodal_systems failed and assert denial."
+    },
+    {
+      "name": "Critical attack finding ignored",
+      "symptom": "A release passes while a critical red-team finding remains open.",
+      "rootCause": "Security findings are not part of the release gate's blocking conditions.",
+      "recovery": "Resolve and retest the finding or keep the candidate blocked.",
+      "regressionTest": "Add an unresolved critical finding and assert UNRESOLVED_CRITICAL_FINDING."
+    },
+    {
+      "name": "Unbounded demo execution",
+      "symptom": "A local acceptance process hangs indefinitely.",
+      "rootCause": "Subprocess calls have no timeout or use an unbounded command source.",
+      "recovery": "Use a fixed repository-owned command manifest, finite timeout and explicit error report.",
+      "regressionTest": "Test timeout handling with a controlled fake process in an isolated unit test."
+    }
+  ],
+  "practice": {
+    "guided": "Run the integrated acceptance runner and inspect each capability's command, exit code and evidence digest. Then deliberately mutate one evidence tenant and one release version using the release-gate unit tests.",
+    "independent": "Add a new capability with a fixed local adapter, add it to REQUIRED_CAPABILITIES, create a positive test, add a missing-capability negative test and update the animation and lab pack.",
+    "realWorld": "Design a production rollout plan for the same vertical slice, replacing local subprocess demos with authenticated service-to-service calls, durable evidence storage, signed attestations and observable SLOs.",
+    "expertExtension": "Add a canary promotion policy that requires evaluation confidence bounds, red-team closure, capacity headroom, rollback evidence and an independent human release approval.",
+    "guidedExercise": {
+      "title": "Implement candidate-bound evidence validation",
+      "instructions": "Complete a validator that accepts evidence only when its capability is required, the result passed, the evidence reference is non-empty, and tenant and release version exactly match the candidate.",
+      "starterCode": "def evidence_matches_candidate(item, tenant_id, release_version):\n    # TODO: fail closed on missing or mismatched evidence\n    raise NotImplementedError\n",
+      "solutionCode": "def evidence_matches_candidate(item, tenant_id, release_version):\n    return bool(\n        item.capability\n        and item.passed is True\n        and item.evidence_ref\n        and item.tenant_id == tenant_id\n        and item.release_version == release_version\n    )\n",
+      "unitTests": "assert evidence_matches_candidate(valid, 'tenant-A', 'release-v1')\nassert not evidence_matches_candidate(other_tenant, 'tenant-A', 'release-v1')\nassert not evidence_matches_candidate(stale, 'tenant-A', 'release-v1')\nassert not evidence_matches_candidate(failed, 'tenant-A', 'release-v1')\n"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build an integrated release-readiness console that shows capability evidence, tenant/version binding, unresolved findings and the final decision.",
+      "steps": [
+        "Run the fixed local demo manifest and collect exit status and output digest for each capability.",
+        "Bind each evidence record to the authenticated tenant and immutable candidate version.",
+        "Display missing, failed, duplicate, stale and cross-tenant evidence as explicit reason codes.",
+        "Block release when any required capability is missing/failed or any high/critical finding remains unresolved.",
+        "Export a reproducible acceptance report and a production gap checklist."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "Nine of ten required capabilities pass. Can the candidate be released?",
+        "options": [
+          "Yes, because the pass rate is above 90%",
+          "Yes, if the failed capability is retrieval",
+          "No, the required capability set must be complete and every capability must pass",
+          "Only if the UI hides the failed step"
+        ],
+        "correctIndex": 2,
+        "explanation": "The integrated release gate is a conjunction of mandatory controls, not a weighted score. One missing or failed capability blocks promotion."
+      },
+      {
+        "question": "All demos pass, but one evidence record belongs to another tenant. What is the correct action?",
+        "options": [
+          "Accept it because the capability passed",
+          "Copy the tenant ID into the report without rerunning",
+          "Reject the evidence and rebuild it from verified tenant context",
+          "Ignore tenant binding for local tests"
+        ],
+        "correctIndex": 2,
+        "explanation": "Evidence must be tenant-bound. A capability result from another tenant cannot authorize this candidate, even when its test passed."
+      },
+      {
+        "question": "A critical red-team finding is unresolved, but all quality metrics pass. What should happen?",
+        "options": [
+          "Release because quality is high",
+          "Release to a small canary without approval",
+          "Block release until the critical finding is resolved and retested",
+          "Lower the severity automatically"
+        ],
+        "correctIndex": 2,
+        "explanation": "A critical unresolved security finding is a stop-ship condition. Quality averages do not override security blockers."
+      },
+      {
+        "question": "What does the local integrated practicum prove?",
+        "options": [
+          "Production model accuracy and GPU throughput",
+          "That fixed local demos and evidence gates work together under deterministic fixtures",
+          "Complete A2A/MCP wire conformance",
+          "Legal compliance in every jurisdiction"
+        ],
+        "correctIndex": 1,
+        "explanation": "The practicum proves reproducible local integration and policy behavior. Production quality, wire conformance, capacity and compliance require separate real-environment validation."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Integrated architecture and trusted identity flow",
+        "weight": 20,
+        "evidence": "Shows the complete request path, trust boundaries and tenant context preservation."
+      },
+      {
+        "criterion": "Component execution and reproducibility",
+        "weight": 20,
+        "evidence": "Runs all fixed demos from a clean checkout with bounded execution and captured evidence."
+      },
+      {
+        "criterion": "Security, retrieval and resource guardrails",
+        "weight": 25,
+        "evidence": "Demonstrates ACL-before-ranking, tool denial, red-team blocking, capacity limits and multimodal confidence handling."
+      },
+      {
+        "criterion": "Candidate-bound governance and release gate",
+        "weight": 25,
+        "evidence": "Rejects missing, failed, duplicate, cross-tenant, stale-version and unresolved high/critical evidence."
+      },
+      {
+        "criterion": "Production defense and residual risks",
+        "weight": 10,
+        "evidence": "Explains what the simulator proves, what it does not prove and how to harden the platform for production."
+      }
+    ],
+    "passThreshold": 90,
+    "evidence": [
+      "Clean-checkout integrated acceptance JSON report with all ten capability checks passing",
+      "Negative test output proving tenant/version mismatch and unresolved high/critical findings deny release",
+      "Architecture and trust-boundary diagram plus production hardening defense"
+    ]
+  },
+  "references": [
+    {
+      "title": "Model Context Protocol specification",
+      "url": "https://modelcontextprotocol.io/specification/2025-11-25",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "A2A Protocol documentation",
+      "url": "https://a2a-protocol.org/latest/specification/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "NIST AI Risk Management Framework",
+      "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+      "sourceType": "standard",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "OpenTelemetry documentation",
+      "url": "https://opentelemetry.io/docs/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "COMMANDS = ((capability, repository_owned_script), ...)",
+      "explanation": "The manifest is fixed in source code. No model output or user input can choose an arbitrary executable path."
+    },
+    {
+      "lines": "subprocess.run(command, cwd=ROOT, capture_output=True, timeout=90, check=False)",
+      "explanation": "Each local demo runs with a finite timeout, explicit working directory and captured result. A nonzero exit is evidence of failure, not something to suppress."
+    },
+    {
+      "lines": "EvidenceRecord(capability, passed, evidence_ref, tenant_id, release_version)",
+      "explanation": "A capability result is bound to the same tenant and immutable candidate version before it can be considered by the release gate."
+    },
+    {
+      "lines": "REQUIRED_CAPABILITIES - set(by_capability)",
+      "explanation": "Set difference identifies missing required evidence. The gate never converts missing evidence into a partial score."
+    },
+    {
+      "lines": "if severity in {'high', 'critical'} and status != 'resolved':",
+      "explanation": "An unresolved high or critical security finding blocks the candidate independently of the number of passing demos."
+    },
+    {
+      "lines": "return ReleaseDecision(not reasons, tuple(sorted(set(reasons))), accepted)",
+      "explanation": "The final decision is fail-closed and returns stable, machine-readable reason codes for debugging and audit."
+    }
+  ]
+}

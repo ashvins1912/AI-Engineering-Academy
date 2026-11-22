@@ -441,6 +441,36 @@ The offline pipeline uses synthetic OCR blocks, tables, transcript segments and 
 7. How should low-confidence evidence affect answer behavior?
 8. How do you prevent prompt injection embedded in media from granting tool authority?
 
+## Topic 8 — Enterprise AI Governance, Risk and Lifecycle Controls
+
+A release dossier binds the exact code, model, dataset, prompt and retrieval-index versions to model and dataset cards, risk assessment, privacy/security reviews, evaluation report, retention schedule and third-party inventory. Every artifact needs an owner, digest, source, version binding and expiry. Approvals must be role-correct, current and bound to the reviewed artifact version.
+
+High and critical risks require accountable ownership and mitigation test evidence, or an explicitly authorized residual-risk acceptance. Personal data requires consent and provenance. Expired retention, pending deletion and unreviewed cross-border transfer block the dossier. The lifecycle manager enforces draft → review → approved → released transitions; the release gate does not allow a passing dossier to skip lifecycle authorization.
+
+Run:
+
+```bash
+python examples/stage-12/enterprise_governance/governance_engine.py
+python -m unittest discover -s examples/stage-12 -p 'test_enterprise_governance.py' -v
+```
+
+The local simulator uses synthetic evidence and an in-memory hash chain. Production needs authenticated identities, cryptographic signatures, durable append-only audit storage, policy versioning, access-controlled evidence and verifiable deletion workflows. Regulatory mapping requires qualified jurisdiction-specific review.
+
+## Topic 9 — Advanced Production Practicum: Integrated Enterprise AI Operations Platform
+
+The practicum connects the previous topic demos into one reproducible acceptance path. It exercises durable orchestration, protocol interoperability, retrieval, evaluation, red teaming, inference simulation, capacity sweeps, multimodal evidence, governance and the Stage 11 capstone. A fixed command manifest runs only repository-owned local demos with finite timeouts; output digests become synthetic capability evidence.
+
+Each evidence envelope binds capability, pass/fail result, tenant and release version. The final gate requires the full capability set, rejects duplicate/unexpected/missing/failed evidence, and blocks tenant or version mismatch. Any unresolved high or critical finding is a stop-ship condition.
+
+Run:
+
+```bash
+python examples/stage-12/advanced_practicum/practicum_acceptance.py
+python -m unittest discover -s examples/stage-12 -p 'test_advanced_practicum.py' -v
+```
+
+The integrated runner validates deterministic local integration, not a live service mesh, hosted model quality, GPU capacity, wire-level protocol conformance or production compliance. Production requires real identity, signed attestations, durable workflow/evidence storage, observability, measured SLOs, rollout/rollback controls and independent security review.
+
 ## Stage 12 sequencing
 
-Topics 1–5 are merged and CI-validated. Topic 7 is the current implementation gate; Topics 8–9 follow only after each preceding topic passes its tests and review. Topic 9 integrates all prior topics in the Advanced Production Practicum. A lesson is not complete merely because its content file exists; it must run from a clean checkout, pass positive and negative tests, demonstrate failure recovery and satisfy its assessment.
+Topics 1–8 provide the individual execution, protocol, retrieval, evaluation, red-team, capacity, multimodal and governance capabilities. Topic 9 integrates their deterministic local demos and the Stage 11 capstone into one candidate-bound acceptance report. A lesson is not complete merely because its content file exists; it must run from a clean checkout, pass positive and negative tests, demonstrate failure recovery and satisfy its assessment. Stage 12 is complete only after the Topic 9 integrated acceptance and mastery defense pass.
