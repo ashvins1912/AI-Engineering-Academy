@@ -6,6 +6,8 @@ const curriculum = read('src/data/curriculum.ts')
 const app = read('src/App.tsx')
 const practice = read('src/components/LessonPractice.tsx')
 const studio = read('src/components/TopicLearningStudio.tsx')
+const foundationLab = read('src/components/FoundationTopicLab.tsx')
+const requiredFoundationLabs = ['vectors','probability','calculus','optimization','python-core','numpy-pandas','data-quality']
 const stageMatches = [...curriculum.matchAll(/id:\s*'stage-(\d+)'/g)]
 const lessons = [...curriculum.matchAll(/lesson\('([^']+)'\s*,\s*'([^']+)'/g)].map(match => {
   const stage = stageMatches.filter(item => item.index < match.index).at(-1)
@@ -67,4 +69,6 @@ for(const x of gaps) console.log([
 if(lessons.length!==93) { console.error('FAIL expected 93 curriculum topics; found '+lessons.length); process.exit(1) }
 if(!app.includes('<TopicLearningStudio lesson={selectedLesson}/>')||!studio.includes('lesson.workflow')) { console.error('FAIL universal topic studio is not wired to lesson workflow'); process.exit(1) }
 if(stageGuides.some((_,i)=>!guideExists(i+1))) { console.error('FAIL one or more stage deep-dive guides are missing'); process.exit(1) }
+const missingFoundationLabs = requiredFoundationLabs.filter(id => !foundationLab.includes("topicId==='" + id + "'"))
+if(missingFoundationLabs.length) { console.error('FAIL missing Stage 1 numerical/data simulators: ' + missingFoundationLabs.join(', ')); process.exit(1) }
 console.log('PASS curriculum inventory, universal studio wiring and stage guide presence. Artifact gaps above are reported for staged remediation, not hidden.')
