@@ -92,15 +92,33 @@ Run all exercises locally with synthetic fixtures. The Academy service does not 
 
 ---
 
+## inference-performance — Inference Performance and Capacity Engineering
+
+**Implementation task:** Build a hardware-independent serving simulator that calculates KV-cache memory, separates prefill/TTFT from decode latency, models bounded batches and queues, enforces admission/memory budgets, isolates prefix cache by tenant, and compares quantization and speculative-decoding assumptions.
+
+**Worked fixture:** A 32-layer decoder with 8 KV heads, head dimension 128 and FP16 KV values receives a 4,096-token request. A second identical request arrives concurrently under a 512 MiB KV budget; a separate workload exceeds queue capacity and includes a request with a tight deadline.
+
+**Expected result:** One sequence estimates to 512 MiB of KV cache and two to 1 GiB, so the two-request batch is rejected under a 512 MiB budget. Queue overflow is shed with a stable reason; TTFT and decode are reported separately; tenant B does not hit tenant A's prefix cache; quantization memory savings include a quality penalty; deadline misses are explicit.
+
+**Verification tests:** Run `python examples/stage-12/inference_performance/inference_simulator.py`, `python examples/stage-12/inference_performance/capacity_sweep.py` and `python -m unittest discover -s examples/stage-12 -p 'test_inference_performance.py' -v`. Tests cover KV arithmetic, precision scaling, invalid configuration, prefill/decode, speculative acceptance, quantization quality, cache isolation, context/deadline, batch/queue/KV limits, throughput and admission control.
+
+**Debugging checklist:** Verify model layers/KV heads/head dimension and bytes/value; check sequence and concurrency assumptions; include queue wait in TTFT; separate prefill and decode throughput; inspect batch memory before admission; confirm prefix cache tenant/model scope; compare precision and quality; inspect speculative acceptance; trace p95 and rejection reasons; benchmark the real serving engine before capacity claims.
+
+**Interview checks:** Derive the KV formula; explain prefill vs decode; compare static and continuous batching; explain paged attention and fragmentation; describe prefix cache isolation; discuss quantization and speculative decoding trade-offs; design admission and load-shedding policies.
+
+**Submission evidence:** Include hand-derived KV estimate, synthetic capacity sweep, per-request latency trace, p95/throughput report, queue and memory rejection tests, tenant-safe cache proof, quality-aware optimization comparison and a production hardware benchmark plan.
+
+---
+
 ## Stage completion evidence
 
-- [ ] Topic 1 plan validator and coordinator pass all positive and negative tests from a clean checkout.
-- [ ] Worker concurrency never exceeds the configured bound; dependency barriers are demonstrated.
-- [ ] Restart and idempotency behavior is demonstrated with a persisted journal.
-- [ ] Failure handling blocks dependents and records reverse-order compensation.
-- [ ] Production limitations and external side-effect guarantees are explained accurately.
+- [x] Topic 1 plan validator and coordinator pass all positive and negative tests from a clean checkout.
+- [x] Worker concurrency never exceeds the configured bound; dependency barriers are demonstrated.
+- [x] Restart and idempotency behavior is demonstrated with a persisted journal.
+- [x] Failure handling blocks dependents and records reverse-order compensation.
+- [x] Production limitations and external side-effect guarantees are explained accurately.
 - [ ] Topic 1 closed-book mastery defense is completed before Topic 2.
-- [ ] Topic 2 protocol contract tests and migration gap analysis pass before Topic 3.
-- [ ] Topic 3 ACL-before-ranking, retrieval quality, citation and index migration tests pass before Topic 4.
-- [ ] Topic 4 dataset, confidence, judge-calibration, slice and fail-closed release-gate tests pass before Topic 5.
+- [x] Topic 2 protocol contract tests and migration gap analysis pass before Topic 3.
+- [x] Topic 3 ACL-before-ranking, retrieval quality, citation and index migration tests pass before Topic 4.
+- [x] Topic 4 dataset, confidence, judge-calibration, slice and fail-closed release-gate tests pass before Topic 5.
 - [ ] Topic 5 adversarial attack coverage, remediation and regression tests pass before Topic 6.
