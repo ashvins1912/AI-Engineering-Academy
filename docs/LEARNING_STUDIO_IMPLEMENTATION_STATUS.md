@@ -12,7 +12,7 @@
 - Explicitly labels the experience as a conceptual simulation; it does not claim to execute code or recalculate algorithms.
 - Added `FoundationTopicLab` for all seven Stage 1 topics: vector dot product/cosine similarity, Bayes posterior, analytic-vs-finite-difference derivatives, gradient-descent trajectories, Python record validation/missing-value policy, NumPy/Pandas vectorized filtering and aggregation, and data-quality/leakage gates.
 - Wired those numerical labs into the shared lesson studio by topic ID.
-- Added lesson-aware entry points to Stage 2 and Stage 3 mastery workbenches. The selected lesson now determines the initially active algorithm/architecture lab, while all other stage topics remain switchable from the workbench.
+- Added lesson-aware entry points to Stage 2 and Stage 3 mastery workbenches. The selected lesson now determines the active algorithm/architecture lab, and the active tab resynchronizes when learners switch lessons without leaving the stage; all other stage topics remain switchable from the workbench.
 - Preserved the existing `LessonPractice` workbench and all specialized stage/topic visualizers.
 - Added `npm run audit:topic-coverage` and a CI step to report topic JSON, lab-pack, tailored-code and shared-studio coverage by stage.
 
