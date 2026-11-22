@@ -1,5 +1,8 @@
 # Roadmap to 5/5 Learning-Product Readiness
 
+> **Historical baseline notice (22 Nov 2026):** This document was written against the earlier 11-stage / 84-topic curriculum. The current main-branch inventory is 12 stages / 93 unique topics. Use [the current complete architect review](COMPLETE_ACADEMY_ARCHITECT_REVIEW_2026-11-22.md) and [Topic Learning Studio contract](TOPIC_LEARNING_STUDIO_CONTRACT.md) for current scope and priorities. This document remains useful for its original per-topic findings and quality model.
+
+
 **Repository:** `ashvins1912/AI-Engineering-Academy`  
 **Baseline:** 11 stages / 84 topics  
 **Target:** a verifiably excellent, beginner-to-architect AI engineering learning product  
