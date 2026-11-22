@@ -92,7 +92,7 @@ jobs:
                   "postgresql://postgres_admin:postgres-admin-local-only@127.0.0.1:5432/academy"
               )
               try:
-                  for path in sorted(Path("backend/migrations").glob("00[0-4]_*.sql")):
+                  for path in sorted(Path("backend/migrations").glob("00[0-5]_*.sql")):
                       await conn.execute(path.read_text())
                       print(f"Applied {path}")
               finally:
