@@ -237,6 +237,46 @@ python -m unittest discover -s examples/stage-12 -p 'test_*.py' -v
 
 The local harness covers dataset versioning/leakage, retrieval and answer metrics, citation and abstention, deterministic judge scoring, bootstrap intervals, calibration, Cohen's kappa, pairwise comparisons, slice analysis, drift and fail-closed release gates.
 
+## Topic 5 — AI Red Teaming and Adversarial Validation
+
+### 1. Threat-model the whole chain
+
+Red-team the model, prompts, retrieval corpus, vector metadata, tool registry, agent memory, identity/tenant context, approval service, output path, budget controls and model supply chain. For each abuse case record: asset, attacker capability, entry point, trust boundary, preconditions, attack path, expected control, evidence, severity, owner and regression test. Use attack trees to connect low-level steps to a high-impact outcome such as cross-tenant disclosure or unauthorized mutation.
+
+### 2. Attack classes
+
+- Direct prompt injection and jailbreaks in user-controlled input.
+- Indirect prompt injection in documents, webpages, tool output, memory and agent-to-agent messages.
+- Retrieval poisoning and citation manipulation.
+- Tool abuse, argument tampering, confused deputy and approval replay.
+- Cross-tenant access through retrieval, caches, object paths, queues and tool resources.
+- Sensitive-data exfiltration through model context, logs, citations and generated output.
+- Denial of wallet through unbounded steps, retries, token use, concurrency and tool spend.
+- Model/dependency supply-chain compromise through digest mismatch, untrusted source, invalid signature or missing provenance.
+
+### 3. Enforcement beats prompt wording
+
+A detector or refusal prompt can help identify suspicious content, but it is not an authorization boundary. Treat retrieved/user/tool content as untrusted data. Keep tool grants outside model context. At execution time validate verified principal, tenant, action, resource, scope, approval, idempotency and budget. Enforce tenant predicates at the data layer. Keep secrets out of model-visible context and scan/redact outputs before delivery. Pin artifact digests and verify provenance/signatures before loading.
+
+### 4. Controlled testing and remediation
+
+Use explicit rules of engagement, synthetic data, isolated targets and bounded test budgets. Record redacted decisions and simulated side-effect evidence. Prioritize by likelihood × impact, but critical tenant isolation, secret exposure and unsafe mutation findings are stop-ship even if their arithmetic score is low. Fix the enforcing control, not only the prompt. Every confirmed attack becomes a regression case that runs after model, prompt, tool, data, index or policy changes.
+
+### 5. Measure coverage honestly
+
+Report total attacks, blocked attacks, successful attack paths and category coverage. A blocked attack in a local simulator proves only the tested code path. It does not certify a production environment, sandbox, model or external provider. Production red teams need real system configuration, authorized scopes, independent review and evidence preservation.
+
+## Topic 5 lab
+
+Run:
+
+```bash
+python examples/stage-12/ai_red_team/red_team_lab.py
+python -m unittest discover -s examples/stage-12 -p 'test_*.py' -v
+```
+
+The deterministic harness covers injection, poisoning, cross-tenant access, tool policy, approval/idempotency, canary redaction, budget exhaustion, artifact digest/source/signature/provenance and remediation coverage.
+
 ## Stage 12 sequencing
 
-Topics 1 and 2 are merged. Topic 4 is the current implementation gate; Topics 5–9 follow only after each preceding topic passes its tests and review. Topic 9 integrates all prior topics in the Advanced Production Practicum. A lesson is not complete merely because its content file exists; it must run from a clean checkout, pass positive and negative tests, demonstrate failure recovery and satisfy its assessment.
+Topics 1 and 2 are merged. Topic 5 is the current implementation gate; Topics 6–9 follow only after each preceding topic passes its tests and review. Topic 9 integrates all prior topics in the Advanced Production Practicum. A lesson is not complete merely because its content file exists; it must run from a clean checkout, pass positive and negative tests, demonstrate failure recovery and satisfy its assessment.

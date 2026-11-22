@@ -1,0 +1,580 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "ai-red-team",
+    "title": "AI Red Teaming and Adversarial Validation",
+    "stage": 12,
+    "estimatedMinutes": 480
+  },
+  "state": "runnable",
+  "learning": {
+    "outcomes": [
+      "Threat-model the full AI trust chain across prompts, retrieval, memory, tools, identity, tenants, outputs and model supply chain.",
+      "Build a versioned synthetic attack corpus for direct/indirect prompt injection, jailbreaks, retrieval poisoning and citation manipulation.",
+      "Test tool abuse, cross-tenant access, argument tampering, confused deputy behavior, approval replay and unsafe mutation.",
+      "Detect sensitive-data exfiltration and denial-of-wallet paths using canary secrets and explicit resource budgets.",
+      "Validate model artifacts through digest, source allowlist, signature and provenance checks before loading.",
+      "Prioritize findings, verify remediation at the enforcement boundary and convert every confirmed attack into a regression test."
+    ],
+    "prerequisites": [
+      "Stage 6 agent tools, planning and bounded execution",
+      "Stage 7 MCP/A2A/ACP trust boundaries and capability negotiation",
+      "Stage 10 prompt injection, tool authorization, tenant security and supply chain",
+      "Stage 12 Topics 1–4 orchestration, protocols, retrieval and evaluation"
+    ],
+    "glossary": [
+      {
+        "term": "Red teaming",
+        "definition": "An authorized adversarial exercise that tests whether a system's security and safety controls hold under realistic attack paths."
+      },
+      {
+        "term": "Direct prompt injection",
+        "definition": "Malicious instructions supplied directly by a user or another untrusted input channel."
+      },
+      {
+        "term": "Indirect prompt injection",
+        "definition": "Malicious instructions embedded in retrieved documents, tool output, memory or other external content."
+      },
+      {
+        "term": "Retrieval poisoning",
+        "definition": "Manipulating indexed content or metadata to bias retrieval, citations or downstream agent behavior."
+      },
+      {
+        "term": "Confused deputy",
+        "definition": "A privileged service is tricked into using its own authority for a caller who lacks permission."
+      },
+      {
+        "term": "Canary secret",
+        "definition": "A synthetic secret marker used to detect unintended propagation into model context, logs or outputs."
+      },
+      {
+        "term": "Denial of wallet",
+        "definition": "Abuse that causes excessive model, tool or infrastructure spending through unbounded work or retries."
+      },
+      {
+        "term": "Attack tree",
+        "definition": "A structured decomposition of attacker goals into prerequisite steps and alternative paths."
+      },
+      {
+        "term": "Rules of engagement",
+        "definition": "Explicit authorization, scope, safety limits, contacts and stop conditions for a red-team exercise."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "An AI system can pass ordinary tests while failing when a retrieved document gives malicious instructions, a tool proposal targets another tenant, an approval is replayed, a secret leaks through output, an agent loops until budget exhaustion or a model artifact is tampered with. Testing only the prompt or refusal message misses the security chain. Red teaming must validate the enforcing controls before side effects and preserve evidence that fixes remain effective.",
+    "plainLanguage": "Start by identifying what must be protected: tenant documents, personal data, credentials, tool permissions, model artifacts, budgets, memory, approval workflows and release systems. For each asset, identify who could attack it, what they can control, which boundary they cross and what impact would follow. Write an abuse case with preconditions, attack steps, expected control, observable evidence, severity and a regression test. An attack tree helps connect a small action—such as planting a malicious paragraph—to a larger goal such as exporting data.\n\nDirect prompt injection arrives in user input. Indirect injection arrives through retrieved files, webpages, tool output, memory or agent-to-agent messages. The malicious text may say to ignore policy, reveal secrets or call a tool. Delimiters and refusal prompts are not enough. Treat all user/retrieved/tool content as untrusted data. Keep authorization policy outside model context. The model can propose an action, but the server must verify principal, tenant, tool, action, resource, scope, approval and budget immediately before execution.\n\nTest retrieval poisoning and citation manipulation. An attacker may add content that claims to be a system policy, insert misleading metadata or make an unauthorized document appear highly relevant. Preserve source provenance and trust labels. Filter tenant and ACL before ranking, and verify every cited source. Graph edges, retrieved text and agent memory do not grant permissions.\n\nTest tool abuse end to end. Attempt unknown tools, privilege escalation, cross-tenant resources, argument tampering after approval, replayed approvals, missing idempotency keys and confused-deputy behavior. A write, delete, export or execution operation should require the exact server-side scope and any required approval. Bind approval to principal, tenant, action, resource, normalized arguments and expiry. Enforce idempotency and reauthorize immediately before the side effect.\n\nTest exfiltration with synthetic canary secrets. Keep real secrets out of model-visible context; place only synthetic markers in controlled fixtures. Scan output and telemetry before delivery, redact or deny exposure, and record safe evidence. Test indirect channels too: citations, error messages, logs, traces and tool outputs. Test denial of wallet by exceeding step, token, concurrency, retry and spend limits. A bounded agent should stop safely rather than continue retrying.\n\nTest the model supply chain. Verify artifact digest, approved source, signature, provenance, dependency inventory and policy before loading. A hash proves byte identity relative to a known digest; it does not prove the source is trustworthy or the artifact is safe. A signature proves control of a signing key; provenance explains how the artifact was built. Require all necessary evidence.\n\nFinally, rank findings by likelihood and impact, but do not let a low aggregate score hide a critical tenant leak or unsafe mutation. Fix the enforcing boundary, not just the prompt. Re-run the attack and the full regression corpus after every change to models, prompts, tools, retrieval sources, memory, identity, policies or release pipeline.",
+    "mentalModel": "Assets and attacker capabilities → trust boundaries and attack trees → versioned synthetic attacks → enforcement controls → observable blocked/escaped result → risk-ranked findings → remediation at boundary → regression corpus → release decision.",
+    "limitations": [
+      "A deterministic local simulator validates only the modeled policy path; it is not a production penetration test or security certification.",
+      "A prompt-injection detector can miss novel attacks and must never be the only authorization control.",
+      "A blocked synthetic canary test does not prove that every real secret or side channel is protected.",
+      "Hash/signature/provenance checks do not prove model behavior is safe or free of backdoors.",
+      "Risk scores help prioritize but cannot replace mandatory stop-ship controls, expert security review or legal/privacy assessment.",
+      "Red-team exercises require explicit authorization, scoped targets, synthetic data, resource limits and stop conditions."
+    ],
+    "everydayAnalogy": "A bank's security team tests more than whether the front door lock works. They test forged IDs, insider misuse, social engineering, vault access, alarm failures, transaction limits and recovery. An AI red team similarly tests the whole chain from untrusted content to privileged actions and sensitive output.",
+    "mathMadeSimple": "A simple risk score is likelihood × impact, each from 1 to 5. A likely cross-tenant leak rated 4×5 scores 20 (critical). But a confirmed critical isolation failure is a stop-ship even if someone rates likelihood low. The score ranks attention; it does not override mandatory controls.",
+    "productionImpact": "Use authorized red-team scope, synthetic data and bounded budgets. Test model, data, retrieval, tools, identity, approval, output and supply-chain boundaries together. Preserve redacted evidence, prioritize tenant/safety failures, remediate at the server-side enforcement point and keep every confirmed attack as a regression test."
+  },
+  "useCase": {
+    "scenario": "An enterprise RAG-agent assistant answers policy questions and can read tickets, propose ticket updates and delegate review to another agent. A red team tests malicious user prompts, poisoned retrieved content, cross-tenant resource IDs, approval replay, canary exfiltration, unbounded agent loops and tampered model artifacts.",
+    "actors": [
+      "Authorized red-team operator",
+      "Synthetic attacker and attack corpus",
+      "RAG retrieval and provenance service",
+      "Agent orchestrator and memory",
+      "Tool gateway and approval service",
+      "Tenant/resource authorization layer",
+      "Output DLP and canary scanner",
+      "Model artifact registry and release gate",
+      "Incident/security owner"
+    ],
+    "inputs": [
+      "Asset inventory, attacker capabilities and trust-boundary diagram",
+      "Versioned synthetic attack cases and expected outcomes",
+      "Verified principal, tenant, scopes and resource ownership",
+      "Tool allowlists, approval policy and idempotency keys",
+      "Synthetic canary markers and execution budgets",
+      "Model artifact digest/source/signature/provenance metadata"
+    ],
+    "constraints": [
+      "Only explicitly authorized synthetic targets are tested.",
+      "Untrusted content cannot grant tool authority.",
+      "Every tool action is independently authorized by the server.",
+      "Cross-tenant access and unapproved mutation are denied before side effects.",
+      "Canary markers are scanned before output delivery.",
+      "Step/token/spend budgets are enforced independently.",
+      "Untrusted or unverifiable model artifacts are rejected before load."
+    ],
+    "outputs": [
+      "Per-attack blocked/escaped result and reason code",
+      "Attack coverage by category and severity",
+      "Redacted evidence and risk-ranked findings",
+      "Remediation owner and regression test",
+      "Release stop/go decision"
+    ],
+    "successMetric": "Every critical attack path is blocked before side effects; canary exposure is detected; budget limits stop runaway work; artifact trust failures block loading; and each confirmed finding has a verified remediation regression test."
+  },
+  "architecture": {
+    "diagram": "examples/stage-12/ai_red_team/red-team-boundaries.mmd",
+    "components": [
+      "Asset and threat model registry",
+      "Versioned adversarial corpus",
+      "Untrusted-content/provenance classifier",
+      "Tenant and retrieval authorization",
+      "Server-side tool policy enforcement point",
+      "Approval and idempotency service",
+      "Execution budget controller",
+      "Output DLP/canary scanner",
+      "Model artifact verifier",
+      "Coverage and remediation report"
+    ],
+    "dataFlow": [
+      {
+        "from": "Threat model",
+        "to": "Attack corpus",
+        "payload": "Asset, attacker, preconditions, attack steps and expected control",
+        "purpose": "Create versioned and testable abuse cases."
+      },
+      {
+        "from": "Synthetic attacker",
+        "to": "RAG/agent pipeline",
+        "payload": "Direct and indirect prompt injection, poisoned content and tool proposals",
+        "purpose": "Exercise untrusted-input and authority boundaries."
+      },
+      {
+        "from": "Retrieved/tool content",
+        "to": "Provenance and trust controls",
+        "payload": "Source identity, trust label and tenant metadata",
+        "purpose": "Prevent content from becoming policy or permission."
+      },
+      {
+        "from": "Tool proposal",
+        "to": "Policy enforcement point",
+        "payload": "Verified principal, tenant, action, resource, scope and approval",
+        "purpose": "Authorize the exact operation before side effects."
+      },
+      {
+        "from": "Agent execution",
+        "to": "Budget controller",
+        "payload": "Steps, tokens, retries and spend",
+        "purpose": "Stop denial-of-wallet and unbounded loops."
+      },
+      {
+        "from": "Candidate output",
+        "to": "Canary scanner",
+        "payload": "Generated text and synthetic secret markers",
+        "purpose": "Detect and redact data exfiltration before delivery."
+      },
+      {
+        "from": "Model artifact",
+        "to": "Artifact verifier",
+        "payload": "Bytes, digest, source, signature and provenance",
+        "purpose": "Reject untrusted artifacts before loading."
+      },
+      {
+        "from": "Attack results",
+        "to": "Remediation registry",
+        "payload": "Block/escape outcome, reason, severity and evidence",
+        "purpose": "Create owned fixes and permanent regression tests."
+      }
+    ],
+    "trustBoundaries": [
+      "User, retrieved, memory and tool content are untrusted data.",
+      "Model output is a proposal, never an authorization grant.",
+      "Principal and tenant come from verified server identity.",
+      "Approval is bound to exact action/resource/arguments and expiry.",
+      "Synthetic canary markers are protected test assets.",
+      "Artifact metadata and signatures are independently verified before load.",
+      "Red-team results contain redacted evidence and restricted access."
+    ],
+    "failurePaths": [
+      "Prompt injection is treated as instruction: fail trust-boundary test and block tool execution.",
+      "Cross-tenant resource is accepted: stop-ship and verify DB/vector/tool isolation.",
+      "Approval replay or argument change succeeds: revoke approval and fix binding/idempotency.",
+      "Canary reaches user output: block response, investigate all channels and rotate any real exposed secret.",
+      "Agent exceeds budget: terminate bounded execution and preserve safe diagnostics.",
+      "Artifact digest/source/signature/provenance fails: quarantine and block load.",
+      "Attack escapes simulator: record finding, prioritize by severity, remediate and rerun corpus."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-12/ai_red_team/scenarios.json",
+    "steps": [
+      {
+        "label": "Map assets and attacker",
+        "explanation": "Identify protected data, tools, identities, budgets, artifacts and attacker-controlled entry points.",
+        "expectedState": "Threat model records assets, trust boundaries and preconditions."
+      },
+      {
+        "label": "Inject untrusted content",
+        "explanation": "Exercise direct/indirect prompt injection and retrieval poisoning using synthetic payloads.",
+        "expectedState": "Content is labeled untrusted and cannot grant permissions."
+      },
+      {
+        "label": "Attack tool boundary",
+        "explanation": "Try cross-tenant resources, unknown tools, argument tampering and approval replay.",
+        "expectedState": "Server-side policy denies before side effects."
+      },
+      {
+        "label": "Test exfiltration and budgets",
+        "explanation": "Place a synthetic canary in output and exceed step/token/spend limits.",
+        "expectedState": "Canary is redacted and runaway work stops."
+      },
+      {
+        "label": "Test artifact trust",
+        "explanation": "Change artifact digest/source/signature/provenance and attempt load.",
+        "expectedState": "Untrusted artifact is rejected before load."
+      },
+      {
+        "label": "Remediate and regress",
+        "explanation": "Rank findings, fix the enforcement point and rerun the complete attack corpus.",
+        "expectedState": "Coverage report shows blocked attacks and verified regression evidence."
+      }
+    ],
+    "accessibility": [
+      "Attack inputs, expected control and result are shown as text; color is not the sole severity signal.",
+      "Keyboard navigation exposes the full attack-to-remediation sequence."
+    ],
+    "animation": {
+      "objective": "Trace a synthetic adversarial attack through the AI trust chain and show how each server-side control blocks escalation or exfiltration.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Asset and boundary map",
+          "narration": "Identify data, tools, identity, budgets and artifacts that must be protected.",
+          "input": "tenant documents, ticket write tool, canary, model digest",
+          "transformation": "Mark attacker-controlled sources and privileged boundaries.",
+          "output": "attack tree and threat case",
+          "visualState": "Trust boundaries and impact paths are labeled."
+        },
+        {
+          "step": 2,
+          "title": "Indirect injection",
+          "narration": "A retrieved document contains an instruction to export tenant data.",
+          "input": "poisoned synthetic document",
+          "transformation": "Preserve provenance and treat content as untrusted evidence.",
+          "output": "UNTRUSTED_RETRIEVAL_CONTENT",
+          "visualState": "The instruction is displayed as data, not policy."
+        },
+        {
+          "step": 3,
+          "title": "Tool authorization",
+          "narration": "The agent proposes a cross-tenant write without the exact approval.",
+          "input": "tool proposal + verified principal + resource tenant",
+          "transformation": "Check allowlist, scope, tenant, resource, approval and idempotency.",
+          "output": "TENANT_MISMATCH or APPROVAL_REQUIRED",
+          "visualState": "Policy gate blocks the side effect."
+        },
+        {
+          "step": 4,
+          "title": "Exfiltration and budget",
+          "narration": "A synthetic canary is placed in candidate output and a runaway loop exceeds limits.",
+          "input": "candidate output + step/token/spend counters",
+          "transformation": "Redact canary and terminate work when budget is exceeded.",
+          "output": "CANARY_SECRET_EXPOSURE + BUDGET_EXCEEDED",
+          "visualState": "Output is withheld/redacted and loop stops."
+        },
+        {
+          "step": 5,
+          "title": "Supply-chain check",
+          "narration": "A tampered model artifact is presented for loading.",
+          "input": "artifact bytes + pinned digest + signature + provenance",
+          "transformation": "Verify every trust signal before loading.",
+          "output": "ARTIFACT_DIGEST_MISMATCH",
+          "visualState": "Artifact is quarantined before runtime."
+        },
+        {
+          "step": 6,
+          "title": "Remediation proof",
+          "narration": "Findings are ranked and converted to regression tests that rerun after every change.",
+          "input": "attack results and evidence",
+          "transformation": "Apply enforcement fix and rerun corpus.",
+          "output": "coverage and remediation report",
+          "visualState": "Every finding has an owner, fix and test."
+        }
+      ],
+      "controls": [
+        {
+          "name": "attackBudget",
+          "min": 1,
+          "max": 100,
+          "defaultValue": 20,
+          "effect": "Bound the number of synthetic attack cases executed in one lab run."
+        },
+        {
+          "name": "severityThreshold",
+          "min": 1,
+          "max": 5,
+          "defaultValue": 4,
+          "effect": "Highlight high-impact findings that require immediate triage or stop-ship review."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "The attack, trust boundary, expected control, reason code and remediation are available as text for every stage."
+    }
+  },
+  "workedExample": {
+    "problem": "A retrieved document attempts to make an agent export another tenant's data and leak a canary secret.",
+    "input": "Tenant-A user; malicious retrieved policy text; proposal ticket.export on Tenant-B ticket; synthetic canary in output; max steps=8; candidate model artifact digest mismatch.",
+    "steps": [
+      {
+        "operation": "Mark retrieved text untrusted",
+        "reasoning": "Source provenance is preserved and document instructions are treated as data rather than system policy.",
+        "result": "No authority is derived from the retrieved instruction."
+      },
+      {
+        "operation": "Authorize tool proposal",
+        "reasoning": "Server checks verified tenant, resource ownership, scope, action, approval and idempotency.",
+        "result": "Cross-tenant proposal is denied with TENANT_MISMATCH before side effect."
+      },
+      {
+        "operation": "Scan candidate output",
+        "reasoning": "Output DLP checks for synthetic canary markers before delivery.",
+        "result": "Canary is detected and redacted; a security event is recorded."
+      },
+      {
+        "operation": "Enforce execution budget",
+        "reasoning": "Step/token/spend limits are checked independently of the model's request to continue.",
+        "result": "Runaway work is stopped at the configured budget."
+      },
+      {
+        "operation": "Verify model artifact",
+        "reasoning": "Actual bytes are hashed and compared with the pinned digest; source, signature and provenance are checked.",
+        "result": "Mismatched artifact is quarantined and cannot be loaded."
+      }
+    ],
+    "expectedOutput": "The tool side effect never runs, canary is not delivered, budget is bounded, untrusted artifact is rejected and each result becomes a regression case."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "path": "examples/stage-12/ai_red_team/red_team_lab.py",
+      "runCommand": "python examples/stage-12/ai_red_team/red_team_lab.py",
+      "testsPath": "examples/stage-12/test_ai_red_team.py",
+      "expectedResult": "Synthetic attack runner reports blocked cross-tenant, canary exfiltration and budget exhaustion scenarios.",
+      "role": "from-scratch"
+    },
+    {
+      "language": "python",
+      "path": "examples/stage-12/ai_red_team/red_team_lab.py",
+      "runCommand": "python -m unittest discover -s examples/stage-12 -p 'test_*.py' -v",
+      "testsPath": "examples/stage-12/test_ai_red_team.py",
+      "expectedResult": "Tool authorization, output redaction, resource budgets, artifact trust, attack coverage and remediation tests pass.",
+      "role": "production"
+    }
+  ],
+  "failures": [
+    {
+      "name": "Indirect prompt injection grants tool authority",
+      "symptom": "A retrieved document instruction causes a tool call or privilege expansion.",
+      "rootCause": "Retrieved content is treated as trusted policy or tool descriptions are followed without server authorization.",
+      "recovery": "Preserve provenance/taint and enforce action/resource authorization outside the model.",
+      "regressionTest": "Use poisoned retrieval text with an attempted tool call and verify the proposal cannot grant authority."
+    },
+    {
+      "name": "Cross-tenant access",
+      "symptom": "A user accesses another tenant's document or resource through an agent/tool path.",
+      "rootCause": "Tenant is taken from prompt/request content or omitted from downstream filters.",
+      "recovery": "Resolve tenant from verified identity and enforce it in every SQL/vector/cache/object/tool path.",
+      "regressionTest": "Attempt a cross-tenant read and write and assert denial before adapter invocation."
+    },
+    {
+      "name": "Approval replay or argument tampering",
+      "symptom": "An approved action is replayed for a different resource or modified arguments.",
+      "rootCause": "Approval is not bound to exact principal, tenant, action, resource, arguments and expiry.",
+      "recovery": "Bind approval to a canonical request digest and enforce idempotency immediately before side effects.",
+      "regressionTest": "Reuse approval/idempotency key with changed resource and assert rejection."
+    },
+    {
+      "name": "Canary secret exfiltration",
+      "symptom": "Synthetic sensitive marker appears in user-visible output or telemetry.",
+      "rootCause": "Secrets entered model context or output channels lack DLP controls.",
+      "recovery": "Keep secrets outside context and scan/redact outputs and telemetry before delivery.",
+      "regressionTest": "Inject canary into candidate output and assert redaction plus violation evidence."
+    },
+    {
+      "name": "Denial of wallet",
+      "symptom": "Agent loops, retries or fans out until token/tool spend exceeds budget.",
+      "rootCause": "No global deadline, step/token/spend budget or retry cap.",
+      "recovery": "Enforce budgets at orchestrator and tool gateway; stop and preserve safe diagnostics.",
+      "regressionTest": "Exceed each budget dimension and assert bounded termination."
+    },
+    {
+      "name": "Model artifact compromise",
+      "symptom": "Untrusted or modified model artifact is loaded into a runtime.",
+      "rootCause": "Mutable tags or hashes without source/signature/provenance checks.",
+      "recovery": "Pin artifact digest, verify approved source, signature and provenance before loading.",
+      "regressionTest": "Tamper bytes/source/signature/provenance and assert artifact rejection."
+    }
+  ],
+  "practice": {
+    "guided": "Run the supplied synthetic attacks and record expected versus observed reason codes. Confirm every attack result maps to an enforcing control and a regression test.",
+    "independent": "Add a memory-poisoning attack and an A2A delegation privilege-escalation attack. Verify memory provenance, delegated scope attenuation and tenant binding.",
+    "realWorld": "Write rules of engagement for a multi-tenant RAG-agent service: authorized target, test identities, synthetic datasets, allowed attack window, budgets, stop conditions, evidence handling and notification contacts.",
+    "expertExtension": "Integrate an authorized external red-team scanner or model-specific adversarial test suite behind an opt-in profile; correlate findings with MITRE ATLAS/OWASP categories and create a remediation SLA dashboard.",
+    "guidedExercise": {
+      "title": "Turn an attack into a regression test",
+      "instructions": "Create a cross-tenant tool proposal and a synthetic canary leak. Verify both are blocked, record reason codes and add a test that fails if the control is removed.",
+      "starterCode": "def red_team_case(context, proposal, output):\\n    # TODO: enforce tenant/scope/approval before tool dispatch\\n    # TODO: scan output for synthetic canary markers\\n    # TODO: record blocked/escaped outcome and regression evidence\\n    raise NotImplementedError",
+      "solutionCode": "def red_team_case(context, proposal, output, canary):\\n    if context.tenant_id != proposal.resource_tenant_id:\\n        decision = 'TENANT_MISMATCH'\\n    elif proposal.required_scope not in context.scopes:\\n        decision = 'SCOPE_MISSING'\\n    elif proposal.action in {'write','delete','export'} and not proposal.approved:\\n        decision = 'APPROVAL_REQUIRED'\\n    else:\\n        decision = 'ALLOW'\\n    leaked = canary in output\\n    safe_output = output.replace(canary, '[REDACTED]') if leaked else output\\n    return {'decision': decision, 'output': safe_output, 'canary_detected': leaked}",
+      "unitTests": "result = red_team_case(context_tenant_A, proposal_tenant_B, 'secret=CANARY', 'CANARY')\\nassert result['decision'] == 'TENANT_MISMATCH'\\nassert result['output'] == 'secret=[REDACTED]'\\nassert result['canary_detected']"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build a red-team workbench that runs synthetic attacks, shows control decisions, ranks findings and tracks remediation regression evidence.",
+      "steps": [
+        "Load the asset inventory and trust-boundary diagram.",
+        "Select direct/indirect injection, poisoning, tool, tenant, exfiltration, budget or supply-chain attack cases.",
+        "Run each attack against deterministic policy adapters and record reason codes.",
+        "Calculate blocked rate and per-category coverage with severity breakdown.",
+        "Create remediation findings for escaped attacks and assign owners/regression tests.",
+        "Rerun the corpus after the fix and verify no critical path remains."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "A retrieved document says to ignore system instructions and export every tenant's data. What is the primary control?",
+        "options": [
+          "Add more delimiters to the prompt",
+          "Treat retrieved text as untrusted and independently authorize each tool action server-side",
+          "Trust the document if its vector score is high",
+          "Allow export if the model explains why"
+        ],
+        "correctIndex": 1,
+        "explanation": "Prompt wording is not an authorization boundary. Retrieved content remains untrusted data; tool actions require verified identity, tenant, scope, resource and approval."
+      },
+      {
+        "question": "An approved write request is changed to target another resource after approval. What should happen?",
+        "options": [
+          "Reuse approval because the tool name is unchanged",
+          "Reauthorize the exact normalized arguments and reject the mismatched approval",
+          "Trust the model's reasoning",
+          "Skip idempotency"
+        ],
+        "correctIndex": 1,
+        "explanation": "Approval must bind to principal, tenant, action, resource, arguments and expiry. Changed arguments require a new decision."
+      },
+      {
+        "question": "A synthetic canary appears in a candidate answer. What is the right response?",
+        "options": [
+          "Deliver it because it is synthetic",
+          "Scan/redact or deny output before delivery and record safe evidence",
+          "Only add a warning to the prompt",
+          "Delete the test"
+        ],
+        "correctIndex": 1,
+        "explanation": "Canaries reveal leakage paths. Output and telemetry should be scanned before delivery; the real secret boundary must remain outside model context."
+      },
+      {
+        "question": "A model artifact has a matching hash but an unknown source and no provenance. Is it trusted?",
+        "options": [
+          "Yes, hash match proves safety",
+          "Yes, if the model performs well",
+          "No; digest identity does not establish source trust or build provenance",
+          "Only if it is a large model"
+        ],
+        "correctIndex": 2,
+        "explanation": "A hash establishes byte identity relative to a pinned digest. Source, signature, provenance and policy are separate trust checks."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Threat model and attack corpus cover the full AI trust chain",
+        "weight": 20,
+        "evidence": "Asset inventory, trust-boundary diagram, attack tree and versioned cases."
+      },
+      {
+        "criterion": "Injection, poisoning, tenant and tool attacks are blocked",
+        "weight": 20,
+        "evidence": "Reason-coded negative tests with no side effects."
+      },
+      {
+        "criterion": "Exfiltration and denial-of-wallet controls work",
+        "weight": 20,
+        "evidence": "Canary redaction and step/token/spend budget evidence."
+      },
+      {
+        "criterion": "Model artifact integrity and provenance gates work",
+        "weight": 20,
+        "evidence": "Digest/source/signature/provenance negative tests."
+      },
+      {
+        "criterion": "Findings are prioritized and remediation is regression-tested",
+        "weight": 20,
+        "evidence": "Coverage report, owners, fixes and rerun results."
+      }
+    ],
+    "passThreshold": 80,
+    "evidence": [
+      "Passing Stage 12 Topic 5 adversarial tests and demo output",
+      "Attack coverage report, redacted evidence, risk-ranked findings and remediation regression suite"
+    ]
+  },
+  "references": [
+    {
+      "title": "OWASP GenAI Security Project — Top 10 for LLM Applications",
+      "url": "https://genai.owasp.org/llm-top-10/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "MITRE ATLAS — Adversarial Threat Landscape for AI Systems",
+      "url": "https://atlas.mitre.org/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "NIST AI 600-1 — Generative Artificial Intelligence Profile",
+      "url": "https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "NIST AI Risk Management Framework",
+      "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "if proposal.resource_tenant_id != context.tenant_id: return TENANT_MISMATCH",
+      "explanation": "Tenant is resolved from verified server context and compared with authoritative resource ownership before the tool adapter is invoked."
+    },
+    {
+      "lines": "if proposal.action in write/delete/export and not proposal.approved: deny",
+      "explanation": "High-impact mutations require an explicit approval bound to the exact operation; a model-generated rationale or retrieved instruction is not approval."
+    },
+    {
+      "lines": "redact_output(candidate_output)",
+      "explanation": "Synthetic canaries reveal whether protected markers enter user-visible output. The scanner redacts the marker and emits a safe violation code before delivery."
+    },
+    {
+      "lines": "enforce_budget(steps, tokens, spend_usd)",
+      "explanation": "Independent step, token and spend ceilings stop runaway agent loops and denial-of-wallet attempts."
+    },
+    {
+      "lines": "sha256(artifact_bytes) == expected_sha256",
+      "explanation": "Digest verification establishes byte identity relative to a pinned manifest; source allowlist, signature and provenance remain separate required checks."
+    },
+    {
+      "lines": "coverage_report(results)",
+      "explanation": "Report blocked and escaped attacks by category. A local blocked rate covers only these fixtures and must not be represented as production security certification."
+    },
+    {
+      "lines": "remediation_findings(results)",
+      "explanation": "Every escaped attack becomes a finding with a named enforcing control and remediation direction; production workflow adds owner, due date and regression proof."
+    }
+  ]
+}

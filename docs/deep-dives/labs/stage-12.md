@@ -74,6 +74,24 @@ Run all exercises locally with synthetic fixtures. The Academy service does not 
 
 ---
 
+## ai-red-team — AI Red Teaming and Adversarial Validation
+
+**Implementation task:** Build a versioned synthetic attack corpus and deterministic runner for direct/indirect prompt injection, retrieval poisoning, cross-tenant access, tool abuse, approval replay, argument tampering, canary exfiltration, denial of wallet, jailbreaks and model artifact supply-chain attacks. Map each attack to a control and remediation regression test.
+
+**Worked fixture:** A Tenant-A user asks a RAG-agent to summarize a policy. A retrieved document contains an indirect instruction to export all tenant data. A tool proposal targets a Tenant-B ticket, a synthetic canary is placed in candidate output, and a second run attempts to load a model artifact with a mismatched digest.
+
+**Expected result:** Retrieved content remains untrusted and cannot grant tool authority; cross-tenant and unapproved mutations are denied before side effects; canary output is detected/redacted; step/token/spend budgets stop runaway execution; and invalid/untrusted model artifacts are rejected before load. Every unblocked attack creates a risk-ranked finding with a remediation owner and regression case.
+
+**Verification tests:** Run `python -m unittest discover -s examples/stage-12 -p 'test_*.py' -v`. Test tool allowlist/scope/tenant/approval/idempotency, canary redaction, step/token/spend budgets, artifact digest/source/signature/provenance, direct/indirect injection, cross-tenant denial, denial-of-wallet, supply-chain attacks, attack coverage, remediation findings and risk-score bounds.
+
+**Debugging checklist:** Identify the asset and attacker capability; trace the entry point and trust boundary; verify the source is labeled untrusted; inspect server-derived principal/tenant; confirm authorization before resource access; bind approval to exact arguments and idempotency; inspect budget counters; verify canary scanning before output; compare artifact bytes/digest/source/signature/provenance; retain redacted evidence and convert each finding to a regression test.
+
+**Interview checks:** Why is a prompt injection detector not an authorization boundary? How do direct and indirect injection differ? What is a confused deputy? How can a retrieved document poison an agent's memory or tool choice? Why must approval bind to exact arguments? How do you prevent denial of wallet? What does a hash prove and what does it not prove? How do you measure red-team coverage without claiming certification?
+
+**Submission evidence:** Include a threat model and attack tree, versioned attack corpus, per-category coverage report, blocked/unblocked results, redacted evidence, risk-ranked findings, remediation owners, regression tests and a production rules-of-engagement checklist.
+
+---
+
 ## Stage completion evidence
 
 - [ ] Topic 1 plan validator and coordinator pass all positive and negative tests from a clean checkout.
@@ -85,3 +103,4 @@ Run all exercises locally with synthetic fixtures. The Academy service does not 
 - [ ] Topic 2 protocol contract tests and migration gap analysis pass before Topic 3.
 - [ ] Topic 3 ACL-before-ranking, retrieval quality, citation and index migration tests pass before Topic 4.
 - [ ] Topic 4 dataset, confidence, judge-calibration, slice and fail-closed release-gate tests pass before Topic 5.
+- [ ] Topic 5 adversarial attack coverage, remediation and regression tests pass before Topic 6.
