@@ -1,5 +1,8 @@
 # Senior Architect Review — AI Engineering Academy
 
+> **Historical baseline notice (22 Nov 2026):** This document was written against the earlier 11-stage / 84-topic curriculum. The current main-branch inventory is 12 stages / 93 unique topics. Use [the current complete architect review](COMPLETE_ACADEMY_ARCHITECT_REVIEW_2026-11-22.md) and [Topic Learning Studio contract](TOPIC_LEARNING_STUDIO_CONTRACT.md) for current scope and priorities. This document remains useful for its original per-topic findings and quality model.
+
+
 **Review baseline:** `main` at `9db2718345d4bb44ed38125994bfaf732471cf6e` (20 Nov 2026)  
 **Scope:** 11 stages, 84 lesson topics, lesson data model, topic lab packs, practice workbench, interactive labs, production playbooks, architecture documentation and learner progress UX.  
 **Review type:** Repository-based expert desk review. Scores describe the current published learning experience, not the quality of a learner or a claim that every code sample has been executed.
