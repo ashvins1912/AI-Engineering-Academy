@@ -20,13 +20,14 @@
 
 The shared conceptual studio is a baseline, not a bespoke algorithm simulator for every topic. The editable scenario is displayed as learner context; it is not parsed or executed. Existing specialized visualizers remain available where already wired.
 
-The coverage command reports gaps but does not fabricate missing content or declare topics mastered. All seven Stage 1 topics now have a focused interactive playground. Stage 2 and Stage 3 are wired to existing topic-specific mastery workbenches, but their full content and numerical coverage still need a deeper quality audit. Stages 4–5 are now wired to their existing mastery labs. Stages 6–12 still need topic-specific simulator coverage or richer existing-lab integration. Full JSON content migration, executable code sandboxes, additional failure injection, assessment rubrics and learner validation remain staged work.
+The coverage command reports gaps but does not fabricate missing content or declare topics mastered. All seven Stage 1 topics now have a focused interactive playground. Stage 2 and Stage 3 are wired to existing topic-specific mastery workbenches, but their full content and numerical coverage still need a deeper quality audit. Stages 4–5 are wired to their existing mastery labs. Stage 6 agent topics, Stage 7 protocol topics and Stage 8 workflow topics now mount their existing paired visualizer/detail components directly in the selected lesson. Stage 9 maps experiment tracking, registry, evaluation CI, data pipeline, containers, CI/CD and IaC; Kubernetes and model serving remain unmapped. Stages 10–12 still need a topic-by-topic lesson-studio integration audit. Full JSON content migration, executable code sandboxes, additional failure injection, assessment rubrics and learner validation remain staged work.
 
 ## Verification status
 
 - Source changes committed to the review branch.
 - CI now invokes the topic coverage audit on pull requests.
 - The first implementation commit passed the full repository CI run, including TypeScript, build, Python examples and backend tests.
-- The numerical foundation-lab commit has a new CI run in progress; its result must be checked before treating this slice as validated.
+- The numerical foundation-lab and Stage 2–5 integration commits passed CI runs for TypeScript/build and repository checks.
+- Stage 6–9 specialist-router commits have fresh CI runs in progress; verify their final result before treating this newest slice as validated.
 - Browser interaction, mobile and manual accessibility testing have not yet been performed.
 - Do not merge until CI is green and any failures are resolved.
