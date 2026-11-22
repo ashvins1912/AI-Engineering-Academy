@@ -1,0 +1,573 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "inference-performance",
+    "title": "Inference Performance and Capacity Engineering",
+    "stage": 12,
+    "estimatedMinutes": 480
+  },
+  "state": "runnable",
+  "learning": {
+    "outcomes": [
+      "Separate prefill, time-to-first-token and autoregressive decode latency and explain their workload drivers.",
+      "Calculate KV-cache memory from model dimensions, sequence length, precision and concurrent sequences.",
+      "Model batching, queueing, admission control, deadlines, load shedding and throughput under bounded capacity.",
+      "Explain prefix caching, continuous batching, paged attention, quantization and speculative decoding trade-offs.",
+      "Build deterministic capacity sweeps and identify memory, queue, latency and fairness failure modes.",
+      "Design production load tests and SLO guardrails without assuming simulator numbers represent real hardware."
+    ],
+    "prerequisites": [
+      "Stage 9 model serving, inference optimization and deployment strategies",
+      "Stage 10 SLOs, reliability and cost engineering",
+      "Stage 12 Topic 4 evaluation metrics and Topic 5 adversarial budgets",
+      "Basic linear algebra, memory units, queueing and Python"
+    ],
+    "glossary": [
+      {
+        "term": "Prefill",
+        "definition": "The model processes input prompt tokens to build attention state before generating the first output token."
+      },
+      {
+        "term": "Decode",
+        "definition": "The autoregressive phase generates output tokens one at a time while reusing the accumulated key/value cache."
+      },
+      {
+        "term": "TTFT",
+        "definition": "Time to first token, including queue wait and prompt prefill before the first generated token is available."
+      },
+      {
+        "term": "KV cache",
+        "definition": "Stored attention keys and values for previous tokens, reducing recomputation but consuming memory proportional to layers, heads, sequence length and precision."
+      },
+      {
+        "term": "Continuous batching",
+        "definition": "A serving scheduler that dynamically admits and retires sequences so accelerator work remains utilized as requests arrive and finish."
+      },
+      {
+        "term": "Paged attention",
+        "definition": "A memory-management approach that stores KV blocks in pages to reduce fragmentation and support flexible sequence allocation."
+      },
+      {
+        "term": "Quantization",
+        "definition": "Representing model weights or KV values with fewer bits to reduce memory/bandwidth at a possible quality or stability cost."
+      },
+      {
+        "term": "Speculative decoding",
+        "definition": "A draft model proposes multiple tokens and a target model verifies them, potentially increasing decode throughput when acceptance is high."
+      },
+      {
+        "term": "Admission control",
+        "definition": "A gate that accepts, queues or rejects work based on capacity, memory, deadline and service-level constraints."
+      },
+      {
+        "term": "Head-of-line blocking",
+        "definition": "A long or resource-heavy request delays later requests even when those later requests could otherwise make progress."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "A model server can fail even when the model fits in memory: concurrent long prompts exhaust KV cache, queues grow faster than decode capacity, p95 latency breaches SLOs, and retries amplify overload. Optimizing only tokens per second can make TTFT or fairness worse. Capacity engineering requires explicit memory estimates, workload distributions, bounded admission and measured trade-offs.",
+    "plainLanguage": "Split inference into two phases. During prefill, the model processes the prompt and builds attention state; this phase often benefits from parallel compute. During decode, output tokens are generated autoregressively and depend on previous tokens, so memory bandwidth and KV-cache access matter. TTFT includes queue wait plus prefill. Inter-token latency and output throughput describe the decode phase. Measure both rather than reporting one average latency.\\n\\nThe KV cache stores keys and values for every active sequence. A simplified estimate is: 2 × layers × KV heads × head dimension × bytes per value × sequence tokens × concurrent sequences. For 32 layers, 8 KV heads, head dimension 128 and FP16 values (2 bytes), each token uses 128 KiB. A 4,096-token sequence uses about 512 MiB before allocator fragmentation, weights, activations, runtime overhead and other buffers. Grouped-query attention, tensor parallelism, cache layout and serving engine change the real number.\\n\\nBatching improves utilization but creates scheduling trade-offs. Static batches wait for the slowest sequence; continuous batching admits and retires sequences dynamically. A scheduler needs limits for batch size, queue depth, context length, per-tenant fairness, deadlines and KV memory. When capacity is exceeded, reject or shed load with a clear reason instead of allowing unbounded memory and latency growth. Retries must be bounded and coordinated to avoid retry storms.\\n\\nPrefix caching can avoid repeated prefill for shared prompt prefixes, but the cache key must include tenant/security scope and prompt/model version. A cross-tenant cache hit can leak information or reuse an unauthorized prefix. Paged attention reduces fragmentation by managing KV blocks, but does not remove the memory requirement.\\n\\nQuantization reduces weight or KV storage and may improve bandwidth, but can affect quality and numerical stability. Speculative decoding uses a draft model to propose tokens and a target model to verify them; speedup depends on acceptance rate and verification overhead. These are measured trade-offs, not universal wins.\\n\\nRun capacity sweeps over prompt/output lengths, concurrency, arrival rate, batch size, cache hit rate and precision. Report TTFT, inter-token latency, p50/p95, throughput, queue wait, rejected requests, KV memory and quality deltas. Simulators teach the accounting and failure modes; production capacity must be measured on the actual model, hardware, engine, kernel and workload.",
+    "mentalModel": "Request arrival → admission and tenant fairness → queue/batch scheduler → KV memory reservation → prefill/TTFT → decode loop → optional prefix/speculative optimizations → latency, throughput, memory and quality telemetry.",
+    "limitations": [
+      "The local simulator uses synthetic throughput curves and does not model real GPU kernels, bandwidth, interconnect or hardware scheduling.",
+      "The KV formula is a simplified estimate; real attention layouts, GQA/MQA, tensor parallelism, cache blocks and allocator overhead vary.",
+      "The speculative decoding multiplier is illustrative and does not predict a particular draft/target model pair.",
+      "The quantization quality penalty is a teaching assumption, not a measured benchmark.",
+      "The prefix cache models tenant key isolation but not distributed cache eviction, encryption or concurrency races.",
+      "The simulator's queue and batch scheduler is deterministic and simplified; production continuous batching requires a real serving engine.",
+      "A memory estimate that fits KV cache alone does not prove the model, weights, activations and runtime fit on a device."
+    ],
+    "everydayAnalogy": "A restaurant kitchen has a prep phase and a cooking phase. More chefs can prepare many orders in parallel, but each active table still occupies space and each dish needs time at the stove. The manager controls reservations, table capacity and queue length. Serving systems do the same with prompt prefill, decode, KV memory and admission control.",
+    "mathMadeSimple": "For a decoder with L=32 layers, Hkv=8 key/value heads, D=128 dimensions per head, 2 bytes per value and S=4,096 tokens: KV bytes = 2×L×Hkv×D×2×S = 536,870,912 bytes = 512 MiB for one sequence. Two concurrent sequences need about 1 GiB before other memory overhead.",
+    "productionImpact": "Measure TTFT and inter-token latency separately; estimate and reserve KV memory before admission; use continuous batching and bounded queues; isolate prefix caches by tenant and version; tune quantization/speculative decoding on quality-aware benchmarks; enforce deadlines, fairness and load shedding; and validate every estimate on the actual serving engine and hardware."
+  },
+  "useCase": {
+    "scenario": "An enterprise AI service receives mixed workloads: short customer questions, long document analysis and bursts from multiple tenants. The platform must keep p95 latency within target, prevent KV exhaustion, share prefix cache safely, and reject excess load predictably.",
+    "actors": [
+      "API gateway and verified tenant context",
+      "Admission controller and rate limiter",
+      "Batch/continuous-batching scheduler",
+      "Model profile and KV-cache manager",
+      "Prefix cache",
+      "Inference runtime and optional draft model",
+      "SLO/quality/cost telemetry"
+    ],
+    "inputs": [
+      "Model dimensions and KV precision",
+      "Prompt/output length and arrival-time distributions",
+      "Concurrent sequences, batch and queue limits",
+      "Tenant-scoped prefix keys and cache hit rates",
+      "Prefill/decode throughput assumptions and request deadlines"
+    ],
+    "constraints": [
+      "KV memory is reserved before admitting the batch.",
+      "Queue and batch sizes are bounded.",
+      "Prefix cache entries are isolated by tenant and model/prompt version.",
+      "Deadline and load-shedding decisions are explicit.",
+      "Quantization and speculative decoding include quality/acceptance assumptions.",
+      "No simulator output is presented as a real GPU benchmark."
+    ],
+    "outputs": [
+      "KV memory estimate by sequence and concurrency",
+      "Per-request queue wait, TTFT, decode and total latency",
+      "p95 latency, throughput and rejected request report",
+      "Cache hit and quantization/speculative trade-off evidence",
+      "Admission decision and capacity failure reason"
+    ],
+    "successMetric": "A deterministic workload sweep demonstrates bounded memory/queue behavior, tenant-safe cache isolation, explicit TTFT/decode metrics and predictable rejection under overload."
+  },
+  "architecture": {
+    "diagram": "examples/stage-12/inference_performance/inference-flow.mmd",
+    "components": [
+      "Verified tenant and request context",
+      "Admission controller",
+      "Queue and batch scheduler",
+      "KV cache estimator/reservation",
+      "Prefix cache",
+      "Prefill engine",
+      "Decode scheduler",
+      "Optional speculative draft/verify",
+      "SLO and capacity telemetry"
+    ],
+    "dataFlow": [
+      {
+        "from": "API gateway",
+        "to": "Admission controller",
+        "payload": "Verified tenant, prompt/output limits, deadline and priority",
+        "purpose": "Apply per-tenant and global admission policy."
+      },
+      {
+        "from": "Admission controller",
+        "to": "Batch scheduler",
+        "payload": "Admitted request and resource reservation",
+        "purpose": "Bound queue depth and group compatible work."
+      },
+      {
+        "from": "Batch scheduler",
+        "to": "KV cache manager",
+        "payload": "Sequence lengths, concurrency and KV precision",
+        "purpose": "Reject batches that exceed memory budget."
+      },
+      {
+        "from": "KV cache manager",
+        "to": "Prefill engine",
+        "payload": "Reserved KV blocks and cache lookup",
+        "purpose": "Build prompt state and calculate TTFT."
+      },
+      {
+        "from": "Prefill engine",
+        "to": "Decode scheduler",
+        "payload": "Prefilled sequence state and generation budget",
+        "purpose": "Schedule autoregressive decode fairly."
+      },
+      {
+        "from": "Decode scheduler",
+        "to": "Optional speculative verifier",
+        "payload": "Draft tokens and target verification state",
+        "purpose": "Trade draft overhead for accepted-token throughput."
+      },
+      {
+        "from": "Serving runtime",
+        "to": "Telemetry",
+        "payload": "TTFT, inter-token latency, p95, KV use, tokens and rejections",
+        "purpose": "Evaluate SLO, capacity and quality trade-offs."
+      }
+    ],
+    "trustBoundaries": [
+      "Tenant identity and cache scope come from verified request context.",
+      "Prompt and output lengths are validated before reservation.",
+      "Model/runtime throughput assumptions are configuration, not observed hardware facts.",
+      "A cache key includes tenant and model/prompt version.",
+      "Admission and budget enforcement happen before expensive execution."
+    ],
+    "failurePaths": [
+      "KV cache exceeds budget: reject or defer before execution; never allocate unbounded state.",
+      "Queue overload: shed load and return retry guidance rather than growing memory without limit.",
+      "Head-of-line blocking: inspect batch composition, priority and per-tenant fairness.",
+      "Prefix cache collision: partition keys by tenant and model/prompt version.",
+      "Quantization degrades quality: compare quality and memory/latency on a held-out evaluation set.",
+      "Speculative acceptance falls: disable the draft path when verification overhead exceeds benefit.",
+      "Deadline miss: separate queue wait, prefill and decode contributions."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-12/inference_performance/scenarios.json",
+    "steps": [
+      {
+        "label": "Receive workload",
+        "explanation": "Inspect prompt/output lengths, tenant, arrival time and deadline.",
+        "expectedState": "Request metadata is validated before scheduling."
+      },
+      {
+        "label": "Estimate KV memory",
+        "explanation": "Calculate cache bytes from layers, KV heads, head dimension, precision and sequence length.",
+        "expectedState": "Memory reservation is known for each active sequence."
+      },
+      {
+        "label": "Apply admission",
+        "explanation": "Bound queue, batch and memory; reject work that exceeds configured limits.",
+        "expectedState": "No unbounded queue or KV allocation occurs."
+      },
+      {
+        "label": "Run prefill",
+        "explanation": "Process prompt tokens and report queue wait plus prefill as TTFT.",
+        "expectedState": "TTFT is distinct from decode latency."
+      },
+      {
+        "label": "Run decode",
+        "explanation": "Generate output tokens and optionally apply prefix cache or speculative decoding assumptions.",
+        "expectedState": "Decode time and throughput are reported separately."
+      },
+      {
+        "label": "Compare trade-offs",
+        "explanation": "Vary quantization, cache hits, acceptance rate and concurrency; inspect quality, memory and p95.",
+        "expectedState": "Optimization is evaluated against explicit SLO and quality constraints."
+      }
+    ],
+    "accessibility": [
+      "Every numerical stage exposes the formula and intermediate units in text.",
+      "Keyboard controls expose each step and the same values without animation."
+    ],
+    "animation": {
+      "objective": "Animate request arrival, KV memory reservation, admission, prefill, decode and optimization trade-offs using a deterministic workload.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Request arrives",
+          "narration": "A request carries tenant, prompt tokens, output tokens, arrival time and deadline.",
+          "input": "prompt=2048; output=256; tenant=A",
+          "transformation": "Validate request and calculate sequence length.",
+          "output": "2304 tokens reserved for estimate",
+          "visualState": "Request enters the admission queue."
+        },
+        {
+          "step": 2,
+          "title": "Calculate KV cache",
+          "narration": "K and V values are stored for every layer, KV head and sequence token.",
+          "input": "L=32; Hkv=8; D=128; FP16=2 bytes",
+          "transformation": "2×32×8×128×2×2304",
+          "output": "301,989,888 bytes ≈ 288 MiB",
+          "visualState": "Memory meter fills with a per-request reservation."
+        },
+        {
+          "step": 3,
+          "title": "Admission and batch",
+          "narration": "Check queue, batch and memory budgets before running the model.",
+          "input": "batch size=2; memory budget=512 MiB",
+          "transformation": "Sum active KV reservations and enforce limits.",
+          "output": "admit or reject with reason",
+          "visualState": "Overflow requests are shed before execution."
+        },
+        {
+          "step": 4,
+          "title": "Prefill and TTFT",
+          "narration": "Prompt tokens are processed before the first generated token is returned.",
+          "input": "2048 prompt tokens at 2000 tokens/second",
+          "transformation": "2048 / 2000 × 1000 ms",
+          "output": "prefill ≈ 1024 ms plus queue wait",
+          "visualState": "TTFT meter stops at first token."
+        },
+        {
+          "step": 5,
+          "title": "Decode",
+          "narration": "Output tokens are generated autoregressively; speculative acceptance may change effective throughput.",
+          "input": "256 output tokens at 50 tokens/second",
+          "transformation": "256 / 50 × 1000 ms",
+          "output": "decode ≈ 5120 ms",
+          "visualState": "Inter-token generation advances separately from TTFT."
+        },
+        {
+          "step": 6,
+          "title": "Optimize and validate",
+          "narration": "Quantization and speculative decoding may save memory or time but must be measured against quality.",
+          "input": "FP16 vs INT8 vs INT4; acceptance 0–1",
+          "transformation": "Compare memory, latency, throughput and quality penalty.",
+          "output": "capacity/SLO trade-off report",
+          "visualState": "Optimization is accepted only when quality and SLO guardrails pass."
+        }
+      ],
+      "controls": [
+        {
+          "name": "concurrentSequences",
+          "min": 1,
+          "max": 16,
+          "defaultValue": 2,
+          "effect": "Change concurrent active sequences to see KV cache memory scale linearly."
+        },
+        {
+          "name": "quantizationBits",
+          "min": 4,
+          "max": 16,
+          "defaultValue": 8,
+          "effect": "Change KV precision to compare memory savings with the illustrative quality penalty."
+        },
+        {
+          "name": "speculativeAcceptance",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 0.7,
+          "effect": "Change draft token acceptance to see the simplified decode throughput assumption."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "All formulas show units and intermediate values. Memory, TTFT, decode and admission outcomes are available as text; no result depends only on color."
+    }
+  },
+  "workedExample": {
+    "problem": "Estimate KV cache memory for one 4,096-token sequence and two concurrent sequences using a 32-layer decoder with 8 KV heads, head dimension 128 and FP16 cache values.",
+    "input": "layers=32; kv_heads=8; head_dim=128; bytes_per_value=2; sequence_tokens=4096",
+    "steps": [
+      {
+        "operation": "Compute bytes per token",
+        "reasoning": "K and V both need storage for each layer, KV head and head dimension.",
+        "result": "2 × 32 × 8 × 128 × 2 = 131,072 bytes/token"
+      },
+      {
+        "operation": "Compute one sequence",
+        "reasoning": "Multiply bytes per token by 4,096 cached tokens.",
+        "result": "131,072 × 4,096 = 536,870,912 bytes = 512 MiB"
+      },
+      {
+        "operation": "Compute two concurrent sequences",
+        "reasoning": "Each active sequence has its own KV state in this simplified estimate.",
+        "result": "512 MiB × 2 = 1,024 MiB = 1 GiB"
+      },
+      {
+        "operation": "Add real-world headroom",
+        "reasoning": "Weights, activations, fragmentation, runtime buffers and parallelism are not included.",
+        "result": "A real capacity plan must reserve additional memory and benchmark the serving engine."
+      }
+    ],
+    "expectedOutput": "The simplified KV cache estimate is 512 MiB per sequence and 1 GiB for two concurrent sequences, before other runtime memory."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "path": "examples/stage-12/inference_performance/inference_simulator.py",
+      "runCommand": "python examples/stage-12/inference_performance/inference_simulator.py",
+      "testsPath": "examples/stage-12/test_inference_performance.py",
+      "expectedResult": "Synthetic workload reports KV memory, queue wait, TTFT, decode, p95, throughput and explicit admission rejections.",
+      "role": "from-scratch"
+    },
+    {
+      "language": "python",
+      "path": "examples/stage-12/inference_performance/serving_policy.py",
+      "runCommand": "python -m unittest discover -s examples/stage-12 -p 'test_inference_performance.py' -v",
+      "testsPath": "examples/stage-12/test_inference_performance.py",
+      "expectedResult": "Capacity guard rejects queue, batch and KV-budget violations before the serving runtime executes.",
+      "role": "production"
+    }
+  ],
+  "failures": [
+    {
+      "name": "KV-cache exhaustion",
+      "symptom": "A model server runs out of memory when long sequences arrive concurrently.",
+      "rootCause": "Capacity planning ignores active sequence length, KV heads, precision or concurrency.",
+      "recovery": "Estimate KV cache before admission, reserve headroom and shed load when budget is exceeded.",
+      "regressionTest": "Create two 4,096-token sequences under a 512 MiB budget and assert the batch is rejected."
+    },
+    {
+      "name": "Queue overload and retry storm",
+      "symptom": "Queue depth and p95 latency grow continuously during bursts.",
+      "rootCause": "Unbounded queue, unlimited retries or no admission control.",
+      "recovery": "Bound queue and retries, apply load shedding and return explicit retry guidance.",
+      "regressionTest": "Exceed max_queue and assert excess requests are rejected with a stable reason."
+    },
+    {
+      "name": "Head-of-line blocking",
+      "symptom": "Short requests wait behind a very long prompt or generation.",
+      "rootCause": "Static batching or poor scheduling/fairness policy.",
+      "recovery": "Measure per-request wait, use continuous batching or workload-aware scheduling and tenant fairness.",
+      "regressionTest": "Vary arrival and output lengths; assert queue wait is visible and batch composition is deterministic."
+    },
+    {
+      "name": "Prefix cache tenant collision",
+      "symptom": "A tenant receives a cache hit for another tenant's prompt prefix.",
+      "rootCause": "Cache key omits tenant, model or prompt version.",
+      "recovery": "Partition cache keys by tenant and model/prompt revision.",
+      "regressionTest": "Reuse a prefix key across two tenants and assert only the original tenant hits."
+    },
+    {
+      "name": "Quantization quality regression",
+      "symptom": "Memory falls but output quality or numerical stability drops.",
+      "rootCause": "Precision changed without evaluating model/task quality.",
+      "recovery": "Benchmark precision variants against held-out quality and stability guardrails.",
+      "regressionTest": "Assert lower-bit modes expose a quality penalty alongside memory savings."
+    },
+    {
+      "name": "Speculative decode acceptance collapse",
+      "symptom": "Draft model adds overhead without improving throughput.",
+      "rootCause": "Acceptance rate is low or target verification cost dominates.",
+      "recovery": "Measure accepted tokens and disable speculative path when it loses.",
+      "regressionTest": "Set acceptance to zero and assert no modeled throughput gain."
+    },
+    {
+      "name": "Deadline miss",
+      "symptom": "A request exceeds its latency objective even though the model remains available.",
+      "rootCause": "Queue wait, prefill and decode are not budgeted separately.",
+      "recovery": "Track each latency component, reserve capacity and reject work that cannot meet deadlines.",
+      "regressionTest": "Use a slow synthetic profile and assert deadline_missed is true."
+    }
+  ],
+  "practice": {
+    "guided": "Calculate KV memory by hand for different sequence lengths and concurrent batches. Compare TTFT and decode using separate synthetic throughput assumptions.",
+    "independent": "Extend the simulator with a tenant fairness policy and sweep arrival rate, output length, batch size and KV budget. Report p95, throughput and rejected work.",
+    "realWorld": "Design a capacity plan for an inference service with mixed short and long prompts, multiple tenants, a p95 TTFT target and a fixed memory budget.",
+    "expertExtension": "Compare the simplified simulator with an approved real serving engine using paged KV cache, continuous batching, quantization and speculative decoding; record model/hardware/engine versions and quality metrics.",
+    "guidedExercise": {
+      "title": "Build a bounded inference admission controller",
+      "instructions": "Implement a KV memory estimator and reject batches that exceed queue, batch or memory limits before execution. Keep prefill and decode latency separate and include tenant scope in prefix-cache keys.",
+      "starterCode": "def admit_batch(requests, config, model):\\n    # TODO: calculate per-sequence KV cache bytes\\n    # TODO: check queue and batch limits\\n    # TODO: reject if aggregate KV memory exceeds budget\\n    raise NotImplementedError",
+      "solutionCode": "def kv_cache_bytes(layers, kv_heads, head_dim, bytes_per_value, tokens):\\n    return 2 * layers * kv_heads * head_dim * bytes_per_value * tokens\\n\\ndef admit_batch(requests, config, model):\\n    if len(requests) > config.max_batch_size:\\n        return False, 'MAX_BATCH_SIZE_EXCEEDED'\\n    total = sum(kv_cache_bytes(model.layers, model.kv_heads, model.head_dim, config.bytes_per_value, r.prompt_tokens + r.output_tokens) for r in requests)\\n    if total > config.kv_memory_budget_bytes:\\n        return False, 'KV_CACHE_BUDGET_EXCEEDED'\\n    return True, 'ADMITTED'",
+      "unitTests": "assert kv_cache_bytes(32, 8, 128, 2, 4096) == 512 * 1024 * 1024\\nassert admit_batch(over_budget, config, model) == (False, 'KV_CACHE_BUDGET_EXCEEDED')"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build a serving-capacity inspector that visualizes per-request KV memory, queue wait, TTFT, decode, p95 and admission reasons.",
+      "steps": [
+        "Load the synthetic model profile and request arrival trace.",
+        "Calculate KV cache for every active sequence and aggregate batch memory.",
+        "Run admission and queue scheduling under bounded limits.",
+        "Vary precision, prefix cache hit rate and speculative acceptance.",
+        "Compare throughput, latency, quality penalty and rejected requests."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "Which latency component is most directly associated with processing prompt tokens before the first generated token?",
+        "options": [
+          "Decode time",
+          "Prefill time",
+          "Queue capacity",
+          "KV cache eviction"
+        ],
+        "correctIndex": 1,
+        "explanation": "Prefill processes the prompt and builds attention state. TTFT includes queue wait plus prefill before the first output token."
+      },
+      {
+        "question": "For the simplified KV formula, what happens when concurrent sequences double while all other dimensions remain constant?",
+        "options": [
+          "KV cache halves",
+          "KV cache remains constant",
+          "KV cache doubles",
+          "KV cache becomes independent of sequence length"
+        ],
+        "correctIndex": 2,
+        "explanation": "The cache estimate is linear in concurrent sequences, assuming each sequence maintains its own KV state."
+      },
+      {
+        "question": "A queue is full and new requests continue arriving. What is the safer default?",
+        "options": [
+          "Allow unbounded queue growth",
+          "Retry every request immediately",
+          "Apply bounded admission/load shedding",
+          "Disable latency metrics"
+        ],
+        "correctIndex": 2,
+        "explanation": "Unbounded queues increase memory pressure and latency. Admission control rejects or defers work with explicit limits."
+      },
+      {
+        "question": "Speculative decoding acceptance is near zero. What should the serving system do?",
+        "options": [
+          "Assume maximum speedup",
+          "Measure verification overhead and disable the draft path if it loses",
+          "Increase queue size without limit",
+          "Ignore quality"
+        ],
+        "correctIndex": 1,
+        "explanation": "Speculative decoding helps only when enough draft tokens are accepted to offset proposal and verification overhead."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Calculate KV memory and explain model dimensions",
+        "weight": 20,
+        "evidence": "Worked memory derivation across sequence lengths and concurrency."
+      },
+      {
+        "criterion": "Separate prefill, TTFT, decode and throughput metrics",
+        "weight": 20,
+        "evidence": "Deterministic latency trace and workload report."
+      },
+      {
+        "criterion": "Implement bounded queue, batch and memory admission",
+        "weight": 25,
+        "evidence": "Positive and overload rejection tests."
+      },
+      {
+        "criterion": "Explain prefix cache, quantization and speculative trade-offs",
+        "weight": 15,
+        "evidence": "Tenant isolation and quality/throughput comparison."
+      },
+      {
+        "criterion": "Produce a production capacity plan and gap analysis",
+        "weight": 20,
+        "evidence": "SLO, memory headroom, fairness, load-shedding and hardware benchmark plan."
+      }
+    ],
+    "passThreshold": 85,
+    "evidence": [
+      "Passing inference memory, latency, queue and admission tests.",
+      "KV cache derivation and capacity sweep report.",
+      "Quality-aware optimization comparison and production hardware validation plan."
+    ]
+  },
+  "references": [
+    {
+      "title": "PagedAttention: Efficient Memory Management for Large Language Model Serving",
+      "url": "https://arxiv.org/abs/2309.06180",
+      "sourceType": "paper",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "vLLM documentation",
+      "url": "https://docs.vllm.ai/en/latest/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "Hugging Face Text Generation Inference documentation",
+      "url": "https://huggingface.co/docs/text-generation-inference/en/index",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "PyTorch CUDA memory management notes",
+      "url": "https://pytorch.org/docs/stable/notes/cuda.html",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "2 * layers * kv_heads * head_dim * bytes_per_value * sequence_tokens",
+      "explanation": "This simplified formula estimates K and V storage for each layer, KV head, dimension and cached token. Multiply by concurrency for independent active sequences."
+    },
+    {
+      "lines": "queue_wait + prompt_tokens / prefill_tps + output_tokens / decode_tps",
+      "explanation": "Queue wait and prefill determine TTFT; decode contributes generation time after the first token. Keep these components separate."
+    },
+    {
+      "lines": "if aggregate_kv_bytes > memory_budget: reject()",
+      "explanation": "Reserve memory before admitting a batch. Predictable rejection is safer than unbounded allocation and cascading OOM."
+    },
+    {
+      "lines": "cache_key = (tenant_id, model_version, prompt_version, prefix)",
+      "explanation": "Prefix caching is a data-isolation boundary. A shared string prefix must not create cross-tenant or cross-model reuse."
+    },
+    {
+      "lines": "effective_decode_tps(acceptance_rate)",
+      "explanation": "Speculative decoding speedup depends on accepted draft tokens and verification overhead; benchmark the actual target/draft pair."
+    }
+  ]
+}
