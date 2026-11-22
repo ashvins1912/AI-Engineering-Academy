@@ -18,6 +18,7 @@ def test_runner_requires_https_origin_without_credentials_or_query():
     for url in (
         "http://runner.example",
         "https://user:pass@runner.example",
+        "https://runner.example/path",
         "https://runner.example/path?token=abc",
         "https://runner.example/#fragment",
     ):
@@ -122,3 +123,5 @@ def test_result_contract_bounds_output_and_rejects_unknown_state():
     assert len(result.stdout) == 16_000
     with pytest.raises(RunnerProtocolError):
         _parse_result({"run_id": "run-1", "status": "executing"})
+    with pytest.raises(RunnerProtocolError):
+        _parse_result({"run_id": "run-1", "status": []})
