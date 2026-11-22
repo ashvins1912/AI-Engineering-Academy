@@ -237,6 +237,61 @@ python -m unittest discover -s examples/stage-12 -p 'test_*.py' -v
 
 The local harness covers dataset versioning/leakage, retrieval and answer metrics, citation and abstention, deterministic judge scoring, bootstrap intervals, calibration, Cohen's kappa, pairwise comparisons, slice analysis, drift and fail-closed release gates.
 
+## Topic 5 — AI Red Teaming and Adversarial Validation
+
+### 1. Threat-model the complete AI system
+
+Inventory assets (tenant data, system policy, tool authority, credentials, approval state, model/index artifacts, availability and spend). Map actors, preconditions, entry points, trust boundaries and side effects across prompt construction, ingestion, retrieval, agent delegation, MCP/A2A calls, tool execution, output rendering and CI/CD. Use STRIDE plus AI-specific abuse cases. Every high/critical threat needs a control, negative test, evidence and residual-risk owner.
+
+### 2. Direct and indirect prompt injection
+
+Treat user prompts, retrieved documents, web/tool results and agent messages as untrusted data. Retrieved text may support an answer; it cannot grant a permission or rewrite trusted policy. Pattern detectors can provide telemetry but are not the primary defense. Keep trusted instructions and authorization context separate, quote or label retrieved evidence, validate outputs, and authorize every tool call at the server-side enforcement point.
+
+### 3. Tool abuse and confused-deputy paths
+
+For each tool request verify the authenticated principal, tenant, exact tool/action, normalized arguments, authoritative resource owner, scope, budget and approval. Reject unknown argument fields and mismatched resource identifiers. Mutations require an approval bound to the exact principal, tenant, action, resource and argument digest, with expiry and atomic single-use consumption. A denied request must never reach a side-effect handler.
+
+### 4. Exfiltration, resource abuse and artifact integrity
+
+Use synthetic canary values to test output leakage and redaction; never put real credentials in a test corpus. Enforce input/output token, time, concurrency, retry and cost budgets. Verify model, prompt, dataset and index artifact integrity against authenticated provenance and trusted digests. Hash equality is necessary but not sufficient: a trusted digest must itself come from a trusted source.
+
+### 5. Build the attack corpus and release gate
+
+Each scenario needs a stable ID, attack category, severity, asset, actor, entry point, payload, expected control, observed decision, evidence and regression test. Include benign controls to detect overblocking. Report attack coverage by severity. Any unresolved critical/high path blocks release; a high overall pass rate cannot average away a severe finding. After remediation, rerun the attack and regression suite and record residual risk.
+
+### Implementation lab
+
+Run:
+
+```bash
+python examples/stage-12/red_team/red_team_engine.py
+python -m unittest discover -s examples/stage-12 -p 'test_red_team.py' -v
+```
+
+The local runner uses synthetic attacks for direct/indirect injection, RAG poisoning, cross-tenant tool access, argument tampering, approval replay, canary exfiltration, budget exhaustion and artifact tampering. The policy enforcement point proves denied operations do not invoke registered handlers.
+
+### Production hardening checklist
+
+- Keep trusted instructions, verified identity and policy outside model/user/retrieval content.
+- Enforce tenant and resource ownership in the authoritative data layer.
+- Use exact schemas and least-privilege scopes for every tool.
+- Bind approvals to normalized requests and consume them atomically once.
+- Redact secrets before output and avoid storing raw sensitive payloads in audit logs.
+- Enforce runtime, network egress, concurrency, token and cost budgets.
+- Verify signed artifact provenance and isolate untrusted execution at OS/runtime boundaries.
+- Run independent penetration tests, fuzzing and incident exercises; local scenarios are not a security certification.
+
+### Mastery defense
+
+1. Why is a prompt-injection detector not the primary security boundary?
+2. How can a retrieved passage create a confused-deputy path?
+3. What must an approval bind to, and how is replay prevented?
+4. Why must a denied tool request never reach the handler?
+5. How should canary secrets be used without introducing real secrets?
+6. What evidence is needed to trust a model artifact?
+7. Why should critical/high findings block release regardless of average pass rate?
+8. Which controls require database, gateway, OS/runtime or human enforcement?
+
 ## Stage 12 sequencing
 
-Topics 1 and 2 are merged. Topic 4 is the current implementation gate; Topics 5–9 follow only after each preceding topic passes its tests and review. Topic 9 integrates all prior topics in the Advanced Production Practicum. A lesson is not complete merely because its content file exists; it must run from a clean checkout, pass positive and negative tests, demonstrate failure recovery and satisfy its assessment.
+Topics 1–4 are merged and CI-validated. Topic 5 is the current implementation gate; Topics 6–9 follow only after each preceding topic passes its tests and review. Topic 9 integrates all prior topics in the Advanced Production Practicum. A lesson is not complete merely because its content file exists; it must run from a clean checkout, pass positive and negative tests, demonstrate failure recovery and satisfy its assessment.
