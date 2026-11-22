@@ -115,7 +115,7 @@ class RetrievalAndProvenanceTests(unittest.TestCase):
         self.assertNotIn("private", ids)
 
     def test_confidence_threshold_excludes_uncertain_evidence(self):
-        result = self.pipeline.retrieve(self.principal, "retention ten days", min_confidence=0.5)
+        result = self.pipeline.retrieve(self.principal, "ten days", min_confidence=0.5)
         self.assertNotIn("low-confidence", {item.evidence_id for item in result.evidence})
         self.assertTrue(result.abstained)
 
