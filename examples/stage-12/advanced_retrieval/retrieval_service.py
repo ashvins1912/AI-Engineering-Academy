@@ -31,7 +31,7 @@ class AuthorizedRetrievalService:
         budget = payload.get("context_budget", 300)
         if not isinstance(query, str) or not query.strip():
             raise RetrievalRequestError("QUERY_REQUIRED")
-        if not isinstance(vector, list) or not vector or any(not isinstance(v, (int, float)) for v in vector):
+        if not isinstance(vector, list) or not vector or any(isinstance(v, bool) or not isinstance(v, (int, float)) for v in vector):
             raise RetrievalRequestError("QUERY_VECTOR_REQUIRED")
         if not isinstance(top_k, int) or isinstance(top_k, bool) or not 1 <= top_k <= self.max_top_k:
             raise RetrievalRequestError("TOP_K_OUT_OF_RANGE")
