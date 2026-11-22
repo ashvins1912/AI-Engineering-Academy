@@ -501,9 +501,7 @@ const curriculumSeed: Stage[] = [
   {id:'inference-performance',title:'Inference performance and capacity engineering',description:'Optimize latency, throughput and memory under explicit quality, fairness and capacity constraints.',lessons:[
    lesson('inference-performance','Inference Performance and Capacity Engineering','Prefill/decode, TTFT, inter-token latency, KV-cache memory, continuous batching, paged attention, prefix caching, quantization, speculative decoding, queueing, admission control, load shedding and capacity sweeps.','Build a hardware-independent serving and capacity simulator')
   ]},
-  {id:'inference-performance',title:'Inference performance and capacity engineering',description:'Model serving memory, latency, batching, caching, fairness and capacity without requiring a GPU.',lessons:[
-   lesson('inference-performance','Inference Performance and Capacity Engineering','Prefill/decode, TTFT/ITL, KV-cache memory, paged allocation, continuous batching, queueing, admission control, quantization, speculative decoding, prefix caching, tenant fairness and load shedding.','Build a hardware-independent inference and capacity simulator')
-  ]}
+
  ]}
 ]
 
