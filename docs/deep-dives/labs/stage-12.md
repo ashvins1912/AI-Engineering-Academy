@@ -56,6 +56,24 @@ Run all exercises locally with synthetic fixtures. The Academy service does not 
 
 ---
 
+## evaluation-scale — Evaluation at Scale and Continuous Quality
+
+**Implementation task:** Build a versioned golden evaluation set and compute retrieval, answer, citation, abstention, tool, safety, latency and slice metrics. Add deterministic bootstrap confidence intervals, judge calibration against human labels, pairwise comparison, inter-rater agreement, drift detection and a fail-closed release gate.
+
+**Worked fixture:** A candidate answers 28/30 answerable cases, abstains on 10/10 unanswerable cases, has strong citation precision and p95 latency under the target. Its quality lower confidence bound is just above the release threshold. Then inject one critical safety violation and show that the release is blocked even though aggregate quality remains high.
+
+**Expected result:** Dataset fingerprint is stable and versioned; duplicate IDs and train/golden query or source leakage are rejected; predictions must cover the exact golden case set; metrics are computed separately and by slices; bootstrap results are reproducible for a fixed seed; judge calibration is measured against human labels; and release gates fail closed on insufficient sample count, low confidence bound, safety, latency, poor calibration or missing provenance.
+
+**Verification tests:** Run `python -m unittest discover -s examples/stage-12 -p 'test_*.py' -v`. Tests cover dataset validation/fingerprints, split leakage, prediction coverage, Recall@K/MRR, citation precision, abstention accuracy, deterministic judge injection resistance, bootstrap intervals, Brier/ECE, Cohen's kappa, pairwise win rate, slice metrics, p95 latency, release-gate failures and drift detection.
+
+**Debugging checklist:** Confirm dataset version, fingerprint and split; inspect duplicate IDs and source fingerprints; verify exact prediction coverage; separate retrieval from answer/citation/safety metrics; inspect slice counts before aggregate metrics; reproduce bootstrap seed and sample count; compare judge scores with human labels; check judge prompt/version and ECE; verify release gate thresholds and hard safety conditions; retain failing case IDs and candidate outputs for triage.
+
+**Interview checks:** Why is a golden dataset a versioned artifact? How can train/test leakage inflate evaluation? Why report confidence intervals? What is ECE and why calibrate judges? Why should candidate output not control judge instructions? How can a slice regression hide behind aggregate quality? Which conditions should fail closed even when the mean score passes?
+
+**Submission evidence:** Include dataset manifest/fingerprint, leakage report, metric report with confidence interval, slice analysis, judge calibration report, inter-rater agreement, drift result, release-gate pass/fail trace and a short human-review plan.
+
+---
+
 ## Stage completion evidence
 
 - [ ] Topic 1 plan validator and coordinator pass all positive and negative tests from a clean checkout.
@@ -66,3 +84,4 @@ Run all exercises locally with synthetic fixtures. The Academy service does not 
 - [ ] Topic 1 closed-book mastery defense is completed before Topic 2.
 - [ ] Topic 2 protocol contract tests and migration gap analysis pass before Topic 3.
 - [ ] Topic 3 ACL-before-ranking, retrieval quality, citation and index migration tests pass before Topic 4.
+- [ ] Topic 4 dataset, confidence, judge-calibration, slice and fail-closed release-gate tests pass before Topic 5.
