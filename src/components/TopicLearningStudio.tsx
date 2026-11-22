@@ -7,7 +7,6 @@ import Stage3MasteryLabs from './Stage3MasteryLabs'
 import Stage4MasteryLabs from './Stage4MasteryLabs'
 import Stage5MasteryLabs from './Stage5MasteryLabs'
 import TopicSpecialistLab from './TopicSpecialistLab'
-import ProductionTopicLab from './ProductionTopicLab'
 
 type Props = { lesson: Lesson }
 
@@ -91,7 +90,6 @@ export default function TopicLearningStudio({ lesson }: Props) {
     {stage === 4 && <Stage4MasteryLabs initialTopic={stage4Topic}/>}
     {stage === 5 && <Stage5MasteryLabs initialTopic={topicId}/>}
     <TopicSpecialistLab stage={stage} topicId={topicId}/>
-    <ProductionTopicLab stage={stage} topicId={topicId}/>
 
     <div className="topic-studio-tabs" aria-label="Learning studio sections">
       <span className="active"><BookOpen size={14}/> Explore</span>
