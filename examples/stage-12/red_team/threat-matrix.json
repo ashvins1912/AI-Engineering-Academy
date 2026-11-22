@@ -1,0 +1,12 @@
+{
+  "version": "stage12-threat-matrix-v1",
+  "threats": [
+    {"id":"RT-01","asset":"system policy and tool authority","actor":"malicious user","entrypoint":"direct prompt","category":"prompt injection","severity":"high","control":"trusted instructions separated from untrusted user content","test":"direct-injection-01"},
+    {"id":"RT-02","asset":"retrieved enterprise documents","actor":"document contributor","entrypoint":"RAG ingestion and retrieval","category":"indirect injection / poisoning","severity":"critical","control":"source trust labels, ACLs and retrieved text treated as data","test":"indirect-retrieval-01"},
+    {"id":"RT-03","asset":"tenant order records","actor":"cross-tenant caller","entrypoint":"agent tool gateway","category":"tenant data exfiltration","severity":"critical","control":"verified tenant, resource ownership and per-action scope","test":"cross-tenant-tool-01"},
+    {"id":"RT-04","asset":"order mutation","actor":"replayed approval holder","entrypoint":"mutation approval service","category":"replay / confused deputy","severity":"critical","control":"request-bound, expiring, single-use approval","test":"approval-replay-01"},
+    {"id":"RT-05","asset":"confidential canary values","actor":"untrusted model output","entrypoint":"response renderer","category":"data exfiltration","severity":"critical","control":"output DLP/canary scan and redaction","test":"secret-canary-01"},
+    {"id":"RT-06","asset":"inference budget and service capacity","actor":"abusive request","entrypoint":"agent request gateway","category":"denial of wallet","severity":"high","control":"token, time, concurrency and cost budgets","test":"resource-exhaustion-01"},
+    {"id":"RT-07","asset":"model and prompt artifacts","actor":"supply-chain attacker","entrypoint":"model registry","category":"artifact tampering","severity":"critical","control":"trusted digest, signature and provenance verification","test":"artifact-tampering-01"}
+  ]
+}
