@@ -456,6 +456,9 @@ const curriculumSeed: Stage[] = [
   ]},
   {id:'protocol-interop',title:'Agent protocol interoperability',description:'Connect models, independent agents and coding-agent clients through distinct, versioned protocols.',lessons:[
    lesson('protocol-interop','Agent Protocol Interoperability: MCP, A2A and ACP','MCP 2026-07-28 stateless core, legacy version compatibility, tools/resources/prompts, MRTR and OAuth hardening; A2A 1.0 Agent Cards, tasks, messages, artifacts, streaming, push and auth; Agent Client Protocol v2 JSON-RPC sessions, prompts, updates and client permissions; IBM/BeeAI ACP migration into A2A.','Build an offline MCP/A2A/ACP protocol conformance lab')
+  ]},
+  {id:'advanced-retrieval',title:'Advanced retrieval and context engineering',description:'Build measurable, access-controlled retrieval pipelines with provenance-preserving context assembly.',lessons:[
+   lesson('advanced-retrieval','Advanced Retrieval and Context Engineering','BM25, dense and hybrid retrieval, reciprocal-rank fusion, reranking, graph-assisted retrieval, parent-child context, query decomposition, ACL-before-ranking, citation lineage, cache isolation and Recall@K/MRR/NDCG evaluation.','Build and benchmark a tenant-safe hybrid retrieval engine')
   ]}
  ]}
 ]
