@@ -64,6 +64,7 @@ jobs:
       - run: python examples/stage-12/agent_orchestration/durable_runtime.py
       - run: python examples/stage-12/protocol_interop/protocol_lab.py
       - run: python examples/stage-12/advanced_retrieval/retrieval_engine.py
+      - run: python examples/stage-12/advanced_retrieval/benchmark.py
       - run: python examples/stage-12/advanced_retrieval/retrieval_engine.py
       - run: python examples/stage-11/capstone-design/architecture_gate.py
       - run: python examples/stage-11/capstone-build/capstone_app.py
