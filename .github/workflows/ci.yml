@@ -32,6 +32,7 @@ jobs:
       - run: npm run validate:curriculum
       - run: npm run validate:topic-contract
       - run: npm run audit:topic-migration
+      - run: npm run audit:topic-coverage
       - run: npm run validate:stage1
       - run: npm run validate:stage2
       - run: npm run validate:stage3
