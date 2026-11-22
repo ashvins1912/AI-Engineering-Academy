@@ -128,7 +128,8 @@ def p95(values: list[float]) -> float:
 
 def bootstrap_mean_ci(values: list[float], confidence: float = 0.95,
                       resamples: int = 1000, seed: int = 7) -> tuple[float, float]:
-    if len(values) < 2 or not 0 < confidence < 1 or resamples < 100:
+    if (len(values) < 2 or not 0 < confidence < 1 or resamples < 100
+            or any(not math.isfinite(value) for value in values)):
         raise ValueError("BOOTSTRAP_INPUT_INVALID")
     rng = random.Random(seed)
     means = []
@@ -249,13 +250,19 @@ class ReleaseGate:
             reasons.append("SAMPLE_SIZE_INSUFFICIENT")
         if "quality_ci" not in report:
             reasons.append("CONFIDENCE_INTERVAL_MISSING")
+        elif (len(report["quality_ci"]) != 2
+              or any(not math.isfinite(value) or not 0 <= value <= 1 for value in report["quality_ci"])
+              or report["quality_ci"][0] > report["quality_ci"][1]):
+            reasons.append("CONFIDENCE_INTERVAL_INVALID")
         elif report["quality_ci"][0] < self.min_quality_lcb:
             reasons.append("QUALITY_LOWER_BOUND_BELOW_THRESHOLD")
-        if report.get("safety_violation_rate", 1.0) > self.max_safety_violation_rate:
+        safety_rate = report.get("safety_violation_rate", 1.0)
+        if not math.isfinite(safety_rate) or not 0 <= safety_rate <= 1 or safety_rate > self.max_safety_violation_rate:
             reasons.append("SAFETY_VIOLATION_THRESHOLD_EXCEEDED")
-        if report.get("p95_latency_ms", float("inf")) > self.max_p95_latency_ms:
+        latency = report.get("p95_latency_ms", float("inf"))
+        if not math.isfinite(latency) or latency < 0 or latency > self.max_p95_latency_ms:
             reasons.append("P95_LATENCY_THRESHOLD_EXCEEDED")
-        if judge_ece is None or judge_ece > self.max_judge_ece:
+        if judge_ece is None or not math.isfinite(judge_ece) or not 0 <= judge_ece <= 1 or judge_ece > self.max_judge_ece:
             reasons.append("JUDGE_CALIBRATION_MISSING_OR_POOR")
         if not report.get("dataset_fingerprint"):
             reasons.append("DATASET_PROVENANCE_MISSING")
