@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "release_version": "stage12-final-v1",
+  "required_evidence": [
+    "agent_orchestration_mastery",
+    "protocol_interop_mastery",
+    "advanced_retrieval_mastery",
+    "evaluation_scale_mastery",
+    "ai_red_team_mastery",
+    "inference_performance_mastery",
+    "multimodal_systems_mastery",
+    "enterprise_governance_mastery",
+    "advanced_practicum_mastery",
+    "clean_checkout_acceptance",
+    "cross_topic_failure_injection",
+    "tenant_isolation_security_review",
+    "architecture_defense"
+  ],
+  "human_review_required": [
+    "agent_orchestration_mastery",
+    "advanced_practicum_mastery",
+    "tenant_isolation_security_review",
+    "architecture_defense"
+  ],
+  "negative_cases": [
+    {"id":"missing-topic-defense","mutation":"remove one topic mastery record","expected":"REQUIRED_EVIDENCE_MISSING"},
+    {"id":"cross-tenant","mutation":"bind evidence to another tenant","expected":"TENANT_MISMATCH"},
+    {"id":"stale-candidate","mutation":"bind evidence to an older release","expected":"RELEASE_VERSION_MISMATCH"},
+    {"id":"unreviewed-defense","mutation":"omit independent assessor","expected":"HUMAN_ASSESSOR_REQUIRED"},
+    {"id":"critical-finding","mutation":"add unresolved critical finding","expected":"UNRESOLVED_CRITICAL_FINDING"}
+  ]
+}
