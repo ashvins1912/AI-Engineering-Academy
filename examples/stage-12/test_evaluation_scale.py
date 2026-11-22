@@ -8,7 +8,7 @@ from evaluation_engine import (
     DeterministicJudge, DriftMonitor, EvalCase, EvaluationDataset, Prediction,
     ReleaseGate, assert_no_split_leakage, bootstrap_mean_ci, calibration_report,
     citation_precision, cohen_kappa, evaluate_dataset, mean_reciprocal_rank,
-    pairwise_delta_ci, pairwise_win_rate, population_stability_index, recall_at_k, token_f1,
+    paired_delta_ci, pairwise_win_rate, population_stability_index, recall_at_k, token_f1,
 )
 
 
