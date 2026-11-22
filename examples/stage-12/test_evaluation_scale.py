@@ -136,6 +136,14 @@ class ReleaseGateTests(unittest.TestCase):
         self.assertIn("JUDGE_CALIBRATION_MISSING_OR_POOR", gate.evaluate(self.report, None).reasons)
         self.assertIn("JUDGE_CALIBRATION_MISSING_OR_POOR", gate.evaluate(self.report, 0.2).reasons)
 
+    def test_non_finite_confidence_and_judge_scores_fail_closed(self):
+        report = dict(self.report)
+        report["quality_ci"] = (float("nan"), 0.95)
+        gate = ReleaseGate(min_samples=2, min_quality_lcb=0.0, max_judge_ece=0.1)
+        decision = gate.evaluate(report, float("nan"))
+        self.assertIn("CONFIDENCE_INTERVAL_INVALID", decision.reasons)
+        self.assertIn("JUDGE_CALIBRATION_MISSING_OR_POOR", decision.reasons)
+
     def test_latency_and_provenance_failures_block(self):
         report = dict(self.report)
         report["p95_latency_ms"] = 9000
