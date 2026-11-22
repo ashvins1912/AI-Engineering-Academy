@@ -1,0 +1,31 @@
+{
+  "version": "stage12-multimodal-v1",
+  "description": "Synthetic document, audio and video evidence with provenance and confidence metadata.",
+  "ocrBlocks": [
+    {"block_id":"p2-b2","page":2,"bbox":[30,120,460,165],"text":"Audit logs are reviewed monthly.","confidence":0.96},
+    {"block_id":"p2-b1","page":2,"bbox":[30,40,460,95],"text":"Retention policy: thirty days.","confidence":0.99},
+    {"block_id":"p2-low","page":2,"bbox":[30,190,460,220],"text":"unclear stamp","confidence":0.31}
+  ],
+  "table": {
+    "headers": ["Control", "Owner", "Review interval"],
+    "rows": [["Retention", "Security", "30 days"], ["Access", "Platform", "Quarterly"]]
+  },
+  "audioSegments": [
+    {"start_ms":1200,"end_ms":3200,"speaker":"speaker-1","text":"The retention window is thirty days.","confidence":0.94},
+    {"start_ms":3300,"end_ms":5100,"speaker":"speaker-2","text":"We review the audit logs monthly.","confidence":0.89}
+  ],
+  "videoFrames": [
+    {"frame_id":"f0","timestamp_ms":0,"description":"meeting room"},
+    {"frame_id":"f1","timestamp_ms":1000,"description":"policy slide"},
+    {"frame_id":"f2","timestamp_ms":2100,"description":"retention slide"},
+    {"frame_id":"f3","timestamp_ms":4300,"description":"review checklist"}
+  ],
+  "failureCases": [
+    {"id":"ocr-low-confidence","trigger":"OCR confidence below threshold","expected":"do not use as answer evidence"},
+    {"id":"table-layout-loss","trigger":"table rows/columns flattened","expected":"preserve row and column relationships"},
+    {"id":"audio-timestamp-drift","trigger":"transcript segment offsets changed","expected":"preserve original start/end milliseconds and speaker"},
+    {"id":"video-frame-misalignment","trigger":"nearest frame outside tolerance","expected":"leave frame citation unaligned"},
+    {"id":"cross-tenant-media","trigger":"matching evidence belongs to another tenant","expected":"filter before retrieval ranking"},
+    {"id":"media-injection","trigger":"image/audio contains instructions to override policy","expected":"keep extracted text as untrusted evidence"}
+  ]
+}

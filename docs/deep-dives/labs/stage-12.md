@@ -110,6 +110,27 @@ Run all exercises locally with synthetic fixtures. The Academy service does not 
 
 ---
 
+## multimodal-systems — Multimodal AI Systems: Vision, Audio and Video
+
+**Implementation task:** Build an offline evidence pipeline that normalizes OCR blocks and tables, audio transcript segments with speaker/timestamps, and sampled video frames. Preserve source references, page/region or time/speaker provenance, confidence, tenant/user/group ACL and retention metadata through retrieval and citations.
+
+**Worked fixture:** A policy PDF contains a retention sentence on page 2 at a bounding box. A meeting recording contains a matching transcript segment from 1,200–3,200 ms by speaker-1, aligned to a video frame near 2,100 ms. A tenant-B PDF has an even higher lexical match, an OCR stamp has low confidence and an old media asset has expired retention.
+
+**Expected result:** OCR blocks are sorted by page/region and invalid boxes are rejected; tables preserve rows/columns; WER/CER are calculated against labeled references; audio segments preserve timestamps/speakers; video sampling is deterministic and distant frames remain unaligned; tenant/user/group and confidence filters run before ranking; expired assets are excluded; citations retain page/bbox or timestamp/speaker; and no authorized evidence produces abstention. Extracted media instructions remain untrusted data.
+
+**Verification tests:** Run `python examples/stage-12/multimodal_systems/multimodal_pipeline.py` and `python -m unittest discover -s examples/stage-12 -p 'test_multimodal_systems.py' -v`. Tests cover OCR reading order/confidence/bbox, table structure, audio time/speaker/confidence, WER/CER, frame sampling/alignment, tenant/user/group ACL, confidence thresholds, retention expiry, citation provenance, abstention, untrusted media text and malformed evidence.
+
+**Debugging checklist:** Verify asset ID and source reference; inspect OCR page/bbox and reading order; check table headers/row boundaries; compare transcript with reference using WER; inspect diarization/timestamps; verify video frame interval and alignment tolerance; check evidence confidence and retention; confirm tenant/user/group ACL before scoring; trace page/region/time/speaker citation fields; ensure media text cannot authorize tools.
+
+**Interview checks:** Why is multimodal RAG more than converting everything to text? How do CER and WER differ? Why preserve table layout? What causes audio/video alignment error? How should low-confidence OCR be handled? Why must tenant ACL run before ranking? What metadata belongs in a video/audio citation? How do retention and consent affect media indexing?
+
+**Submission evidence:** Include normalized OCR regions, table output, WER/CER calculation, audio transcript timeline, video sampling/alignment trace, cross-modal retrieval result, tenant/ACL denial, retention expiry result and citations with page/bbox/time/speaker provenance.
+
+---
+
+# Stage 12 — Individual lesson lab pack: Advanced AI Engineering & Production Mastery
+
+Run all exercises locally with synthetic fixtures. The Academy service does not execute learner-supplied code. Save implementation, test output, failure traces and a short design defense as evidence.
 ## Stage completion evidence
 
 - [x] Topic 1 plan validator and coordinator pass all positive and negative tests from a clean checkout.
@@ -121,4 +142,19 @@ Run all exercises locally with synthetic fixtures. The Academy service does not 
 - [x] Topic 2 protocol contract tests and migration gap analysis pass before Topic 3.
 - [x] Topic 3 ACL-before-ranking, retrieval quality, citation and index migration tests pass before Topic 4.
 - [x] Topic 4 dataset, confidence, judge-calibration, slice and fail-closed release-gate tests pass before Topic 5.
-- [ ] Topic 5 adversarial attack coverage, remediation and regression tests pass before Topic 6.
+- [x] Topic 5 adversarial attack coverage, remediation and regression tests pass before Topic 6.
+- [ ] Topic 6 KV capacity, fairness, deadline, cache isolation and overload recovery tests pass before Topic 7.
+- [ ] Topic 7 OCR/audio/video provenance, alignment, confidence, ACL and retention tests pass before Topic 8.
+
+- [x] Topic 1 plan validator and coordinator pass all positive and negative tests from a clean checkout.
+- [x] Worker concurrency never exceeds the configured bound; dependency barriers are demonstrated.
+- [x] Restart and idempotency behavior is demonstrated with a persisted journal.
+- [x] Failure handling blocks dependents and records reverse-order compensation.
+- [x] Production limitations and external side-effect guarantees are explained accurately.
+- [ ] Topic 1 closed-book mastery defense is completed before Topic 2.
+- [x] Topic 2 protocol contract tests and migration gap analysis pass before Topic 3.
+- [x] Topic 3 ACL-before-ranking, retrieval quality, citation and index migration tests pass before Topic 4.
+- [x] Topic 4 dataset, confidence, judge-calibration, slice and fail-closed release-gate tests pass before Topic 5.
+- [x] Topic 5 adversarial attack coverage, remediation and regression tests pass before Topic 6.
+- [x] Topic 6 KV capacity, fairness, deadline, cache isolation and overload recovery tests pass before Topic 7.
+- [ ] Topic 7 OCR/audio/video provenance, alignment, confidence, ACL and retention tests pass before Topic 8.

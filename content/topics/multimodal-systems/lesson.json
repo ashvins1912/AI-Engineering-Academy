@@ -1,0 +1,575 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "multimodal-systems",
+    "title": "Multimodal AI Systems: Vision, Audio and Video",
+    "stage": 12,
+    "estimatedMinutes": 480
+  },
+  "state": "runnable",
+  "learning": {
+    "outcomes": [
+      "Normalize image/document OCR regions while preserving page, bounding box, reading order and confidence.",
+      "Preserve table structure, transcript timestamps, speaker labels and video frame timecodes through processing.",
+      "Align audio segments and sampled video frames with explicit temporal tolerances and missing-evidence behavior.",
+      "Build modality-aware evidence records and citations with stable source, page/region or time provenance.",
+      "Apply tenant, user and group ACLs before multimodal retrieval ranking and abstain on low-confidence evidence.",
+      "Evaluate OCR/ASR quality with CER/WER and measure temporal alignment, citation provenance and modality-specific failure rates."
+    ],
+    "prerequisites": [
+      "Stage 5 RAG ingestion, chunking and citation lineage",
+      "Stage 10 tenant isolation and prompt-injection trust boundaries",
+      "Stage 12 Topic 3 advanced retrieval and Topic 4 evaluation",
+      "Basic image coordinates, timestamps, text normalization and Python"
+    ],
+    "glossary": [
+      {
+        "term": "OCR",
+        "definition": "Optical character recognition converts text visible in images or scanned documents into machine-readable text and regions."
+      },
+      {
+        "term": "Layout-aware extraction",
+        "definition": "A document extraction method that preserves relationships among text blocks, columns, headings, tables and page coordinates."
+      },
+      {
+        "term": "WER",
+        "definition": "Word error rate measures insertions, deletions and substitutions in a recognized transcript relative to a reference."
+      },
+      {
+        "term": "CER",
+        "definition": "Character error rate measures character-level insertions, deletions and substitutions relative to reference text."
+      },
+      {
+        "term": "Diarization",
+        "definition": "The process of identifying which speaker produced each segment of an audio recording."
+      },
+      {
+        "term": "Temporal alignment",
+        "definition": "A mapping between transcript segments and video frames or events using timestamps and an explicit tolerance."
+      },
+      {
+        "term": "Visual grounding",
+        "definition": "Linking a model's description or answer to a specific image region, page location or frame rather than an unsupported summary."
+      },
+      {
+        "term": "Evidence provenance",
+        "definition": "Metadata that identifies the source asset, version, page/region or timestamp and transformation lineage for a retrieved claim."
+      },
+      {
+        "term": "Modality-specific confidence",
+        "definition": "A calibrated or estimated quality signal whose meaning depends on the OCR, ASR, vision or alignment component that produced it."
+      },
+      {
+        "term": "Multimodal retrieval",
+        "definition": "Retrieval over evidence from multiple modalities while preserving authorization, modality and source-level citation information."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "Enterprise knowledge is not only text. Contracts arrive as scanned PDFs with columns and tables; meetings contain audio with speakers and timestamps; product walkthroughs contain video frames; and images may embed instructions or sensitive data. Flattening all of this into plain text loses layout, temporal alignment, confidence and source provenance. A plausible answer can then cite the wrong page, speaker or frame—or cross an authorization boundary.",
+    "plainLanguage": "Treat each media asset as a source with a stable ID, version, tenant and retention policy. Use modality-specific adapters: OCR for scanned pages, layout parsing for headings and tables, ASR for speech segments, diarization for speaker labels, and frame sampling for video. The local lab uses pre-extracted synthetic outputs so you can study the evidence pipeline without needing a hosted model or GPU.\\n\\nFor documents, preserve page number and bounding box for every OCR block. Reading order is not always the order in which text appears in a raw extraction: columns, footnotes and tables need layout-aware reconstruction. Keep table rows and columns explicit rather than joining all cells into one sentence. Preserve the original region and confidence so uncertain OCR is not silently promoted to fact.\\n\\nFor audio, store transcript segments with start/end milliseconds, speaker ID and confidence. Do not replace the original offsets with a re-chunked transcript index. For video, sample frames using a declared policy and retain exact timestamps. Align a transcript segment to the nearest frame only when the temporal distance is within a configured tolerance; otherwise preserve an unaligned segment.\\n\\nNormalize all outputs into evidence spans. Each span should carry modality, source asset/version, tenant, ACL, confidence, text or structured payload, and page/region or time coordinates. Retrieval must filter tenant and user/group ACLs before scoring and top-k. Parent or adjacent evidence needs its own authorization check. A citation must preserve the source location: page and bounding box for documents, time range and speaker for audio, frame timestamp for video.\\n\\nLow-confidence evidence should be excluded or shown as uncertain, not treated as a fact. If no authorized evidence survives the threshold, abstain. Content extracted from a document, image, audio track or video frame is untrusted data; it may contain prompt injection, but it cannot grant tool authority or rewrite system policy.\\n\\nEvaluate each modality separately. OCR CER and ASR WER measure recognition errors but do not prove semantic correctness. Measure table cell accuracy, reading-order accuracy, diarization, timestamp alignment, frame coverage, citation correctness and retrieval quality by language, document type, audio quality and modality. Preserve the original asset and transformation versions so errors can be reproduced.",
+    "mentalModel": "Media asset → modality adapter → normalized regions/segments/frames → confidence and provenance → tenant/ACL filtering → multimodal retrieval → context and location-aware citations → grounded answer or abstention.",
+    "limitations": [
+      "The local pipeline consumes synthetic OCR/ASR/frame outputs; it does not measure a real OCR, ASR or vision model.",
+      "Simple y/x OCR ordering does not solve complex multi-column, rotated, handwritten or nested-table layouts.",
+      "Nearest-frame alignment is a baseline and does not establish semantic synchronization or speaker-to-face identity.",
+      "WER/CER do not measure meaning, factual correctness, layout accuracy or downstream answer quality.",
+      "Confidence scores are not automatically calibrated across modalities or providers.",
+      "Media can contain prompt injection, malware, PII or copyrighted content; ingestion needs separate security, consent and retention controls.",
+      "A source citation with coordinates proves traceability metadata, not that the model interpreted the region correctly."
+    ],
+    "everydayAnalogy": "A journalist does not cite only the transcript of a press conference. They retain the recording timestamp, speaker, video frame and document page that supports each statement. Multimodal AI needs the same evidence trail so a reader can verify where a claim came from.",
+    "mathMadeSimple": "If a transcript reference has 100 words and ASR produces 8 insertions, 5 deletions and 7 substitutions, WER = (8+5+7)/100 = 0.20 or 20%. This measures recognition error, not whether the resulting answer is factually correct.",
+    "productionImpact": "Version each modality adapter and source asset; preserve OCR boxes, table structure, transcript offsets, speaker IDs and video timestamps; enforce ACLs before retrieval; calibrate confidence by modality; retain provenance through compression and citations; and abstain when evidence is uncertain or unauthorized."
+  },
+  "useCase": {
+    "scenario": "An enterprise assistant answers a policy question using a scanned PDF, a recorded meeting and a training video. The response must cite the exact PDF page/region and audio/video time, avoid low-confidence OCR, respect tenant and user ACLs, and treat embedded media instructions as untrusted evidence.",
+    "actors": [
+      "Document and media ingestion service",
+      "OCR/layout extraction adapter",
+      "ASR and diarization adapter",
+      "Video frame sampler and temporal aligner",
+      "Evidence normalization and provenance registry",
+      "Tenant-aware retrieval service",
+      "Answer and citation renderer",
+      "Human reviewer for low-confidence/high-impact evidence"
+    ],
+    "inputs": [
+      "Scanned pages with OCR blocks and bounding boxes",
+      "Tables with explicit rows and columns",
+      "Audio transcript segments with start/end and speaker",
+      "Video frames with timestamps",
+      "Tenant/user/group ACL and modality confidence thresholds"
+    ],
+    "constraints": [
+      "Page, region, timestamp, speaker and source version are preserved.",
+      "Low-confidence evidence cannot satisfy answer thresholds.",
+      "Tenant and ACL filters execute before ranking.",
+      "Transcript/frame alignment must meet configured tolerance.",
+      "Untrusted media text cannot grant tool authority.",
+      "Missing or unauthorized evidence causes abstention."
+    ],
+    "outputs": [
+      "Normalized multimodal evidence spans",
+      "Location-aware citations for document/audio/video",
+      "WER/CER and temporal-alignment metrics",
+      "Tenant-safe retrieval result or abstention",
+      "Modality-specific quality and failure report"
+    ],
+    "successMetric": "Every returned citation points to a reproducible source location; unauthorized and low-confidence evidence is excluded; unaligned media remains explicitly unaligned; no-evidence queries abstain."
+  },
+  "architecture": {
+    "diagram": "examples/stage-12/multimodal_systems/multimodal-flow.mmd",
+    "components": [
+      "Versioned media asset store",
+      "OCR and document-layout adapter",
+      "Table structure parser",
+      "ASR and diarization adapter",
+      "Video frame sampler",
+      "Temporal alignment service",
+      "Evidence normalization/provenance registry",
+      "Tenant-aware retrieval and confidence gate",
+      "Citation packer and abstention policy"
+    ],
+    "dataFlow": [
+      {
+        "from": "Media asset store",
+        "to": "Modality adapters",
+        "payload": "Versioned document/image/audio/video references",
+        "purpose": "Run the correct extraction path for each modality."
+      },
+      {
+        "from": "OCR/layout adapter",
+        "to": "Evidence normalizer",
+        "payload": "Text blocks, page, bounding box, table cells and confidence",
+        "purpose": "Preserve spatial and structural evidence."
+      },
+      {
+        "from": "ASR adapter",
+        "to": "Evidence normalizer",
+        "payload": "Transcript, start/end time, speaker and confidence",
+        "purpose": "Preserve temporal and speaker provenance."
+      },
+      {
+        "from": "Video sampler",
+        "to": "Temporal alignment",
+        "payload": "Frame IDs and source timestamps",
+        "purpose": "Sample frames and align them to transcript segments."
+      },
+      {
+        "from": "Evidence normalizer",
+        "to": "Provenance registry",
+        "payload": "Asset/version, modality, location, ACL and confidence",
+        "purpose": "Make every span reproducible and access-controlled."
+      },
+      {
+        "from": "Provenance registry",
+        "to": "Retrieval service",
+        "payload": "Authorized evidence spans",
+        "purpose": "Filter by tenant/user/group before ranking."
+      },
+      {
+        "from": "Retrieval service",
+        "to": "Citation packer",
+        "payload": "Selected spans and source coordinates",
+        "purpose": "Return location-aware citations or abstain."
+      }
+    ],
+    "trustBoundaries": [
+      "Original media and all extracted text are untrusted data.",
+      "Extraction model outputs are uncertain and modality-specific.",
+      "Tenant/user/group identity comes from verified server context.",
+      "Every derived span retains source asset and ACL lineage.",
+      "Citations are evidence references, not instructions or tool permissions."
+    ],
+    "failurePaths": [
+      "OCR reading order is wrong: preserve raw regions and compare layout-aware reconstruction.",
+      "Table is flattened: keep row/column cell structure and source boxes.",
+      "ASR confidence is low: abstain or request human review rather than invent words.",
+      "Timestamp alignment exceeds tolerance: leave frame_id unset and retain transcript time.",
+      "Cross-tenant evidence matches strongly: exclude before ranking and cache lookup.",
+      "Media contains prompt injection: label as untrusted content and keep policy/authorization separate.",
+      "Citation loses source coordinates: block answer publication until provenance is restored."
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-12/multimodal_systems/scenarios.json",
+    "steps": [
+      {
+        "label": "Ingest source assets",
+        "explanation": "Assign stable IDs, versions, tenant context and modality-specific processing policies.",
+        "expectedState": "Every asset has an auditable source identity."
+      },
+      {
+        "label": "Extract document structure",
+        "explanation": "Normalize OCR blocks, page coordinates, reading order and table cells.",
+        "expectedState": "Text remains linked to page regions and layout."
+      },
+      {
+        "label": "Normalize audio/video",
+        "explanation": "Preserve transcript timestamps and speakers, sample frames and align within tolerance.",
+        "expectedState": "Temporal evidence remains reproducible."
+      },
+      {
+        "label": "Attach confidence and ACL",
+        "explanation": "Carry modality confidence, source provenance and tenant/user/group authorization.",
+        "expectedState": "Low-confidence or unauthorized spans are excluded."
+      },
+      {
+        "label": "Retrieve and cite",
+        "explanation": "Filter before ranking and preserve page/region/time in every citation.",
+        "expectedState": "Grounded answer includes exact evidence locations."
+      },
+      {
+        "label": "Abstain or review",
+        "explanation": "If evidence is missing, uncertain or unaligned, do not invent a source.",
+        "expectedState": "Safe abstention or explicit human review."
+      }
+    ],
+    "accessibility": [
+      "All source coordinates and time ranges are available as text.",
+      "Each modality and confidence state has a textual label and does not rely on color."
+    ],
+    "animation": {
+      "objective": "Trace one policy fact from a scanned page, meeting transcript and video frame through provenance, authorization and citations.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Register media",
+          "narration": "A scanned policy PDF, a meeting recording and a training video receive stable asset IDs and versions.",
+          "input": "PDF v3 + WAV v1 + MP4 v2",
+          "transformation": "Attach tenant, retention and source metadata.",
+          "output": "versioned media assets",
+          "visualState": "Three sources enter separate modality adapters."
+        },
+        {
+          "step": 2,
+          "title": "Extract layout",
+          "narration": "OCR returns text blocks with page, bounding box and confidence; tables keep rows and columns.",
+          "input": "page 2 OCR blocks and table cells",
+          "transformation": "Sort reading order and preserve cell geometry.",
+          "output": "page/region evidence spans",
+          "visualState": "Text blocks remain anchored to page coordinates."
+        },
+        {
+          "step": 3,
+          "title": "Extract time",
+          "narration": "ASR segments retain start/end milliseconds and speaker IDs; video frames retain exact timestamps.",
+          "input": "audio segments + video frame timestamps",
+          "transformation": "Sample frames and align within a tolerance.",
+          "output": "transcript and frame evidence",
+          "visualState": "Timeline links segments to nearby frames or marks them unaligned."
+        },
+        {
+          "step": 4,
+          "title": "Attach confidence and ACL",
+          "narration": "Each evidence span keeps modality confidence, tenant and user/group access policy.",
+          "input": "confidence + source lineage + ACL",
+          "transformation": "Exclude low-confidence and unauthorized spans.",
+          "output": "authorized evidence set",
+          "visualState": "Low-confidence and cross-tenant spans are filtered before ranking."
+        },
+        {
+          "step": 5,
+          "title": "Retrieve and cite",
+          "narration": "The retrieval result carries page, bounding box, timestamp, speaker and asset version into citations.",
+          "input": "query + authorized evidence",
+          "transformation": "Rank evidence and build location-aware citation records.",
+          "output": "grounded evidence and citations",
+          "visualState": "Citations point back to exact source locations."
+        },
+        {
+          "step": 6,
+          "title": "Abstain safely",
+          "narration": "When no authorized span meets the threshold or alignment tolerance, the system abstains.",
+          "input": "empty or low-confidence evidence",
+          "transformation": "Apply confidence and evidence sufficiency gates.",
+          "output": "answer or explicit abstention",
+          "visualState": "No unsupported claim is rendered."
+        }
+      ],
+      "controls": [
+        {
+          "name": "minConfidence",
+          "min": 0,
+          "max": 1,
+          "defaultValue": 0.75,
+          "effect": "Change the minimum evidence confidence required for retrieval and citation."
+        },
+        {
+          "name": "alignmentToleranceMs",
+          "min": 0,
+          "max": 2000,
+          "defaultValue": 500,
+          "effect": "Change the maximum transcript-to-frame timestamp difference accepted as aligned."
+        },
+        {
+          "name": "frameIntervalMs",
+          "min": 250,
+          "max": 5000,
+          "defaultValue": 1000,
+          "effect": "Change video sampling interval and observe frame coverage."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "Page boxes, time ranges, speaker IDs, confidence and abstention reasons are rendered as textual evidence. Each step is navigable without color cues."
+    }
+  },
+  "workedExample": {
+    "problem": "A policy assistant must answer how long audit records are retained using a scanned PDF and a meeting recording. The PDF has two OCR regions and the audio transcript has speaker/time metadata.",
+    "input": "PDF page 2 region [20,30,400,90] says 'Retention period is thirty days' at confidence 0.99; audio segment 1200–3200 ms says the same with speaker-1 at confidence 0.91.",
+    "steps": [
+      {
+        "operation": "Normalize OCR",
+        "reasoning": "Keep page, bounding box and confidence; sort blocks by page and reading order.",
+        "result": "document evidence at page 2 with exact region and 0.99 confidence"
+      },
+      {
+        "operation": "Normalize audio",
+        "reasoning": "Keep original start/end milliseconds, speaker ID and ASR confidence.",
+        "result": "audio evidence at 1200–3200 ms for speaker-1"
+      },
+      {
+        "operation": "Apply retrieval authorization",
+        "reasoning": "Filter by tenant and user/group ACL before scoring either modality.",
+        "result": "only authorized PDF and audio spans remain"
+      },
+      {
+        "operation": "Build citations",
+        "reasoning": "Citations carry the PDF region and audio timestamp rather than a generic file link.",
+        "result": "two reproducible citations with source location metadata"
+      }
+    ],
+    "expectedOutput": "A grounded answer cites PDF page 2 and audio 00:01.2–00:03.2; if both sources are below the confidence threshold, the assistant abstains."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "path": "examples/stage-12/multimodal_systems/multimodal_pipeline.py",
+      "runCommand": "python examples/stage-12/multimodal_systems/multimodal_pipeline.py",
+      "testsPath": "examples/stage-12/test_multimodal_systems.py",
+      "expectedResult": "Synthetic document/audio/video evidence is normalized, aligned, ACL-filtered and returned with page/region/time citations or abstention.",
+      "role": "from-scratch"
+    },
+    {
+      "language": "python",
+      "path": "examples/stage-12/multimodal_systems/multimodal_pipeline.py",
+      "runCommand": "python -m unittest discover -s examples/stage-12 -p 'test_multimodal_systems.py' -v",
+      "testsPath": "examples/stage-12/test_multimodal_systems.py",
+      "expectedResult": "Modality-specific provenance, confidence, layout, timestamp, tenant isolation and citation contracts pass.",
+      "role": "production"
+    }
+  ],
+  "failures": [
+    {
+      "name": "OCR reading order and layout loss",
+      "symptom": "Columns, footnotes or table cells appear in the wrong sequence.",
+      "rootCause": "Text is flattened without page coordinates or layout-aware reconstruction.",
+      "recovery": "Preserve raw regions, sort using layout metadata and keep table structure explicit.",
+      "regressionTest": "Provide out-of-order OCR blocks and assert page/region order and table cells remain intact."
+    },
+    {
+      "name": "Low-confidence OCR or ASR",
+      "symptom": "An uncertain recognition is presented as a confident fact.",
+      "rootCause": "Confidence is dropped or thresholds are not modality-specific.",
+      "recovery": "Preserve confidence and exclude uncertain evidence or route it to human review.",
+      "regressionTest": "Query only a low-confidence span and assert the system abstains at the configured threshold."
+    },
+    {
+      "name": "Transcript timestamp drift",
+      "symptom": "A citation points to the wrong part of a meeting recording.",
+      "rootCause": "Original segment offsets are discarded during chunking or normalization.",
+      "recovery": "Retain source start/end milliseconds and transformation lineage.",
+      "regressionTest": "Assert normalized transcript segments preserve exact offsets and speaker IDs."
+    },
+    {
+      "name": "Video frame misalignment",
+      "symptom": "A transcript is cited with an unrelated frame.",
+      "rootCause": "Nearest frame is selected without a maximum temporal tolerance.",
+      "recovery": "Use a declared sampling interval and leave the frame unaligned when outside tolerance.",
+      "regressionTest": "Use a distant frame and assert frame_id is null."
+    },
+    {
+      "name": "Cross-tenant multimodal retrieval",
+      "symptom": "A high-scoring image, transcript or document from another tenant is returned.",
+      "rootCause": "Authorization is applied after ranking or omitted from a modality index.",
+      "recovery": "Push tenant/user/group ACL filters into candidate generation before ranking.",
+      "regressionTest": "Add a stronger cross-tenant matching span and assert it never enters the candidate set."
+    },
+    {
+      "name": "Prompt injection embedded in media",
+      "symptom": "OCR or ASR text attempts to override policy or request a tool call.",
+      "rootCause": "Extracted media text is treated as trusted instruction.",
+      "recovery": "Keep all extracted text in an untrusted evidence channel and authorize tools independently.",
+      "regressionTest": "Insert instruction-like content into a synthetic image/transcript and prove it cannot grant authority."
+    },
+    {
+      "name": "Citation provenance loss",
+      "symptom": "Answer cites a file but not the page, region, timestamp or speaker that supports it.",
+      "rootCause": "Metadata is dropped during retrieval, compression or answer assembly.",
+      "recovery": "Require provenance fields on every selected evidence span and citation.",
+      "regressionTest": "Reject citation construction when required source location metadata is missing."
+    }
+  ],
+  "practice": {
+    "guided": "Normalize the synthetic OCR blocks, preserve the table, align audio segments to sampled video frames and retrieve a policy fact with source citations.",
+    "independent": "Add a new modality or language slice, implement its confidence and provenance fields, and create a failure test for low-quality evidence.",
+    "realWorld": "Design a document/audio/video ingestion pipeline for enterprise policies with retention, consent, tenant ACLs, human review and modality-specific quality metrics.",
+    "expertExtension": "Integrate real OCR/ASR/vision adapters only in an approved environment; evaluate CER/WER, table extraction, diarization, timestamp alignment and citation correctness on a held-out dataset.",
+    "guidedExercise": {
+      "title": "Build a provenance-preserving multimodal evidence normalizer",
+      "instructions": "Normalize OCR blocks, audio transcript segments and video frames. Keep page/region/time/speaker metadata and reject low-confidence or malformed evidence.",
+      "starterCode": "def normalize_media(document_blocks, audio_segments, video_frames):\\n    # TODO: preserve page and bounding boxes\\n    # TODO: preserve transcript offsets and speaker IDs\\n    # TODO: sample and align video frames with tolerance\\n    raise NotImplementedError",
+      "solutionCode": "def normalize_media(document_blocks, audio_segments, video_frames):\\n    ocr = normalize_ocr_blocks(document_blocks)\\n    audio = normalize_audio_segments(audio_segments)\\n    frames = sample_video_frames(video_frames, interval_ms=1000)\\n    alignment = align_audio_video(audio, frames, tolerance_ms=500)\\n    return {'ocr': ocr, 'audio': audio, 'frames': frames, 'alignment': alignment}",
+      "unitTests": "assert normalized_ocr[0]['page'] == 2\\nassert normalized_audio[0]['start_ms'] == 1200\\nassert aligned_segment['frame_id'] is not None\\nassert low_confidence_query.abstained is True"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build a multimodal policy assistant that returns answers with PDF page/region and meeting/video time citations.",
+      "steps": [
+        "Load the synthetic document, table, transcript and video fixtures.",
+        "Normalize each modality while retaining source offsets and confidence.",
+        "Build evidence spans with tenant/user/group ACL metadata.",
+        "Retrieve authorized spans and build page/region/time citations.",
+        "Measure WER/CER and alignment; abstain when evidence is uncertain or unavailable."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "Why must OCR blocks retain page and bounding-box metadata?",
+        "options": [
+          "To increase vector dimension",
+          "To preserve reading order and reproducible source-region citations",
+          "To avoid tenant authorization",
+          "To remove confidence values"
+        ],
+        "correctIndex": 1,
+        "explanation": "Page and region metadata preserve layout and allow a reader to verify which exact source region supports the answer."
+      },
+      {
+        "question": "What should happen when a transcript segment is outside the video-frame alignment tolerance?",
+        "options": [
+          "Attach the nearest frame regardless of distance",
+          "Change the original timestamp",
+          "Leave the segment unaligned and preserve its original time range",
+          "Drop the speaker label"
+        ],
+        "correctIndex": 2,
+        "explanation": "A forced alignment creates false provenance. Keep the timestamp and leave frame_id unset when no frame is sufficiently close."
+      },
+      {
+        "question": "Which metric measures word-level ASR recognition errors?",
+        "options": [
+          "Character error rate (CER)",
+          "Word error rate (WER)",
+          "Recall at K",
+          "Normalized discounted cumulative gain (NDCG)"
+        ],
+        "correctIndex": 1,
+        "explanation": "WER measures word insertions, deletions and substitutions. It does not alone measure semantic or factual correctness."
+      },
+      {
+        "question": "A cross-tenant image has the highest lexical match. When should it be filtered?",
+        "options": [
+          "After top-k",
+          "After answer generation",
+          "Before candidate ranking",
+          "Only in the UI"
+        ],
+        "correctIndex": 2,
+        "explanation": "Tenant and ACL filtering must happen before ranking so unauthorized evidence never enters the candidate set or cache."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Preserve document layout and table structure",
+        "weight": 20,
+        "evidence": "OCR reading order, page/bbox and row/column tests."
+      },
+      {
+        "criterion": "Preserve audio/video temporal provenance",
+        "weight": 20,
+        "evidence": "Transcript offsets, speaker labels, frame sampling and alignment tolerance."
+      },
+      {
+        "criterion": "Implement confidence-aware multimodal retrieval and ACLs",
+        "weight": 25,
+        "evidence": "Pre-ranking tenant/user/group isolation and abstention tests."
+      },
+      {
+        "criterion": "Produce location-aware citations and modality quality metrics",
+        "weight": 20,
+        "evidence": "Page/region/time citation records and WER/CER/alignment evidence."
+      },
+      {
+        "criterion": "Explain production limitations and safety boundaries",
+        "weight": 15,
+        "evidence": "Adapter, privacy, retention, injection and human-review gap analysis."
+      }
+    ],
+    "passThreshold": 85,
+    "evidence": [
+      "Passing multimodal provenance, alignment and ACL test suite.",
+      "Document, audio and video citations with exact source locations.",
+      "WER/CER and temporal alignment metrics on synthetic fixtures.",
+      "Production adapter and privacy/retention gap analysis."
+    ]
+  },
+  "references": [
+    {
+      "title": "LayoutLMv3: Pre-training for Document AI",
+      "url": "https://arxiv.org/abs/2204.08387",
+      "sourceType": "paper",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "Whisper: Robust Speech Recognition via Large-Scale Weak Supervision",
+      "url": "https://arxiv.org/abs/2212.04356",
+      "sourceType": "paper",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "PyMuPDF documentation",
+      "url": "https://pymupdf.readthedocs.io/en/latest/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "W3C WebVTT specification",
+      "url": "https://www.w3.org/TR/webvtt1/",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "normalize_ocr_blocks(blocks)",
+      "explanation": "Normalize page, bbox, text and confidence, then preserve a deterministic reading order without losing source-region coordinates."
+    },
+    {
+      "lines": "normalize_audio_segments(segments)",
+      "explanation": "Keep original start/end milliseconds, speaker labels and confidence so transcript citations can point to the recording."
+    },
+    {
+      "lines": "align_audio_video(segments, frames, tolerance_ms)",
+      "explanation": "Link a transcript segment to the nearest sampled frame only when it falls inside the declared tolerance."
+    },
+    {
+      "lines": "MultimodalPipeline._authorized(span, principal)",
+      "explanation": "Filter tenant, user and group access before scoring, ranking or constructing context."
+    },
+    {
+      "lines": "Citation(evidence_id, page, bbox, start_ms, end_ms, speaker)",
+      "explanation": "Carry modality-specific provenance into the answer so users can verify the exact source location."
+    }
+  ]
+}

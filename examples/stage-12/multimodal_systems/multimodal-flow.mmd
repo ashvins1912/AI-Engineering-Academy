@@ -1,0 +1,17 @@
+flowchart TD
+  A[Document image audio video] --> B[Modality adapters]
+  B --> C[OCR regions and layout]
+  B --> D[Audio transcript segments]
+  B --> E[Video frame sampler]
+  C --> F[Evidence normalizer]
+  D --> F
+  E --> G[Temporal alignment]
+  G --> F
+  F --> H[Provenance and confidence]
+  H --> I{Tenant and ACL filter}
+  I -->|authorized| J[Multimodal retrieval]
+  I -->|denied| K[Exclude evidence]
+  J --> L[Context and citation packer]
+  L --> M{Evidence sufficient?}
+  M -->|yes| N[Grounded answer with page/region/time]
+  M -->|no| O[Abstain]

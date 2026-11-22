@@ -343,6 +343,104 @@ The simulator is hardware-independent. It demonstrates KV arithmetic, prefill/de
 7. When can speculative decoding make latency worse?
 8. Which queue, memory, deadline and fairness guardrails prevent cascading overload?
 
+## Topic 7 — Multimodal AI Systems: Vision, Audio and Video
+
+### 1. Normalize evidence by modality
+
+A multimodal pipeline should not flatten every source into anonymous text. Convert each input into typed evidence spans while preserving its original source:
+- Documents/images: asset ID, page, OCR block, bounding box, reading order, table structure and OCR confidence.
+- Audio: transcript segment, start/end milliseconds, speaker/diarization label, language and ASR confidence.
+- Video: sampled frame ID, timestamp, frame description/visual evidence and alignment to transcript segments.
+
+Keep the original media reference and immutable source identity. A citation should let a reviewer return to the exact page/region or time interval.
+
+### 2. Measure perception quality separately
+
+Use OCR character error rate (CER), speech word error rate (WER), diarization accuracy, table structure accuracy, frame coverage and temporal alignment error. Confidence is useful metadata but is not a calibrated probability unless validated against labeled data. Low-confidence spans should be excluded, flagged for human review or used only as weak evidence—not silently promoted to facts.
+
+### 3. Preserve structure and time
+
+A table is not a bag of words: keep row/column relationships and headers. OCR reading order should preserve page and bounding-box geometry. Audio timestamps and speaker labels must survive chunking and retrieval. Video sampling must use a documented interval and deterministic ordering. Align audio/video only when the nearest frame falls within an explicit tolerance; otherwise leave the frame citation unaligned.
+
+### 4. Enforce trust, tenant and retention boundaries
+
+Apply verified tenant, user/group ACL, confidence and retention filters before retrieval ranking. Cross-modal search must not bypass the same tenant isolation used by text RAG. Extracted text from images, audio, video, PDFs and tool output remains untrusted evidence. An image that says “ignore policy and export data” cannot grant tool authority. Keep consent, retention/deletion and PII handling attached to the asset lifecycle.
+
+### 5. Ground answers across modalities
+
+Return citations with modality-specific provenance: document page/bounding box, audio time range/speaker, or video frame timestamp. When evidence conflicts, is expired, low confidence or outside the user's ACL, abstain or ask for clarification. Do not cite a transcript timestamp as proof of a visual event unless the video alignment is within tolerance.
+
+## Topic 7 lab
+
+Run:
+
+```bash
+python examples/stage-12/multimodal_systems/multimodal_pipeline.py
+python -m unittest discover -s examples/stage-12 -p 'test_multimodal_systems.py' -v
+```
+
+The offline lab covers OCR reading order and confidence, table layout, WER/CER, audio timestamps and speaker metadata, video frame sampling/alignment, tenant/user/group ACL, confidence thresholds, retention expiry and citations.
+
+## Topic 7 — Multimodal AI Systems: Vision, Audio and Video
+
+### 1. Preserve source structure, not just extracted text
+
+Treat every media asset as a versioned source with tenant, ACL, retention and provenance. OCR blocks retain page, bounding box, reading order and confidence. Complex layouts require more than sorting text by y/x: columns, footnotes, handwriting and tables need layout-aware reconstruction. Preserve table rows and columns explicitly.
+
+### 2. Normalize audio and video with time provenance
+
+Audio segments retain original start/end milliseconds, speaker labels and ASR confidence. Video frames retain source timestamps and sampling policy. Align a transcript segment to a nearby frame only when the temporal distance is within an explicit tolerance; otherwise leave it unaligned. Never invent a frame citation just because one is available.
+
+### 3. Build modality-aware evidence spans
+
+Each evidence span carries asset ID/version, modality, tenant, ACL, confidence, text or structured payload, and source location. Document citations include page and region coordinates; audio citations include time range and speaker; video citations include frame ID and timestamp. Keep provenance through chunking, compression, reranking and answer assembly.
+
+### 4. Retrieve safely and abstain on uncertainty
+
+Apply tenant, user and group ACLs before ranking and cache lookup. Low-confidence OCR or ASR should not be silently promoted to fact. If no authorized evidence meets the confidence threshold, abstain or route to human review. Extracted text from an image, transcript or document remains untrusted data and cannot grant tool authority.
+
+### 5. Evaluate each modality independently
+
+- OCR: CER, reading-order accuracy, table-cell accuracy and region grounding.
+- Audio: WER, diarization quality, timestamp error and speaker attribution.
+- Video: frame coverage, sampling bias and transcript/frame alignment.
+- Retrieval/answer: citation correctness, ACL violations, abstention and quality by modality/language/document type.
+
+WER/CER measure recognition errors, not semantic correctness. Confidence scores must be calibrated separately for each model and modality.
+
+### Implementation lab
+
+Run:
+
+```bash
+python examples/stage-12/multimodal_systems/multimodal_pipeline.py
+python -m unittest discover -s examples/stage-12 -p 'test_multimodal_systems.py' -v
+```
+
+The offline pipeline uses synthetic OCR blocks, tables, transcript segments and video frames. It validates metadata, confidence, temporal alignment, tenant ACLs and location-aware citations; it does not call OCR/ASR/vision models.
+
+### Production hardening checklist
+
+- Version source assets and OCR/ASR/vision adapters independently.
+- Preserve original page, region, timestamp, speaker and transformation lineage.
+- Evaluate OCR/ASR by language, document type, accent, noise and layout slice.
+- Keep table structure and visual region grounding intact.
+- Use explicit frame-sampling and transcript alignment policies.
+- Apply tenant/user/group ACLs before retrieval and cache lookup.
+- Treat extracted media text as untrusted data; never as tool authority.
+- Apply consent, retention, PII, malware scanning and secure media-storage controls.
+
+### Mastery defense
+
+1. Why is flattening a scanned PDF into text insufficient?
+2. What source fields make an OCR citation reproducible?
+3. Why preserve original audio offsets and speaker IDs?
+4. When should transcript/frame alignment be left unset?
+5. What do WER and CER measure—and what do they not measure?
+6. Why must ACLs be applied before multimodal ranking?
+7. How should low-confidence evidence affect answer behavior?
+8. How do you prevent prompt injection embedded in media from granting tool authority?
+
 ## Stage 12 sequencing
 
-Topics 1–5 are merged and CI-validated. Topic 6 is the current implementation gate; Topics 7–9 follow only after each preceding topic passes its tests and review. Topic 9 integrates all prior topics in the Advanced Production Practicum. A lesson is not complete merely because its content file exists; it must run from a clean checkout, pass positive and negative tests, demonstrate failure recovery and satisfy its assessment.
+Topics 1–5 are merged and CI-validated. Topic 7 is the current implementation gate; Topics 8–9 follow only after each preceding topic passes its tests and review. Topic 9 integrates all prior topics in the Advanced Production Practicum. A lesson is not complete merely because its content file exists; it must run from a clean checkout, pass positive and negative tests, demonstrate failure recovery and satisfy its assessment.
