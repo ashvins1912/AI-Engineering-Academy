@@ -76,8 +76,8 @@ def assert_no_split_leakage(train: EvaluationDataset, evaluation: EvaluationData
     evaluation.validate()
     if train.split != "train" or evaluation.split not in {"validation", "test", "golden"}:
         raise ValueError("DATASET_SPLIT_ROLES_INVALID")
-    train_queries = {_tokens(case.query).__str__() for case in train.cases}
-    eval_queries = {_tokens(case.query).__str__() for case in evaluation.cases}
+    train_queries = {" ".join(sorted(_tokens(case.query))) for case in train.cases}
+    eval_queries = {" ".join(sorted(_tokens(case.query))) for case in evaluation.cases}
     train_sources = set().union(*(case.source_fingerprints for case in train.cases))
     eval_sources = set().union(*(case.source_fingerprints for case in evaluation.cases))
     if train_queries & eval_queries or train_sources & eval_sources:
