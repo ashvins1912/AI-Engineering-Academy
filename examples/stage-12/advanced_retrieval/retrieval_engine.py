@@ -185,7 +185,7 @@ class HybridRetriever:
         lexical = bm25_scores(query, authorized)
         dense = {chunk.chunk_id: cosine_similarity(vector, chunk.embedding) for chunk in authorized}
         lexical_rank = [chunk_id for chunk_id, score in sorted(lexical.items(), key=lambda item: (-item[1], item[0])) if score > 0]
-        dense_rank = [chunk_id for chunk_id, score in sorted(dense.items(), key=lambda item: (-item[1], item[0]))]
+        dense_rank = [chunk_id for chunk_id, score in sorted(dense.items(), key=lambda item: (-item[1], item[0])) if score > 0]
         fused = reciprocal_rank_fusion([lexical_rank, dense_rank], k=self.rrf_k, weights=self.weights)
 
         ranked_ids = sorted(fused, key=lambda chunk_id: (-fused[chunk_id], chunk_id))
