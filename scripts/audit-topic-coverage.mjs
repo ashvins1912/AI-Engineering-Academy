@@ -82,7 +82,8 @@ const requiredStageRoutes = [
   [11, ['capstone-design','capstone-build','capstone-delivery']],
   [12, ['agent-orchestration','protocol-interop','advanced-retrieval','evaluation-scale','ai-red-team','inference-performance','multimodal-systems','enterprise-governance','advanced-practicum']]
 ]
+if(!studio.includes("stage === 2 && <Stage2MasteryLabs initialTopic={topicId}/>") || !studio.includes("stage === 3 && <Stage3MasteryLabs initialTopic={topicId}/>") || !studio.includes("stage === 4 && <Stage4MasteryLabs initialTopic={stage4Topic}/>") || !studio.includes("stage === 5 && <Stage5MasteryLabs initialTopic={topicId}/>") || !studio.includes('<TopicSpecialistLab stage={stage} topicId={topicId}/>')) { console.error('FAIL stage 2–8 lesson lab routing is incomplete'); process.exit(1) }
 const missingRoutes = requiredStageRoutes.flatMap(([stage, ids]) => ids.filter(id => !specialistRouter.includes("'" + id + "'")).map(id => 'stage ' + stage + ': ' + id))
 if(missingRoutes.length) { console.error('FAIL missing specialist lesson routes: ' + missingRoutes.join(', ')); process.exit(1) }
 
-console.log('PASS curriculum inventory, universal studio wiring and stage guide presence. Artifact gaps above are reported for staged remediation, not hidden.')
+console.log('PASS 93-topic inventory, Stage 1–12 lesson lab routing, universal studio wiring and stage guide presence. Artifact gaps above are reported for staged remediation, not hidden.')
