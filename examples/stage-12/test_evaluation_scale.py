@@ -127,6 +127,12 @@ class ReleaseGateTests(unittest.TestCase):
     def setUp(self):
         self.report = evaluate_dataset(sample_dataset(), sample_predictions())
 
+    def test_release_gate_entry_point_returns_report_and_calibration(self):
+        result = evaluate_release(sample_dataset(), sample_predictions(), [0.9, 0.1], [1.0, 0.0])
+        self.assertIn("report", result)
+        self.assertIn("judge_calibration", result)
+        self.assertTrue(result["passed"])
+
     def test_release_gate_passes_when_all_evidence_meets_thresholds(self):
         gate = ReleaseGate(min_samples=2, min_quality_lcb=0.0,
                            max_safety_violation_rate=0.0, max_p95_latency_ms=500,
