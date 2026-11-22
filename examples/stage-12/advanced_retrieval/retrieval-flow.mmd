@@ -1,0 +1,16 @@
+flowchart TD
+  A[Verified principal] --> B[Query and policy context]
+  B --> C{Tenant and ACL filter}
+  C -->|authorized only| D[Candidate set]
+  D --> E[BM25 lexical ranking]
+  D --> F[Dense vector ranking]
+  E --> G[Weighted RRF fusion]
+  F --> G
+  G --> H[Optional reranking]
+  H --> I[ACL-checked parent context]
+  I --> J[Token-budget context packer]
+  J --> K{Evidence sufficient?}
+  K -->|yes| L[Citations with version/page/offset]
+  K -->|no| M[Abstain]
+  L --> N[Answer generation adapter]
+  M --> O[Safe no-evidence response]
