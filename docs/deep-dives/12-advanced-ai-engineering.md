@@ -142,6 +142,76 @@ python -m unittest discover -s examples/stage-12 -p 'test_*.py' -v
 
 The simulator checks MCP modern/legacy version behavior, header routing, tool schema and OAuth issuer checks, MRTR input completion, A2A Agent Card/task/idempotency/streaming/capability rules, ACP v2 session and client permission boundaries, IBM/BeeAI ACP message mapping and trusted identity normalization. It does not open sockets or claim complete wire conformance.
 
+## Topic 3 — Advanced Retrieval and Context Engineering
+
+### 1. Retrieval is a pipeline, not a vector database call
+
+Resolve the verified principal, tenant, groups and policy version before retrieval. Apply tenant and document ACL predicates inside candidate generation—before lexical scoring, ANN search, ranking and top-k. Filtering only after top-k is unsafe and can also reduce recall by allowing forbidden chunks to crowd out authorized evidence.
+
+### 2. Combine lexical and dense evidence
+
+BM25 rewards exact terms, identifiers and rare vocabulary. Dense retrieval compares learned vectors and can find paraphrases, but depends on the embedding model, normalization and index revision. Use both channels when the workload needs exact and semantic matching.
+
+Do not blindly add BM25 and cosine scores: their scales are not calibrated. Reciprocal-rank fusion (RRF) combines ranks:
+
+`RRF(d) = Σᵢ wᵢ / (k + rankᵢ(d))`
+
+For k=60, a chunk ranked 1st lexically and 3rd densely receives 1/61 + 1/63 ≈ 0.032522. A chunk ranked 2nd in both receives 2/62 ≈ 0.032258. RRF is a baseline, not a guarantee; tune weights and k on held-out judgments.
+
+### 3. Candidate recall before reranking
+
+A cross-encoder or other reranker can reorder a bounded candidate set but cannot recover a relevant document that first-stage retrieval never returned. Measure candidate Recall@K before measuring reranker lift. Keep candidate count bounded to control latency and cost. Evaluate by query slice rather than only aggregate averages.
+
+### 4. Chunking, parent context and provenance
+
+Small child chunks improve precision; parent context can restore surrounding meaning. Parent expansion is a separate data access and must independently pass tenant and ACL checks. Every citation should retain immutable document version/hash, page or region, stable chunk ID and source offsets. A re-ingested document must not silently rewrite the meaning of an old citation.
+
+### 5. Context engineering and abstention
+
+Decompose compound questions only when decomposition is evaluated. Retrieve per sub-question, deduplicate overlap, preserve source labels and critical qualifiers, then pack under the deployed model's tokenizer budget. Compression must preserve negation, dates, conditions and citation anchors. If authorized evidence is absent or insufficient, abstain.
+
+### 6. Evaluate the retrieval system
+
+- **Recall@K:** fraction of known relevant items present in the first K results.
+- **MRR:** reciprocal rank of the first relevant result, averaged across queries.
+- **NDCG@K:** discounted ranking quality with support for graded relevance.
+- Also report citation correctness, authorization violations, freshness, latency and cost.
+
+Slice results by tenant, query class, document type, language and freshness. A quality average can never offset a cross-tenant disclosure.
+
+### Implementation lab
+
+Run:
+
+```bash
+python examples/stage-12/advanced_retrieval/retrieval_engine.py
+python -m unittest discover -s examples/stage-12 -p 'test_*.py' -v
+```
+
+The deterministic reference uses a synthetic two-tenant corpus and precomputed vectors. It demonstrates BM25, cosine similarity, RRF, pre-ranking ACL filtering, tenant/policy-aware cache keys, independently authorized parent context, citation offsets and Recall@K/MRR/NDCG. It does not provision an ANN database, embedding model or hosted reranker.
+
+### Production hardening checklist
+
+- Push tenant/document ACL predicates into SQL/vector candidate generation and prove with integration tests.
+- Version embedding model, vector dimension/normalization, parser, chunker and index revision.
+- Measure candidate recall before reranking; retain a held-out benchmark.
+- Bind caches to tenant, subject, groups, policy version, query, embedding and corpus revision.
+- Re-authorize parent context and every derived passage.
+- Preserve document hash/version, page/region, chunk ID and source offsets.
+- Use the deployed tokenizer and verify compressed context retains critical qualifiers.
+- Abstain when no authorized evidence meets the quality threshold.
+
+### Mastery defense
+
+1. Why is filtering after top-k too late?
+2. When is BM25 stronger than dense retrieval, and vice versa?
+3. Why does RRF avoid raw-score calibration?
+4. Why can a reranker not repair candidate recall?
+5. Why must parent context be authorized independently?
+6. What source metadata makes a citation reproducible?
+7. How do Recall@K, MRR and NDCG answer different questions?
+8. Which fields belong in a tenant-safe retrieval cache key?
+
 ## Stage 12 sequencing
 
-Topics 1 and 2 are implemented in sequence. Topic 3 begins only after Topic 2 passes its tests and review; remaining topics follow the same gate. Topic 9 integrates all prior topics in the Advanced Production Practicum. A lesson is not complete merely because its content file exists; it must run from a clean checkout, pass positive and negative tests, demonstrate failure recovery and satisfy its assessment.
+Topics 1 and 2 are implemented and CI-validated. Topic 3 is now implemented on this branch and must pass the same full CI and review gate before merge; remaining topics follow the same gate. Topic 9 integrates all prior topics in the Advanced Production Practicum. A lesson is not complete merely because its content file exists; it must run from a clean checkout, pass positive and negative tests, demonstrate failure recovery and satisfy its assessment.
