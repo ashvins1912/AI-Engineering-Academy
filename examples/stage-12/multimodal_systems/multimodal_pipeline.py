@@ -139,6 +139,7 @@ class EvidenceSpan:
     allowed_groups: frozenset[str] = frozenset()
     untrusted_data: bool = True
     retention_until: str | None = None
+    asset_version: str = "v1"
 
 
 @dataclass(frozen=True)
