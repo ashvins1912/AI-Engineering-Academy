@@ -1,0 +1,7 @@
+{
+  "query": "retention policy",
+  "vector": [1.0, 0.0, 0.0],
+  "expectedAuthorized": ["a-retention", "a-access", "a-embedding"],
+  "forbidden": ["a-private", "b-secret"],
+  "corpusRevision": "fixture-v1"
+}
