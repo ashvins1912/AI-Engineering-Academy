@@ -28,7 +28,7 @@ const labPack = stage => {
   return existsSync(path) ? readFileSync(path,'utf8') : ''
 }
 const requiredLabSections = ['**Implementation task:**','**Worked fixture:**','**Expected result:**','**Verification tests:**','**Debugging checklist:**','**Interview checks:**','**Submission evidence:**']
-const practiceSpec = id => new RegExp("(?:^|\\n)\\s*(?:'"+id.replace(/[.*+?^${}()|[\\]\\\\]/g,'\\$&')+"'|"+id.replace(/[.*+?^${}()|[\\]\\\\]/g,'\\$&')+")\\s*:\\s*\\{").test(practice)
+const practiceSpec = id => practice.includes("'" + id + "': {") || practice.includes(id + ': {')\n)\\s*(?:'"+id.replace(/[.*+?^${}()|[\\]\\\\]/g,'\\$&')+"'|"+id.replace(/[.*+?^${}()|[\\]\\\\]/g,'\\$&')+")\\s*:\\s*\\{").test(practice)
 const rows = lessons.map(topic => {
   const pack = labPack(topic.stage)
   const section = pack.split(/\\n(?=## [\\w-]+ — )/).find(block => block.startsWith('## ' + topic.id + ' —')) ?? ''
