@@ -56,9 +56,8 @@ import CICDVisualizer from './CICDVisualizer'
 import CICDLessonDetails from './CICDLessonDetails'
 import IaCVisualizer from './IaCVisualizer'
 import IaCLessonDetails from './IaCLessonDetails'
-import Stage10MasteryLab from './Stage10MasteryLab'
-import ArchitectureFlow from './ArchitectureFlow'
-import AgenticInterviewStudio from './AgenticInterviewStudio'
+import ProductionTopicLab from './ProductionTopicLab'
+import CapstoneTopicLab from './CapstoneTopicLab'
 
 type Props = { stage:number; topicId:string }
 
@@ -107,10 +106,11 @@ export default function TopicSpecialistLab({stage,topicId}:Props) {
       case 'containers': return <><ContainerVisualizer/><ContainerLessonDetails/></>
       case 'cicd': return <><CICDVisualizer/><CICDLessonDetails/></>
       case 'infra': return <><IaCVisualizer/><IaCLessonDetails/></>
+      case 'kubernetes': case 'serving': case 'rollouts': return <ProductionTopicLab stage={stage} topicId={topicId}/>
     }
   }
-  if(stage===10 && ['prompt-injection','tool-security','tenant-security','supply-chain','tracing','slos','cost','incidents'].includes(topicId)) return <Stage10MasteryLab topicId={topicId}/>
-  if(stage===11 && ['capstone-design','capstone-build','capstone-delivery'].includes(topicId)) return <ArchitectureFlow/>
-  if(stage===12 && ['agent-orchestration','protocol-interop','advanced-retrieval','evaluation-scale','ai-red-team','inference-performance','multimodal-systems','enterprise-governance','advanced-practicum'].includes(topicId)) return <AgenticInterviewStudio/>
+  if(stage===10 && ['prompt-injection','tool-security','tenant-security','supply-chain','tracing','slos','cost','incidents'].includes(topicId)) return <ProductionTopicLab stage={stage} topicId={topicId}/>
+  if(stage===11 && ['capstone-design','capstone-build','capstone-delivery'].includes(topicId)) return <CapstoneTopicLab stage={stage} topicId={topicId}/>
+  if(stage===12 && ['agent-orchestration','protocol-interop','advanced-retrieval','evaluation-scale','ai-red-team','inference-performance','multimodal-systems','enterprise-governance','advanced-practicum'].includes(topicId)) return <CapstoneTopicLab stage={stage} topicId={topicId}/>
   return null
 }
