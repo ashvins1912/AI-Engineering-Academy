@@ -381,6 +381,66 @@ python -m unittest discover -s examples/stage-12 -p 'test_multimodal_systems.py'
 
 The offline lab covers OCR reading order and confidence, table layout, WER/CER, audio timestamps and speaker metadata, video frame sampling/alignment, tenant/user/group ACL, confidence thresholds, retention expiry and citations.
 
+## Topic 7 — Multimodal AI Systems: Vision, Audio and Video
+
+### 1. Preserve source structure, not just extracted text
+
+Treat every media asset as a versioned source with tenant, ACL, retention and provenance. OCR blocks retain page, bounding box, reading order and confidence. Complex layouts require more than sorting text by y/x: columns, footnotes, handwriting and tables need layout-aware reconstruction. Preserve table rows and columns explicitly.
+
+### 2. Normalize audio and video with time provenance
+
+Audio segments retain original start/end milliseconds, speaker labels and ASR confidence. Video frames retain source timestamps and sampling policy. Align a transcript segment to a nearby frame only when the temporal distance is within an explicit tolerance; otherwise leave it unaligned. Never invent a frame citation just because one is available.
+
+### 3. Build modality-aware evidence spans
+
+Each evidence span carries asset ID/version, modality, tenant, ACL, confidence, text or structured payload, and source location. Document citations include page and region coordinates; audio citations include time range and speaker; video citations include frame ID and timestamp. Keep provenance through chunking, compression, reranking and answer assembly.
+
+### 4. Retrieve safely and abstain on uncertainty
+
+Apply tenant, user and group ACLs before ranking and cache lookup. Low-confidence OCR or ASR should not be silently promoted to fact. If no authorized evidence meets the confidence threshold, abstain or route to human review. Extracted text from an image, transcript or document remains untrusted data and cannot grant tool authority.
+
+### 5. Evaluate each modality independently
+
+- OCR: CER, reading-order accuracy, table-cell accuracy and region grounding.
+- Audio: WER, diarization quality, timestamp error and speaker attribution.
+- Video: frame coverage, sampling bias and transcript/frame alignment.
+- Retrieval/answer: citation correctness, ACL violations, abstention and quality by modality/language/document type.
+
+WER/CER measure recognition errors, not semantic correctness. Confidence scores must be calibrated separately for each model and modality.
+
+### Implementation lab
+
+Run:
+
+```bash
+python examples/stage-12/multimodal_systems/multimodal_pipeline.py
+python -m unittest discover -s examples/stage-12 -p 'test_multimodal_systems.py' -v
+```
+
+The offline pipeline uses synthetic OCR blocks, tables, transcript segments and video frames. It validates metadata, confidence, temporal alignment, tenant ACLs and location-aware citations; it does not call OCR/ASR/vision models.
+
+### Production hardening checklist
+
+- Version source assets and OCR/ASR/vision adapters independently.
+- Preserve original page, region, timestamp, speaker and transformation lineage.
+- Evaluate OCR/ASR by language, document type, accent, noise and layout slice.
+- Keep table structure and visual region grounding intact.
+- Use explicit frame-sampling and transcript alignment policies.
+- Apply tenant/user/group ACLs before retrieval and cache lookup.
+- Treat extracted media text as untrusted data; never as tool authority.
+- Apply consent, retention, PII, malware scanning and secure media-storage controls.
+
+### Mastery defense
+
+1. Why is flattening a scanned PDF into text insufficient?
+2. What source fields make an OCR citation reproducible?
+3. Why preserve original audio offsets and speaker IDs?
+4. When should transcript/frame alignment be left unset?
+5. What do WER and CER measure—and what do they not measure?
+6. Why must ACLs be applied before multimodal ranking?
+7. How should low-confidence evidence affect answer behavior?
+8. How do you prevent prompt injection embedded in media from granting tool authority?
+
 ## Stage 12 sequencing
 
 Topics 1–5 are merged and CI-validated. Topic 7 is the current implementation gate; Topics 8–9 follow only after each preceding topic passes its tests and review. Topic 9 integrates all prior topics in the Advanced Production Practicum. A lesson is not complete merely because its content file exists; it must run from a clean checkout, pass positive and negative tests, demonstrate failure recovery and satisfy its assessment.
