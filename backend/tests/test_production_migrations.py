@@ -43,3 +43,11 @@ class ProductionRAGMigrationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_code_run_reconciliation_migration_adds_leases_without_source_storage():
+    sql = (Path(__file__).parents[1] / "migrations" / "006_code_run_reconciliation.sql").read_text()
+    assert "reconcile_lease_token" in sql
+    assert "FOR UPDATE" not in sql  # claim query is parameterized in the worker
+    assert "CREATE INDEX" in sql
+    assert "source" not in sql.lower()
