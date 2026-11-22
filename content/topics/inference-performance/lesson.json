@@ -14,7 +14,9 @@
       "Model batching, queueing, admission control, deadlines, load shedding and throughput under bounded capacity.",
       "Explain prefix caching, continuous batching, paged attention, quantization and speculative decoding trade-offs.",
       "Build deterministic capacity sweeps and identify memory, queue, latency and fairness failure modes.",
-      "Design production load tests and SLO guardrails without assuming simulator numbers represent real hardware."
+      "Design production load tests and SLO guardrails without assuming simulator numbers represent real hardware.",
+      "Estimate service capacity with Little's Law, available KV memory and service-rate utilization.",
+      "Use round-robin tenant scheduling and paged KV allocation to prevent starvation and release memory safely."
     ],
     "prerequisites": [
       "Stage 9 model serving, inference optimization and deployment strategies",
@@ -67,7 +69,7 @@
   },
   "explanation": {
     "problem": "A model server can fail even when the model fits in memory: concurrent long prompts exhaust KV cache, queues grow faster than decode capacity, p95 latency breaches SLOs, and retries amplify overload. Optimizing only tokens per second can make TTFT or fairness worse. Capacity engineering requires explicit memory estimates, workload distributions, bounded admission and measured trade-offs.",
-    "plainLanguage": "Split inference into two phases. During prefill, the model processes the prompt and builds attention state; this phase often benefits from parallel compute. During decode, output tokens are generated autoregressively and depend on previous tokens, so memory bandwidth and KV-cache access matter. TTFT includes queue wait plus prefill. Inter-token latency and output throughput describe the decode phase. Measure both rather than reporting one average latency.\\n\\nThe KV cache stores keys and values for every active sequence. A simplified estimate is: 2 × layers × KV heads × head dimension × bytes per value × sequence tokens × concurrent sequences. For 32 layers, 8 KV heads, head dimension 128 and FP16 values (2 bytes), each token uses 128 KiB. A 4,096-token sequence uses about 512 MiB before allocator fragmentation, weights, activations, runtime overhead and other buffers. Grouped-query attention, tensor parallelism, cache layout and serving engine change the real number.\\n\\nBatching improves utilization but creates scheduling trade-offs. Static batches wait for the slowest sequence; continuous batching admits and retires sequences dynamically. A scheduler needs limits for batch size, queue depth, context length, per-tenant fairness, deadlines and KV memory. When capacity is exceeded, reject or shed load with a clear reason instead of allowing unbounded memory and latency growth. Retries must be bounded and coordinated to avoid retry storms.\\n\\nPrefix caching can avoid repeated prefill for shared prompt prefixes, but the cache key must include tenant/security scope and prompt/model version. A cross-tenant cache hit can leak information or reuse an unauthorized prefix. Paged attention reduces fragmentation by managing KV blocks, but does not remove the memory requirement.\\n\\nQuantization reduces weight or KV storage and may improve bandwidth, but can affect quality and numerical stability. Speculative decoding uses a draft model to propose tokens and a target model to verify them; speedup depends on acceptance rate and verification overhead. These are measured trade-offs, not universal wins.\\n\\nRun capacity sweeps over prompt/output lengths, concurrency, arrival rate, batch size, cache hit rate and precision. Report TTFT, inter-token latency, p50/p95, throughput, queue wait, rejected requests, KV memory and quality deltas. Simulators teach the accounting and failure modes; production capacity must be measured on the actual model, hardware, engine, kernel and workload.",
+    "plainLanguage": "Split inference into two phases. During prefill, the model processes the prompt and builds attention state; this phase often benefits from parallel compute. During decode, output tokens are generated autoregressively and depend on previous tokens, so memory bandwidth and KV-cache access matter. TTFT includes queue wait plus prefill. Inter-token latency and output throughput describe the decode phase. Measure both rather than reporting one average latency.\\n\\nThe KV cache stores keys and values for every active sequence. A simplified estimate is: 2 × layers × KV heads × head dimension × bytes per value × sequence tokens × concurrent sequences. For 32 layers, 8 KV heads, head dimension 128 and FP16 values (2 bytes), each token uses 128 KiB. A 4,096-token sequence uses about 512 MiB before allocator fragmentation, weights, activations, runtime overhead and other buffers. Grouped-query attention, tensor parallelism, cache layout and serving engine change the real number.\\n\\nBatching improves utilization but creates scheduling trade-offs. Static batches wait for the slowest sequence; continuous batching admits and retires sequences dynamically. A scheduler needs limits for batch size, queue depth, context length, per-tenant fairness, deadlines and KV memory. When capacity is exceeded, reject or shed load with a clear reason instead of allowing unbounded memory and latency growth. Retries must be bounded and coordinated to avoid retry storms.\\n\\nPrefix caching can avoid repeated prefill for shared prompt prefixes, but the cache key must include tenant/security scope and prompt/model version. A cross-tenant cache hit can leak information or reuse an unauthorized prefix. Paged attention reduces fragmentation by managing KV blocks, but does not remove the memory requirement.\\n\\nQuantization reduces weight or KV storage and may improve bandwidth, but can affect quality and numerical stability. Speculative decoding uses a draft model to propose tokens and a target model to verify them; speedup depends on acceptance rate and verification overhead. These are measured trade-offs, not universal wins.\\n\\nRun capacity sweeps over prompt/output lengths, concurrency, arrival rate, batch size, cache hit rate and precision. Report TTFT, inter-token latency, p50/p95, throughput, queue wait, rejected requests, KV memory and quality deltas. Simulators teach the accounting and failure modes; production capacity must be measured on the actual model, hardware, engine, kernel and workload.\n\nCapacity planning uses Little's Law: average in-flight requests L = arrival rate λ × average time W. It is an average relationship for a stable system, not a peak concurrency limit. Combine it with measured arrival bursts, p95 latency, prompt/output distributions and per-tenant fairness. A round-robin scheduler gives each active tenant a turn; a paged allocator tracks reservations and must release pages after completion or cancellation. Versioned prefix cache keys include tenant, model, prompt and policy so cached context cannot cross security or release boundaries.",
     "mentalModel": "Request arrival → admission and tenant fairness → queue/batch scheduler → KV memory reservation → prefill/TTFT → decode loop → optional prefix/speculative optimizations → latency, throughput, memory and quality telemetry.",
     "limitations": [
       "The local simulator uses synthetic throughput curves and does not model real GPU kernels, bandwidth, interconnect or hardware scheduling.",
@@ -79,7 +81,7 @@
       "A memory estimate that fits KV cache alone does not prove the model, weights, activations and runtime fit on a device."
     ],
     "everydayAnalogy": "A restaurant kitchen has a prep phase and a cooking phase. More chefs can prepare many orders in parallel, but each active table still occupies space and each dish needs time at the stove. The manager controls reservations, table capacity and queue length. Serving systems do the same with prompt prefill, decode, KV memory and admission control.",
-    "mathMadeSimple": "For a decoder with L=32 layers, Hkv=8 key/value heads, D=128 dimensions per head, 2 bytes per value and S=4,096 tokens: KV bytes = 2×L×Hkv×D×2×S = 536,870,912 bytes = 512 MiB for one sequence. Two concurrent sequences need about 1 GiB before other memory overhead.",
+    "mathMadeSimple": "For a decoder with L=32 layers, Hkv=8 key/value heads, D=128 dimensions per head, 2 bytes per value and S=4,096 tokens: KV bytes = 2×L×Hkv×D×2×S = 536,870,912 bytes = 512 MiB for one sequence. Two concurrent sequences need about 1 GiB before other memory overhead. Little's Law example: 2 requests/second × 0.5 seconds average time = 1 request in flight on average. Burst and tail-latency headroom are still required.",
     "productionImpact": "Measure TTFT and inter-token latency separately; estimate and reserve KV memory before admission; use continuous batching and bounded queues; isolate prefix caches by tenant and version; tune quantization/speculative decoding on quality-aware benchmarks; enforce deadlines, fairness and load shedding; and validate every estimate on the actual serving engine and hardware."
   },
   "useCase": {
@@ -128,7 +130,10 @@
       "Prefill engine",
       "Decode scheduler",
       "Optional speculative draft/verify",
-      "SLO and capacity telemetry"
+      "SLO and capacity telemetry",
+      "Little's Law capacity planner",
+      "Round-robin tenant scheduler",
+      "Paged KV allocator"
     ],
     "dataFlow": [
       {
@@ -188,7 +193,9 @@
       "Prefix cache collision: partition keys by tenant and model/prompt version.",
       "Quantization degrades quality: compare quality and memory/latency on a held-out evaluation set.",
       "Speculative acceptance falls: disable the draft path when verification overhead exceeds benefit.",
-      "Deadline miss: separate queue wait, prefill and decode contributions."
+      "Deadline miss: separate queue wait, prefill and decode contributions.",
+      "Tenant starvation: rotate non-empty tenant queues fairly and enforce per-tenant active caps.",
+      "KV allocation leak after cancellation: release the exact request allocation and verify free-page count returns to baseline."
     ]
   },
   "visual": {
@@ -365,6 +372,14 @@
       "testsPath": "examples/stage-12/test_inference_performance.py",
       "expectedResult": "Capacity guard rejects queue, batch and KV-budget violations before the serving runtime executes.",
       "role": "production"
+    },
+    {
+      "language": "python",
+      "path": "examples/stage-12/inference_performance/capacity_planner.py",
+      "runCommand": "python -m unittest discover -s examples/stage-12 -p 'test_inference_performance.py' -v",
+      "testsPath": "examples/stage-12/test_inference_performance.py",
+      "expectedResult": "Capacity planner estimates concurrency/utilization, fair scheduler rotates tenants, versioned prefix keys isolate scope, and paged KV allocations release safely.",
+      "role": "production"
     }
   ],
   "failures": [
@@ -416,6 +431,20 @@
       "rootCause": "Queue wait, prefill and decode are not budgeted separately.",
       "recovery": "Track each latency component, reserve capacity and reject work that cannot meet deadlines.",
       "regressionTest": "Use a slow synthetic profile and assert deadline_missed is true."
+    },
+    {
+      "name": "Tenant starvation",
+      "symptom": "A high-volume tenant occupies every active batch while smaller tenants wait.",
+      "rootCause": "Scheduler uses global FIFO or priority without per-tenant rotation and concurrency limits.",
+      "recovery": "Use bounded round-robin scheduling and per-tenant active caps.",
+      "regressionTest": "Submit several requests from tenant A plus one each from B/C; verify B/C enter the first fair batch."
+    },
+    {
+      "name": "KV page leak after cancellation",
+      "symptom": "Free KV pages do not return after a request is canceled or completed.",
+      "rootCause": "Request lifecycle does not release the matching allocation.",
+      "recovery": "Track allocations by request ID and release exactly once on every terminal path.",
+      "regressionTest": "Allocate, cancel/release and assert free page count returns to its original value."
     }
   ],
   "practice": {
@@ -568,6 +597,18 @@
     {
       "lines": "effective_decode_tps(acceptance_rate)",
       "explanation": "Speculative decoding speedup depends on accepted draft tokens and verification overhead; benchmark the actual target/draft pair."
+    },
+    {
+      "lines": "L = arrival_rate × average_time",
+      "explanation": "Little's Law estimates average in-flight work in a stable system. It does not replace burst, p95 or deadline testing."
+    },
+    {
+      "lines": "TenantFairScheduler.next_batch(max_batch_size)",
+      "explanation": "Round-robin scheduling rotates non-empty tenant queues so one busy tenant cannot monopolize each batch."
+    },
+    {
+      "lines": "PagedKVAllocator.allocate / release",
+      "explanation": "Fixed-size KV pages are tracked per request and must be released on completion or cancellation to avoid capacity leaks."
     }
   ]
 }
