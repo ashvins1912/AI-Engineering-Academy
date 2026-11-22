@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     code_runner_token: str = ""
     code_run_max_per_hour: int = 10
     code_run_max_per_day: int = 30
+    code_run_reconcile_lease_seconds: int = 60
 
 @lru_cache
 def get_settings() -> Settings:
