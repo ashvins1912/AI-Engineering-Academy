@@ -32,8 +32,8 @@ The current UI is a curriculum explorer and lesson-detail engine backed by typed
 
 ## Current implementation status
 - Phase 1 foundation: curriculum navigation, search, responsive layout, lesson detail view, browser-local bookmarks and completion state.
-- Phase 2 baseline: 11 stages, 84 lesson blueprints, reusable lesson contract and curriculum validation script.
-- Every lesson detail view now includes a guided implementation workbench: selectable workflow steps, isolated environment setup, a stage-appropriate starter implementation, run command and expected observation, debugging prompts, production checklist, official references and independent practice criteria. Key topics also have dedicated numerical/code examples. This is a consistent hands-on baseline; it does not claim that all 84 lessons already contain a fully bespoke, end-to-end project implementation.
+- Phase 2 baseline: 12 stages, 93 unique lesson blueprints, reusable lesson contract and curriculum validation script.
+- Every lesson detail view now includes a guided implementation workbench: selectable workflow steps, isolated environment setup, a stage-appropriate starter implementation, run command and expected observation, debugging prompts, production checklist, official references and independent practice criteria. Key topics also have dedicated numerical/code examples. This is a consistent hands-on baseline; it does not claim that all 93 lessons already contain a fully bespoke, end-to-end project implementation.
 - Phase 3 interactive labs: vector/matrix calculator, Monte Carlo π estimator, animated gradient descent visualizer, SGD/momentum/Adam comparison and Python data-processing mini-lab.
 - Phase 4 classical ML workbench: linear/logistic regression, decision-tree impurity, KNN, an educational linear SVM solver, K-means and neural-network forward/backprop/optimizer traces.
 - Phase 4 deep-learning architecture labs: step-through CNN convolution/feature maps/max pooling; scalar RNN/LSTM-style sequence-state tracing; dropout/L2/batch-normalization demonstrations; softmax and multiclass precision/recall/F1; and illustrative underfit/overfit training-validation curves with checkpoint selection.
@@ -77,7 +77,7 @@ The current UI is a curriculum explorer and lesson-detail engine backed by typed
 
 ## Deep-dive curriculum
 
-The complete topic-first guides for all 11 stages and 84 lesson topics are indexed in [docs/deep-dives](docs/deep-dives/README.md). Every lesson also has an individual lab specification in the companion stage lab packs: implementation task, worked fixture, expected result, verification tests, debugging checklist, interview checks and submission evidence. The lesson workbench links to both its stage theory guide and lab pack. These are practical specifications and acceptance criteria; some topics still need expanded fully worked reference solutions and automated code runners are intentionally not part of the Academy.
+The complete topic-first guides for all 12 stages and 93 lesson topics are indexed in [docs/deep-dives](docs/deep-dives/README.md). Every lesson also has an individual lab specification in the companion stage lab packs: implementation task, worked fixture, expected result, verification tests, debugging checklist, interview checks and submission evidence. The lesson workbench links to both its stage theory guide and lab pack. These are practical specifications and acceptance criteria; some topics still need expanded fully worked reference solutions and automated code runners are intentionally not part of the Academy.
 
 
 ## Production engineering playbooks
@@ -92,23 +92,23 @@ The [Agentic AI Interview Studio](docs/interview-prep/README.md) connects Stages
 
 ## Senior architect curriculum review
 
-The detailed [Senior Architect Review](docs/CURRICULUM_ARCHITECT_REVIEW.md) scores all 84 topics individually, documents the current content gaps, and defines the target Academy architecture, end-to-end AI request DFD, visual animation contract, student self-rating rubric and prioritized improvement plan. The lesson detail view now includes a student reflection panel for readability, learning ease, understanding, implementation confidence, visual usefulness, difficulty, proficiency level, implementation evidence and challenges. Reflections are currently saved in browser storage; account-level sync is not yet connected.
+The detailed [Senior Architect Review](docs/CURRICULUM_ARCHITECT_REVIEW.md) scores the original 84-topic baseline individually, documents the current content gaps, and defines the target Academy architecture, end-to-end AI request DFD, visual animation contract, student self-rating rubric and prioritized improvement plan. The lesson detail view now includes a student reflection panel for readability, learning ease, understanding, implementation confidence, visual usefulness, difficulty, proficiency level, implementation evidence and challenges. Reflections are currently saved in browser storage; account-level sync is not yet connected.
 
 The home page also includes a step-through production AI request flow, covering identity, authorization, orchestration, retrieval, model inference, approval, tool execution, durable state and observability.
 
 
 ## Roadmap to 5/5 learning-product readiness
 
-See the [evidence-based improvement roadmap](docs/ROADMAP_TO_5_OF_5.md) for the quality gates, 84-topic lesson contract, staged delivery plan, learner mastery model, animation standards, CI strategy and recommended primary resources required to reach a verifiable 5/5 learning experience.
+See the [evidence-based improvement roadmap](docs/ROADMAP_TO_5_OF_5.md) for the quality gates, 93-topic learning-studio target contract, staged delivery plan, learner mastery model, animation standards, CI strategy and recommended primary resources required to reach a verifiable 5/5 learning experience.
 
 ## Topic content quality contract
 
-New topic content follows the [machine-readable topic contract](docs/TOPIC_CONTENT_CONTRACT.md), backed by a strict JSON Schema, a runnable scaled-attention example, a negative validation test and CI checks. Existing lessons remain compatible while the 84-topic curriculum is migrated in evidence-backed stages.
+New topic content follows the [machine-readable topic contract](docs/TOPIC_CONTENT_CONTRACT.md), backed by a strict JSON Schema, a runnable scaled-attention example, a negative validation test and CI checks. Existing lessons remain compatible while the 93-topic curriculum is migrated in evidence-backed stages.
 
 
 ## Topic authoring and quality contract
 
-The [Topic Content Authoring Guide](docs/CONTENT_AUTHORING.md) documents the strict topic schema, evidence-based content states, artifact layout and safe implementation rules. The reference topic contract is checked by `npm run validate:topic-contract` in CI. This is the first Phase 0 slice; it does not yet mean all 84 topics satisfy the new contract.
+The [Topic Content Authoring Guide](docs/CONTENT_AUTHORING.md) documents the strict topic schema, evidence-based content states, artifact layout and safe implementation rules. The reference topic contract is checked by `npm run validate:topic-contract` in CI. This is the first Phase 0 slice; it does not yet mean all 93 topics satisfy the new contract.
 
 
 ## Transformer and LLM internals mastery
@@ -122,3 +122,10 @@ The Stage 5 [RAG deep-dive](docs/deep-dives/05-rag-visual-rag-knowledge-systems.
 The backend includes a FastAPI/PostgreSQL/pgvector retrieval foundation plus tenant-scoped asynchronous ingestion jobs, private local/S3 storage adapters, ClamAV scanning, document visibility/ACL predicates, a separate worker process, optional remote embeddings and an opt-in OpenAI-compatible grounded-answer adapter with exact-span citation checks. Generation and remote embeddings are disabled until operators configure trusted providers and secrets. See the [async RAG ingestion runbook](docs/production-playbooks/05-async-rag-ingestion.md). The service is not production-certified or deployed: identity-provider membership integration, public ACL management, semantic faithfulness evaluation, distributed quotas, retention cleanup, backup/restore and security/load testing remain release gates.
 
 No cloud resources, external model credentials or paid services were provisioned.
+
+
+## Current senior architect review — 22 November 2026
+
+The current main-branch curriculum has **12 stages and 93 unique lesson topics**. The earlier 11-stage/84-topic review is retained as a historical baseline. See the current [Complete Academy Architect Review](docs/COMPLETE_ACADEMY_ARCHITECT_REVIEW_2026-11-22.md) for the updated inventory, architecture risks, stage-by-stage playground priorities, quality gates and delivery sequence.
+
+The [Topic Learning Studio Contract](docs/TOPIC_LEARNING_STUDIO_CONTRACT.md) defines the target common playground experience for every topic: concept exploration, architecture/DFD, deterministic visualization, code walkthrough, failure injection, progressive practice, assessment and reflection. A topic is not considered playground-complete merely because a generic workbench is visible.

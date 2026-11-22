@@ -21,7 +21,8 @@
     "validate:stage2": "node scripts/validate-stage2.mjs",
     "validate:stage3": "node scripts/validate-stage3.mjs",
     "validate:stage4": "node scripts/validate-stage4.mjs",
-    "validate:stage5": "node scripts/validate-stage5.mjs"
+    "validate:stage5": "node scripts/validate-stage5.mjs",
+    "audit:topic-coverage": "node scripts/audit-topic-coverage.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 type TopicId='linear-regression'|'logistic-regression'|'trees'|'svm-knn'|'clustering'|'pca'|'metrics'
 type Topic={id:TopicId;label:string;title:string;question:string;options:string[];answer:number;explanation:string;evidence:string[]}
@@ -13,8 +13,9 @@ const topics:Topic[]=[
 ]
 const sigmoid=(z:number)=>1/(1+Math.exp(-Math.max(-30,Math.min(30,z))))
 const gini=(labels:number[])=>{if(!labels.length)return 0;const p=labels.filter(x=>x===1).length/labels.length;return 2*p*(1-p)}
-export default function Stage2MasteryLabs(){
- const [active,setActive]=useState<TopicId>('linear-regression')
+export default function Stage2MasteryLabs({initialTopic='linear-regression'}:{initialTopic?:string}){
+ const [active,setActive]=useState<TopicId>(()=>topics.some(t=>t.id===initialTopic)?initialTopic as TopicId:'linear-regression')
+ useEffect(()=>{if(topics.some(t=>t.id===initialTopic))setActive(initialTopic as TopicId)},[initialTopic])
  const [answers,setAnswers]=useState<Record<string,number>>({})
  const [checked,setChecked]=useState<Record<string,boolean>>({})
  const [evidence,setEvidence]=useState<Record<string,string[]>>({})
