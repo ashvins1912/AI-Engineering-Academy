@@ -473,11 +473,11 @@ const curriculumSeed: Stage[] = [
   {id:'protocol-interop',title:'Agent protocol interoperability',description:'Connect models, independent agents and coding-agent clients through distinct, versioned protocols.',lessons:[
    lesson('protocol-interop','Agent Protocol Interoperability: MCP, A2A and ACP','MCP 2026-07-28 stateless core, legacy version compatibility, tools/resources/prompts, MRTR and OAuth hardening; A2A 1.0 Agent Cards, tasks, messages, artifacts, streaming, push and auth; Agent Client Protocol v2 JSON-RPC sessions, prompts, updates and client permissions; IBM/BeeAI ACP migration into A2A.','Build an offline MCP/A2A/ACP protocol conformance lab')
   ]},
-  {id:'evaluation-scale',title:'Evaluation at scale and continuous quality',description:'Measure AI quality, uncertainty, judge reliability, slice regressions and release readiness.',lessons:[
-   lesson('evaluation-scale','Evaluation at Scale and Continuous Quality','Golden dataset versioning, split leakage, retrieval/answer/trajectory metrics, LLM judge calibration, pairwise evaluation, bootstrap confidence intervals, human agreement, online drift, slice analysis and fail-closed release gates.','Build a confidence-aware AI evaluation and release gate')
-  ]},
   {id:'advanced-retrieval',title:'Advanced retrieval and context engineering',description:'Optimize retrieval quality without weakening authorization, freshness or citation provenance.',lessons:[
    lesson('advanced-retrieval','Advanced Retrieval and Context Engineering','Hybrid retrieval and RRF, multi-vector and late-interaction scoring, query planning, reranking, graph expansion, temporal freshness, ACL-before-ranking, context compression, citation lineage, cache isolation and index migration.','Build an offline retrieval benchmark with security and quality gates')
+  ]},
+  {id:'evaluation-scale',title:'Evaluation at scale and continuous quality',description:'Measure AI quality, uncertainty, judge reliability, slice regressions and release readiness.',lessons:[
+   lesson('evaluation-scale','Evaluation at Scale and Continuous Quality','Golden dataset versioning, split leakage, retrieval/answer/trajectory metrics, LLM judge calibration, pairwise evaluation, bootstrap confidence intervals, human agreement, online drift, slice analysis and fail-closed release gates.','Build a confidence-aware AI evaluation and release gate')
   ]}
  ]}
 ]
