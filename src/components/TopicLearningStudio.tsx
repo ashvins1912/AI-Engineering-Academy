@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, ArrowRight, BookOpen, CircleHelp, Pause, Play, RotateCcw, Sparkles } from 'lucide-react'
 import type { Lesson } from '../data/curriculum'
 import FoundationTopicLab from './FoundationTopicLab'
+import Stage2MasteryLabs from './Stage2MasteryLabs'
+import Stage3MasteryLabs from './Stage3MasteryLabs'
 
 type Props = { lesson: Lesson }
 
@@ -79,6 +81,8 @@ export default function TopicLearningStudio({ lesson }: Props) {
     </header>
 
     <FoundationTopicLab topicId={topicId}/>
+    {stage === 2 && <Stage2MasteryLabs initialTopic={topicId}/>}
+    {stage === 3 && <Stage3MasteryLabs initialTopic={topicId}/>}
 
     <div className="topic-studio-tabs" aria-label="Learning studio sections">
       <span className="active"><BookOpen size={14}/> Explore</span>
