@@ -111,7 +111,7 @@ class TaskCoordinator:
                     key, payload,
                     lambda: self.operations[task.operation](payload, key, self.journal)
                 )
-                self.journal.update_task(task.task_id, status="completed", result=result, last_error=None)
+                self.journal.update_task(task.task_id, status="completed", result=result, completed_at=time.time_ns(), last_error=None)
                 return task.task_id, result, None
             except Exception as exc:  # retries are bounded by the task contract
                 self.journal.update_task(task.task_id, status="retrying" if attempts <= task.retry_limit else "failed",
@@ -140,7 +140,7 @@ class TaskCoordinator:
         return compensated
 
     def run(self) -> dict:
-        completed = [task_id for task_id in self.tasks if self.journal.task(task_id).get("status") == "completed"]
+        completed = sorted((task_id for task_id in self.tasks if self.journal.task(task_id).get("status") == "completed"),\n                           key=lambda item: self.journal.task(item).get("completed_at", 0))
         failed = []
         in_flight: dict[Future, str] = {}
         stop_dispatch = False
