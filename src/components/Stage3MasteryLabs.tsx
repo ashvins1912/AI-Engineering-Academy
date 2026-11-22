@@ -12,8 +12,8 @@ const topics:Topic[]=[
  {id:'training',label:'07 · Generalization',title:'Generalization, checkpointing and training systems',question:'What should early stopping monitor?',options:['Training loss only','Validation metric with a defined patience rule','The largest batch size'],answer:1,explanation:'Early stopping monitors held-out validation behavior and restores the best checkpoint, not simply the last epoch.',evidence:['Compare training and validation curves','Identify overfitting and underfitting','Save and resume model plus optimizer state','Report best epoch and held-out evaluation']}
 ]
 const sigmoid=(x:number)=>1/(1+Math.exp(-Math.max(-30,Math.min(30,x))))
-export default function Stage3MasteryLabs(){
- const [active,setActive]=useState<Id>('perceptron')
+export default function Stage3MasteryLabs({initialTopic='perceptron'}:{initialTopic?:string}){
+ const [active,setActive]=useState<Id>(()=>topics.some(t=>t.id===initialTopic)?initialTopic as Id:'perceptron')
  const [answers,setAnswers]=useState<Record<string,number>>({})
  const [checked,setChecked]=useState<Record<string,boolean>>({})
  const [evidence,setEvidence]=useState<Record<string,string[]>>({})
