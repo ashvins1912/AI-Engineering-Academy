@@ -160,21 +160,26 @@ async def submit_code_run(
     try:
         result = await provider.submit(run.id, submission)
         _apply_result(run, result)
+        # The earlier insert commit ended the transaction and cleared SET LOCAL RLS context.
+        await set_tenant_context(session, str(principal.tenant_id))
         await session.commit()
     except RunnerUnavailable:
         run.error_code = "runner_unavailable"
+        await set_tenant_context(session, str(principal.tenant_id))
         await session.commit()
         raise HTTPException(503, "Isolated Python runner is temporarily unavailable") from None
     except RunnerRejected:
         run.status = "failed"
         run.error_code = "runner_rejected"
         run.completed_at = datetime.now(timezone.utc)
+        await set_tenant_context(session, str(principal.tenant_id))
         await session.commit()
         raise HTTPException(502, "Isolated Python runner rejected the submission") from None
     except RunnerProtocolError:
         run.status = "failed"
         run.error_code = "runner_protocol_error"
         run.completed_at = datetime.now(timezone.utc)
+        await set_tenant_context(session, str(principal.tenant_id))
         await session.commit()
         raise HTTPException(502, "Isolated Python runner returned an invalid response") from None
     return _out(run)
