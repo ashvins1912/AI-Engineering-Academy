@@ -33,7 +33,7 @@ const deepDiveFiles = [
   '01-mathematics-python-data.md', '02-classical-machine-learning.md', '03-deep-learning.md',
   '04-transformers-llms-generative-ai.md', '05-rag-visual-rag-knowledge-systems.md',
   '06-ai-agents.md', '07-mcp-a2a-acp-tool-ecosystems.md', '08-automation-workflow-orchestration.md',
-  '09-mlops-llmops-ai-devops.md', '10-security-observability-production.md', '11-enterprise-capstone.md'
+  '09-mlops-llmops-ai-devops.md', '10-security-observability-production.md', '11-enterprise-capstone.md', '12-advanced-ai-engineering-production-mastery.md'
 ]
 const missingGuides = deepDiveFiles.filter(file => {
   try { readFileSync(new URL(`../docs/deep-dives/${file}`, import.meta.url)); return false }
@@ -68,7 +68,7 @@ const checks = [
   ['editable experiment configuration and mastery checks', productionLabs.includes('type="range"') && productionLabs.includes('Mastery check') && productionLabs.includes('Check answer')],
   ['production playbooks exist', missingProductionPlaybooks.length === 0],
   ['lesson workbench links production playbooks', playbookLinks.every(file => practice.includes(file))],
-  ['11 learning stages', stageIds.length === 11],
+  ['11 learning stages', stageIds.length === 12],
   ['at least 80 lesson blueprints', lessonIds.length >= 80],
   ['stage-namespaced progress identifiers', source.includes('id: `${stage.id}:${item.id}`')],
   ['required deep-dive topics', missing.length === 0],
