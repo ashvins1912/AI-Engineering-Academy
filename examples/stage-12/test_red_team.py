@@ -9,7 +9,7 @@ sys.path.insert(0, str(ROOT))
 from red_team_engine import (
     Approval, AttackScenario, Principal, RedTeamPolicy, RedTeamRunner,
     classify_retrieved_content, evaluate_red_team_gate, load_scenarios,
-    request_digest,
+    request_digest,\n)\nfrom red_team_policy import ToolEnforcementPoint\n\n#
 )
 
 
@@ -92,6 +92,29 @@ class ToolAuthorizationTests(unittest.TestCase):
         self.assertEqual(expired.reason, "APPROVAL_EXPIRED")
         self.assertEqual(wrong.reason, "APPROVAL_BINDING_MISMATCH")
 
+
+class ToolEnforcementPointTests(unittest.TestCase):
+    def test_denied_tool_never_invokes_registered_handler(self):
+        called = []
+        pep = ToolEnforcementPoint(RedTeamPolicy(), {
+            ("orders.read", "read"): lambda args: called.append(args) or "read"
+        })
+        principal = Principal("alice", "tenant-A", frozenset({"orders:read"}))
+        decision, result = pep.execute(principal, "orders.read", "read", "order-B",
+                                       {"resource_id": "order-B"})
+        self.assertFalse(decision.allowed)
+        self.assertIsNone(result)
+        self.assertEqual(called, [])
+
+    def test_allowed_tool_invokes_only_registered_handler(self):
+        pep = ToolEnforcementPoint(RedTeamPolicy(), {
+            ("orders.read", "read"): lambda args: {"id": args["resource_id"]}
+        })
+        principal = Principal("alice", "tenant-A", frozenset({"orders:read"}))
+        decision, result = pep.execute(principal, "orders.read", "read", "order-A",
+                                       {"resource_id": "order-A"})
+        self.assertTrue(decision.allowed)
+        self.assertEqual(result, {"id": "order-A"})
 
 class ExfiltrationAndBudgetTests(unittest.TestCase):
     def setUp(self):
