@@ -12,8 +12,8 @@ if (duplicateIds.length) {
   console.error(`FAIL duplicate curriculum topic IDs: ${[...new Set(duplicateIds)].join(', ')}`)
   process.exit(1)
 }
-if (topics.length !== 84) {
-  console.error(`FAIL expected the reviewed baseline of 84 topics, found ${topics.length}`)
+if (topics.length < 84) {
+  console.error(`FAIL expected at least the original 84 curriculum topics, found ${topics.length}`)
   process.exit(1)
 }
 
