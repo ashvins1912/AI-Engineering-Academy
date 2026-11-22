@@ -7,7 +7,7 @@ ROOT = Path(__file__).parent / "advanced_retrieval"
 sys.path.insert(0, str(ROOT))
 from retrieval_engine import (
     Chunk, HybridRetriever, Principal, bm25_scores, cosine_similarity,
-    decompose_query, ndcg_at_k, recall_at_k, reciprocal_rank,
+    decompose_query, graph_neighbors, ndcg_at_k, recall_at_k, reciprocal_rank, rerank_by_term_overlap,
     reciprocal_rank_fusion,
 )
 from retrieval_service import AuthorizedRetrievalService, RetrievalRequestError
@@ -107,7 +107,7 @@ class AuthorizationAndIsolationTests(unittest.TestCase):
         self.assertEqual(result.citations, ())
 
     def test_zero_similarity_and_no_lexical_match_abstains(self):
-        result = self.retriever.search(self.principal, "unrelated", (0, 0, 1), top_k=10)
+        result = self.retriever.search(self.principal, "unrelated", (0, 0), top_k=10)
         self.assertTrue(result.abstained)
 
     def test_parent_context_is_independently_authorized(self):
@@ -126,6 +126,23 @@ class AuthorizationAndIsolationTests(unittest.TestCase):
         self.assertGreaterEqual(citation.page, 1)
         self.assertEqual((citation.start_char, citation.end_char), (0, len(citation.quote)))
 
+    def test_graph_neighbor_expansion_rechecks_acl(self):
+        visible = chunk("visible", "A", "visible source", (1, 0), frozenset({"alice"}))
+        allowed = chunk("allowed-neighbor", "A", "allowed linked evidence", (1, 0), frozenset({"alice"}))
+        forbidden = chunk("forbidden-neighbor", "B", "secret linked evidence", (1, 0), frozenset({"bob"}))
+        visible = Chunk(**{**visible.__dict__, "related_ids": ("allowed-neighbor", "forbidden-neighbor")})
+        result = graph_neighbors(["visible"], [visible, allowed, forbidden], self.principal)
+        self.assertEqual([item.chunk_id for item in result], ["allowed-neighbor"])
+
+    def test_graph_neighbor_limit_is_bounded(self):
+        with self.assertRaisesRegex(ValueError, "GRAPH_NEIGHBOR_LIMIT_INVALID"):
+            graph_neighbors([], [], self.principal, max_neighbors=21)
+
+    def test_reranker_preserves_authorized_hits(self):
+        hits = list(self.retriever.search(self.principal, "legal hold", (1, 0), top_k=10).hits)
+        reranked = rerank_by_term_overlap("legal hold", hits)
+        self.assertTrue(all(item.chunk.tenant_id == "A" for item in reranked))
+        self.assertEqual(reranked, rerank_by_term_overlap("legal hold", hits))
     def test_context_budget_is_not_exceeded(self):
         result = self.retriever.search(self.principal, "retention policy", (1, 0),
                                        top_k=10, context_budget=3)
@@ -146,6 +163,7 @@ class EvaluationAndServiceTests(unittest.TestCase):
         self.assertEqual(recall_at_k(retrieved, relevant, 2), 0.5)
         self.assertEqual(reciprocal_rank(retrieved, relevant), 1.0)
         self.assertGreater(ndcg_at_k(retrieved, relevant, 3), 0.9)
+        self.assertGreater(ndcg_at_k(["a", "b"], {"a": 3.0, "b": 1.0}, 2), 0.99)
 
     def test_query_decomposition_is_deterministic(self):
         self.assertEqual(decompose_query("retention and audit also access"),
