@@ -27,6 +27,14 @@ class ProductionRAGMigrationTests(unittest.TestCase):
         self.assertIn("visibility varchar(16) NOT NULL DEFAULT 'private'", sql)
         self.assertIn("CHECK (visibility IN ('private','tenant'))", sql)
 
+    def test_code_runs_are_tenant_isolated_idempotent_and_source_free(self):
+        sql = (Path(__file__).parents[1] / "migrations" / "005_code_runs.sql").read_text()
+        self.assertIn("ALTER TABLE code_runs FORCE ROW LEVEL SECURITY", sql)
+        self.assertIn("tenant_code_runs_isolation", sql)
+        self.assertIn("uq_code_runs_owner_idempotency", sql)
+        self.assertIn("source_sha256", sql)
+        self.assertNotIn("source text", sql.lower())
+
     def test_job_queue_supports_leases_and_retry_state(self):
         sql = (Path(__file__).parents[1] / "migrations" / "002_document_acl_ingestion_jobs.sql").read_text()
         for column in ("attempts", "max_attempts", "next_attempt_at", "lease_until", "error_code", "completed_at"):

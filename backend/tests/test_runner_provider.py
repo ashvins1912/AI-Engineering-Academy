@@ -125,3 +125,25 @@ def test_result_contract_bounds_output_and_rejects_unknown_state():
         _parse_result({"run_id": "run-1", "status": "executing"})
     with pytest.raises(RunnerProtocolError):
         _parse_result({"run_id": "run-1", "status": []})
+
+
+@pytest.mark.asyncio
+async def test_get_rejects_a_mismatched_provider_run_id(monkeypatch):
+    import app.runner_provider as module
+
+    requested_id = uuid4()
+    original_client = httpx.AsyncClient
+
+    async def handler(request):
+        return httpx.Response(200, json={
+            "run_id": str(uuid4()), "status": "running",
+            "stdout": "", "stderr": "", "test_results": [],
+        })
+
+    monkeypatch.setattr(
+        module.httpx, "AsyncClient",
+        lambda **kwargs: original_client(transport=httpx.MockTransport(handler), **kwargs),
+    )
+    provider = HttpsRunnerProvider("https://runner.example", "s" * 32)
+    with pytest.raises(RunnerProtocolError, match="mismatched run ID"):
+        await provider.get(requested_id)
