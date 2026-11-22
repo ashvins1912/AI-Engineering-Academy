@@ -11,6 +11,7 @@ import Stage4MasteryLabs from './components/Stage4MasteryLabs'
 import RAGLabs from './components/RAGLabs'
 import Stage5MasteryLabs from './components/Stage5MasteryLabs'
 import LessonPractice from './components/LessonPractice'
+import TopicLearningStudio from './components/TopicLearningStudio'
 import ProductionLabs from './components/ProductionLabs'
 import AgenticInterviewStudio from './components/AgenticInterviewStudio'
 import AgentLoopVisualizer from './components/AgentLoopVisualizer'
@@ -235,6 +236,7 @@ export default function App() {
       <section className="detail-section"><h3>01 · Build intuition</h3><p>{selectedLesson.intuition}</p></section>
       <section className="detail-section"><h3>02 · Worked example</h3><p>{selectedLesson.workedExample}</p></section>
       <section className="detail-section"><h3>03 · Step-by-step execution</h3><ol>{selectedLesson.workflow.map(x=><li key={x}>{x}</li>)}</ol></section>
+      <TopicLearningStudio lesson={selectedLesson}/>
       <LessonPractice lesson={selectedLesson}/>
       <section className="detail-section"><h3>04 · Practice exercises</h3><ol>{selectedLesson.exercises.map(x=><li key={x}>{x}</li>)}</ol></section>
       <section className="detail-section assessment"><h3>05 · Assessment criteria</h3><p>{selectedLesson.assessment}</p></section>
