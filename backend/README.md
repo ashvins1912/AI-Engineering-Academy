@@ -14,8 +14,8 @@ FastAPI service for PDF/DOCX parsing, scanned-PDF OCR, sentence-transformer embe
 
 1. Create a restricted application DB role. The local Docker Compose stack creates `academy_app` with a disposable password; never reuse it in production.
 2. Configure a trusted HTTPS JWKS endpoint (preferred) or RS256 PEM public key, issuer and audience. See [auth_claims.md](app/auth_claims.md).
-3. Apply migrations `000_local_role.sql` through `004_distributed_rate_limits.sql` as a database administrator, in numeric order.
-4. From this directory run `docker compose up --build`, or install `requirements.txt` in a Python 3.11 virtual environment and run `uvicorn app.main:app --host 0.0.0.0 --port 8000`. The local Compose database initialization mounts migrations 000–004; if the PostgreSQL volume already existed before migrations 003 or 004 were added, apply those migrations manually once.
+3. Apply migrations `000_local_role.sql` through `005_code_runs.sql` as a database administrator, in numeric order.
+4. From this directory run `docker compose up --build`, or install `requirements.txt` in a Python 3.11 virtual environment and run `uvicorn app.main:app --host 0.0.0.0 --port 8000`. The local Compose database initialization mounts migrations 000–005; if the PostgreSQL volume already existed before migrations 003 or 004 were added, apply those migrations manually once.
 
 The API listens on port 8000. Rate limiting is shared across API instances through PostgreSQL. Set `ACADEMY_RATE_LIMIT_PER_MINUTE` to tune the fixed-window quota. If the service is behind a reverse proxy, set `ACADEMY_TRUSTED_PROXY_IPS` to a comma-separated allowlist of immediate proxy peer IPs or CIDR ranges; forwarded client headers are ignored from untrusted peers. The rate limiter stores only SHA-256 client-key digests and fails closed with 503 if PostgreSQL is unavailable.
 
@@ -93,3 +93,10 @@ The first code-playground milestone adds `app/code_execution_contract.py`, a met
 ## Isolated Python runner provider adapter
 
 `app/runner_provider.py` is a transport boundary for a separately operated sandbox service. It requires an operator-configured HTTPS origin and bearer token, uses fixed paths and short timeouts, disables redirects and ambient proxy settings, sends an idempotency key, and validates bounded result fields. It does not launch code or provide a sandbox itself. No endpoint/token is configured and no execution API is enabled. See [the provider protocol and deployment gates](../docs/PYTHON_RUNNER_PROVIDER_MILESTONE_2.md).
+
+
+## Authenticated Python code-run API (disabled by default)
+
+The API now exposes `POST /v1/code-runs` and `GET /v1/code-runs/{id}`. Both require a trusted Academy JWT. Submission requires a UUID `Idempotency-Key`; source is validated against the allowlisted runtime/lesson contract, sent only to the separately operated HTTPS runner, and never stored in PostgreSQL. The database retains the source SHA-256 digest, tenant/owner, request metadata, bounded output and lifecycle state. PostgreSQL row-level security enforces tenant isolation, while non-admins can read only their own runs. Per-owner hourly/daily quotas are serialized with a transaction-scoped advisory lock.
+
+Execution is **disabled by default**. To enable only after a separately deployed and security-reviewed disposable sandbox is ready, an operator must set `ACADEMY_CODE_EXECUTION_ENABLED=true`, `ACADEMY_CODE_RUNNER_URL` (HTTPS origin), and `ACADEMY_CODE_RUNNER_TOKEN` (secret of at least 24 characters). Defaults are 10 runs/hour and 30/day per owner; tune with `ACADEMY_CODE_RUN_MAX_PER_HOUR` and `ACADEMY_CODE_RUN_MAX_PER_DAY`. If the flag, URL, token, or quota configuration is invalid, submissions fail closed with HTTP 503. No local process execution or shell invocation exists in the Academy API. A runner adapter is not itself a sandbox; do not enable this feature until the external runner enforces disposable isolation, no egress, no credentials/metadata access, hard resource limits and teardown.
