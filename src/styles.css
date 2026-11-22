@@ -1364,3 +1364,8 @@
 
 .foundation-field select{width:100%;padding:8px 10px;border:1px solid #465675;border-radius:7px;background:#101b2d;color:#e4eaff;font:inherit;font-size:11px}
 .foundation-field input[type=checkbox]{width:auto;min-width:15px;height:15px}
+
+.foundation-incident-step{width:100%;display:flex;gap:10px;align-items:center;text-align:left;padding:10px 12px;border:1px solid #33415f;border-radius:8px;background:#0a1425;color:#b9c7df;font:inherit;font-size:11px;cursor:pointer}
+.foundation-incident-step span{font:500 10px 'DM Mono';color:#91a2ff}
+.foundation-incident-step[aria-current="step"]{border-color:#8798ff;background:#202b4a;color:#fff}
+.foundation-field input[type=checkbox]{accent-color:#91a2ff}
