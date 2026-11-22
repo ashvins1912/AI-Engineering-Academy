@@ -27,9 +27,7 @@ READINESS_REQUIREMENTS = frozenset({
     "architecture_defense",
 })
 REQUIRED_EVIDENCE = TOPIC_REQUIREMENTS | READINESS_REQUIREMENTS
-HUMAN_REVIEW_REQUIREMENTS = frozenset({
-    "agent_orchestration_mastery",
-    "advanced_practicum_mastery",
+HUMAN_REVIEW_REQUIREMENTS = TOPIC_REQUIREMENTS | frozenset({
     "tenant_isolation_security_review",
     "architecture_defense",
 })
