@@ -128,6 +128,18 @@ class RetrievalAndProvenanceTests(unittest.TestCase):
         self.assertEqual(citations["audio-span"].end_ms, 3200)
         self.assertEqual(citations["audio-span"].speaker, "speaker-1")
 
+    def test_retention_expiry_filters_media_evidence(self):
+        current = EvidenceSpan("current", "policy.pdf", "tenant-A", "document",
+                               "Retention is thirty days.", 0.98, "synthetic://policy.pdf",
+                               retention_until="2027-01-01")
+        expired = EvidenceSpan("expired", "old.pdf", "tenant-A", "document",
+                               "Retention is thirty days.", 0.99, "synthetic://old.pdf",
+                               retention_until="2026-01-01")
+        result = MultimodalPipeline([current, expired]).retrieve(
+            Principal("alice", "tenant-A"), "retention", as_of_date="2026-11-22"
+        )
+        self.assertEqual([item.evidence_id for item in result.evidence], ["current"])
+
     def test_no_authorized_evidence_abstains(self):
         result = self.pipeline.retrieve(Principal("bob", "tenant-Z"), "retention")
         self.assertTrue(result.abstained)
