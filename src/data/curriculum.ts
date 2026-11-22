@@ -435,6 +435,11 @@ const curriculumSeed: Stage[] = [
    lesson('capstone-delivery','Deploy and operate','CI/CD, observability, evaluation gates, rollout, rollback and cost controls.','Deploy and demonstrate production readiness')
   ]}
  ]}
+ {id:'stage-12',title:'Advanced AI Engineering & Production Mastery',outcome:'Engineer advanced agentic and multimodal AI systems with durable orchestration, measurable quality, bounded performance and enterprise controls.',modules:[
+  {id:'advanced-agents',title:'Advanced agent orchestration and durable execution',description:'Move from free-form agent loops to validated, recoverable and bounded task execution.',lessons:[
+   lesson('agent-orchestration','Advanced Agent Orchestration and Durable Execution','Typed task graphs, DAG validation, supervisor/worker delegation, bounded concurrency, checkpoints, retries, idempotency, compensation and recovery.','Build a durable multi-agent task coordinator')
+  ]}
+ ]}
 ]
 
 // Namespace lesson identifiers by stage so similarly named topics (for example,
