@@ -14,4 +14,5 @@ PyJWT[crypto]==2.10.1
 httpx==0.28.1
 pdf2image==1.17.0
 pytest==8.3.5
+pytest-asyncio==0.26.0
 boto3==1.38.32
