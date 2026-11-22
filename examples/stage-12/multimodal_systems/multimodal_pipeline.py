@@ -138,6 +138,7 @@ class EvidenceSpan:
     allowed_users: frozenset[str] = frozenset()
     allowed_groups: frozenset[str] = frozenset()
     untrusted_data: bool = True
+    retention_until: str | None = None
 
 
 @dataclass(frozen=True)
@@ -194,7 +195,7 @@ class MultimodalPipeline:
         return True
 
     def retrieve(self, principal: Principal, query: str, *, top_k: int = 5,
-                 min_confidence: float = 0.5) -> RetrievalResult:
+                 min_confidence: float = 0.5, as_of_date: str | None = None) -> RetrievalResult:
         if not principal.subject or not principal.tenant_id:
             raise ValueError("VERIFIED_PRINCIPAL_REQUIRED")
         if not query.strip() or not 1 <= top_k <= 20 or not 0 <= min_confidence <= 1:
@@ -202,7 +203,9 @@ class MultimodalPipeline:
         query_terms = set(tokens(query))
         # Filter tenant and ACL before scoring/ranking; media text is never authority.
         candidates = [item for item in self.evidence
-                      if self._authorized(item, principal) and item.confidence >= min_confidence]
+                      if self._authorized(item, principal) and item.confidence >= min_confidence
+                      and (as_of_date is None or item.retention_until is None
+                           or as_of_date < item.retention_until)]
         scored = []
         for item in candidates:
             overlap = len(query_terms & set(tokens(item.text)))
