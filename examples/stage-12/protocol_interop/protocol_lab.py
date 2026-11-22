@@ -303,6 +303,14 @@ class AgentClientSession:
             raise ProtocolError("ACP_FILE_OUTSIDE_OR_MISSING")
         return files[path]
 
+    def client_file_write(self, path: str, content: str, files: dict[str, str]) -> None:
+        fs = self.client_capabilities.get("fs", {})
+        if not fs.get("writeTextFile", False):
+            raise ProtocolError("ACP_CLIENT_FILE_WRITE_NOT_ADVERTISED")
+        if not path.startswith("/workspace/"):
+            raise ProtocolError("ACP_FILE_OUTSIDE_WORKSPACE")
+        files[path] = content
+
     def request_terminal_permission(self, approved: bool) -> bool:
         if not self.client_capabilities.get("terminal", False):
             raise ProtocolError("ACP_TERMINAL_NOT_ADVERTISED")
@@ -336,3 +344,30 @@ class IBMACPToA2ABridge:
                          "legacyReceiver": legacy["receiver"]},
             "migrationWarning": "Review auth, task lifecycle, artifacts and streaming semantics explicitly."
         }
+
+def demo() -> None:
+    mcp = MCPAdapter()
+    mcp.register_tool(MCPTool("search", frozenset({"query"}), frozenset({"query"}),
+                              lambda args: {"hits": 2, "query": args["query"]}))
+    request = MCPRequest("m-1", "tools/call", {"name": "search", "arguments": {"query": "RAG"}},
+                         {"MCP-Protocol-Version": MCP_MODERN, "Mcp-Method": "tools/call", "Mcp-Name": "search"},
+                         {"io.modelcontextprotocol/clientInfo": {"name": "academy", "version": "1"}})
+    mcp_result = mcp.call_tool(request, expected_issuer="https://issuer.example",
+                               token_issuer="https://issuer.example")
+    a2a = A2AAdapter(AgentCard("reviewer", "https://agent.example/review", A2A_VERSION,
+                               ("policy-review",), streaming=True))
+    a2a.send_message("task-1", "ctx-1", "Review policy", "idem-1")
+    a2a.transition("task-1", "working")
+    a2a.transition("task-1", "completed")
+    acp = AgentClientSession()
+    acp.initialize("init-1", ACP_VERSION, {"fs": {"readTextFile": True}, "terminal": False})
+    session = acp.new_session("/workspace/repo")
+    acp_result = acp.prompt(session, "Explain the API")
+    legacy = IBMACPToA2ABridge.to_a2a_message(
+        {"sender": "legacy-agent", "receiver": "a2a-agent", "message": "hello"})
+    print(f"mcp={mcp_result['result']['hits']} a2a={a2a.tasks['task-1'].state} "
+          f"acp={acp_result['updates'][-1]['stopReason']} ibm_acp_mapped={legacy['contextId']}")
+
+
+if __name__ == "__main__":
+    demo()
