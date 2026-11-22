@@ -3,7 +3,7 @@ from pathlib import Path
 import unittest
 
 sys.path.insert(0, str(Path(__file__).parent / "protocol_interop"))
-from protocol_lab import (
+from protocol_gateway import ProtocolGateway\nfrom protocol_lab import (
     A2AAdapter, ACP_VERSION, AgentCard, AgentClientSession, IBMACPToA2ABridge,
     MCPAdapter, MCPRequest, MCPTool, NormalizedIntent, ProtocolError,
     VerifiedIdentity, normalize_intent,
@@ -163,6 +163,17 @@ class MigrationAndIdentityTests(unittest.TestCase):
         self.assertEqual(mapped["message"]["parts"][0]["text"], "Review clause 7")
         self.assertEqual(mapped["metadata"]["migratedFrom"], "ibm-beeai-acp")
         self.assertIn("Review auth", mapped["migrationWarning"])
+
+    def test_gateway_authorizes_using_verified_tenant_and_scope(self):
+        gateway = ProtocolGateway()
+        identity = VerifiedIdentity("user-7", "tenant-A", frozenset({"docs:read"}))
+        intent = gateway.normalize("mcp", "req-1", identity, "read", "doc-1")
+        allowed = gateway.authorize(intent, "docs:read", "tenant-A", "doc-1")
+        denied = gateway.authorize(intent, "docs:write", "tenant-A", "doc-1")
+        cross_tenant = gateway.authorize(intent, "docs:read", "tenant-B", "doc-1")
+        self.assertTrue(allowed.allowed)
+        self.assertEqual(denied.reason, "SCOPE_MISSING")
+        self.assertEqual(cross_tenant.reason, "TENANT_MISMATCH")
 
     def test_identity_is_taken_from_verified_context_not_wire_claims(self):
         identity = VerifiedIdentity("user-7", "tenant-A", frozenset({"agent:delegate"}))
