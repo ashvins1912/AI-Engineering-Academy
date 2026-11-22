@@ -1,0 +1,515 @@
+{
+  "schemaVersion": "1.1.0",
+  "topic": {
+    "id": "enterprise-governance",
+    "title": "Enterprise AI Governance, Risk and Lifecycle Controls",
+    "stage": 12,
+    "estimatedMinutes": 420
+  },
+  "state": "runnable",
+  "learning": {
+    "outcomes": [
+      "Build a version-bound release dossier linking model, dataset, prompt, index, code and evaluation evidence.",
+      "Classify AI system risks and require accountable owners, mitigations, test evidence and residual-risk acceptance.",
+      "Enforce lifecycle, privacy, consent, retention and deletion controls before release approval.",
+      "Design separation of duties and expiry-aware approvals for privacy, security, risk and evaluation reviewers.",
+      "Produce an auditable release decision and explain the limits of hash-chain evidence and simulated signatures.",
+      "Map governance controls to organizational policy and jurisdiction-specific review without treating a checklist as legal advice."
+    ],
+    "prerequisites": [
+      "Stage 9 CI/CD, artifact provenance and release promotion",
+      "Stage 10 security, privacy, multi-tenant isolation and incident response",
+      "Stage 11 capstone architecture and threat modeling",
+      "Python dataclasses, hashing, JSON and unit testing"
+    ],
+    "glossary": [
+      {
+        "term": "Governance dossier",
+        "definition": "A versioned collection of artifacts, approvals, risk decisions and operational evidence required to authorize an AI release."
+      },
+      {
+        "term": "Model card",
+        "definition": "A structured description of a model's intended use, evaluation, limitations, risks and operating conditions."
+      },
+      {
+        "term": "Data lineage",
+        "definition": "Traceable information about where data originated, how it was transformed and which downstream artifacts depend on it."
+      },
+      {
+        "term": "Residual risk",
+        "definition": "Risk remaining after controls are applied, which must be explicitly owned and accepted by an authorized person."
+      },
+      {
+        "term": "Separation of duties",
+        "definition": "A control that prevents one person or role from creating, reviewing and approving the same sensitive release evidence."
+      },
+      {
+        "term": "Retention schedule",
+        "definition": "A policy defining how long data may be kept, what event starts the clock and how deletion is verified."
+      }
+    ]
+  },
+  "explanation": {
+    "problem": "An AI release can be technically functional and still be unsafe to operate: its training data may lack provenance, approvals may have expired, a high-risk change may have no accountable owner, personal data may exceed retention limits, or the evaluated model version may differ from the deployed one.",
+    "plainLanguage": "Treat governance as a release control plane rather than a folder of policy documents. First create an immutable release manifest that names the exact code, model, dataset, prompt and retrieval-index versions. Then attach evidence artifacts such as model and dataset cards, risk assessment, privacy and security reviews, evaluation report, retention schedule and third-party inventory. Each artifact has an owner, version, source, digest and expiry. Approvals refer to that exact artifact version and require the correct reviewer role. A later edit invalidates the old approval because it no longer describes the same evidence. Risk items must have owners and tested mitigations; accepted residual risk needs an authorized acceptance owner. Personal data needs consent and provenance, while expired retention, pending deletion and unreviewed transfers block release. Only a dossier that passes every mandatory policy and lifecycle gate can move from approved to released. Keep an append-only audit trail of decisions. A hash chain can reveal accidental or partial tampering, but it is not a substitute for authenticated identities, signed events, durable storage and independently protected audit infrastructure.",
+    "mentalModel": "Release manifest → version-bound evidence → independent approvals → risk and data checks → lifecycle authorization → release gate → append-only audit record.",
+    "limitations": [
+      "The simulator uses synthetic identities and in-memory records; it does not integrate with an enterprise identity provider or durable evidence store.",
+      "A boolean signature_verified fixture is not cryptographic signature verification or proof of reviewer identity.",
+      "A local hash chain detects some edits but cannot resist an attacker who can rewrite the complete ledger and recompute every hash.",
+      "Retention and deletion checks model policy decisions; production deletion needs storage-specific execution, backups handling and verifiable completion evidence.",
+      "Regulatory mappings are contextual guidance and cannot replace qualified legal, privacy, security or domain review."
+    ],
+    "everydayAnalogy": "A release dossier resembles an aircraft maintenance release: the aircraft identifier and configuration must match the inspection records, each specialist signs only their own checks, unresolved safety issues remain visible, and the release authority verifies the complete evidence before service.",
+    "mathMadeSimple": "If a release requires eight artifact types and five role-specific approvals, passing seven artifacts or four approvals is not 87.5% ready: it is blocked. A release gate is a conjunction, not an average. For evidence E1…En and policy checks P1…Pm, release is allowed only when every required Ei exists and every Pi is true.",
+    "productionImpact": "Version binding prevents approval reuse after model, prompt or dataset changes. Independent roles reduce conflicts of interest. Retention and provenance checks constrain privacy exposure. Durable, access-controlled audit evidence supports incident reconstruction and accountability, but only when identity, storage, key management and operational processes are independently secured."
+  },
+  "useCase": {
+    "scenario": "A company is preparing a customer-support assistant release that uses a new model, refreshed training data, a revised system prompt and a new retrieval index. The release must prove privacy, security, evaluation, risk and retention controls before production promotion.",
+    "actors": [
+      "Release owner",
+      "Model and data owners",
+      "Privacy officer",
+      "Security reviewer",
+      "Risk owner",
+      "Evaluation owner",
+      "Human-oversight approver"
+    ],
+    "inputs": [
+      "Release manifest with immutable version identifiers",
+      "Model card and dataset card",
+      "Risk register and mitigation test evidence",
+      "Privacy, security and evaluation reports",
+      "Retention schedule and third-party inventory",
+      "Version-bound approvals and audit events"
+    ],
+    "constraints": [
+      "Every required artifact must match the manifest versions",
+      "Approvals must be role-correct, approved and unexpired",
+      "High and critical risks require tested mitigation or explicit authorized acceptance",
+      "Personal data requires consent and provenance",
+      "Expired retention, pending deletion and unreviewed transfers block release"
+    ],
+    "outputs": [
+      "Pass/fail decision with machine-readable reason codes",
+      "Auditable release lifecycle transition",
+      "Evidence count and version-bound release dossier"
+    ],
+    "successMetric": "All valid synthetic dossiers pass; each missing, expired, mismatched or unauthorized evidence fixture is rejected."
+  },
+  "architecture": {
+    "diagram": "docs/roadmaps/stage-12-advanced-ai-engineering.md#topic-8",
+    "components": [
+      "Release manifest registry",
+      "Evidence and artifact registry",
+      "Risk and mitigation register",
+      "Approval policy engine",
+      "Privacy and retention evaluator",
+      "Lifecycle manager",
+      "Append-only audit ledger",
+      "Release gate"
+    ],
+    "dataFlow": [
+      {
+        "from": "Release owner",
+        "to": "Manifest registry",
+        "payload": "code/model/dataset/prompt/index versions",
+        "purpose": "Freeze the candidate identity"
+      },
+      {
+        "from": "Artifact registry",
+        "to": "Approval policy engine",
+        "payload": "artifact digest, owner, version and expiry",
+        "purpose": "Check evidence completeness and version binding"
+      },
+      {
+        "from": "Risk and privacy evaluators",
+        "to": "Release gate",
+        "payload": "risk decisions, consent, retention and transfer findings",
+        "purpose": "Enforce policy before release"
+      },
+      {
+        "from": "Approval policy engine",
+        "to": "Lifecycle manager",
+        "payload": "role-checked approvals and gate decision",
+        "purpose": "Authorize only valid lifecycle transitions"
+      },
+      {
+        "from": "Lifecycle manager",
+        "to": "Audit ledger",
+        "payload": "actor, timestamp, action and decision digest",
+        "purpose": "Preserve traceable decision history"
+      }
+    ],
+    "trustBoundaries": [
+      "Release owner submissions are untrusted until schema, ownership and digest checks pass",
+      "Approval claims require authenticated identity and role mapping in production",
+      "Evidence sources and third-party artifacts require provenance validation",
+      "Audit storage must be isolated from release writers in production"
+    ],
+    "failurePaths": [
+      "Missing or expired artifact blocks release",
+      "Artifact version or digest mismatch invalidates associated approvals",
+      "High-risk item without owner, mitigation and test evidence blocks release",
+      "Pending deletion or unreviewed transfer blocks release",
+      "Lifecycle not approved prevents promotion even when dossier evidence passes"
+    ]
+  },
+  "visual": {
+    "kind": "animation",
+    "fixture": "examples/stage-12/enterprise_governance/scenarios.json",
+    "steps": [
+      {
+        "label": "Freeze candidate",
+        "explanation": "Bind the exact code, model, dataset, prompt and index versions.",
+        "expectedState": "Manifest identity is fixed."
+      },
+      {
+        "label": "Collect evidence",
+        "explanation": "Attach required artifacts with owner, digest, version and expiry.",
+        "expectedState": "Evidence inventory is complete and version-bound."
+      },
+      {
+        "label": "Review independently",
+        "explanation": "Check approval role, decision, artifact version and expiry.",
+        "expectedState": "Only valid approvals count."
+      },
+      {
+        "label": "Evaluate risk and data",
+        "explanation": "Check mitigations, consent, retention, deletion and transfer status.",
+        "expectedState": "Any blocking policy finding fails closed."
+      },
+      {
+        "label": "Authorize lifecycle",
+        "explanation": "Move to approved only after the required reviews succeed.",
+        "expectedState": "Lifecycle state is approved."
+      },
+      {
+        "label": "Release and audit",
+        "explanation": "Promote through the release gate and append a decision event.",
+        "expectedState": "Released state and audit evidence are recorded."
+      }
+    ],
+    "accessibility": [
+      "Every animation step has a text narration and explicit expected state.",
+      "The release decision is expressed as reason codes; color is never the only status signal."
+    ],
+    "animation": {
+      "objective": "Show why a release requires a conjunction of version-bound evidence, independent approvals, risk controls and lifecycle authorization.",
+      "stages": [
+        {
+          "step": 1,
+          "title": "Freeze versions",
+          "narration": "The manifest identifies the exact candidate; approvals must never float to a later version.",
+          "input": "model-v3, dataset-v4, prompt-v2, index-v5",
+          "transformation": "Create immutable release manifest",
+          "output": "release-12",
+          "visualState": "One candidate identity is locked."
+        },
+        {
+          "step": 2,
+          "title": "Attach evidence",
+          "narration": "Every required artifact has a type, owner, digest and version binding.",
+          "input": "8 required artifact types",
+          "transformation": "Validate presence, digest and bound versions",
+          "output": "8 of 8 artifacts",
+          "visualState": "Evidence inventory is complete."
+        },
+        {
+          "step": 3,
+          "title": "Check approvals",
+          "narration": "A privacy approval cannot satisfy a security review, and expired approvals do not count.",
+          "input": "5 role-specific approvals",
+          "transformation": "Check role, decision, version and expiry",
+          "output": "5 valid approvals",
+          "visualState": "Separation of duties is satisfied."
+        },
+        {
+          "step": 4,
+          "title": "Evaluate risk",
+          "narration": "High-risk findings need an owner, mitigation and test evidence or authorized acceptance.",
+          "input": "Risk register and data assets",
+          "transformation": "Apply risk, consent, retention and deletion rules",
+          "output": "No blocking findings",
+          "visualState": "Risk and privacy gates pass."
+        },
+        {
+          "step": 5,
+          "title": "Authorize release",
+          "narration": "The lifecycle manager must already be in the approved state before release promotion.",
+          "input": "Passing dossier and approved lifecycle",
+          "transformation": "Evaluate release gate and transition",
+          "output": "released",
+          "visualState": "Release gate allows promotion."
+        },
+        {
+          "step": 6,
+          "title": "Record audit",
+          "narration": "The decision is appended with actor, timestamp and evidence; production requires protected durable storage.",
+          "input": "Release decision",
+          "transformation": "Append hash-linked audit event",
+          "output": "release.promoted",
+          "visualState": "A traceable release event exists."
+        }
+      ],
+      "controls": [
+        {
+          "name": "Required evidence",
+          "min": 1,
+          "max": 8,
+          "defaultValue": 8,
+          "effect": "Lowering evidence completeness below eight required artifact types makes the release gate fail."
+        },
+        {
+          "name": "Approval validity",
+          "min": 0,
+          "max": 5,
+          "defaultValue": 5,
+          "effect": "Any missing, expired or role-mismatched approval blocks the release."
+        }
+      ],
+      "playback": {
+        "play": true,
+        "pause": true,
+        "reset": true,
+        "stepForward": true,
+        "stepBackward": true,
+        "adjustableSpeed": true
+      },
+      "accessibilitySummary": "The same six stages are available as ordered text, with explicit inputs, transformations and outputs; controls are labeled and expected states are written out."
+    }
+  },
+  "workedExample": {
+    "problem": "Decide whether a candidate release with eight required artifacts and five approvals can be promoted when the privacy approval has expired.",
+    "input": "8/8 artifacts present; 5/5 approval records present; privacy approval expires at time 1,799,999,900; evaluation time is 1,800,000,000.",
+    "steps": [
+      {
+        "operation": "Check artifact completeness",
+        "reasoning": "All eight required artifact types are present and bound to the release manifest.",
+        "result": "Evidence completeness passes."
+      },
+      {
+        "operation": "Validate approval role and decision",
+        "reasoning": "The privacy approval has the correct reviewer role and approved decision.",
+        "result": "Role and decision pass."
+      },
+      {
+        "operation": "Validate expiry",
+        "reasoning": "1,799,999,900 is earlier than evaluation time 1,800,000,000.",
+        "result": "Privacy approval is expired; approval gate fails."
+      },
+      {
+        "operation": "Evaluate release gate",
+        "reasoning": "A release requires every mandatory approval; other passing checks cannot compensate for an expired privacy approval.",
+        "result": "Release denied with an expired-approval reason code."
+      }
+    ],
+    "expectedOutput": "passed=false; lifecycle remains approved; no release.promoted audit event is appended."
+  },
+  "implementations": [
+    {
+      "language": "python",
+      "path": "examples/stage-12/enterprise_governance/governance_engine.py",
+      "runCommand": "python examples/stage-12/enterprise_governance/governance_engine.py",
+      "testsPath": "examples/stage-12/test_enterprise_governance.py",
+      "expectedResult": "Synthetic dossier checks, risk controls, lifecycle transitions and audit verification complete deterministically.",
+      "role": "from-scratch"
+    },
+    {
+      "language": "python",
+      "path": "examples/stage-12/enterprise_governance/governance_release_gate.py",
+      "runCommand": "python -m unittest discover -s examples/stage-12 -p 'test_enterprise_governance.py' -v",
+      "testsPath": "examples/stage-12/test_enterprise_governance.py",
+      "expectedResult": "Release gate passes only for a valid dossier in the approved lifecycle state; blocked decisions do not promote.",
+      "role": "production"
+    }
+  ],
+  "failures": [
+    {
+      "name": "Expired approval",
+      "symptom": "A dossier contains all approval records but release is denied.",
+      "rootCause": "At least one approval expired before evaluation.",
+      "recovery": "Obtain a fresh approval for the exact artifact version and rerun the gate.",
+      "regressionTest": "Set one approval expiry before now and assert the release remains blocked."
+    },
+    {
+      "name": "Version mismatch",
+      "symptom": "An approval exists but is ignored for the candidate release.",
+      "rootCause": "The approval refers to an older artifact version or manifest binding.",
+      "recovery": "Re-review the new artifact version and bind the approval to its digest.",
+      "regressionTest": "Change one bound model or dataset version and assert approval validation fails."
+    },
+    {
+      "name": "Unowned critical risk",
+      "symptom": "Release is denied despite otherwise complete evidence.",
+      "rootCause": "A high or critical risk lacks an owner, mitigation or test evidence.",
+      "recovery": "Assign an accountable owner, implement mitigation and attach reproducible test evidence, or use authorized residual-risk acceptance.",
+      "regressionTest": "Remove the owner or test evidence and assert fail-closed behavior."
+    },
+    {
+      "name": "Retention violation",
+      "symptom": "A release is blocked by a data asset finding.",
+      "rootCause": "Retention has expired or deletion is pending without completion evidence.",
+      "recovery": "Execute the approved deletion workflow and attach storage-specific completion evidence.",
+      "regressionTest": "Create an expired asset and assert the dossier cannot pass."
+    },
+    {
+      "name": "Audit chain tampering",
+      "symptom": "Audit verification reports a broken chain.",
+      "rootCause": "An event payload or previous-hash link changed after append.",
+      "recovery": "Preserve the suspicious ledger, investigate and restore from independently protected audit storage.",
+      "regressionTest": "Modify a prior event and assert hash-chain verification fails."
+    }
+  ],
+  "practice": {
+    "guided": "Start with the complete synthetic dossier fixture, inspect each artifact's version binding, then expire one approval and observe the reason code.",
+    "independent": "Add a new mandatory artifact type and reviewer role. Update the valid fixture and prove that old dossiers fail until the new evidence and approval are supplied.",
+    "realWorld": "Design a release evidence matrix for a multi-tenant RAG assistant, including data lineage, privacy, security, evaluation, third-party dependencies and retention.",
+    "expertExtension": "Replace fixture booleans with signed approval envelopes, a durable append-only audit store, policy versioning and independently verified deletion receipts.",
+    "guidedExercise": {
+      "title": "Implement a fail-closed approval check",
+      "instructions": "Complete the function so that an approval counts only when its role matches the required role, its decision is approved, its artifact version matches and its expiry is later than the evaluation time. Do not silently coerce missing values.",
+      "starterCode": "def approval_is_valid(approval, required_role, artifact_version, now):\n    # TODO: validate role, decision, version and expiry\n    raise NotImplementedError\n",
+      "solutionCode": "def approval_is_valid(approval, required_role, artifact_version, now):\n    return (\n        approval.role == required_role\n        and approval.decision == 'approved'\n        and approval.artifact_version == artifact_version\n        and approval.expires_at > now\n    )\n",
+      "unitTests": "assert approval_is_valid(valid_approval, 'privacy_officer', 'v2', 100)\nassert not approval_is_valid(expired_approval, 'privacy_officer', 'v2', 100)\nassert not approval_is_valid(wrong_role, 'privacy_officer', 'v2', 100)\nassert not approval_is_valid(stale_version, 'privacy_officer', 'v2', 100)\n"
+    },
+    "miniAppIntegration": {
+      "projectGoal": "Build a local release-readiness console that explains exactly why a synthetic AI candidate is blocked or allowed.",
+      "steps": [
+        "Load a manifest and its synthetic evidence artifacts from JSON fixtures.",
+        "Render artifact completeness, version bindings, approval roles and expiry checks.",
+        "Display risk, consent, retention and transfer findings as reason codes.",
+        "Allow a release only after all policy checks and lifecycle authorization pass.",
+        "Append the decision to the local audit ledger and verify its hash chain."
+      ]
+    },
+    "scenarioQuiz": [
+      {
+        "question": "A model is updated after privacy and security approvals were granted. What should happen?",
+        "options": [
+          "Reuse approvals because the model name is unchanged",
+          "Invalidate approvals bound to the previous artifact version and request new review",
+          "Ignore version metadata and release",
+          "Change only the audit event text"
+        ],
+        "correctIndex": 1,
+        "explanation": "Approvals must bind to immutable artifact versions or digests. A changed model is a new reviewed object even if its display name is unchanged."
+      },
+      {
+        "question": "A critical risk has a mitigation owner but no test evidence. Is the release ready?",
+        "options": [
+          "Yes, ownership alone is sufficient",
+          "Yes, if the average risk score is low",
+          "No, require mitigation test evidence or authorized residual-risk acceptance",
+          "Yes, if the model refuses unsafe prompts"
+        ],
+        "correctIndex": 2,
+        "explanation": "High and critical risks need accountable ownership and evidence that the mitigation works, or a separately authorized residual-risk decision."
+      },
+      {
+        "question": "What does a local hash-chain audit ledger prove?",
+        "options": [
+          "It is impossible to tamper with",
+          "The reviewer identity is cryptographically verified",
+          "Some edits to recorded events can be detected, but a fully rewritten ledger may evade it",
+          "It automatically satisfies every regulatory requirement"
+        ],
+        "correctIndex": 2,
+        "explanation": "A hash chain is tamper-evident only within its trust assumptions. Production needs protected storage, authenticated actors, signed events and independent controls."
+      },
+      {
+        "question": "A personal-data asset has passed its retention deadline and deletion is pending. What should the gate do?",
+        "options": [
+          "Release and delete later",
+          "Block until the deletion workflow and required evidence are complete",
+          "Ignore it if evaluation scores are high",
+          "Extend retention automatically"
+        ],
+        "correctIndex": 1,
+        "explanation": "Expired retention and pending deletion are blocking conditions in this lesson's policy model; quality metrics cannot override privacy obligations."
+      }
+    ]
+  },
+  "assessment": {
+    "rubric": [
+      {
+        "criterion": "Release manifest and evidence version binding",
+        "weight": 25,
+        "evidence": "Demonstrates exact model, dataset, prompt, index and code versions with artifact digests."
+      },
+      {
+        "criterion": "Approval and separation-of-duties enforcement",
+        "weight": 20,
+        "evidence": "Tests role mismatch, expiry, stale artifact versions and unauthorized approval."
+      },
+      {
+        "criterion": "Risk, privacy and lifecycle controls",
+        "weight": 25,
+        "evidence": "Rejects unowned risks, missing mitigations, consent gaps, retention expiry and pending deletion."
+      },
+      {
+        "criterion": "Audit integrity and operational limitations",
+        "weight": 15,
+        "evidence": "Demonstrates tamper detection and clearly explains identity, storage and signature limitations."
+      },
+      {
+        "criterion": "Failure labs and production defense",
+        "weight": 15,
+        "evidence": "Provides reproducible tests, reason codes and a production hardening plan."
+      }
+    ],
+    "passThreshold": 85,
+    "evidence": [
+      "Passing test output for complete and deliberately invalid dossiers",
+      "Release decision report with reason codes and an architecture/production limitation defense"
+    ]
+  },
+  "references": [
+    {
+      "title": "NIST AI Risk Management Framework 1.0",
+      "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+      "sourceType": "standard",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "NIST AI RMF Playbook",
+      "url": "https://airc.nist.gov/AI_RMF_Knowledge_Base/Playbook",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "ISO/IEC 42001 — Artificial intelligence management systems",
+      "url": "https://www.iso.org/standard/81230.html",
+      "sourceType": "standard",
+      "checkedOn": "2026-11-22"
+    },
+    {
+      "title": "OECD AI Principles",
+      "url": "https://oecd.ai/en/ai-principles",
+      "sourceType": "official-docs",
+      "checkedOn": "2026-11-22"
+    }
+  ],
+  "codeWalkthrough": [
+    {
+      "lines": "ReleaseManifest(release_id, model_version, dataset_version, prompt_version, index_version, code_digest)",
+      "explanation": "The manifest defines the candidate identity. Every artifact and approval must refer to this exact combination."
+    },
+    {
+      "lines": "validate_dossier(dossier, now=now)",
+      "explanation": "The validator checks evidence completeness, version binding, approval roles and expiry, risk ownership, consent, retention and transfer conditions."
+    },
+    {
+      "lines": "if not decision.passed: return decision",
+      "explanation": "The release gate fails closed. A missing or invalid mandatory condition cannot be outweighed by unrelated passing checks."
+    },
+    {
+      "lines": "self.lifecycle.transition('release')",
+      "explanation": "Promotion is a separate lifecycle operation and is allowed only after the dossier passes and the lifecycle is already approved."
+    },
+    {
+      "lines": "self.audit.append(..., 'release.promoted', ...)",
+      "explanation": "The successful transition is recorded with a stable event identifier and release context for later inspection."
+    }
+  ]
+}
