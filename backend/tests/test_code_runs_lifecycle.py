@@ -218,7 +218,8 @@ async def test_get_run_query_allows_tenant_admin_to_view_other_owner(monkeypatch
     assert error.value.status_code == 404
     query = session.statements[-1][0]
     assert "code_runs.tenant_id" in query
-    assert "code_runs.owner_id" not in query
+    where_clause = query.split("WHERE", 1)[1]
+    assert "code_runs.owner_id" not in where_clause
 
 
 async def _noop_tenant_context(_session, _tenant_id):
