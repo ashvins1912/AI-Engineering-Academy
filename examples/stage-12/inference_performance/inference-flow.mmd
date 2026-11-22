@@ -1,0 +1,15 @@
+flowchart TD
+  A[Incoming request] --> B[Identity and tenant context]
+  B --> C[Admission controller]
+  C --> D{Queue and context limits}
+  D -->|reject| E[Load shed with reason]
+  D -->|admit| F[Batch scheduler]
+  F --> G[KV cache estimator]
+  G --> H{Memory budget}
+  H -->|exceeded| E
+  H -->|fits| I[Prefill]
+  I --> J[Prefix cache and prompt state]
+  J --> K[Decode loop]
+  K --> L[Optional speculative draft/verify]
+  L --> M[Latency cost and quality telemetry]
+  M --> N[Response and SLO report]
