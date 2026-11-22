@@ -1,0 +1,19 @@
+{
+  "corpusRevision": "academy-synthetic-2026-11-v1",
+  "description": "Synthetic two-tenant retrieval corpus with ACLs, parent-child chunks, versioned sources and precomputed vectors.",
+  "query": {
+    "principal": {"subject": "alice", "tenant_id": "tenant-A", "groups": ["analysts"]},
+    "text": "retention policy and audit logs",
+    "vector": [1.0, 0.0, 0.0],
+    "topK": 4,
+    "contextBudget": 90
+  },
+  "chunks": [
+    {"chunk_id":"parent-policy","tenant_id":"tenant-A","document_id":"policy-handbook","document_version":"v3","text":"Policy handbook: retention, audit and access controls.","page":1,"start_char":0,"end_char":56,"embedding":[0.8,0.1,0.0],"allowed_users":[],"allowed_groups":["analysts"],"parent_id":null},
+    {"chunk_id":"a-retention","tenant_id":"tenant-A","document_id":"policy-handbook","document_version":"v3","text":"Audit logs are retained for thirty days under the retention policy.","page":2,"start_char":120,"end_char":187,"embedding":[1.0,0.0,0.0],"allowed_users":[],"allowed_groups":["analysts"],"parent_id":"parent-policy"},
+    {"chunk_id":"a-access","tenant_id":"tenant-A","document_id":"policy-handbook","document_version":"v3","text":"Access to archived records requires owner approval.","page":4,"start_char":310,"end_char":361,"embedding":[0.7,0.5,0.0],"allowed_users":["alice"],"allowed_groups":[],"parent_id":"parent-policy"},
+    {"chunk_id":"a-embedding","tenant_id":"tenant-A","document_id":"engineering-notes","document_version":"v2","text":"Vector embeddings represent semantic meaning in a dense space.","page":3,"start_char":60,"end_char":122,"embedding":[0.0,1.0,0.0],"allowed_users":["alice"],"allowed_groups":[],"parent_id":null},
+    {"chunk_id":"a-private","tenant_id":"tenant-A","document_id":"legal-review","document_version":"v1","text":"Restricted retention exception for legal hold.","page":8,"start_char":10,"end_char":57,"embedding":[0.9,0.0,0.1],"allowed_users":["legal-team"],"allowed_groups":["legal"],"parent_id":null},
+    {"chunk_id":"b-secret","tenant_id":"tenant-B","document_id":"incident-secrets","document_version":"v9","text":"Retention policy super secret credentials and audit keys.","page":1,"start_char":0,"end_char":57,"embedding":[1.0,0.0,0.0],"allowed_users":["bob"],"allowed_groups":["admins"],"parent_id":null}
+  ]
+}
