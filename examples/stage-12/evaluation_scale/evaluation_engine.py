@@ -40,6 +40,8 @@ class Prediction:
     input_tokens: int = 0
     output_tokens: int = 0
     cost_usd: float = 0.0
+    human_reviewed: bool = False
+    human_review_passed: bool = False
 
 
 @dataclass(frozen=True)
@@ -320,7 +322,6 @@ class ReleaseGate:
         self.max_p95_latency_ms = max_p95_latency_ms
         self.max_cost_per_successful_task_usd = max_cost_per_successful_task_usd
         self.max_judge_ece = max_judge_ece
-        self.max_cost_per_successful_task_usd = max_cost_per_successful_task_usd
 
     def evaluate(self, report: dict, judge_ece: float | None) -> GateDecision:
         reasons = []
@@ -347,10 +348,6 @@ class ReleaseGate:
             reasons.append("JUDGE_CALIBRATION_MISSING_OR_POOR")
         if not report.get("dataset_fingerprint"):
             reasons.append("DATASET_PROVENANCE_MISSING")
-        cost = report.get("cost_per_successful_task_usd", float("inf"))
-        if (not math.isfinite(cost) or cost < 0
-                or cost > self.max_cost_per_successful_task_usd):
-            reasons.append("COST_PER_SUCCESSFUL_TASK_THRESHOLD_EXCEEDED")
         if report.get("high_risk_case_count", 0) > 0:
             if report.get("high_risk_review_coverage", 0.0) < 1.0:
                 reasons.append("HIGH_RISK_HUMAN_REVIEW_INCOMPLETE")
