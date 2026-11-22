@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, ArrowRight, BookOpen, CircleHelp, Pause, Play, RotateCcw, Sparkles } from 'lucide-react'
 import type { Lesson } from '../data/curriculum'
 
+type Props = { lesson: Lesson }
+
 const stageFromId = (id: string) => Number(id.match(/stage-(\d+)/)?.[1] ?? 0)
 const slugFromId = (id: string) => id.split(':').pop() ?? id
 
