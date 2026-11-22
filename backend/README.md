@@ -88,3 +88,8 @@ No cloud resources, external model APIs or paid hosting were provisioned. This A
 ## Secure Python playground foundation
 
 The first code-playground milestone adds `app/code_execution_contract.py`, a metadata-only validator for an allowlisted `python-3.11` runtime, lesson/test-suite IDs and a 32 KiB UTF-8 source limit. It does not execute, compile or import learner code, and no code-run API or runner is enabled. Its unit tests run with the existing backend pytest suite. See [the milestone plan](../docs/SECURE_PYTHON_PLAYGROUND_MILESTONE_1.md) for the isolation, authorization, quota and security gates required before enabling execution.
+
+
+## Isolated Python runner provider adapter
+
+`app/runner_provider.py` is a transport boundary for a separately operated sandbox service. It requires an operator-configured HTTPS origin and bearer token, uses fixed paths and short timeouts, disables redirects and ambient proxy settings, sends an idempotency key, and validates bounded result fields. It does not launch code or provide a sandbox itself. No endpoint/token is configured and no execution API is enabled. See [the provider protocol and deployment gates](../docs/PYTHON_RUNNER_PROVIDER_MILESTONE_2.md).
