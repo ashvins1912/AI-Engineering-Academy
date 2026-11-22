@@ -1,0 +1,32 @@
+{
+  "scenario": "synthetic document workflow",
+  "maxWorkers": 2,
+  "tasks": [
+    {
+      "id": "ingest",
+      "dependsOn": [],
+      "action": "ingest"
+    },
+    {
+      "id": "retrieve",
+      "dependsOn": [
+        "ingest"
+      ],
+      "action": "retrieve"
+    },
+    {
+      "id": "answer",
+      "dependsOn": [
+        "retrieve"
+      ],
+      "action": "answer"
+    }
+  ],
+  "failureCases": [
+    "dependency_cycle",
+    "transient_worker_failure",
+    "duplicate_delivery",
+    "stale_checkpoint",
+    "unbounded_delegation"
+  ]
+}
