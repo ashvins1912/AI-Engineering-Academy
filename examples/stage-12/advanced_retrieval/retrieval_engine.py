@@ -5,7 +5,7 @@ provider, vector database, network service or hosted model.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from hashlib import sha256
 import json
 import math
@@ -43,6 +43,7 @@ class Chunk:
     allowed_groups: frozenset[str] = frozenset()
     parent_id: str | None = None
     source_uri: str = "synthetic://corpus"
+    related_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -111,6 +112,34 @@ def bm25_scores(query: str, chunks: list[Chunk], *, k1: float = 1.2, b: float = 
     return scores
 
 
+def rerank_by_term_overlap(query: str, hits: list[SearchHit]) -> list[SearchHit]:
+    """Deterministic lexical rerank baseline; not a neural cross-encoder."""
+    query_terms = set(tokenize(query))
+    return sorted(hits, key=lambda hit: (
+        -len(query_terms & set(tokenize(hit.chunk.text))),
+        -hit.fused_score, hit.chunk.chunk_id
+    ))
+
+
+def graph_neighbors(seed_ids: Iterable[str], chunks: Iterable[Chunk],
+                    principal: Principal, *, max_neighbors: int = 5) -> list[Chunk]:
+    """Expand one graph hop while independently enforcing tenant and ACL scope."""
+    if not 0 <= max_neighbors <= 20:
+        raise ValueError("GRAPH_NEIGHBOR_LIMIT_INVALID")
+    by_id = {chunk.chunk_id: chunk for chunk in chunks}
+    found: dict[str, Chunk] = {}
+    for seed_id in seed_ids:
+        seed = by_id.get(seed_id)
+        if not seed or not HybridRetriever._authorized(seed, principal):
+            continue
+        for related_id in seed.related_ids:
+            candidate = by_id.get(related_id)
+            if candidate and HybridRetriever._authorized(candidate, principal):
+                found[candidate.chunk_id] = candidate
+                if len(found) >= max_neighbors:
+                    return list(found.values())
+    return list(found.values())
+
 def reciprocal_rank_fusion(rankings: list[list[str]], *, k: int = 60,
                             weights: tuple[float, ...] | None = None) -> dict[str, float]:
     if k <= 0:
@@ -160,6 +189,8 @@ class HybridRetriever:
             "groups": sorted(principal.groups), "policy": principal.policy_version,
             "query": query, "vector": query_vector, "top_k": top_k,
             "budget": context_budget, "revision": self.corpus_revision,
+            "rrf_k": self.rrf_k, "weights": self.weights,
+            "min_score": self.min_fused_score,
         }
         return sha256(json.dumps(material, sort_keys=True).encode()).hexdigest()
 
@@ -173,6 +204,8 @@ class HybridRetriever:
         if not 1 <= top_k <= 20 or context_budget <= 0:
             raise ValueError("INVALID_RETRIEVAL_BUDGET")
         vector = tuple(float(value) for value in query_vector)
+        if any(not math.isfinite(value) for value in vector):
+            raise ValueError("QUERY_VECTOR_NON_FINITE")
         key = self._cache_key(principal, query, vector, top_k, context_budget)
         if cache is not None and key in cache:
             prior = cache[key]
@@ -245,11 +278,18 @@ def reciprocal_rank(retrieved: list[str], relevant: set[str]) -> float:
     return 0.0
 
 
-def ndcg_at_k(retrieved: list[str], relevant: set[str], k: int) -> float:
-    if not relevant:
+def ndcg_at_k(retrieved: list[str], relevant: set[str] | dict[str, float], k: int) -> float:
+    """NDCG supports binary relevance sets or graded relevance dictionaries."""
+    grades = ({item: 1.0 for item in relevant} if isinstance(relevant, set) else relevant)
+    if not grades or k <= 0:
         return 0.0
-    dcg = sum((1.0 / math.log2(rank + 1)) for rank, item in enumerate(retrieved[:k], start=1) if item in relevant)
-    ideal = sum(1.0 / math.log2(rank + 1) for rank in range(1, min(len(relevant), k) + 1))
+    def gain(value: float) -> float:
+        return (2 ** value) - 1
+    dcg = sum(gain(grades.get(item, 0.0)) / math.log2(rank + 1)
+              for rank, item in enumerate(retrieved[:k], start=1))
+    ideal_grades = sorted(grades.values(), reverse=True)[:k]
+    ideal = sum(gain(value) / math.log2(rank + 1)
+                for rank, value in enumerate(ideal_grades, start=1))
     return dcg / ideal if ideal else 0.0
 
 
