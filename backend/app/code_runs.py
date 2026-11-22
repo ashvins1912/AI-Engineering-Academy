@@ -11,7 +11,7 @@ from hashlib import sha256
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, Header, HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -101,6 +101,11 @@ async def submit_code_run(
 
     source_digest = sha256(submission.source.encode("utf-8")).hexdigest()
     await set_tenant_context(session, str(principal.tenant_id))
+    # Serialize per-owner quota checks and idempotency creation across API workers.
+    await session.execute(
+        text("SELECT pg_advisory_xact_lock(hashtextextended(:scope, 0))"),
+        {"scope": f"{principal.tenant_id}:{principal.user_id}"},
+    )
     run = await session.scalar(select(CodeRun).where(
         CodeRun.tenant_id == principal.tenant_id,
         CodeRun.owner_id == principal.user_id,
