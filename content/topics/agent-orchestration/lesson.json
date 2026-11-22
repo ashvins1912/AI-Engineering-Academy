@@ -228,7 +228,7 @@
           "input": "ingest; retrieve depends on ingest; answer depends on retrieve",
           "transformation": "Represent tasks and dependency edges.",
           "output": "Candidate DAG",
-          "visualState": "plan"
+          "visualState": "planned"
         },
         {
           "step": 2,
@@ -307,12 +307,36 @@
     "problem": "A report workflow has three tasks: ingest, retrieve and answer. Retrieve depends on ingest; answer depends on retrieve. The scheduler is configured for two workers.",
     "input": "Tasks = [ingest, retrieve→ingest, answer→retrieve]; max_workers=2.",
     "steps": [
-      "Validate all IDs and dependencies; the graph is acyclic.",
-      "Initially only ingest is ready, so one worker runs it.",
-      "After ingest succeeds, retrieve becomes ready; answer remains blocked.",
-      "After retrieve succeeds, answer becomes ready and runs.",
-      "If retrieve fails permanently, answer is marked FAILED with DEPENDENCY_FAILED and is never invoked.",
-      "If a task's side effect committed before a crash, retry uses the same idempotency key and returns the stored result."
+      {
+        "operation": "Validate all IDs and dependencies.",
+        "reasoning": "The graph must be acyclic and every dependency must exist before side effects.",
+        "result": "The plan is accepted only when all graph contracts pass."
+      },
+      {
+        "operation": "Schedule ingest.",
+        "reasoning": "Only ingest has no prerequisites, so it is the only ready task.",
+        "result": "One worker executes ingest."
+      },
+      {
+        "operation": "Schedule retrieve.",
+        "reasoning": "Retrieve becomes ready after ingest succeeds; answer remains blocked.",
+        "result": "Retrieve executes and answer stays pending."
+      },
+      {
+        "operation": "Schedule answer.",
+        "reasoning": "Answer becomes ready only after retrieve succeeds.",
+        "result": "Answer executes after its prerequisite."
+      },
+      {
+        "operation": "Inject permanent retrieve failure.",
+        "reasoning": "A dependent task cannot consume missing or partial prerequisite output.",
+        "result": "Answer is marked failed with DEPENDENCY_FAILED and is never invoked."
+      },
+      {
+        "operation": "Retry a committed side effect after simulated crash.",
+        "reasoning": "The stable idempotency key maps the same canonical payload to the original result.",
+        "result": "The stored result is returned without repeating the side effect."
+      }
     ],
     "expectedOutput": "The valid workflow completes in dependency order. The scheduler never submits more than two tasks at once. Invalid graphs are rejected before execution, and completed side effects are not repeated on resume."
   },
