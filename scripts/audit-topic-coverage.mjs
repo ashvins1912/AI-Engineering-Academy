@@ -77,7 +77,7 @@ const requiredStageRoutes = [
   [6, ['agent-loop','planning','memory','state','human-loop','patterns','langgraph','frameworks','agent-eval']],
   [7, ['mcp-architecture','mcp-primitives','mcp-advanced','mcp-transport','mcp-security','a2a','ibm-acp','client-acp','tooling']],
   [8, ['workflow-patterns','event-driven','durable','automation-tools']],
-  [9, ['experiment','registry','eval-ci','data-pipeline','containers','cicd','infra']],
+  [9, ['experiment','registry','eval-ci','data-pipeline','containers','cicd','infra','kubernetes','serving','rollouts']],
   [10, ['prompt-injection','tool-security','tenant-security','supply-chain','tracing','slos','cost','incidents']],
   [11, ['capstone-design','capstone-build','capstone-delivery']],
   [12, ['agent-orchestration','protocol-interop','advanced-retrieval','evaluation-scale','ai-red-team','inference-performance','multimodal-systems','enterprise-governance','advanced-practicum']]
