@@ -8,6 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from hashlib import sha256
 import json
+from pathlib import PurePosixPath
 from typing import Callable
 
 
@@ -15,6 +16,13 @@ class ProtocolError(ValueError):
     def __init__(self, code: str):
         super().__init__(code)
         self.code = code
+
+
+def _safe_workspace_path(path: str) -> bool:
+    if not isinstance(path, str) or not path.startswith("/workspace/"):
+        return False
+    parts = PurePosixPath(path).parts
+    return all(part not in {".", ".."} for part in parts)
 
 
 def _digest(value: dict) -> str:
@@ -218,12 +226,13 @@ class A2AAdapter:
             raise ProtocolError("A2A_TASK_NOT_FOUND")
         if next_state not in A2A_STATES or next_state not in A2A_TRANSITIONS.get(task.state, set()):
             raise ProtocolError("A2A_INVALID_TASK_STATE_TRANSITION")
+        if artifact and (not artifact.get("artifactId") or not artifact.get("parts")):
+            raise ProtocolError("A2A_ARTIFACT_INVALID")
+        # Validate all inputs before mutating durable task state.
         task.state = next_state
         if message:
             task.history.append({"role": "agent", "parts": [{"text": message}]})
         if artifact:
-            if not artifact.get("artifactId") or not artifact.get("parts"):
-                raise ProtocolError("A2A_ARTIFACT_INVALID")
             task.artifacts.append(artifact)
         self._event(task, "status", {"state": next_state, "message": message})
         if artifact:
@@ -275,7 +284,7 @@ class AgentClientSession:
     def new_session(self, cwd: str) -> str:
         if not self.initialized:
             raise ProtocolError("ACP_INITIALIZE_REQUIRED")
-        if not cwd.startswith("/workspace/"):
+        if not _safe_workspace_path(cwd):
             raise ProtocolError("ACP_CWD_OUTSIDE_WORKSPACE")
         session_id = f"session-{self.next_session}"
         self.next_session += 1
@@ -299,7 +308,7 @@ class AgentClientSession:
         fs = self.client_capabilities.get("fs", {})
         if not fs.get("readTextFile", False):
             raise ProtocolError("ACP_CLIENT_FILE_READ_NOT_ADVERTISED")
-        if not path.startswith("/workspace/") or path not in files:
+        if not _safe_workspace_path(path) or path not in files:
             raise ProtocolError("ACP_FILE_OUTSIDE_OR_MISSING")
         return files[path]
 
@@ -307,7 +316,7 @@ class AgentClientSession:
         fs = self.client_capabilities.get("fs", {})
         if not fs.get("writeTextFile", False):
             raise ProtocolError("ACP_CLIENT_FILE_WRITE_NOT_ADVERTISED")
-        if not path.startswith("/workspace/"):
+        if not _safe_workspace_path(path):
             raise ProtocolError("ACP_FILE_OUTSIDE_WORKSPACE")
         files[path] = content
 
