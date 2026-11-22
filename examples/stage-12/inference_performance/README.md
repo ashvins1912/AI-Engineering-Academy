@@ -19,6 +19,9 @@ This is a hardware-independent simulator. It does not load weights, allocate GPU
 - KV quantization trade-offs: lower precision reduces the modeled cache footprint but carries an explicit illustrative quality penalty.
 - Speculative decoding as a simplified acceptance-rate throughput multiplier.
 - Deadline misses and output-token throughput.
+- Little's Law and memory-based concurrency estimates.
+- Round-robin tenant fairness, per-tenant concurrency caps and versioned prefix keys.
+- Paged KV allocation, exhaustion and release after cancellation/completion.
 
 ## Worked memory example
 
@@ -37,7 +40,9 @@ A 4,096-token sequence therefore requires 512 MiB for its KV cache. Two concurre
 - Quantization regression: show memory savings and modeled quality penalty together.
 - Deadline miss: separate queue, prefill and decode contributions.
 - Speculative decoding: vary acceptance rate and observe throughput assumptions.
+- Tenant starvation: burst one tenant and verify other active tenants get a fair turn.
+- KV page leak: release a canceled request and verify free pages return to baseline.
 
 ## Important limitations
 
-The formulas are intentionally simplified. Real KV cache layouts, grouped-query attention, paged allocation, fragmentation, quantization metadata, tensor parallelism, batching efficiency, model-specific kernels and hardware bandwidth differ by serving engine. The speculative decoding multiplier is an illustrative model, not a benchmark. Use this simulator to reason about capacity and trade-offs, then benchmark the actual engine and model on approved hardware.
+The formulas are intentionally simplified. Real KV cache layouts, grouped-query attention, page allocation, fragmentation, quantization metadata, tensor parallelism, batching efficiency, model-specific kernels and hardware bandwidth differ by serving engine. The speculative decoding multiplier is an illustrative model, not a benchmark. Use this simulator to reason about capacity and trade-offs, then benchmark the actual engine and model on approved hardware.
