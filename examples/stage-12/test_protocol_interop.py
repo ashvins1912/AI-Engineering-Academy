@@ -102,6 +102,13 @@ class A2AContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ProtocolError, "A2A_INVALID_TASK_STATE_TRANSITION"):
             self.a2a.transition("t-1", "working")
 
+    def test_invalid_artifact_does_not_mutate_task_state(self):
+        self.a2a.send_message("t-1", "ctx-1", "Review", "idem-1")
+        self.a2a.transition("t-1", "working")
+        with self.assertRaisesRegex(ProtocolError, "A2A_ARTIFACT_INVALID"):
+            self.a2a.transition("t-1", "completed", artifact={"artifactId": "missing-parts"})
+        self.assertEqual(self.a2a.tasks["t-1"].state, "working")
+
     def test_stream_order_and_capability_gate(self):
         self.a2a.send_message("t-1", "ctx-1", "Review", "idem-1")
         self.a2a.transition("t-1", "working")
@@ -148,6 +155,18 @@ class ACPContractTests(unittest.TestCase):
         client.cancel(session)
         with self.assertRaisesRegex(ProtocolError, "ACP_SESSION_CANCELED"):
             client.prompt(session, "Continue")
+
+    def test_workspace_path_traversal_is_rejected(self):
+        client = AgentClientSession()
+        client.initialize(1, ACP_VERSION, {"fs": {"readTextFile": True, "writeTextFile": True}})
+        with self.assertRaisesRegex(ProtocolError, "ACP_CWD_OUTSIDE_WORKSPACE"):
+            client.new_session("/workspace/../../etc")
+        with self.assertRaisesRegex(ProtocolError, "ACP_FILE_OUTSIDE_OR_MISSING"):
+            client.client_file_read("/workspace/../secrets.txt", {"/workspace/../secrets.txt": "secret"})
+        files = {}
+        with self.assertRaisesRegex(ProtocolError, "ACP_FILE_OUTSIDE_WORKSPACE"):
+            client.client_file_write("/workspace/../../etc/passwd", "bad", files)
+        self.assertEqual(files, {})
 
     def test_protocol_version_mismatch_rejected(self):
         with self.assertRaisesRegex(ProtocolError, "ACP_PROTOCOL_VERSION_UNSUPPORTED"):
