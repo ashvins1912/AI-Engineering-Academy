@@ -1,0 +1,13 @@
+flowchart TD
+    A[Versioned golden dataset] --> B[Split / provenance validation]
+    B --> C[Run candidate predictions]
+    C --> D[Retrieval / answer / citation / safety metrics]
+    D --> E[Slice analysis]
+    D --> F[Bootstrap confidence intervals]
+    G[Human labels] --> H[Judge calibration + agreement]
+    H --> I[Calibration gate]
+    E --> J[Release gate]
+    F --> J
+    I --> J
+    J -->|Pass| K[Promote candidate]
+    J -->|Fail| L[Block release + regression report]
