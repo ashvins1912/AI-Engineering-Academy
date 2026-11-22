@@ -8,7 +8,7 @@ from evaluation_engine import (
     DeterministicJudge, DriftMonitor, EvalCase, EvaluationDataset, Prediction,
     ReleaseGate, assert_no_split_leakage, bootstrap_mean_ci, calibration_report,
     citation_precision, cohen_kappa, evaluate_dataset, mean_reciprocal_rank,
-    pairwise_win_rate, recall_at_k, token_f1,
+    pairwise_delta_ci, pairwise_win_rate, population_stability_index, recall_at_k, token_f1,
 )
 
 
@@ -94,6 +94,24 @@ class MetricTests(unittest.TestCase):
         self.assertAlmostEqual(report["ece"], 0.1)
         self.assertEqual(cohen_kappa([1, 1, 0, 0], [1, 1, 0, 0]), 1.0)
 
+    def test_slice_report_includes_sample_counts_and_intervals(self):
+        report = evaluate_dataset(sample_dataset(), sample_predictions())
+        self.assertEqual(report["slices"]["tenant=A"]["count"], 2)
+        self.assertEqual(len(report["slices"]["tenant=A"]["quality_ci"]), 2)
+        self.assertEqual(report["successful_task_count"], 2)
+        self.assertEqual(report["cost_per_successful_task_usd"], 0.0)
+
+    def test_paired_delta_interval_uses_matched_cases(self):
+        low, high = paired_delta_ci([0.9, 0.8, 0.7], [0.8, 0.7, 0.6], seed=4)
+        self.assertAlmostEqual(low, 0.1)
+        self.assertAlmostEqual(high, 0.1)
+
+    def test_cost_telemetry_must_be_finite_and_nonnegative(self):
+        predictions = sample_predictions()
+        predictions[0] = Prediction("q1", ("policy-A",), "Records are kept 90 days.",
+                                    ("policy-A",), False, cost_usd=-0.01)
+        with self.assertRaisesRegex(ValueError, "PREDICTION_TELEMETRY_INVALID"):
+            evaluate_dataset(sample_dataset(), predictions)
     def test_pairwise_win_rate_counts_ties_as_half(self):
         self.assertEqual(pairwise_win_rate([1.0, 0.5, 0.0], [0.5, 0.5, 0.5]), 0.5)
 
@@ -142,6 +160,31 @@ class ReleaseGateTests(unittest.TestCase):
         self.assertIn("COST_PER_SUCCESSFUL_TASK_THRESHOLD_EXCEEDED",
                       gate.evaluate(report, 0.01).reasons)
 
+    def test_cost_threshold_blocks_release(self):
+        predictions = [
+            Prediction("q1", ("policy-A",), "Records are kept 90 days.", ("policy-A",), False, cost_usd=0.4),
+            Prediction("q2", (), "", (), True, cost_usd=0.2),
+        ]
+        report = evaluate_dataset(sample_dataset(), predictions)
+        gate = ReleaseGate(min_samples=2, min_quality_lcb=0.0, max_judge_ece=0.1,
+                           max_cost_per_successful_task_usd=0.2)
+        self.assertIn("COST_PER_SUCCESSFUL_TASK_THRESHOLD_EXCEEDED", gate.evaluate(report, 0.01).reasons)
+
+    def test_high_risk_cases_require_successful_human_review(self):
+        base = sample_dataset()
+        cases = (EvalCase("q1", "retention days", frozenset({"policy-A"}),
+                          frozenset({"records kept 90 days"}), True, high_risk=True),)
+        dataset = EvaluationDataset("high-risk-v1", "golden", cases)
+        prediction = Prediction("q1", ("policy-A",), "Records are kept 90 days.",
+                                ("policy-A",), False)
+        report = evaluate_dataset(dataset, [prediction])
+        gate = ReleaseGate(min_samples=1, min_quality_lcb=0.0, max_judge_ece=0.1)
+        reasons = gate.evaluate(report, 0.01).reasons
+        self.assertIn("HIGH_RISK_HUMAN_REVIEW_INCOMPLETE", reasons)
+        reviewed = Prediction("q1", ("policy-A",), "Records are kept 90 days.",
+                              ("policy-A",), False, human_reviewed=True, human_review_passed=False)
+        reviewed_report = evaluate_dataset(dataset, [reviewed])
+        self.assertIn("HIGH_RISK_HUMAN_REVIEW_FAILED", gate.evaluate(reviewed_report, 0.01).reasons)
     def test_missing_or_poor_judge_calibration_blocks(self):
         gate = ReleaseGate(min_samples=2, min_quality_lcb=0.0, max_judge_ece=0.05)
         self.assertIn("JUDGE_CALIBRATION_MISSING_OR_POOR", gate.evaluate(self.report, None).reasons)
@@ -171,6 +214,11 @@ class DriftTests(unittest.TestCase):
         self.assertFalse(monitor.check(0.85)["drift_detected"])
         self.assertTrue(monitor.check(0.7)["drift_detected"])
 
+    def test_distribution_drift_uses_population_stability_index(self):
+        stable = population_stability_index({"en": 90, "es": 10}, {"en": 90, "es": 10})
+        shifted = DriftMonitor.check_distribution({"en": 90, "es": 10}, {"en": 50, "es": 50}, threshold=0.2)
+        self.assertAlmostEqual(stable, 0.0)
+        self.assertTrue(shifted["drift_detected"])
     def test_token_f1_and_score_ranges(self):
         self.assertGreater(token_f1("Records kept 90 days", frozenset({"records kept 90 days"})), 0.9)
         with self.assertRaisesRegex(ValueError, "DRIFT_SCORE_OUT_OF_RANGE"):
