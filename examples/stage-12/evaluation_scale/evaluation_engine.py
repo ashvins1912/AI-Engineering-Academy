@@ -121,6 +121,15 @@ def mean_reciprocal_rank(rankings: list[list[str]], relevant_sets: list[set[str]
     return sum(reciprocal) / len(reciprocal)
 
 
+def mean_reciprocal_rank(retrieved_lists: list[list[str]], relevant_sets: list[set[str]]) -> float:
+    if not retrieved_lists or len(retrieved_lists) != len(relevant_sets):
+        raise ValueError("MRR_INPUT_INVALID")
+    return sum(
+        next((1.0 / rank for rank, item in enumerate(retrieved, 1) if item in relevant), 0.0)
+        for retrieved, relevant in zip(retrieved_lists, relevant_sets)
+    ) / len(retrieved_lists)
+
+
 def citation_precision(cited: tuple[str, ...], relevant: frozenset[str]) -> float:
     if not cited:
         return 1.0 if not relevant else 0.0
