@@ -1,0 +1,15 @@
+flowchart LR
+  A[Authenticated tenant request] --> B[Durable task coordinator]
+  B --> C[Protocol gateway: MCP / A2A / ACP]
+  C --> D[Authorized retrieval and citations]
+  D --> E[Evaluation and quality gate]
+  E --> F[Red-team policy gate]
+  F --> G[Inference capacity and admission]
+  G --> H[Multimodal evidence normalization]
+  H --> I[Governance dossier and approvals]
+  I --> J[Integrated release gate]
+  J -->|all evidence valid| K[Release candidate accepted]
+  J -->|missing, stale, unsafe or over budget| X[Fail closed / abstain / rollback]
+  D -. tenant ACL .-> T[Tenant boundary]
+  F -. deny untrusted action .-> X
+  I -. version-bound evidence .-> J
