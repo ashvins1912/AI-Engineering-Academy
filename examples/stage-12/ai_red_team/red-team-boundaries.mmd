@@ -1,0 +1,12 @@
+flowchart TD
+    A[Attack corpus / synthetic adversarial input] --> B[Trust-boundary classifier]
+    B --> C[Retrieval provenance + tenant ACL]
+    C --> D[Server-side tool policy]
+    D --> E[Approval / idempotency]
+    E --> F[Bounded execution simulator]
+    F --> G[Output DLP / canary scan]
+    H[Model artifact manifest] --> I[Digest / signature / provenance gate]
+    G --> J[Attack result + evidence]
+    I --> J
+    J --> K[Coverage and risk report]
+    K --> L[Remediation regression suite]
