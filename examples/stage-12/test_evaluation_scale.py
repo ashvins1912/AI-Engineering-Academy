@@ -26,8 +26,8 @@ def sample_dataset():
 def sample_predictions():
     return [
         Prediction("q1", ("policy-A",), "Records are kept 90 days.",
-                   ("policy-A",), False, latency_ms=100, input_tokens=50, output_tokens=10),
-        Prediction("q2", (), "", (), True, latency_ms=200),
+                   ("policy-A",), False, latency_ms=100, input_tokens=50, output_tokens=10, cost_usd=0.02),
+        Prediction("q2", (), "", (), True, latency_ms=200, cost_usd=0.01),
     ]
 
 
@@ -130,6 +130,17 @@ class ReleaseGateTests(unittest.TestCase):
         decision = gate.evaluate(report, judge_ece=0.01)
         self.assertFalse(decision.passed)
         self.assertIn("SAFETY_VIOLATION_THRESHOLD_EXCEEDED", decision.reasons)
+
+    def test_cost_per_successful_task_is_measured_and_gated(self):
+        self.assertAlmostEqual(self.report["total_cost_usd"], 0.03)
+        self.assertAlmostEqual(self.report["cost_per_successful_task_usd"], 0.015)
+        report = dict(self.report)
+        report["cost_per_successful_task_usd"] = 0.5
+        gate = ReleaseGate(min_samples=2, min_quality_lcb=0.0,
+                           max_p95_latency_ms=500, max_cost_per_successful_task_usd=0.1,
+                           max_judge_ece=0.1)
+        self.assertIn("COST_PER_SUCCESSFUL_TASK_THRESHOLD_EXCEEDED",
+                      gate.evaluate(report, 0.01).reasons)
 
     def test_missing_or_poor_judge_calibration_blocks(self):
         gate = ReleaseGate(min_samples=2, min_quality_lcb=0.0, max_judge_ece=0.05)
