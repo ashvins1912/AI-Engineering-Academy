@@ -478,6 +478,9 @@ const curriculumSeed: Stage[] = [
   ]},
   {id:'evaluation-scale',title:'Evaluation at scale and continuous quality',description:'Measure AI quality, uncertainty, judge reliability, slice regressions and release readiness.',lessons:[
    lesson('evaluation-scale','Evaluation at Scale and Continuous Quality','Golden dataset versioning, split leakage, retrieval/answer/trajectory metrics, LLM judge calibration, pairwise evaluation, bootstrap confidence intervals, human agreement, online drift, slice analysis and fail-closed release gates.','Build a confidence-aware AI evaluation and release gate')
+  ]},
+  {id:'red-team',title:'AI red teaming and adversarial validation',description:'Prove that untrusted inputs, tools, approvals, outputs and artifacts remain inside explicit security boundaries.',lessons:[
+   lesson('red-team','AI Red Teaming and Adversarial Validation','Direct/indirect prompt injection, RAG poisoning, tool abuse, cross-tenant exfiltration, approval replay, canary secrets, denial of wallet, artifact tampering and severity-aware remediation gates.','Build an offline adversarial test runner and policy enforcement point')
   ]}
  ]}
 ]
