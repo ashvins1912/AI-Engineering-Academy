@@ -164,7 +164,7 @@ class TaskCoordinator:
                     ready = []
                     for task_id, task in self.tasks.items():
                         state = self.journal.task(task_id).get("status")
-                        if task_id in in_flight.values() or state in {"completed", "compensated", "blocked", "failed", "running"}:
+                        if task_id in in_flight.values() or state in {"completed", "compensated", "blocked", "failed"}:
                             continue
                         if all(self.journal.task(dep).get("status") == "completed" for dep in task.dependencies):
                             ready.append(task)
