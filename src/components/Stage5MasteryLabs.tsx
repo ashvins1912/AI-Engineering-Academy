@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 type Id='ingestion'|'chunking'|'rag-embeddings'|'vector-db'|'retrieval'|'generation'|'reranking'|'agentic-rag'|'graphrag'|'visual-rag'|'multimodal-rag'|'rag-eval'
 type Topic={id:Id;label:string;title:string;question:string;options:string[];answer:number;explanation:string;evidence:string[]}
@@ -16,8 +16,9 @@ const topics:Topic[]=[
  {id:'multimodal-rag',label:'11 · Audio/video',title:'Timestamped multimodal retrieval',question:'How should transcript and keyframe evidence be joined?',options:['By explicit timestamp ranges and tolerance','By filename order only','By matching vector dimensions'],answer:0,explanation:'Audio and video evidence must preserve synchronized source time ranges.',evidence:['Preserve transcript start/end timestamps','Sample keyframes with source timestamps','Test drift, silence and consent/retention controls']},
  {id:'rag-eval',label:'12 · Evaluation',title:'RAG evaluation and release gates',question:'Which metric evaluates the first relevant result rank?',options:['MRR','Brier score','KV-cache bytes'],answer:0,explanation:'MRR averages reciprocal rank of the first relevant item; it is distinct from answer faithfulness.',evidence:['Build versioned golden queries and evidence IDs','Measure Recall@K, Precision@K, MRR and nDCG','Track citation precision, abstention, ACL and p95 latency']}
 ]
-export default function Stage5MasteryLabs(){
- const [active,setActive]=useState<Id>('ingestion')
+export default function Stage5MasteryLabs({initialTopic='ingestion'}:{initialTopic?:string}){
+ const [active,setActive]=useState<Id>(()=>topics.some(t=>t.id===initialTopic)?initialTopic as Id:'ingestion')
+ useEffect(()=>{if(topics.some(t=>t.id===initialTopic))setActive(initialTopic as Id)},[initialTopic])
  const [answers,setAnswers]=useState<Record<string,number>>({})
  const [checked,setChecked]=useState<Record<string,boolean>>({})
  const [evidence,setEvidence]=useState<Record<string,string[]>>({})
