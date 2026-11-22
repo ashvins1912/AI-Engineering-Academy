@@ -74,14 +74,33 @@ Run all exercises locally with synthetic fixtures. The Academy service does not 
 
 ---
 
+## red-team — AI Red Teaming and Adversarial Validation
+
+**Implementation task:** Build a versioned adversarial corpus and offline runner for direct/indirect prompt injection, RAG poisoning, cross-tenant tool access, argument tampering, approval replay, canary exfiltration, resource exhaustion and artifact tampering. Enforce tool authorization before any registered side-effect handler.
+
+**Worked fixture:** Tenant A's user retrieves a malicious policy passage that asks the agent to read tenant B's order, change a mutation argument and replay a previous approval. A synthetic canary is also inserted into a candidate answer, and an artifact digest is modified.
+
+**Expected result:** Retrieved instructions remain untrusted evidence; tenant-B resource access and changed tool arguments are denied; approval replay is rejected; no denied operation invokes the handler; canary output is redacted; token/cost abuse and tampered artifacts are blocked; benign evidence remains usable; unresolved critical/high scenarios fail the release gate.
+
+**Verification tests:** Run `python examples/stage-12/red_team/red_team_engine.py` and `python -m unittest discover -s examples/stage-12 -p 'test_red_team.py' -v`. Tests cover trust labels, benign controls, tenant/resource authorization, strict schemas, one-time request-bound approvals, expiry, handler non-invocation, canary redaction, token/cost budgets, artifact digests, scenario coverage and critical-severity release blocking.
+
+**Debugging checklist:** Identify the protected asset and trust boundary; trace every untrusted input source; inspect verified principal and authoritative tenant/resource lookup; compare normalized tool arguments with schema and approval digest; verify atomic approval consumption; ensure the handler is not called after denial; inspect redacted canary evidence; check token/cost budgets; verify trusted artifact digest source; review severity, coverage and regression evidence.
+
+**Interview checks:** Why is pattern-based injection detection insufficient? What is a confused deputy? How do you prevent cross-tenant tool use? Why bind approval to arguments? What makes approval single-use across processes? How should canary secrets be handled? Why is a digest not a signature? Why must critical findings block regardless of aggregate pass rate?
+
+**Submission evidence:** Include threat matrix, attack corpus version, successful and blocked scenario traces, benign-control result, no-side-effect proof, approval replay proof, canary-redaction output, budget and artifact-integrity evidence, severity-aware gate decision and a production gap analysis.
+
+---
+
 ## Stage completion evidence
 
-- [ ] Topic 1 plan validator and coordinator pass all positive and negative tests from a clean checkout.
-- [ ] Worker concurrency never exceeds the configured bound; dependency barriers are demonstrated.
-- [ ] Restart and idempotency behavior is demonstrated with a persisted journal.
-- [ ] Failure handling blocks dependents and records reverse-order compensation.
-- [ ] Production limitations and external side-effect guarantees are explained accurately.
+- [x] Topic 1 plan validator and coordinator pass all positive and negative tests from a clean checkout.
+- [x] Worker concurrency never exceeds the configured bound; dependency barriers are demonstrated.
+- [x] Restart and idempotency behavior is demonstrated with a persisted journal.
+- [x] Failure handling blocks dependents and records reverse-order compensation.
+- [x] Production limitations and external side-effect guarantees are explained accurately.
 - [ ] Topic 1 closed-book mastery defense is completed before Topic 2.
-- [ ] Topic 2 protocol contract tests and migration gap analysis pass before Topic 3.
-- [ ] Topic 3 ACL-before-ranking, retrieval quality, citation and index migration tests pass before Topic 4.
-- [ ] Topic 4 dataset, confidence, judge-calibration, slice and fail-closed release-gate tests pass before Topic 5.
+- [x] Topic 2 protocol contract tests and migration gap analysis pass before Topic 3.
+- [x] Topic 3 ACL-before-ranking, retrieval quality, citation and index migration tests pass before Topic 4.
+- [x] Topic 4 dataset, confidence, judge-calibration, slice and fail-closed release-gate tests pass before Topic 5.
+- [ ] Topic 5 attack corpus, prompt-injection, tool authorization, approval replay, canary and critical-severity gate tests pass before Topic 6.
