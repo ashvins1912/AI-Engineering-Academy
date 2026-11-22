@@ -111,6 +111,16 @@ def reciprocal_rank(retrieved: tuple[str, ...], relevant: frozenset[str]) -> flo
     return next((1.0 / rank for rank, item in enumerate(retrieved, 1) if item in relevant), 0.0)
 
 
+def mean_reciprocal_rank(rankings: list[list[str]], relevant_sets: list[set[str]]) -> float:
+    if not rankings or len(rankings) != len(relevant_sets):
+        raise ValueError("RANKING_GOLD_SET_MISMATCH")
+    reciprocal = [
+        next((1.0 / rank for rank, item in enumerate(ranking, 1) if item in relevant), 0.0)
+        for ranking, relevant in zip(rankings, relevant_sets)
+    ]
+    return sum(reciprocal) / len(reciprocal)
+
+
 def citation_precision(cited: tuple[str, ...], relevant: frozenset[str]) -> float:
     if not cited:
         return 1.0 if not relevant else 0.0
