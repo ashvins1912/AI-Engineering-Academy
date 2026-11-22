@@ -24,7 +24,7 @@ export default function AssessmentEngine({ lesson }: Props) {
       .filter((value, index, all) => index === 0 || value !== all[index - 1])
       .map((stepIndex, index) => {
         const correct = Math.min(stepIndex + 1, steps.length - 1)
-        const candidates = [...new Set([correct, Math.max(0, correct - 1), Math.min(steps.length - 1, correct + 1), steps.length - 1])]
+        const candidates = [...new Set([Math.max(0, correct - 1), correct, Math.min(steps.length - 1, correct + 1), steps.length - 1])]
           .filter(value => value !== stepIndex)
         const choices = candidates.slice(0, 3)
         if (!choices.includes(correct)) choices[0] = correct
