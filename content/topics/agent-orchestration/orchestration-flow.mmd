@@ -1,0 +1,18 @@
+flowchart TD
+  U[User request] --> P[Planner: typed task graph]
+  P --> V{Graph valid?}
+  V -- no --> R[Reject plan]
+  V -- yes --> S[Scheduler: bounded concurrency]
+  S --> D{Dependencies succeeded?}
+  D -- no --> F[Fail dependent task]
+  D -- yes --> W[Worker executes scoped action]
+  W --> I[Idempotency ledger]
+  I --> C[Checkpoint journal]
+  C --> Q{Task outcome}
+  Q -- success --> N[Unlock dependents]
+  Q -- retryable failure --> T[Bounded retry]
+  T --> W
+  Q -- terminal failure --> X[Compensation / escalation]
+  N --> S
+  X --> C
+  C --> Z[Auditable terminal state]
