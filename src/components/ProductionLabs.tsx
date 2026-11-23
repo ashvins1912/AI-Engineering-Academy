@@ -40,12 +40,21 @@ const questions:Record<LabKey,{prompt:string;options:string[];answer:number;expl
  aws:{prompt:'ECS cannot pull an ECR image. What should you inspect first?',options:['Task execution role and ECR repository policy','End-user application role','Load balancer TLS certificate'],answer:0,explanation:'The ECS task execution role is used for image pulls; the task role is for app runtime access.'}
 }
 
+const validLabIds = new Set<LabKey>(labs.map(lab => lab.id))
+const loadCompleted = ():string[] => {
+ try {
+  const parsed: unknown = JSON.parse(localStorage.getItem('ai-academy.production-labs.v1') || '[]')
+  if (!Array.isArray(parsed)) return []
+  return [...new Set(parsed.filter((value): value is LabKey => typeof value === 'string' && validLabIds.has(value as LabKey)))]
+ } catch { return [] }
+}
+
 export default function ProductionLabs() {
  const [activeId,setActiveId]=useState<LabKey>('rag')
  const [scenarioId,setScenarioId]=useState('happy')
  const [ran,setRan]=useState(false)
- const [completed,setCompleted]=useState<string[]>(()=>{try{const value=localStorage.getItem('ai-academy.production-labs.v1');return value?JSON.parse(value) as string[]:[]}catch{return []}})
- useEffect(()=>{localStorage.setItem('ai-academy.production-labs.v1',JSON.stringify(completed))},[completed])
+ const [completed,setCompleted]=useState<string[]>(loadCompleted)
+ useEffect(()=>{try{localStorage.setItem('ai-academy.production-labs.v1',JSON.stringify(completed))}catch{/* Keep the lab usable when browser storage is unavailable. */}},[completed])
  const [configValue,setConfigValue]=useState(8)
  const [selectedAnswer,setSelectedAnswer]=useState<number|null>(null)
  const [answerChecked,setAnswerChecked]=useState(false)
