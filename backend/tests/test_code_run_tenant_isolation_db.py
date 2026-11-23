@@ -112,7 +112,7 @@ def test_code_run_idempotency_is_unique_per_tenant_and_owner():
 
 
 @pytest.mark.asyncio
-async def test_reconciler_claim_skips_active_dispatch_lease_and_claims_expired_one(monkeypatch):
+async def test_reconciler_skips_submitting_rows_and_claims_confirmed_queued_run(monkeypatch):
     from datetime import datetime, timedelta, timezone
     from sqlalchemy.ext.asyncio import async_sessionmaker
 
@@ -122,7 +122,7 @@ async def test_reconciler_claim_skips_active_dispatch_lease_and_claims_expired_o
 
     engine = create_async_engine(DATABASE_URL, pool_pre_ping=True)
     tenant_id, owner_id = uuid4(), uuid4()
-    active_id, expired_id = uuid4(), uuid4()
+    active_id, expired_id, queued_id = uuid4(), uuid4(), uuid4()
     now = datetime.now(timezone.utc)
     factory = async_sessionmaker(engine, expire_on_commit=False)
     monkeypatch.setattr(reconciler, "SessionLocal", factory)
@@ -144,26 +144,35 @@ async def test_reconciler_claim_skips_active_dispatch_lease_and_claims_expired_o
                 status="submitting", dispatch_lease_token=uuid4(),
                 dispatch_lease_until=now - timedelta(seconds=1),
             ),
+            CodeRun(
+                id=queued_id, tenant_id=tenant_id, owner_id=owner_id,
+                idempotency_key=uuid4(), runtime_id="python-3.11",
+                lesson_id="python-basics", source_sha256="e" * 64,
+                status="queued", dispatch_lease_token=None,
+                dispatch_lease_until=None,
+            ),
         ])
         await session.commit()
 
     try:
         claimed = await reconciler.claim_next_run(tenant_id, lease_seconds=30)
         assert claimed is not None
-        assert claimed[0] == expired_id
+        assert claimed[0] == queued_id
 
         async with factory() as session:
             await set_tenant_context(session, str(tenant_id))
             active = await session.get(CodeRun, active_id)
             expired = await session.get(CodeRun, expired_id)
+            queued = await session.get(CodeRun, queued_id)
             assert active.reconcile_lease_token is None
-            assert expired.reconcile_lease_token == claimed[1]
+            assert expired.reconcile_lease_token is None
+            assert queued.reconcile_lease_token == claimed[1]
     finally:
         async with factory() as session:
             await set_tenant_context(session, str(tenant_id))
             await session.execute(
-                text("DELETE FROM code_runs WHERE tenant_id=:tenant AND id IN (:active, :expired)"),
-                {"tenant": tenant_id, "active": active_id, "expired": expired_id},
+                text("DELETE FROM code_runs WHERE tenant_id=:tenant AND id IN (:active, :expired, :queued)"),
+                {"tenant": tenant_id, "active": active_id, "expired": expired_id, "queued": queued_id},
             )
             await session.commit()
         await engine.dispose()
