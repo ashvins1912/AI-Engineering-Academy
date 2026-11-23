@@ -29,9 +29,11 @@ def _run(*, tenant_id, owner_id, idempotency_key, source, status="queued"):
 
 
 class FakeSession:
-    def __init__(self, scalar_values=()):
+    def __init__(self, scalar_values=(), *, claim_available=True):
         self.scalar_values = list(scalar_values)
+        self.claim_available = claim_available
         self.statements = []
+        self.last_run = None
         self.added = []
         self.commits = 0
         self.rollbacks = 0
@@ -40,10 +42,24 @@ class FakeSession:
         self.statements.append((str(statement), params or {}))
 
     async def scalar(self, statement):
+        sql = str(statement).lower()
         self.statements.append((str(statement), {}))
+        if "update code_runs" in sql:
+            self.last_run = self.added[-1] if self.added else self.last_run
+            if self.last_run is not None and self.claim_available:
+                self.last_run.dispatch_lease_token = uuid4()
+                return self.last_run.id
+            return None
+        if "dispatch_lease_token" in sql and self.last_run is not None:
+            return self.last_run
+        if "select code_runs" in sql and self.last_run is not None:
+            return self.last_run
         if not self.scalar_values:
             return None
-        return self.scalar_values.pop(0)
+        value = self.scalar_values.pop(0)
+        if isinstance(value, CodeRun):
+            self.last_run = value
+        return value
 
     def add(self, value):
         self.added.append(value)
@@ -265,8 +281,46 @@ async def test_stuck_submitting_replay_reuses_durable_run_id(monkeypatch):
     assert seen == {"run_id": existing.id, "source": source}
     assert result.id == existing.id
     assert result.status == "queued"
-    assert session.commits == 1
+    assert session.commits == 2  # dispatch claim and result persistence
 
+
+
+
+@pytest.mark.asyncio
+async def test_active_dispatch_lease_prevents_duplicate_provider_submission(monkeypatch):
+    import app.code_runs as module
+    from app.schemas import CodeRunCreate
+
+    principal = _principal()
+    key = uuid4()
+    source = "print('already dispatching')"
+    existing = _run(
+        tenant_id=principal.tenant_id,
+        owner_id=principal.user_id,
+        idempotency_key=key,
+        source=source,
+        status="submitting",
+    )
+    # Simulate another API worker owning the lease. The conditional UPDATE
+    # returns no row, so this request must return the durable in-progress run.
+    session = FakeSession([existing], claim_available=False)
+    monkeypatch.setattr(module, "set_tenant_context", _noop_tenant_context)
+    monkeypatch.setattr(module, "get_settings", lambda: Settings(_env_file=None, code_execution_enabled=True))
+
+    class ProviderMustNotBeCalled:
+        async def submit(self, *_args, **_kwargs):
+            raise AssertionError("an active dispatch lease must prevent duplicate submission")
+
+    monkeypatch.setattr(module, "_provider_from_settings", lambda _settings: ProviderMustNotBeCalled())
+    result = await module.submit_code_run(
+        body=CodeRunCreate(runtime_id="python-3.11", lesson_id="python-basics", source=source),
+        idempotency_key=key,
+        principal=principal,
+        session=session,
+    )
+    assert result.id == existing.id
+    assert result.status == "submitting"
+    assert session.commits == 1
 
 @pytest.mark.asyncio
 async def test_runner_unavailable_keeps_run_retryable_and_sanitizes_error(monkeypatch):
@@ -296,7 +350,7 @@ async def test_runner_unavailable_keeps_run_retryable_and_sanitizes_error(monkey
     assert run.status == "submitting"
     assert run.error_code == "runner_unavailable"
     assert "private upstream" not in run.error_code
-    assert session.commits == 2
+    assert session.commits == 3  # insert, dispatch claim, and sanitized failure
 
 
 @pytest.mark.asyncio
@@ -353,3 +407,4 @@ async def test_runner_protocol_error_marks_run_failed_without_leaking_payload(mo
     assert error.value.status_code == 502
     assert session.added[0].status == "failed"
     assert session.added[0].error_code == "runner_protocol_error"
+    assert session.commits == 3  # insert, dispatch claim, and sanitized failure

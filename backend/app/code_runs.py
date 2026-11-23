@@ -212,41 +212,45 @@ async def submit_code_run(
         return _out(claimed_run)
     except RunnerUnavailable:
         await set_tenant_context(session, str(principal.tenant_id))
-        await session.execute(update(CodeRun).where(
+        claimed_run = await session.scalar(select(CodeRun).where(
             CodeRun.id == run.id,
             CodeRun.tenant_id == principal.tenant_id,
             CodeRun.dispatch_lease_token == dispatch_token,
-        ).values(
-            error_code="runner_unavailable",
-            dispatch_lease_token=None,
-            dispatch_lease_until=None,
         ))
+        if claimed_run is not None:
+            claimed_run.error_code = "runner_unavailable"
+            claimed_run.dispatch_lease_token = None
+            claimed_run.dispatch_lease_until = None
         await session.commit()
         raise HTTPException(503, "Isolated Python runner is temporarily unavailable") from None
     except RunnerRejected:
         await set_tenant_context(session, str(principal.tenant_id))
-        await session.execute(update(CodeRun).where(
+        claimed_run = await session.scalar(select(CodeRun).where(
             CodeRun.id == run.id,
             CodeRun.tenant_id == principal.tenant_id,
             CodeRun.dispatch_lease_token == dispatch_token,
-        ).values(
-            status="failed", error_code="runner_rejected",
-            completed_at=datetime.now(timezone.utc),
-            dispatch_lease_token=None, dispatch_lease_until=None,
         ))
+        if claimed_run is not None:
+            claimed_run.status = "failed"
+            claimed_run.error_code = "runner_rejected"
+            claimed_run.completed_at = datetime.now(timezone.utc)
+            claimed_run.dispatch_lease_token = None
+            claimed_run.dispatch_lease_until = None
         await session.commit()
         raise HTTPException(502, "Isolated Python runner rejected the submission") from None
     except RunnerProtocolError:
         await set_tenant_context(session, str(principal.tenant_id))
-        await session.execute(update(CodeRun).where(
+        claimed_run = await session.scalar(select(CodeRun).where(
             CodeRun.id == run.id,
             CodeRun.tenant_id == principal.tenant_id,
             CodeRun.dispatch_lease_token == dispatch_token,
-        ).values(
-            status="failed", error_code="runner_protocol_error",
-            completed_at=datetime.now(timezone.utc),
-            dispatch_lease_token=None, dispatch_lease_until=None,
         ))
+        if claimed_run is not None:
+            claimed_run.status = "failed"
+            claimed_run.error_code = "runner_protocol_error"
+            claimed_run.completed_at = datetime.now(timezone.utc)
+            claimed_run.dispatch_lease_token = None
+            claimed_run.dispatch_lease_until = None
         await session.commit()
         raise HTTPException(502, "Isolated Python runner returned an invalid response") from None
 
