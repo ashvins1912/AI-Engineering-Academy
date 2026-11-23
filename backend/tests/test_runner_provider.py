@@ -193,3 +193,33 @@ async def test_runner_rejects_oversized_declared_content_length(monkeypatch):
     provider = HttpsRunnerProvider("https://runner.example", "s" * 32)
     with pytest.raises(RunnerProtocolError, match="response-size limit"):
         await provider.get(uuid4())
+
+
+@pytest.mark.asyncio
+async def test_runner_enforces_total_deadline_for_slow_drip_response(monkeypatch):
+    import asyncio
+    import app.runner_provider as module
+
+    class SlowDripStream(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            yield b'{"run_id":"'
+            await asyncio.sleep(0.05)
+            yield b'not-finished'
+
+        async def aclose(self):
+            return None
+
+    async def handler(request):
+        return httpx.Response(200, stream=SlowDripStream())
+
+    original_client = httpx.AsyncClient
+    monkeypatch.setattr(
+        module.httpx, "AsyncClient",
+        lambda **kwargs: original_client(transport=httpx.MockTransport(handler), **kwargs),
+    )
+    provider = HttpsRunnerProvider("https://runner.example", "s" * 32)
+    # Keep the test fast while exercising the same absolute-deadline path.
+    provider._timeout = 0.01
+
+    with pytest.raises(RunnerUnavailable):
+        await provider.get(uuid4())
