@@ -97,24 +97,35 @@ export function CodeRunPlayground({ lessonId, lessonTitle, starterSource }: {
   }, [starterSource, lessonKey])
 
   const request = useCallback(async (path: string, init?: RequestInit) => {
-    const token = await window.__ACADEMY_AUTH__?.getAccessToken()
-    if (!token) throw new Error('Your session has expired. Sign in again to run code.')
     const controller = new AbortController()
     const timeoutMs = init?.method === 'POST' ? 25_000 : 8_000
-    const timeout = window.setTimeout(() => controller.abort(), timeoutMs)
+    let timeout = 0
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeout = window.setTimeout(() => {
+        controller.abort()
+        reject(new DOMException('Code-run request timed out', 'AbortError'))
+      }, timeoutMs)
+    })
     try {
-      return await fetch(`${API_BASE_URL}${path}`, {
-        ...init,
-        signal: controller.signal,
-        headers: {
-          Accept: 'application/json',
-          Authorization: `Bearer ${token}`,
-          ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
-          ...init?.headers,
-        },
-        credentials: 'omit',
-        cache: 'no-store',
-      })
+      return await Promise.race([
+        (async () => {
+          const token = await window.__ACADEMY_AUTH__?.getAccessToken()
+          if (!token) throw new Error('Your session has expired. Sign in again to run code.')
+          return fetch(`${API_BASE_URL}${path}`, {
+            ...init,
+            signal: controller.signal,
+            headers: {
+              Accept: 'application/json',
+              Authorization: `Bearer ${token}`,
+              ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+              ...init?.headers,
+            },
+            credentials: 'omit',
+            cache: 'no-store',
+          })
+        })(),
+        timeoutPromise,
+      ])
     } finally {
       window.clearTimeout(timeout)
     }
