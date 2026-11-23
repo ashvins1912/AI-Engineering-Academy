@@ -9,11 +9,32 @@ const rounds:Round[] = [
  {id:'evaluation',short:'Evaluation',title:'Agent evaluation and debugging round',stage:'Stages 6, 9',minutes:25,prompt:'An agent benchmark shows 91% final-answer correctness, but tool-call precision is 62%, p95 latency is 18 seconds and cost per successful task doubled. Build an evaluation and diagnosis plan before changing the prompt or model.',context:'You have 200 golden tasks, trace spans, tool outcomes, model/token usage and a previous release baseline. Some tasks require abstention or human escalation.',rubric:['Separates task success, answer correctness, groundedness, tool precision/recall and policy adherence.','Evaluates trajectories and intermediate decisions, not only final text.','Uses representative golden, adversarial and regression sets with clear labels.','Segments latency/cost by retrieval, model, tools, retries and queueing.','Defines confidence intervals or repeated runs for noisy judge metrics.','Creates release gates and a targeted improvement experiment.'],outline:['Stratify failures by task type, tool and severity.','Inspect traces for unnecessary calls, retries, poor retrieval and long model spans.','Score correctness, evidence, tool choice, policy, latency and cost separately.','Run one controlled intervention against the same held-out set.','Block release on critical safety regression; monitor online drift.'],followups:['Why can LLM-as-judge scores be misleading?','How do you prevent benchmark leakage?','What is the difference between tool-call accuracy and task success?','Which metric should block release?'],failure:'Offline answer quality improves but production task completion drops. Check distribution shift, tool availability, latency budgets, evaluation leakage and user intent mix.'},
  {id:'production',short:'Production',title:'Production architecture and incident deep dive',stage:'Stages 7–11',minutes:30,prompt:'A deployed multi-agent service has rising 5xx errors, intermittent cross-tenant search leakage reports and rapidly increasing token spend. Walk through incident triage, containment, root-cause analysis, recovery and prevention.',context:'You have traces, structured logs, deployment history, tenant-scoped query metadata and spend dashboards. Do not expose raw customer content in diagnostics.',rubric:['Prioritizes containment and data protection over debugging convenience.','Uses correlation IDs and redacted traces across retrieval/model/tool spans.','Checks identity propagation, tenant filters, caches and background jobs.','Applies rate limits, circuit breakers, budgets and safe degradation.','Defines rollback, credential rotation, incident communication and postmortem actions.'],outline:['Declare severity; pause risky tool actions and contain possible tenant leakage.','Preserve redacted evidence; inspect recent deploys and affected boundaries.','Verify tenant identity and filters across DB, vector, cache and worker paths.','Cap spend and concurrency; circuit-break unhealthy dependencies.','Roll back or disable affected capability; test fixes and add regression tests.'],followups:['How do you prove the tenant boundary is restored?','Which traces/log fields must be redacted?','What is your safe degraded mode if the model provider is down?','How would you prevent recurrence?'],failure:'A cache key omits tenant ID and a background worker loses tenant context. Explain containment, tests and durable fixes.'}
 ]
-const loadChecks = ():Record<string,string[]> => { try { return JSON.parse(localStorage.getItem('ai-academy.interview.rubric.v1') || '{}') as Record<string,string[]> } catch { return {} } }
+const roundById = new Map(rounds.map(round => [round.id, round]))
+const loadAnswers = ():Record<string,string> => {
+ try {
+  const parsed: unknown = JSON.parse(localStorage.getItem('ai-academy.interview.answers.v1') || '{}')
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+  return Object.fromEntries(Object.entries(parsed as Record<string, unknown>)
+   .filter(([id, value]) => roundById.has(id) && typeof value === 'string')
+   .map(([id, value]) => [id, (value as string).slice(0, 12000)]))
+ } catch { return {} }
+}
+const loadChecks = ():Record<string,string[]> => {
+ try {
+  const parsed: unknown = JSON.parse(localStorage.getItem('ai-academy.interview.rubric.v1') || '{}')
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+  return Object.fromEntries(Object.entries(parsed as Record<string, unknown>).flatMap(([id, value]) => {
+   const round = roundById.get(id)
+   if (!round || !Array.isArray(value)) return []
+   const valid = new Set(round.rubric)
+   return [[id, [...new Set(value.filter((item): item is string => typeof item === 'string' && valid.has(item)))]]]
+  }))
+ } catch { return {} }
+}
 
 export default function AgenticInterviewStudio(){
  const [active,setActive]=useState('fundamentals')
- const [answers,setAnswers]=useState<Record<string,string>>(()=>{try{return JSON.parse(localStorage.getItem('ai-academy.interview.answers.v1')||'{}') as Record<string,string>}catch{return {}}})
+ const [answers,setAnswers]=useState<Record<string,string>>(loadAnswers)
  const [checks,setChecks]=useState<Record<string,string[]>>(loadChecks)
  const [seconds,setSeconds]=useState(0)
  const [running,setRunning]=useState(false)
