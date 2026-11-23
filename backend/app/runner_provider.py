@@ -5,6 +5,7 @@ with a configured HTTPS runner service and is disabled unless explicitly enabled
 """
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 import json
 from typing import Any
@@ -135,30 +136,34 @@ class HttpsRunnerProvider:
         headers = {"Authorization": f"Bearer {self._token}", **kwargs.pop("headers", {})}
         body = bytearray()
         try:
-            async with httpx.AsyncClient(
-                timeout=httpx.Timeout(self._timeout),
-                follow_redirects=False,
-                trust_env=False,
-            ) as client:
-                async with client.stream(
-                    method, self.base_url + path, headers=headers, **kwargs,
-                ) as response:
-                    if response.status_code in (401, 403, 409, 413, 422):
-                        raise RunnerRejected("Isolated runner rejected the request")
-                    if response.status_code < 200 or response.status_code >= 300:
-                        raise RunnerUnavailable("Isolated runner service returned an unavailable response")
-                    declared_length = response.headers.get("content-length")
-                    if declared_length is not None:
-                        try:
-                            if int(declared_length) > _MAX_RESPONSE_BYTES:
+            # HTTPX read timeouts are inactivity limits, not an end-to-end
+            # deadline. Bound connection setup and the complete streamed body
+            # so a slow-drip response cannot outlive the dispatch/reconcile lease.
+            async with asyncio.timeout(self._timeout):
+                async with httpx.AsyncClient(
+                    timeout=httpx.Timeout(self._timeout),
+                    follow_redirects=False,
+                    trust_env=False,
+                ) as client:
+                    async with client.stream(
+                        method, self.base_url + path, headers=headers, **kwargs,
+                    ) as response:
+                        if response.status_code in (401, 403, 409, 413, 422):
+                            raise RunnerRejected("Isolated runner rejected the request")
+                        if response.status_code < 200 or response.status_code >= 300:
+                            raise RunnerUnavailable("Isolated runner service returned an unavailable response")
+                        declared_length = response.headers.get("content-length")
+                        if declared_length is not None:
+                            try:
+                                if int(declared_length) > _MAX_RESPONSE_BYTES:
+                                    raise RunnerProtocolError("Runner response exceeded the response-size limit")
+                            except ValueError:
+                                raise RunnerProtocolError("Runner returned an invalid content length") from None
+                        async for chunk in response.aiter_bytes(chunk_size=16 * 1024):
+                            if len(body) + len(chunk) > _MAX_RESPONSE_BYTES:
                                 raise RunnerProtocolError("Runner response exceeded the response-size limit")
-                        except ValueError:
-                            raise RunnerProtocolError("Runner returned an invalid content length") from None
-                    async for chunk in response.aiter_bytes(chunk_size=16 * 1024):
-                        if len(body) + len(chunk) > _MAX_RESPONSE_BYTES:
-                            raise RunnerProtocolError("Runner response exceeded the response-size limit")
-                        body.extend(chunk)
-        except (httpx.TimeoutException, httpx.NetworkError):
+                            body.extend(chunk)
+        except (httpx.TimeoutException, httpx.NetworkError, TimeoutError):
             raise RunnerUnavailable("Isolated runner service is unavailable") from None
         try:
             payload = json.loads(body)
