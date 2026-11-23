@@ -78,8 +78,24 @@ import IaCLessonDetails from './components/IaCLessonDetails'
 import ArchitectureFlow from './components/ArchitectureFlow'
 import StudentReflection from './components/StudentReflection'
 
+const validLessonIds = new Set(curriculum.flatMap(stage => stage.modules.flatMap(module => module.lessons.map(lesson => lesson.id))))
+
 const readList = (key: string): string[] => {
-  try { const value = localStorage.getItem(key); return value ? JSON.parse(value) as string[] : [] } catch { return [] }
+  try {
+    const raw = localStorage.getItem(key)
+    if (!raw) return []
+    const parsed: unknown = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return [...new Set(parsed.filter((value): value is string =>
+      typeof value === 'string' && validLessonIds.has(value)
+    ))]
+  } catch { return [] }
+}
+
+const persistList = (key: string, value: string[]) => {
+  try { localStorage.setItem(key, JSON.stringify(value)) } catch {
+    // Storage can be disabled or full. Keep the in-memory learner experience usable.
+  }
 }
 
 export default function App() {
@@ -125,8 +141,8 @@ export default function App() {
   const [showCICD, setShowCICD] = useState(false)
   const [showIaC, setShowIaC] = useState(false)
 
-  useEffect(() => { localStorage.setItem('ai-academy.completed.v1', JSON.stringify(completed)) }, [completed])
-  useEffect(() => { localStorage.setItem('ai-academy.bookmarks.v1', JSON.stringify(bookmarks)) }, [bookmarks])
+  useEffect(() => { persistList('ai-academy.completed.v1', completed) }, [completed])
+  useEffect(() => { persistList('ai-academy.bookmarks.v1', bookmarks) }, [bookmarks])
 
   const allLessons = useMemo(() => curriculum.flatMap(s => s.modules.flatMap(m => m.lessons)), [])
   const filtered = useMemo(() => {

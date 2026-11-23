@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Award, CheckCircle2, RotateCcw, Target } from 'lucide-react'
 import type { Lesson } from '../data/curriculum'
 
@@ -13,7 +13,18 @@ const rubricLabels = [
 const readAttempt = (id: string): Attempt | null => {
   try {
     const raw = localStorage.getItem(`ai-academy.assessment.v1.${id}`)
-    return raw ? JSON.parse(raw) as Attempt : null
+    if (!raw) return null
+    const value: unknown = JSON.parse(raw)
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+    const attempt = value as Record<string, unknown>
+    if (
+      typeof attempt.score !== 'number' || !Number.isInteger(attempt.score) || attempt.score < 0 ||
+      typeof attempt.total !== 'number' || !Number.isInteger(attempt.total) || attempt.total < 1 ||
+      attempt.score > attempt.total ||
+      typeof attempt.rubric !== 'number' || !Number.isInteger(attempt.rubric) || attempt.rubric < 0 || attempt.rubric > 4 ||
+      typeof attempt.completedAt !== 'string'
+    ) return null
+    return attempt as Attempt
   } catch { return null }
 }
 
@@ -41,6 +52,16 @@ export default function AssessmentEngine({ lesson }: Props) {
   const [rubric, setRubric] = useState<boolean[]>([false, false, false, false])
   const [submitted, setSubmitted] = useState(false)
   const [attempt, setAttempt] = useState<Attempt | null>(() => readAttempt(lesson.id))
+
+  // The same component instance can receive another lesson. Reset all transient
+  // assessment state and load only that lesson's persisted attempt.
+  useEffect(() => {
+    setAnswers({})
+    setRubric([false, false, false, false])
+    setSubmitted(false)
+    setAttempt(readAttempt(lesson.id))
+  }, [lesson.id])
+
   const score = questions.filter(question => answers[question.id] === question.correct).length
   const rubricScore = rubric.filter(Boolean).length
   const passed = score === questions.length && rubricScore >= 3
