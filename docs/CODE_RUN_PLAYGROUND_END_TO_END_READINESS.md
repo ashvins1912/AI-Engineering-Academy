@@ -77,3 +77,8 @@ The playground client bounds network waits independently of the runner's server-
 - Status polling uses the same bounded request helper and retains the last known run when a refresh fails.
 
 The timeout is a client-side wait bound only. It does not cancel server-side work or prove that a runner stopped; cancellation remains unavailable until the separately operated runner supports and verifies it.
+
+
+### Authentication callback deadline
+
+The same client deadline covers both host token acquisition and the HTTP request. A host `getAccessToken()` callback that stalls cannot leave the playground's submit or status request waiting indefinitely. If the deadline expires, the UI treats a submission as ambiguous and preserves the same-key retry behavior. The callback is still owned by the host application; this does not add or assume an identity provider.
