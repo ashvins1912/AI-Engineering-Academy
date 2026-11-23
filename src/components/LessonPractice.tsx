@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { ArrowRight, Check, ChevronLeft, ChevronRight, Clipboard, Code2, Play, Terminal, Wrench } from 'lucide-react'
 import type { Lesson } from '../data/curriculum'
+import { CodeRunPlayground } from './CodeRunPlayground'
 
 type PracticeSpec = {
   language: string
@@ -101,6 +102,8 @@ export default function LessonPractice({ lesson }: { lesson: Lesson }) {
     <div className="practice-code-head"><span>{spec.language.toUpperCase()} · STARTER IMPLEMENTATION</span><button onClick={copy}><Clipboard size={13}/>{copied ? 'Copied' : 'Copy code'}</button></div>
     <pre className="practice-code"><code>{spec.code}</code></pre>
     <div className="practice-run"><div><strong><Play size={14}/> Run and inspect</strong><code>{spec.run}</code></div><p><b>Expected observation:</b> {spec.expected}</p></div>
+
+    <CodeRunPlayground lessonId={slug} lessonTitle={lesson.title} starterSource={spec.code}/>
 
     <div className="practice-subhead"><Wrench size={17}/><div><strong>3. Debug deliberately</strong><span>Introduce one fault at a time and observe the failure boundary.</span></div></div>
     <ul className="practice-checks">{debug.map((item, i) => <li key={i}>{item}</li>)}</ul>
