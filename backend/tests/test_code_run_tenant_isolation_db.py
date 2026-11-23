@@ -109,3 +109,61 @@ def test_code_run_idempotency_is_unique_per_tenant_and_owner():
             await engine.dispose()
 
     asyncio.run(run())
+
+
+@pytest.mark.asyncio
+async def test_reconciler_claim_skips_active_dispatch_lease_and_claims_expired_one(monkeypatch):
+    from datetime import datetime, timedelta, timezone
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+
+    import app.code_run_reconciler as reconciler
+    from app.db import set_tenant_context
+    from app.models import CodeRun
+
+    engine = create_async_engine(DATABASE_URL, pool_pre_ping=True)
+    tenant_id, owner_id = uuid4(), uuid4()
+    active_id, expired_id = uuid4(), uuid4()
+    now = datetime.now(timezone.utc)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    monkeypatch.setattr(reconciler, "SessionLocal", factory)
+
+    async with factory() as session:
+        await set_tenant_context(session, str(tenant_id))
+        session.add_all([
+            CodeRun(
+                id=active_id, tenant_id=tenant_id, owner_id=owner_id,
+                idempotency_key=uuid4(), runtime_id="python-3.11",
+                lesson_id="python-basics", source_sha256="c" * 64,
+                status="submitting", dispatch_lease_token=uuid4(),
+                dispatch_lease_until=now + timedelta(minutes=1),
+            ),
+            CodeRun(
+                id=expired_id, tenant_id=tenant_id, owner_id=owner_id,
+                idempotency_key=uuid4(), runtime_id="python-3.11",
+                lesson_id="python-basics", source_sha256="d" * 64,
+                status="submitting", dispatch_lease_token=uuid4(),
+                dispatch_lease_until=now - timedelta(seconds=1),
+            ),
+        ])
+        await session.commit()
+
+    try:
+        claimed = await reconciler.claim_next_run(tenant_id, lease_seconds=30)
+        assert claimed is not None
+        assert claimed[0] == expired_id
+
+        async with factory() as session:
+            await set_tenant_context(session, str(tenant_id))
+            active = await session.get(CodeRun, active_id)
+            expired = await session.get(CodeRun, expired_id)
+            assert active.reconcile_lease_token is None
+            assert expired.reconcile_lease_token == claimed[1]
+    finally:
+        async with factory() as session:
+            await set_tenant_context(session, str(tenant_id))
+            await session.execute(
+                text("DELETE FROM code_runs WHERE tenant_id=:tenant AND id IN (:active, :expired)"),
+                {"tenant": tenant_id, "active": active_id, "expired": expired_id},
+            )
+            await session.commit()
+        await engine.dispose()
