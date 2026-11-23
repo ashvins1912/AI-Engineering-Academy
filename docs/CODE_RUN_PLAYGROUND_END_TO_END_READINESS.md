@@ -64,3 +64,16 @@ The separately operated runner must:
 ## Explicit non-goals
 
 This PR does not deploy or provision a runner, create credentials, enable execution, persist learner source, install dependencies at runtime, or claim that arbitrary learner code can currently execute. The local learning examples and deterministic visualizers remain available when remote execution is disconnected.
+
+
+## Client resilience hardening
+
+The playground client bounds network waits independently of the runner's server-side deadline:
+
+- Submission requests abort after 25 seconds; status reads abort after 8 seconds. A submission timeout is treated as an ambiguous outcome, never as proof that execution did not start.
+- An ambiguous timeout or transient service/session/quota condition exposes a same-key retry. The original source remains locked and unchanged for that retry.
+- Idempotency conflicts and request validation failures do not offer a blind retry; the learner must start a new run after correcting the request.
+- API run records are checked for required identity, recognized lifecycle state and correctly typed result fields before the UI renders them. Invalid records are surfaced as service-contract errors rather than trusted as successful execution.
+- Status polling uses the same bounded request helper and retains the last known run when a refresh fails.
+
+The timeout is a client-side wait bound only. It does not cancel server-side work or prove that a runner stopped; cancellation remains unavailable until the separately operated runner supports and verifies it.
