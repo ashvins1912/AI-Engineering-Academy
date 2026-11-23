@@ -43,6 +43,10 @@ async def claim_next_run(tenant_id: UUID, lease_seconds: int) -> tuple[UUID, UUI
             .where(
                 CodeRun.tenant_id == tenant_id,
                 CodeRun.status.notin_(_TERMINAL),
+                # A submitting row is not yet confirmed as accepted by the runner.
+                # Only an idempotent POST retry has the source needed to safely
+                # recover that ambiguous dispatch after its lease expires.
+                CodeRun.status != "submitting",
                 or_(CodeRun.dispatch_lease_until.is_(None), CodeRun.dispatch_lease_until <= now),
                 or_(CodeRun.next_reconcile_at.is_(None), CodeRun.next_reconcile_at <= now),
                 or_(CodeRun.reconcile_lease_until.is_(None), CodeRun.reconcile_lease_until <= now),
