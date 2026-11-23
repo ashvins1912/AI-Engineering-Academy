@@ -11,7 +11,7 @@ from hashlib import sha256
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, Header, HTTPException
-from sqlalchemy import func, select, text
+from sqlalchemy import func, or_, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -157,32 +157,98 @@ async def submit_code_run(
             if run.status != "submitting":
                 return _out(run)
 
+    # Claim dispatch in a short transaction. The conditional UPDATE is the
+    # cross-process compare-and-set: only one request can own an unexpired lease.
+    lease_seconds = settings.code_run_dispatch_lease_seconds
+    if not 10 <= lease_seconds <= 120:
+        raise HTTPException(503, "Code-run dispatch lease is misconfigured")
+    dispatch_token = uuid4()
+    now = datetime.now(timezone.utc)
+    await set_tenant_context(session, str(principal.tenant_id))
+    claimed_id = await session.scalar(
+        update(CodeRun)
+        .where(
+            CodeRun.id == run.id,
+            CodeRun.tenant_id == principal.tenant_id,
+            CodeRun.status == "submitting",
+            or_(
+                CodeRun.dispatch_lease_until.is_(None),
+                CodeRun.dispatch_lease_until <= now,
+            ),
+        )
+        .values(
+            dispatch_lease_token=dispatch_token,
+            dispatch_lease_until=now + timedelta(seconds=lease_seconds),
+        )
+        .returning(CodeRun.id)
+    )
+    await session.commit()
+    if claimed_id is None:
+        # Another request currently owns the dispatch lease. Return the durable
+        # in-progress record; the caller can poll GET /v1/code-runs/{id}.
+        await set_tenant_context(session, str(principal.tenant_id))
+        current = await session.scalar(select(CodeRun).where(
+            CodeRun.id == run.id, CodeRun.tenant_id == principal.tenant_id,
+        ))
+        if current is None:
+            raise HTTPException(404, "Code run not found")
+        return _out(current)
+
     try:
         result = await provider.submit(run.id, submission)
-        _apply_result(run, result)
-        # The earlier insert commit ended the transaction and cleared SET LOCAL RLS context.
         await set_tenant_context(session, str(principal.tenant_id))
+        claimed_run = await session.scalar(select(CodeRun).where(
+            CodeRun.id == run.id,
+            CodeRun.tenant_id == principal.tenant_id,
+            CodeRun.dispatch_lease_token == dispatch_token,
+        ))
+        if claimed_run is None:
+            await session.rollback()
+            raise HTTPException(503, "Code-run dispatch lease was lost")
+        _apply_result(claimed_run, result)
+        claimed_run.dispatch_lease_token = None
+        claimed_run.dispatch_lease_until = None
         await session.commit()
+        return _out(claimed_run)
     except RunnerUnavailable:
-        run.error_code = "runner_unavailable"
         await set_tenant_context(session, str(principal.tenant_id))
+        await session.execute(update(CodeRun).where(
+            CodeRun.id == run.id,
+            CodeRun.tenant_id == principal.tenant_id,
+            CodeRun.dispatch_lease_token == dispatch_token,
+        ).values(
+            error_code="runner_unavailable",
+            dispatch_lease_token=None,
+            dispatch_lease_until=None,
+        ))
         await session.commit()
         raise HTTPException(503, "Isolated Python runner is temporarily unavailable") from None
     except RunnerRejected:
-        run.status = "failed"
-        run.error_code = "runner_rejected"
-        run.completed_at = datetime.now(timezone.utc)
         await set_tenant_context(session, str(principal.tenant_id))
+        await session.execute(update(CodeRun).where(
+            CodeRun.id == run.id,
+            CodeRun.tenant_id == principal.tenant_id,
+            CodeRun.dispatch_lease_token == dispatch_token,
+        ).values(
+            status="failed", error_code="runner_rejected",
+            completed_at=datetime.now(timezone.utc),
+            dispatch_lease_token=None, dispatch_lease_until=None,
+        ))
         await session.commit()
         raise HTTPException(502, "Isolated Python runner rejected the submission") from None
     except RunnerProtocolError:
-        run.status = "failed"
-        run.error_code = "runner_protocol_error"
-        run.completed_at = datetime.now(timezone.utc)
         await set_tenant_context(session, str(principal.tenant_id))
+        await session.execute(update(CodeRun).where(
+            CodeRun.id == run.id,
+            CodeRun.tenant_id == principal.tenant_id,
+            CodeRun.dispatch_lease_token == dispatch_token,
+        )).values(
+            status="failed", error_code="runner_protocol_error",
+            completed_at=datetime.now(timezone.utc),
+            dispatch_lease_token=None, dispatch_lease_until=None,
+        )
         await session.commit()
         raise HTTPException(502, "Isolated Python runner returned an invalid response") from None
-    return _out(run)
 
 
 @router.get("/v1/code-runs/{run_id}", response_model=CodeRunOut)
