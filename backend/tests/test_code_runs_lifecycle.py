@@ -45,9 +45,10 @@ class FakeSession:
         self.statements.append((str(statement), {}))
         if "update code_runs" in sql:
             self.last_run = self.added[-1] if self.added else self.last_run
-            if self.last_run is not None:
+            if self.last_run is not None and self.claim_available:
                 self.last_run.dispatch_lease_token = uuid4()
                 return self.last_run.id
+            return None
         if "dispatch_lease_token" in sql and self.last_run is not None:
             return self.last_run
         if not self.scalar_values:
@@ -279,6 +280,44 @@ async def test_stuck_submitting_replay_reuses_durable_run_id(monkeypatch):
     assert result.status == "queued"
     assert session.commits == 2  # dispatch claim and result persistence
 
+
+
+
+@pytest.mark.asyncio
+async def test_active_dispatch_lease_prevents_duplicate_provider_submission(monkeypatch):
+    import app.code_runs as module
+    from app.schemas import CodeRunCreate
+
+    principal = _principal()
+    key = uuid4()
+    source = "print('already dispatching')"
+    existing = _run(
+        tenant_id=principal.tenant_id,
+        owner_id=principal.user_id,
+        idempotency_key=key,
+        source=source,
+        status="submitting",
+    )
+    # Simulate another API worker owning the lease. The conditional UPDATE
+    # returns no row, so this request must return the durable in-progress run.
+    session = FakeSession([existing], claim_available=False)
+    monkeypatch.setattr(module, "set_tenant_context", _noop_tenant_context)
+    monkeypatch.setattr(module, "get_settings", lambda: Settings(_env_file=None, code_execution_enabled=True))
+
+    class ProviderMustNotBeCalled:
+        async def submit(self, *_args, **_kwargs):
+            raise AssertionError("an active dispatch lease must prevent duplicate submission")
+
+    monkeypatch.setattr(module, "_provider_from_settings", lambda _settings: ProviderMustNotBeCalled())
+    result = await module.submit_code_run(
+        body=CodeRunCreate(runtime_id="python-3.11", lesson_id="python-basics", source=source),
+        idempotency_key=key,
+        principal=principal,
+        session=session,
+    )
+    assert result.id == existing.id
+    assert result.status == "submitting"
+    assert session.commits == 1
 
 @pytest.mark.asyncio
 async def test_runner_unavailable_keeps_run_retryable_and_sanitizes_error(monkeypatch):
