@@ -11,6 +11,7 @@ const checks = [
   ['stable idempotency key is reused for retries', playground.includes("headers: { 'Idempotency-Key': key }") && playground.includes('submit(true)')],
   ['source is bounded to 32 KiB', playground.includes('MAX_SOURCE_BYTES = 32 * 1024')],
   ['credentials are not sent as cookies', playground.includes("credentials: 'omit'")],
+  ['API endpoint requires HTTPS outside localhost', playground.includes('API_URL_IS_SAFE') && playground.includes("url.protocol === 'https:'")],
   ['source is not persisted to browser storage', !/localStorage|sessionStorage/.test(playground)],
   ['status polling uses the run resource', playground.includes('/v1/code-runs/')],
   ['code execution remains disabled by default', /code_execution_enabled: bool = False/.test(config)],

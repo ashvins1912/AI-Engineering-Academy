@@ -129,3 +129,8 @@ No cloud resources, external model credentials or paid services were provisioned
 The current main-branch curriculum has **12 stages and 93 unique lesson topics**. The earlier 11-stage/84-topic review is retained as a historical baseline. See the current [Complete Academy Architect Review](docs/COMPLETE_ACADEMY_ARCHITECT_REVIEW_2026-11-22.md) for the updated inventory, architecture risks, stage-by-stage playground priorities, quality gates and delivery sequence.
 
 The [Topic Learning Studio Contract](docs/TOPIC_LEARNING_STUDIO_CONTRACT.md) defines the target common playground experience for every topic: concept exploration, architecture/DFD, deterministic visualization, code walkthrough, failure injection, progressive practice, assessment and reflection. A topic is not considered playground-complete merely because a generic workbench is visible.
+
+
+## Secure Python execution readiness
+
+The authenticated remote Python playground integration contract, host-auth bridge, same-key retry behavior, runner isolation requirements and production acceptance checklist are documented in [Code Run Playground End-to-End Readiness](docs/CODE_RUN_PLAYGROUND_END_TO_END_READINESS.md). Remote execution remains disabled by default until an independently operated isolated runner and learner authentication provider are configured and security-reviewed.

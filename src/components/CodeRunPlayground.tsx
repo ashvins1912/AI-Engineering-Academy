@@ -23,7 +23,7 @@ declare global {
 
 const API_BASE_URL = (import.meta.env.VITE_CODE_RUNS_API_URL ?? '').replace(/\/+$/, '')
 const MAX_SOURCE_BYTES = 32 * 1024
-const TERMINAL_STATES = new Set(['succeeded', 'failed', 'cancelled', 'timed_out', 'rejected'])
+const TERMINAL_STATES = new Set(['succeeded', 'failed', 'timed_out', 'resource_limited'])
 
 function safeLessonId(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').slice(0, 120)
@@ -46,7 +46,7 @@ export function CodeRunPlayground({ lessonId, lessonTitle, starterSource }: {
   const idempotencyKey = useRef<string | null>(null)
   const lessonKey = useMemo(() => safeLessonId(lessonId), [lessonId])
   const authAvailable = typeof window !== 'undefined' && typeof window.__ACADEMY_AUTH__?.getAccessToken === 'function'
-  const configured = Boolean(API_BASE_URL && authAvailable)
+  const configured = Boolean(API_URL_IS_SAFE && authAvailable)
 
   useEffect(() => {
     setSource(starterSource)
@@ -146,7 +146,7 @@ export function CodeRunPlayground({ lessonId, lessonTitle, starterSource }: {
     setSourceLocked(false)
   }
   const terminal = Boolean(run && TERMINAL_STATES.has(run.status))
-  const canRetry = Boolean(idempotencyKey.current && !busy && (!run || run.status === 'submitting' || !terminal) && message)
+  const canRetry = Boolean(idempotencyKey.current && !busy && (!run || run.status === 'submitting') && message)
 
   return <section className="code-run-panel" aria-label={`Python playground for ${lessonTitle}`}>
     <div className="code-run-heading">
