@@ -267,7 +267,19 @@ async def get_code_run(
         raise HTTPException(404, "Code run not found")
 
     settings = get_settings()
-    if run.status not in _TERMINAL and settings.code_execution_enabled:
+    dispatch_lease_active = (
+        run.dispatch_lease_until is not None
+        and run.dispatch_lease_until > datetime.now(timezone.utc)
+    )
+    # A submitting row is reconciled by the durable worker after its dispatch
+    # lease expires. GET must not race the provider's initial submit request,
+    # even if that lease has expired and a retry is about to claim it.
+    if (
+        run.status not in _TERMINAL
+        and run.status != "submitting"
+        and not dispatch_lease_active
+        and settings.code_execution_enabled
+    ):
         try:
             provider = _provider_from_settings(settings)
             result = await provider.get(run.id)
