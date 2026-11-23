@@ -75,7 +75,15 @@ async def test_submit_restores_transaction_local_tenant_context_before_result_up
 
         async def scalar(self, statement):
             self.scalar_calls += 1
-            return None if self.scalar_calls == 1 else 0
+            sql = str(statement).lower()
+            if "update code_runs" in sql:
+                self.run.dispatch_lease_token = dispatch_token
+                return self.run.id
+            if "dispatch_lease_token" in sql:
+                return self.run
+            if self.scalar_calls == 1:
+                return None
+            return 0
 
         def add(self, value):
             self.run = value
@@ -91,6 +99,7 @@ async def test_submit_restores_transaction_local_tenant_context_before_result_up
     monkeypatch.setattr(module, "set_tenant_context", fake_set_tenant_context)
 
     session = FakeSession()
+    dispatch_token = uuid4()
     principal = Principal(user_id=uuid4(), tenant_id=uuid4(), roles=())
     result = await module.submit_code_run(
         body=CodeRunCreate(
@@ -103,5 +112,7 @@ async def test_submit_restores_transaction_local_tenant_context_before_result_up
     )
     assert result.status == "succeeded"
     assert result.stdout == "ok"
-    assert session.commits == 2
+    assert session.commits == 3  # insert, dispatch claim, and result persistence
     assert session.run.status == "succeeded"
+    assert session.run.dispatch_lease_token is None
+    assert session.run.dispatch_lease_until is None

@@ -15,6 +15,7 @@ services:
       - ./migrations/004_distributed_rate_limits.sql:/docker-entrypoint-initdb.d/004_distributed_rate_limits.sql:ro
       - ./migrations/005_code_runs.sql:/docker-entrypoint-initdb.d/005_code_runs.sql:ro
       - ./migrations/006_code_run_reconciliation.sql:/docker-entrypoint-initdb.d/006_code_run_reconciliation.sql:ro
+      - ./migrations/007_code_run_dispatch_claim.sql:/docker-entrypoint-initdb.d/007_code_run_dispatch_claim.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres_admin -d academy"]
       interval: 5s
@@ -63,6 +64,7 @@ services:
       ACADEMY_CODE_RUNNER_URL: ${ACADEMY_CODE_RUNNER_URL:-}
       ACADEMY_CODE_RUNNER_TOKEN: ${ACADEMY_CODE_RUNNER_TOKEN:-}
       ACADEMY_CODE_RUN_RECONCILE_LEASE_SECONDS: "60"
+      ACADEMY_CODE_RUN_DISPATCH_LEASE_SECONDS: "30"
     depends_on:
       postgres:
         condition: service_healthy
