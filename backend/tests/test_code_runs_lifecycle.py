@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from uuid import uuid4
 
@@ -408,3 +408,48 @@ async def test_runner_protocol_error_marks_run_failed_without_leaking_payload(mo
     assert session.added[0].status == "failed"
     assert session.added[0].error_code == "runner_protocol_error"
     assert session.commits == 3  # insert, dispatch claim, and sanitized failure
+
+
+@pytest.mark.parametrize(
+    ("status", "lease_until"),
+    [
+        ("submitting", None),  # even an expired/missing lease is reconciler-owned
+        ("submitting", datetime.now(timezone.utc) + timedelta(minutes=1)),
+        ("queued", datetime.now(timezone.utc) + timedelta(minutes=1)),
+    ],
+)
+@pytest.mark.asyncio
+async def test_get_does_not_poll_during_dispatch_or_active_dispatch_lease(
+    monkeypatch, status, lease_until,
+):
+    import app.code_runs as module
+
+    principal = _principal()
+    run = _run(
+        tenant_id=principal.tenant_id,
+        owner_id=principal.user_id,
+        idempotency_key=uuid4(),
+        source="print('dispatch')",
+        status=status,
+    )
+    run.dispatch_lease_until = lease_until
+    session = FakeSession([run])
+    monkeypatch.setattr(module, "set_tenant_context", _noop_tenant_context)
+    monkeypatch.setattr(
+        module, "get_settings",
+        lambda: Settings(_env_file=None, code_execution_enabled=True),
+    )
+
+    class ProviderMustNotBePolled:
+        async def get(self, *_args, **_kwargs):
+            raise AssertionError("GET must not poll while dispatch is in progress")
+
+    monkeypatch.setattr(
+        module, "_provider_from_settings",
+        lambda _settings: ProviderMustNotBePolled(),
+    )
+
+    result = await module.get_code_run(run.id, principal=principal, session=session)
+    assert result.id == run.id
+    assert result.status == status
+    assert session.commits == 0
