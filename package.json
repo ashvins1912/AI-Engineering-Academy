@@ -23,7 +23,8 @@
     "validate:stage4": "node scripts/validate-stage4.mjs",
     "validate:stage5": "node scripts/validate-stage5.mjs",
     "audit:topic-coverage": "node scripts/audit-topic-coverage.mjs",
-    "validate:code-run-playground": "node scripts/validate-code-run-playground.mjs"
+    "validate:code-run-playground": "node scripts/validate-code-run-playground.mjs",
+    "validate:learner-state": "node scripts/validate-learner-state.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
