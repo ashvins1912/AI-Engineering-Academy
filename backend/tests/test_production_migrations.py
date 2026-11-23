@@ -51,3 +51,11 @@ def test_code_run_reconciliation_migration_adds_leases_without_source_storage():
     assert "FOR UPDATE" not in sql  # claim query is parameterized in the worker
     assert "CREATE INDEX" in sql
     assert "source text" not in sql.lower()
+
+
+def test_code_run_dispatch_migration_adds_owner_scoped_lease_without_source_storage():
+    sql = (Path(__file__).parents[1] / "migrations" / "007_code_run_dispatch_claim.sql").read_text()
+    assert "dispatch_lease_token" in sql
+    assert "dispatch_lease_until" in sql
+    assert "WHERE status = 'submitting'" in sql
+    assert "source text" not in sql.lower()
