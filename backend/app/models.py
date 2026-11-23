@@ -97,6 +97,8 @@ class CodeRun(Base):
     next_reconcile_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     reconcile_lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     reconcile_lease_token: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
+    dispatch_lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    dispatch_lease_token: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
     __table_args__ = (
         UniqueConstraint("tenant_id", "owner_id", "idempotency_key", name="uq_code_runs_owner_idempotency"),
     )
