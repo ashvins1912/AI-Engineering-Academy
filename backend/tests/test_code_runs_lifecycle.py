@@ -32,6 +32,7 @@ class FakeSession:
     def __init__(self, scalar_values=()):
         self.scalar_values = list(scalar_values)
         self.statements = []
+        self.last_run = None
         self.added = []
         self.commits = 0
         self.rollbacks = 0
@@ -40,10 +41,21 @@ class FakeSession:
         self.statements.append((str(statement), params or {}))
 
     async def scalar(self, statement):
+        sql = str(statement).lower()
         self.statements.append((str(statement), {}))
+        if "update code_runs" in sql:
+            self.last_run = self.added[-1] if self.added else self.last_run
+            if self.last_run is not None:
+                self.last_run.dispatch_lease_token = uuid4()
+                return self.last_run.id
+        if "dispatch_lease_token" in sql and self.last_run is not None:
+            return self.last_run
         if not self.scalar_values:
             return None
-        return self.scalar_values.pop(0)
+        value = self.scalar_values.pop(0)
+        if isinstance(value, CodeRun):
+            self.last_run = value
+        return value
 
     def add(self, value):
         self.added.append(value)
@@ -265,7 +277,7 @@ async def test_stuck_submitting_replay_reuses_durable_run_id(monkeypatch):
     assert seen == {"run_id": existing.id, "source": source}
     assert result.id == existing.id
     assert result.status == "queued"
-    assert session.commits == 1
+    assert session.commits == 2  # dispatch claim and result persistence
 
 
 @pytest.mark.asyncio
@@ -296,7 +308,7 @@ async def test_runner_unavailable_keeps_run_retryable_and_sanitizes_error(monkey
     assert run.status == "submitting"
     assert run.error_code == "runner_unavailable"
     assert "private upstream" not in run.error_code
-    assert session.commits == 2
+    assert session.commits == 3  # insert, dispatch claim, and sanitized failure
 
 
 @pytest.mark.asyncio
@@ -353,3 +365,4 @@ async def test_runner_protocol_error_marks_run_failed_without_leaking_payload(mo
     assert error.value.status_code == 502
     assert session.added[0].status == "failed"
     assert session.added[0].error_code == "runner_protocol_error"
+    assert session.commits == 3  # insert, dispatch claim, and sanitized failure
