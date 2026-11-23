@@ -41,6 +41,36 @@ function statusLabel(status: string) {
   return status.replace(/_/g, ' ')
 }
 
+const RUN_STATES = new Set(['submitting', 'queued', 'running', 'succeeded', 'failed', 'timed_out', 'resource_limited'])
+
+function parseCodeRun(value: unknown): CodeRun {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('The code-run service returned an invalid response. Retry this same submission.')
+  }
+  const result = value as Record<string, unknown>
+  if (
+    typeof result.id !== 'string' || !result.id ||
+    typeof result.status !== 'string' || !RUN_STATES.has(result.status) ||
+    typeof result.runtime_id !== 'string' || typeof result.lesson_id !== 'string'
+  ) {
+    throw new Error('The code-run service returned an incomplete run record. Retry this same submission.')
+  }
+  for (const field of ['stdout', 'stderr', 'error_code'] as const) {
+    if (result[field] !== undefined && result[field] !== null && typeof result[field] !== 'string') {
+      throw new Error('The code-run service returned an invalid result payload.')
+    }
+  }
+  for (const field of ['exit_code', 'duration_ms'] as const) {
+    if (result[field] !== undefined && result[field] !== null && typeof result[field] !== 'number') {
+      throw new Error('The code-run service returned an invalid result payload.')
+    }
+  }
+  if (result.test_results !== undefined && !Array.isArray(result.test_results)) {
+    throw new Error('The code-run service returned invalid test results.')
+  }
+  return result as unknown as CodeRun
+}
+
 export function CodeRunPlayground({ lessonId, lessonTitle, starterSource }: {
   lessonId: string
   lessonTitle: string
@@ -51,6 +81,7 @@ export function CodeRunPlayground({ lessonId, lessonTitle, starterSource }: {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [sourceLocked, setSourceLocked] = useState(false)
+  const [retryAllowed, setRetryAllowed] = useState(false)
   const idempotencyKey = useRef<string | null>(null)
   const lessonKey = useMemo(() => safeLessonId(lessonId), [lessonId])
   const authAvailable = typeof window !== 'undefined' && typeof window.__ACADEMY_AUTH__?.getAccessToken === 'function'
@@ -61,23 +92,32 @@ export function CodeRunPlayground({ lessonId, lessonTitle, starterSource }: {
     setRun(null)
     setMessage('')
     setSourceLocked(false)
+    setRetryAllowed(false)
     idempotencyKey.current = null
   }, [starterSource, lessonKey])
 
   const request = useCallback(async (path: string, init?: RequestInit) => {
     const token = await window.__ACADEMY_AUTH__?.getAccessToken()
     if (!token) throw new Error('Your session has expired. Sign in again to run code.')
-    return fetch(`${API_BASE_URL}${path}`, {
-      ...init,
-      headers: {
-        Accept: 'application/json',
-        Authorization: `Bearer ${token}`,
-        ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
-        ...init?.headers,
-      },
-      credentials: 'omit',
-      cache: 'no-store',
-    })
+    const controller = new AbortController()
+    const timeoutMs = init?.method === 'POST' ? 25_000 : 8_000
+    const timeout = window.setTimeout(() => controller.abort(), timeoutMs)
+    try {
+      return await fetch(`${API_BASE_URL}${path}`, {
+        ...init,
+        signal: controller.signal,
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${token}`,
+          ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+          ...init?.headers,
+        },
+        credentials: 'omit',
+        cache: 'no-store',
+      })
+    } finally {
+      window.clearTimeout(timeout)
+    }
   }, [])
 
   const submit = useCallback(async (retry: boolean) => {
@@ -91,7 +131,9 @@ export function CodeRunPlayground({ lessonId, lessonTitle, starterSource }: {
     const key = idempotencyKey.current
     setBusy(true)
     setSourceLocked(true)
+    setRetryAllowed(false)
     setMessage('')
+    let allowRetryOnError = true
     try {
       const response = await request('/v1/code-runs', {
         method: 'POST',
@@ -99,16 +141,19 @@ export function CodeRunPlayground({ lessonId, lessonTitle, starterSource }: {
         body: JSON.stringify({ runtime_id: 'python-3.11', lesson_id: lessonKey, source }),
       })
       if (!response.ok) {
-        if (response.status === 401) throw new Error('Your session is no longer valid. Sign in again, then retry this same submission.')
-        if (response.status === 409) throw new Error('This submission key conflicts with a changed payload. Start a new run before editing or resubmitting.')
-        if (response.status === 429) throw new Error('Your code-run quota has been reached. Try again after the quota window resets.')
-        if (response.status === 503) throw new Error('The runner is unavailable or dispatch is still being recovered. Retry safely with the same submission.')
-        if (response.status === 413 || response.status === 422) throw new Error('The runner rejected this submission. Check the lesson ID and code size.')
-        throw new Error(`Code-run request failed (HTTP ${response.status}). You can retry this same submission.`)
+        if (response.status === 401) { setRetryAllowed(true); throw new Error('Your session is no longer valid. Sign in again, then retry this same submission.') }
+        if (response.status === 409) { allowRetryOnError = false; throw new Error('This submission key conflicts with a changed payload. Start a new run before editing or resubmitting.') }
+        if (response.status === 429) { setRetryAllowed(true); throw new Error('Your code-run quota has been reached. Try again after the quota window resets.') }
+        if (response.status === 503) { setRetryAllowed(true); throw new Error('The runner is unavailable or dispatch is still being recovered. Retry safely with the same submission.') }
+        if (response.status === 413 || response.status === 422) { allowRetryOnError = false; throw new Error('The runner rejected this submission. Start a new run, correct the source or lesson configuration, and try again.') }
+        if (response.status >= 500) throw new Error(`Code-run service failed (HTTP ${response.status}). Retry this same submission if the outcome is unknown.`)
+        allowRetryOnError = false
+        throw new Error(`Code-run request failed (HTTP ${response.status}). Start a new run after correcting the request.`)
       }
-      const result = await response.json() as CodeRun
+      const result = parseCodeRun(await response.json())
       setRun(result)
       if (result.status === 'submitting') {
+        setRetryAllowed(true)
         setMessage('Submission is awaiting dispatch confirmation. Retry safely after the dispatch lease expires; the same key and source will be reused.')
       } else if (TERMINAL_STATES.has(result.status)) {
         setMessage(result.status === 'succeeded' ? 'Execution completed.' : 'Execution finished. Review the result below.')
@@ -116,7 +161,13 @@ export function CodeRunPlayground({ lessonId, lessonTitle, starterSource }: {
         setMessage('Submission accepted. Waiting for the isolated runner result…')
       }
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Could not reach the code-run service. Retry this same submission.')
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        setRetryAllowed(true)
+        setMessage('The request timed out. Its outcome may be unknown; retry this same submission with the unchanged source.')
+      } else {
+        setRetryAllowed(allowRetryOnError)
+        setMessage(error instanceof Error ? error.message : 'Could not reach the code-run service. Retry this same submission.')
+      }
     } finally {
       setBusy(false)
     }
@@ -132,7 +183,7 @@ export function CodeRunPlayground({ lessonId, lessonTitle, starterSource }: {
       try {
         const response = await request(`/v1/code-runs/${encodeURIComponent(run.id)}`)
         if (response.ok) {
-          const latest = await response.json() as CodeRun
+          const latest = parseCodeRun(await response.json())
           if (!cancelled) {
             setRun(latest)
             if (TERMINAL_STATES.has(latest.status)) setMessage(latest.status === 'succeeded' ? 'Execution completed.' : 'Execution finished. Review the result below.')
@@ -152,9 +203,10 @@ export function CodeRunPlayground({ lessonId, lessonTitle, starterSource }: {
     setRun(null)
     setMessage('')
     setSourceLocked(false)
+    setRetryAllowed(false)
   }
   const terminal = Boolean(run && TERMINAL_STATES.has(run.status))
-  const canRetry = Boolean(idempotencyKey.current && !busy && (!run || run.status === 'submitting') && message)
+  const canRetry = Boolean(retryAllowed && idempotencyKey.current && !busy && (!run || run.status === 'submitting'))
 
   return <section className="code-run-panel" aria-label={`Python playground for ${lessonTitle}`}>
     <div className="code-run-heading">
