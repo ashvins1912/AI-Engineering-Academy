@@ -51,6 +51,8 @@ class FakeSession:
             return None
         if "dispatch_lease_token" in sql and self.last_run is not None:
             return self.last_run
+        if "select code_runs" in sql and self.last_run is not None:
+            return self.last_run
         if not self.scalar_values:
             return None
         value = self.scalar_values.pop(0)
