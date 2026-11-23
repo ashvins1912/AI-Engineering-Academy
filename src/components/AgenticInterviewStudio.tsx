@@ -23,12 +23,15 @@ const loadChecks = ():Record<string,string[]> => {
  try {
   const parsed: unknown = JSON.parse(localStorage.getItem('ai-academy.interview.rubric.v1') || '{}')
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
-  return Object.fromEntries(Object.entries(parsed as Record<string, unknown>).flatMap(([id, value]) => {
+  const entries: [string, string[]][] = []
+  for (const [id, value] of Object.entries(parsed as Record<string, unknown>)) {
    const round = roundById.get(id)
-   if (!round || !Array.isArray(value)) return []
+   if (!round || !Array.isArray(value)) continue
    const valid = new Set(round.rubric)
-   return [[id, [...new Set(value.filter((item): item is string => typeof item === 'string' && valid.has(item)))]]]
-  }))
+   const selected = value.filter((item): item is string => typeof item === 'string' && valid.has(item))
+   entries.push([id, [...new Set(selected)]])
+  }
+  return Object.fromEntries(entries)
  } catch { return {} }
 }
 
