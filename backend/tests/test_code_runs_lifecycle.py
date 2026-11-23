@@ -29,8 +29,9 @@ def _run(*, tenant_id, owner_id, idempotency_key, source, status="queued"):
 
 
 class FakeSession:
-    def __init__(self, scalar_values=()):
+    def __init__(self, scalar_values=(), *, claim_available=True):
         self.scalar_values = list(scalar_values)
+        self.claim_available = claim_available
         self.statements = []
         self.last_run = None
         self.added = []
