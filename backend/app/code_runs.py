@@ -242,11 +242,11 @@ async def submit_code_run(
             CodeRun.id == run.id,
             CodeRun.tenant_id == principal.tenant_id,
             CodeRun.dispatch_lease_token == dispatch_token,
-        )).values(
+        ).values(
             status="failed", error_code="runner_protocol_error",
             completed_at=datetime.now(timezone.utc),
             dispatch_lease_token=None, dispatch_lease_until=None,
-        )
+        ))
         await session.commit()
         raise HTTPException(502, "Isolated Python runner returned an invalid response") from None
 
