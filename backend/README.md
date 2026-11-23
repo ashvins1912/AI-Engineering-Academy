@@ -14,7 +14,7 @@ FastAPI service for PDF/DOCX parsing, scanned-PDF OCR, sentence-transformer embe
 
 1. Create a restricted application DB role. The local Docker Compose stack creates `academy_app` with a disposable password; never reuse it in production.
 2. Configure a trusted HTTPS JWKS endpoint (preferred) or RS256 PEM public key, issuer and audience. See [auth_claims.md](app/auth_claims.md).
-3. Apply migrations `000_local_role.sql` through `006_code_run_reconciliation.sql` as a database administrator, in numeric order.
+3. Apply migrations `000_local_role.sql` through `007_code_run_dispatch_claim.sql` as a database administrator, in numeric order.
 4. From this directory run `docker compose up --build`, or install `requirements.txt` in a Python 3.11 virtual environment and run `uvicorn app.main:app --host 0.0.0.0 --port 8000`. The local Compose database initialization mounts migrations 000–006; if the PostgreSQL volume already existed before migrations 003 or 004 were added, apply those migrations manually once.
 
 The API listens on port 8000. Rate limiting is shared across API instances through PostgreSQL. Set `ACADEMY_RATE_LIMIT_PER_MINUTE` to tune the fixed-window quota. If the service is behind a reverse proxy, set `ACADEMY_TRUSTED_PROXY_IPS` to a comma-separated allowlist of immediate proxy peer IPs or CIDR ranges; forwarded client headers are ignored from untrusted peers. The rate limiter stores only SHA-256 client-key digests and fails closed with 503 if PostgreSQL is unavailable.
@@ -97,7 +97,7 @@ The first code-playground milestone adds `app/code_execution_contract.py`, a met
 
 ## Authenticated Python code-run API (disabled by default)
 
-The API now exposes `POST /v1/code-runs` and `GET /v1/code-runs/{id}`. Both require a trusted Academy JWT. Submission requires a UUID `Idempotency-Key`; source is validated against the allowlisted runtime/lesson contract, sent only to the separately operated HTTPS runner, and never stored in PostgreSQL. The database retains the source SHA-256 digest, tenant/owner, request metadata, bounded output and lifecycle state. PostgreSQL row-level security enforces tenant isolation, while non-admins can read only their own runs. Per-owner hourly/daily quotas are serialized with a transaction-scoped advisory lock.
+The API now exposes `POST /v1/code-runs` and `GET /v1/code-runs/{id}`. A durable dispatch lease ensures only one API request can submit a given idempotent run at a time; a crashed dispatcher can be retried after the bounded lease expires. Both require a trusted Academy JWT. Submission requires a UUID `Idempotency-Key`; source is validated against the allowlisted runtime/lesson contract, sent only to the separately operated HTTPS runner, and never stored in PostgreSQL. The database retains the source SHA-256 digest, tenant/owner, request metadata, bounded output and lifecycle state. PostgreSQL row-level security enforces tenant isolation, while non-admins can read only their own runs. Per-owner hourly/daily quotas are serialized with a transaction-scoped advisory lock.
 
 Execution is **disabled by default**. To enable only after a separately deployed and security-reviewed disposable sandbox is ready, an operator must set `ACADEMY_CODE_EXECUTION_ENABLED=true`, `ACADEMY_CODE_RUNNER_URL` (HTTPS origin), and `ACADEMY_CODE_RUNNER_TOKEN` (secret of at least 24 characters). Defaults are 10 runs/hour and 30/day per owner; tune with `ACADEMY_CODE_RUN_MAX_PER_HOUR` and `ACADEMY_CODE_RUN_MAX_PER_DAY`. If the flag, URL, token, or quota configuration is invalid, submissions fail closed with HTTP 503. No local process execution or shell invocation exists in the Academy API. A runner adapter is not itself a sandbox; do not enable this feature until the external runner enforces disposable isolation, no egress, no credentials/metadata access, hard resource limits and teardown.
 
@@ -106,7 +106,7 @@ Execution is **disabled by default**. To enable only after a separately deployed
 
 The optional `app.code_run_reconciler` process polls nonterminal code-run IDs against the configured external runner. It leases rows with PostgreSQL `FOR UPDATE SKIP LOCKED`, scopes every query to an operator-supplied tenant, and uses a lease token to prevent an expired worker from overwriting a newer worker's result. Transient runner/network failures are retried with bounded exponential backoff. Runner rejection or invalid protocol responses fail the affected run with a sanitized error code. The worker logs run/tenant IDs and status only; it never logs learner source or runner credentials.
 
-Apply migration `006_code_run_reconciliation.sql` after migration 005. Start the optional local process only after an independently operated sandbox has been security-reviewed and explicitly configured:
+Apply migrations `006_code_run_reconciliation.sql` and `007_code_run_dispatch_claim.sql` after migration 005. Start the optional local process only after an independently operated sandbox has been security-reviewed and explicitly configured:
 
 ```bash
 ACADEMY_WORKER_TENANT_ID=<trusted-tenant-uuid> \
