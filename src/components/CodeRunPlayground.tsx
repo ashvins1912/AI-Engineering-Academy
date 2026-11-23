@@ -22,6 +22,14 @@ declare global {
 }
 
 const API_BASE_URL = (import.meta.env.VITE_CODE_RUNS_API_URL ?? '').replace(/\/+$/, '')
+const API_URL_IS_SAFE = (() => {
+  if (!API_BASE_URL) return false
+  try {
+    const url = new URL(API_BASE_URL)
+    return (url.protocol === 'https:' || (url.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname)))
+      && url.pathname === '/' && !url.search && !url.hash && !url.username && !url.password
+  } catch { return false }
+})()
 const MAX_SOURCE_BYTES = 32 * 1024
 const TERMINAL_STATES = new Set(['succeeded', 'failed', 'timed_out', 'resource_limited'])
 
