@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Code2,
   Copy,
+  Database,
   FileCode2,
   Play,
   RotateCcw,
@@ -18,8 +19,9 @@ import { virtualLabSpecs, type VirtualLabSpec } from '../data/virtualLabSpecs'
 import { runInVirtualSandbox, type SandboxRunResult } from '../utils/sandboxRunner'
 import MermaidDiagram from './MermaidDiagram'
 import AllSimulatorsWall from './AllSimulatorsWall'
+import RagSimulatorPlayground from './RagSimulatorPlayground'
 
-type WorkspaceMode = 'runtime' | 'simulators'
+type WorkspaceMode = 'runtime' | 'rag-sim' | 'simulators'
 type CodeTab = 'sandbox' | 'python' | 'architecture'
 
 type Props = {
@@ -155,7 +157,17 @@ export default function VirtualLabWorkspace({
             onClick={() => setMode('runtime')}
           >
             <Terminal size={14} />
-            <span>Virtual Lab &amp; Run Env ({virtualLabSpecs.length} Deep Labs)</span>
+            <span>Virtual Lab &amp; Run Env ({virtualLabSpecs.length} Labs)</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'rag-sim'}
+            className={mode === 'rag-sim' ? 'active' : ''}
+            onClick={() => setMode('rag-sim')}
+          >
+            <Database size={14} />
+            <span>RAG Simulator (Live)</span>
           </button>
           <button
             type="button"
@@ -165,7 +177,7 @@ export default function VirtualLabWorkspace({
             onClick={() => setMode('simulators')}
           >
             <Sliders size={14} />
-            <span>All Simulators Live Wall (20)</span>
+            <span>All Simulators Wall (20)</span>
           </button>
         </div>
       </header>
@@ -565,7 +577,12 @@ export default function VirtualLabWorkspace({
       )}
 
       {/* ====================================================================
-          MODE 2: ALL SIMULATORS LIVE WALL (ALL 20 SIMULATORS VISIBLE)
+          MODE 2: INTERACTIVE RAG SIMULATOR (THRESHOLD, TOP-K, RERANKING)
+      ===================================================================== */}
+      {mode === 'rag-sim' && <RagSimulatorPlayground />}
+
+      {/* ====================================================================
+          MODE 3: ALL SIMULATORS LIVE WALL (ALL 20 SIMULATORS VISIBLE)
       ===================================================================== */}
       {mode === 'simulators' && (
         <AllSimulatorsWall

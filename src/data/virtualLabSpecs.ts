@@ -1123,5 +1123,337 @@ fraud_model = XGBClassifier(n_estimators=200, max_depth=6, learning_rate=0.05)
 segmenter = KMeans(n_clusters=5, n_init="auto", random_state=42)
 
 # 3. Unstructured Text / Code / Reasoning -> Pretrained Transformer LLM (via RAG + Evals)`
+  },
+  // =========================================================================
+  // LAB 09 — SENIOR DS: A/B TESTING (SRM + CUPED) + PSI DATA DRIFT GATE
+  // =========================================================================
+  {
+    id: 'lab-ds-ab-cuped-drift',
+    number: '09',
+    title: 'A/B Testing (SRM + CUPED) & PSI Distribution Drift Gate',
+    stageTag: 'Senior Data Science · Experimentation & Drift',
+    runtimeProfile: 'Live Math & Stats Sandbox',
+    packages: ['scipy.stats', 'numpy', 'evidently'],
+    summary:
+      'Run a production experimentation & drift monitoring pipeline: enforce a Sample Ratio Mismatch (SRM) Chi-Square guard, compute CUPED variance-reduced Z-tests, and calculate Population Stability Index (PSI) drift.',
+    architectGoal:
+      'Prove that SRM checks block corrupted splits, CUPED tightens standard errors without extra traffic, and PSI > 0.25 catches silent production data drift before models degrade.',
+    whatToExperiment: [
+      'Set FAIL_MODE to "inject_srm_and_drift" to watch both the SRM guard and PSI drift monitor fail closed immediately.',
+      'Toggle USE_CUPED off and compare how the Z-score drops even on the exact same 100,000 users.',
+      'Slide MEAN_SHIFT above 0.9σ to see PSI cross the 0.25 retraining alarm threshold.'
+    ],
+    mermaidDfd: `flowchart LR
+  SPLIT["50/50 Traffic Split"] --> SRM{"SRM Chi-Square Guard"}
+  SRM --> CUPED["CUPED Covariate Adjustment"]
+  CUPED --> ZTEST["Two-Sample Z-Test & p-value"]
+  LIVE["Live Feature Stream"] --> PSI["PSI Distribution Drift Gate"]
+  ZTEST --> GATE["Release Decision"]
+  PSI --> GATE`,
+    envControls: [
+      { key: 'USE_CUPED', label: 'Enable CUPED Pre-Experiment Covariate', type: 'toggle', defaultValue: true },
+      { key: 'COVARIATE_R', label: 'Pre-Experiment Correlation (r)', type: 'range', min: 0.1, max: 0.85, step: 0.05, unit: 'r', defaultValue: 0.65 },
+      { key: 'MEAN_SHIFT', label: 'Production Feature Mean Shift', type: 'range', min: 0, max: 1.5, step: 0.1, unit: 'σ', defaultValue: 0.2 },
+      {
+        key: 'FAIL_MODE',
+        label: 'Failure Injection',
+        type: 'select',
+        defaultValue: 'none',
+        options: [
+          { value: 'none', label: 'Nominal (Balanced Split + Stable Data)' },
+          { value: 'inject_srm_and_drift', label: 'Inject Bug: SRM Bias + Severe Drift' }
+        ]
+      }
+    ],
+    executableCode: `// Deep Lab 09 — Senior Data Science: A/B Test (SRM + CUPED) & PSI Drift Gate
+const broken = ENV.FAIL_MODE === 'inject_srm_and_drift';
+const controlN = broken ? 52600 : 50040;
+const treatmentN = broken ? 47400 : 49960;
+const pC = 0.0500;
+const pT = 0.0531; // +6.2% relative lift
+const r = Number(ENV.COVARIATE_R ?? 0.65);
+
+// 1. Sample Ratio Mismatch Chi-Square
+const exp = (controlN + treatmentN) / 2;
+const chi2 = Math.pow(controlN - exp, 2) / exp + Math.pow(treatmentN - exp, 2) / exp;
+const srmPass = chi2 < 10.83;
+
+// 2. CUPED Variance-Reduced Z-Test
+const rawVar = (pC * (1 - pC)) / controlN + (pT * (1 - pT)) / treatmentN;
+const cupedMult = ENV.USE_CUPED ? (1 - r * r) : 1.0;
+const zScore = (pT - pC) / Math.sqrt(rawVar * cupedMult);
+
+// 3. PSI Drift across 5 bins
+const shift = broken ? 1.4 : Number(ENV.MEAN_SHIFT ?? 0.2);
+const baseBins = [0.20, 0.20, 0.20, 0.20, 0.20];
+const rawLive = [
+  Math.max(0.02, 0.20 - shift * 0.12),
+  Math.max(0.05, 0.20 - shift * 0.06),
+  0.20,
+  0.20 + shift * 0.06,
+  0.20 + shift * 0.12
+];
+const sumLive = rawLive.reduce((a, b) => a + b, 0);
+const liveBins = rawLive.map(x => x / sumLive);
+const psi = Number(baseBins.reduce((s, e, i) => s + (liveBins[i] - e) * Math.log(liveBins[i] / e), 0).toFixed(4));
+
+console.log("[SRM Guard] chi2 =", chi2.toFixed(2), "|", srmPass ? "PASS" : "FAIL (Biased Assignment)");
+console.log("[CUPED Z-Test] Variance cut =", ENV.USE_CUPED ? ((1 - cupedMult) * 100).toFixed(1) + "%" : "0%", "| Z =", zScore.toFixed(3));
+console.log("[PSI Drift] Live PSI =", psi, "| Threshold < 0.25");
+
+assert(srmPass, "SRM Chi-Square check passed (chi2=" + chi2.toFixed(2) + " < 10.83)");
+assert(zScore >= 1.96, "Experiment reached statistical significance (Z=" + zScore.toFixed(2) + " >= 1.96)");
+assert(psi < 0.25, "Production feature distribution stable (PSI=" + psi + " < 0.25)");
+
+emitMetric("SRM Chi-Square", chi2.toFixed(2), srmPass ? "Balanced" : "Biased", srmPass ? "optimal" : "breaking");
+emitMetric("CUPED Z-Score", zScore.toFixed(2), ENV.USE_CUPED ? "Variance Reduced" : "Raw", zScore >= 1.96 ? "optimal" : "tradeoff");
+emitMetric("Live PSI Drift", psi.toFixed(4), psi < 0.1 ? "Stable" : psi < 0.25 ? "Monitor" : "Critical", psi < 0.1 ? "optimal" : psi < 0.25 ? "tradeoff" : "breaking");
+emitMetric("Release Verdict", (srmPass && zScore >= 1.96 && psi < 0.25) ? "SHIP" : "BLOCK", "Fail-closed", (srmPass && zScore >= 1.96 && psi < 0.25) ? "optimal" : "breaking");
+
+emitArtifact("Experiment & Drift Telemetry", { srm_chi2: Number(chi2.toFixed(3)), z_score: Number(zScore.toFixed(3)), psi, live_bins: liveBins.map(v => Number(v.toFixed(3))) });`,
+    pythonBlueprint: `# Production DS Gate: SRM + CUPED + PSI Drift Monitor
+import numpy as np
+from scipy.stats import chisquare, norm
+
+def check_srm(n_ctrl: int, n_trt: int) -> bool:
+    _, p = chisquare([n_ctrl, n_trt])
+    return bool(p >= 0.001)
+
+def compute_psi(expected_bins: np.ndarray, live_bins: np.ndarray) -> float:
+    e = np.clip(expected_bins, 1e-6, 1.0)
+    a = np.clip(live_bins, 1e-6, 1.0)
+    return float(np.sum((a - e) * np.log(a / e)))`
+  },
+
+  // =========================================================================
+  // LAB 10 — SENIOR DE: POINT-IN-TIME ASOF JOIN + WATERMARK + MINHASH DEDUP
+  // =========================================================================
+  {
+    id: 'lab-de-asof-watermark-minhash',
+    number: '10',
+    title: 'Point-in-Time ASOF Feature Join, Watermarks & MinHash LLM Dedup',
+    stageTag: 'Senior Data Engineering · Lakehouse, Streams & LLM Data',
+    runtimeProfile: 'Live Lakehouse & Stream Sandbox',
+    packages: ['duckdb', 'pyflink', 'datasketch'],
+    summary:
+      'Combine three core Senior Data Engineering primitives in one runnable lab: strict Point-in-Time ASOF joins for zero ML leakage, streaming Event-Time Watermarks, and fuzzy shingle deduplication for LLM corpora.',
+    architectGoal:
+      'Eliminate offline-to-online training-serving skew, prevent late-arriving event loss on Kafka streams, and cut redundant LLM training tokens via fuzzy Jaccard deduplication.',
+    whatToExperiment: [
+      'Switch FAIL_MODE to "naive_latest_join" to see future feature states leak into historical training labels immediately.',
+      'Drop WATERMARK_SEC below 13s to watch late-arriving mobile events get dropped by the stream window.',
+      'Lower JACCARD_CUTOFF to see how fuzzy shingle similarity deduplicates near-identical LLM training documents.'
+    ],
+    mermaidDfd: `flowchart LR
+  CDC["Debezium CDC Stream"] --> WM["Event-Time Watermark Gate"]
+  WM --> OFF["Iceberg Offline History"]
+  OFF --> ASOF["Point-in-Time ASOF Join"]
+  CORPUS["Raw Web Docs"] --> LSH["Fuzzy Shingle / MinHash Dedup"]
+  ASOF --> TRAIN["Leak-Free ML Dataset"]
+  LSH --> TRAIN`,
+    envControls: [
+      { key: 'WATERMARK_SEC', label: 'Watermark Grace Delay', type: 'range', min: 2, max: 30, step: 2, unit: 'sec', defaultValue: 16 },
+      { key: 'JACCARD_CUTOFF', label: 'Fuzzy Dedup Jaccard Cutoff', type: 'range', min: 0.4, max: 0.95, step: 0.05, unit: 'J', defaultValue: 0.7 },
+      {
+        key: 'FAIL_MODE',
+        label: 'Failure Injection',
+        type: 'select',
+        defaultValue: 'none',
+        options: [
+          { value: 'none', label: 'Nominal (Strict ASOF + Healthy Watermark)' },
+          { value: 'naive_latest_join', label: 'Inject Bug: Naive Latest-State Join (Leakage!)' }
+        ]
+      }
+    ],
+    executableCode: `// Deep Lab 10 — Senior DE: Point-in-Time ASOF Join + Watermark + Fuzzy LLM Dedup
+const useAsof = ENV.FAIL_MODE !== 'naive_latest_join';
+const wmGrace = Number(ENV.WATERMARK_SEC ?? 16);
+const jaccardCutoff = Number(ENV.JACCARD_CUTOFF ?? 0.7);
+
+// 1. Point-in-Time ASOF Join (Label at t=250 must NEVER see feature update at t=360)
+const history = [
+  { ts: 100, risk_tier: "LOW",  balance: 1400 },
+  { ts: 210, risk_tier: "MED",  balance: 820 },
+  { ts: 360, risk_tier: "HIGH", balance: 15 } // Post-default future update!
+];
+const labelTs = 250;
+const joined = useAsof
+  ? history.filter(h => h.ts <= labelTs).sort((a, b) => b.ts - a.ts)[0]
+  : history[history.length - 1];
+
+// 2. Event-Time Watermark processing out-of-order stream
+const events = [1000, 1010, 1022, 1009, 1014]; // 1009 arrives 13s behind max 1022
+let maxTs = 0, keptEvents = 0, droppedEvents = 0;
+for (const ts of events) {
+  if (ts < maxTs - wmGrace) droppedEvents++;
+  else { keptEvents++; if (ts > maxTs) maxTs = ts; }
+}
+
+// 3. Fuzzy 3-shingle Jaccard deduplication for LLM pretraining / RAG corpus
+const docs = [
+  "apache iceberg gives acid snapshots and fast partition pruning for lakehouses",
+  "apache iceberg gives acid snapshots and fast partition pruning for warehouses",
+  "point in time asof joins prevent future feature leakage in production ml"
+];
+const toShingles = s => {
+  const w = s.split(" ");
+  const out = new Set();
+  for (let i = 0; i <= w.length - 3; i++) out.add(w.slice(i, i + 3).join(" "));
+  return out;
+};
+const jaccard = (a, b) => {
+  let inter = 0;
+  for (const x of a) if (b.has(x)) inter++;
+  return inter / (a.size + b.size - inter);
+};
+const uniqueDocs = [];
+let dupsRemoved = 0;
+for (const d of docs) {
+  const sh = toShingles(d);
+  if (uniqueDocs.some(u => jaccard(u.sh, sh) >= jaccardCutoff)) dupsRemoved++;
+  else uniqueDocs.push({ text: d, sh });
+}
+
+console.log("[ASOF Join] Label t=" + labelTs + " => joined feature t=" + joined.ts + " (" + joined.risk_tier + ")");
+console.log("[Watermark] Grace=" + wmGrace + "s => kept=" + keptEvents + ", dropped=" + droppedEvents);
+console.log("[Fuzzy Dedup] Cutoff=" + jaccardCutoff + " => unique=" + uniqueDocs.length + ", dupsRemoved=" + dupsRemoved);
+
+assert(joined.ts <= labelTs, "ASOF integrity: feature_ts (" + joined.ts + ") <= label_ts (" + labelTs + ")");
+assert(droppedEvents === 0, "Watermark tolerated 13s out-of-order mobile packet without drop");
+assert(dupsRemoved >= 1, "Fuzzy shingle dedup removed near-duplicate boilerplate document");
+
+emitMetric("Joined Feature TS", "t=" + joined.ts, "Label t=" + labelTs, joined.ts <= labelTs ? "optimal" : "breaking");
+emitMetric("Stream Late Drops", String(droppedEvents), "Grace " + wmGrace + "s", droppedEvents === 0 ? "optimal" : "breaking");
+emitMetric("Corpus Dups Cut", String(dupsRemoved), "J >= " + jaccardCutoff, dupsRemoved >= 1 ? "optimal" : "tradeoff");
+emitMetric("Pipeline Health", (joined.ts <= labelTs && droppedEvents === 0) ? "CLEAN" : "LEAK/DROP", "End-to-End", (joined.ts <= labelTs && droppedEvents === 0) ? "optimal" : "breaking");
+
+emitArtifact("Lakehouse & Stream Output", { asof_enabled: useAsof, joined_feature: joined, kept_events: keptEvents, dropped_events: droppedEvents, unique_docs: uniqueDocs.length });`,
+    pythonBlueprint: `# DuckDB ASOF Join + Datasketch MinHash LSH
+import duckdb
+from datasketch import MinHash, MinHashLSH
+
+# 1. Exact Point-in-Time ASOF join in DuckDB (zero temporal leakage)
+df = duckdb.sql("""
+  SELECT l.*, f.risk_tier, f.balance
+  FROM labels l
+  ASOF JOIN feature_history f
+    ON l.user_id = f.user_id AND l.label_ts >= f.feature_ts
+""").df()`
+  },
+
+  // =========================================================================
+  // LAB 11 — HARNESS ENGINEERING: POLICY HOOKS, VERIFIER & DOOM-LOOP GUARD
+  // =========================================================================
+  {
+    id: 'lab-harness-engineering',
+    number: '11',
+    title: 'Agent Harness Runtime: Policy Hooks, Verifier Backpressure & Pass^k',
+    stageTag: 'Frontier Agent Systems · Harness Engineering',
+    runtimeProfile: 'Live Deterministic Harness Sandbox',
+    packages: ['docker-sandbox', 'opentelemetry', 'pytest-verifier'],
+    summary:
+      'Execute a complete deterministic Agent Harness around a simulated multi-turn LLM: enforce Pre-Tool Policy Hooks, Doom-Loop Detection, Context Compaction, and Objective Verifier Backpressure.',
+    architectGoal:
+      'Demonstrate how deterministic runtime engineering lifts multi-turn pass@1 and pass^3 reliability without touching LLM weights while keeping blast radius and token spend strictly bounded.',
+    whatToExperiment: [
+      'Switch FAIL_MODE to "disable_verifier_and_hooks" to watch destructive commands slip through and unverified broken code ship.',
+      'Lower MAX_BUDGET_USD to $0.20 to trigger the FinOps circuit breaker cleanly.',
+      'Tune COMPACT_LIMIT to see how context compaction prevents long-horizon context rot.'
+    ],
+    mermaidDfd: `flowchart LR
+  CTX["Context & Compactor"] --> LLM["LLM Tool Proposal"]
+  LLM --> HOOK{"Pre-Tool Policy & Doom-Loop Hook"}
+  HOOK -->|Allow| SBX["Isolated Sandbox"]
+  SBX --> VER{"Deterministic Verifier (Exit 0?)"}
+  VER -->|Fail Trace| CTX
+  VER -->|Exit 0| DONE["Verified Output + Trace"]`,
+    envControls: [
+      { key: 'MAX_BUDGET_USD', label: 'Hard Budget Cap', type: 'range', min: 0.15, max: 1.0, step: 0.05, unit: '$', defaultValue: 0.55 },
+      { key: 'COMPACT_LIMIT', label: 'Context Compaction Trigger', type: 'range', min: 4000, max: 20000, step: 2000, unit: 'tok', defaultValue: 8000 },
+      {
+        key: 'FAIL_MODE',
+        label: 'Harness Protection Mode',
+        type: 'select',
+        defaultValue: 'full_harness',
+        options: [
+          { value: 'full_harness', label: 'Full Production Harness (Hooks + Verifier + Loop Guard)' },
+          { value: 'disable_verifier_and_hooks', label: 'Inject Bug: Raw Unharnessed LLM Loop' }
+        ]
+      }
+    ],
+    executableCode: `// Deep Lab 11 — Deterministic Agent Harness Runtime
+const hardened = ENV.FAIL_MODE !== 'disable_verifier_and_hooks';
+const budgetCap = Number(ENV.MAX_BUDGET_USD ?? 0.55);
+const compactAt = Number(ENV.COMPACT_LIMIT ?? 8000);
+
+const turns = [
+  { t: 1, tool: "read_slice", arg: "jwt.py:1-40", tok: 1800, usd: 0.05 },
+  { t: 2, tool: "shell", arg: "rm -rf /srv/data", tok: 2400, usd: 0.05 }, // prompt injection!
+  { t: 3, tool: "apply_patch", arg: "patch_v1", tok: 4200, usd: 0.08, testsPass: false },
+  { t: 4, tool: "apply_patch", arg: "patch_v1", tok: 5100, usd: 0.08, testsPass: false }, // doom loop!
+  { t: 5, tool: "apply_patch", arg: "patch_v2", tok: 4600, usd: 0.08, testsPass: true },
+  { t: 6, tool: "final_answer", arg: "done", tok: 2000, usd: 0.04 }
+];
+
+let spent = 0, ctxTokens = 0, compactions = 0, policyBlocks = 0, loopsStopped = 0, testsOk = false, verified = false;
+const failedPatches = new Set();
+
+for (const step of turns) {
+  if (spent + step.usd > budgetCap) {
+    console.warn("[Budget Circuit Breaker] Halted at turn " + step.t + " (spent $" + spent.toFixed(2) + " / cap $" + budgetCap.toFixed(2) + ")");
+    break;
+  }
+  spent += step.usd;
+  ctxTokens += step.tok;
+  if (hardened && ctxTokens >= compactAt) {
+    ctxTokens = Math.round(ctxTokens * 0.35);
+    compactions++;
+    console.log("[Context Compactor] Turn " + step.t + " compacted window to " + ctxTokens + " tokens");
+  }
+  if (step.tool === "shell" && /rm\\s+-rf/.test(step.arg)) {
+    if (hardened) { policyBlocks++; console.warn("[Pre-Tool Hook] BLOCKED destructive shell: " + step.arg); continue; }
+    console.error("[UNHARNESSED BREACH] Executed destructive command: " + step.arg);
+  }
+  if (step.tool === "apply_patch") {
+    if (hardened && failedPatches.has(step.arg)) {
+      loopsStopped++;
+      console.warn("[Doom-Loop Guard] Prevented repeat failing patch " + step.arg);
+      continue;
+    }
+    if (hardened) {
+      testsOk = Boolean(step.testsPass);
+      if (!testsOk) { failedPatches.add(step.arg); console.log("[Verifier] Turn " + step.t + " pytest EXIT 1 -> trace returned to LLM"); }
+      else { console.log("[Verifier] Turn " + step.t + " pytest EXIT 0 -> verified clean!"); }
+    }
+  }
+  if (step.tool === "final_answer") verified = hardened && testsOk;
+}
+
+assert(policyBlocks === 1, "Pre-Tool Policy Hook blocked destructive shell injection");
+assert(loopsStopped >= 1, "Doom-Loop Guard halted repeated failing patch");
+assert(verified, "Deterministic Verifier proved tests exit 0 before completion");
+assert(spent <= budgetCap, "Total spend ($" + spent.toFixed(2) + ") stayed within budget ($" + budgetCap.toFixed(2) + ")");
+
+emitMetric("Policy Blocks", String(policyBlocks), "Destructive cmds", policyBlocks === 1 ? "optimal" : "breaking");
+emitMetric("Doom Loops Cut", String(loopsStopped), "Repeated fails", loopsStopped >= 1 ? "optimal" : "tradeoff");
+emitMetric("Verifier Exit", verified ? "EXIT 0" : "UNVERIFIED", "Objective gate", verified ? "optimal" : "breaking");
+emitMetric("Total Cost", "$" + spent.toFixed(2), compactions + " compactions", spent <= budgetCap ? "optimal" : "breaking");
+
+emitArtifact("Harness Runtime Summary", { hardened, verified, policy_blocks: policyBlocks, doom_loops_stopped: loopsStopped, compactions, spent_usd: Number(spent.toFixed(2)) });`,
+    pythonBlueprint: `# Production Agent Harness Loop (Deterministic Wrapper Around LLM)
+def run_harness(task: str, max_turns: int = 12, max_usd: float = 0.75):
+    for turn in range(1, max_turns + 1):
+        maybe_compact_context(threshold_pct=0.70)
+        proposal = llm.next_action(state)
+        if proposal.is_final:
+            if run_sandbox_verifier("pytest -q").exit_code == 0:
+                return {"status": "VERIFIED_COMPLETE", "answer": proposal.text}
+            continue
+        enforce_pre_tool_policy(proposal)
+        detect_doom_loop(proposal)
+        execute_in_ephemeral_sandbox(proposal, timeout_s=15)`
   }
 ]
+
+
+

@@ -31,9 +31,12 @@ import FrontierArchitectureDeepDive from './components/FrontierArchitectureDeepD
 import StageLabsDrawer from './components/StageLabsDrawer'
 import VirtualLabWorkspace from './components/VirtualLabWorkspace'
 import LLMDevelopmentMasterclass from './components/LLMDevelopmentMasterclass'
+import DataScienceEngineeringStudio from './components/DataScienceEngineeringStudio'
+import HarnessEngineeringStudio from './components/HarnessEngineeringStudio'
 
 type WorkspaceView = 'overview' | 'vlab' | 'studio' | 'curriculum' | 'frontier-ops'
-type FrontierOpsTab = 'llm-masterclass' | 'frontier' | 'labs' | 'interviews'
+type StudioTrack = 'ds-de' | 'foundations'
+type FrontierOpsTab = 'harness' | 'llm-masterclass' | 'frontier' | 'labs' | 'interviews'
 type LessonFilter = 'all' | 'remaining' | 'completed' | 'bookmarked'
 type ModalTab = 'learn' | 'practice' | 'assess'
 
@@ -67,7 +70,8 @@ const persistList = (key: string, value: string[]) => {
 
 export default function App() {
   const [workspace, setWorkspace] = useState<WorkspaceView>('overview')
-  const [frontierOpsTab, setFrontierOpsTab] = useState<FrontierOpsTab>('llm-masterclass')
+  const [studioTrack, setStudioTrack] = useState<StudioTrack>('ds-de')
+  const [frontierOpsTab, setFrontierOpsTab] = useState<FrontierOpsTab>('harness')
   const [query, setQuery] = useState('')
   const [lessonFilter, setLessonFilter] = useState<LessonFilter>('all')
   const [activeStage, setActiveStage] = useState(curriculum[0].id)
@@ -303,13 +307,13 @@ export default function App() {
                 <article className="ux-track-card">
                   <div className="ux-track-meta">
                     <span className="bc-tabular">01</span>
-                    <span>Live sandbox runtime · 8 runnable labs · 20 simulators</span>
+                    <span>Live sandbox runtime · 11 runnable labs · 20+ simulators</span>
                   </div>
                   <h3>Virtual Lab &amp; All Simulators Control Room</h3>
                   <p>
-                    Read and edit real executable code for Transformers, vLLM PagedAttention,
-                    Mini-LLM Training (Untrained → Trained), ML Model Benchmarks, Hybrid RAG,
-                    Durable Agents, and Claude FinOps—plus all 20 interactive simulators live.
+                    Read and edit real executable code for Transformers, vLLM, Agent Harness Runtime,
+                    Mini-LLM Training, A/B Testing + CUPED + PSI Drift, ASOF Feature Stores, and
+                    Hybrid RAG—plus all interactive simulators live.
                   </p>
                   <button
                     type="button"
@@ -324,23 +328,23 @@ export default function App() {
                 <article className="ux-track-card">
                   <div className="ux-track-meta">
                     <span className="bc-tabular">02</span>
-                    <span>Complete LLM lifecycle · Trained vs Untrained · ML Models</span>
+                    <span>Serial study track · 6 chapters · live code + virtual simulators</span>
                   </div>
-                  <h3>LLM Development, Algorithms &amp; Frontier Deep Dive</h3>
+                  <h3>Senior Data Science &amp; Data Engineering Serial Studio</h3>
                   <p>
-                    Trace the full 8-stage LLM lifecycle DFD, compare Untrained vs. Pretrained vs.
-                    Post-Trained models live, explore why LLMs work internally, master pretraining
-                    algorithms &amp; ML model families, plus ChatGPT/Claude &amp; Google → vLLM.
+                    Chapter-by-chapter visualized mastery of A/B Testing &amp; CUPED, Causal DiD &amp;
+                    Time-Series, Imbalance/Calibration/SHAP, Iceberg Lakehouse &amp; Spark Skew,
+                    CDC Watermarks &amp; ASOF Feature Stores, and PSI Drift + MinHash LLM Data.
                   </p>
                   <button
                     type="button"
                     className="ux-track-cta"
                     onClick={() => {
-                      setFrontierOpsTab('llm-masterclass')
-                      navigateWorkspace('frontier-ops')
+                      setStudioTrack('ds-de')
+                      navigateWorkspace('studio')
                     }}
                   >
-                    <span>Open LLM Complete Masterclass</span>
+                    <span>Start DS &amp; DE Serial Study Track</span>
                     <ArrowRight size={15} />
                   </button>
                 </article>
@@ -348,20 +352,23 @@ export default function App() {
                 <article className="ux-track-card">
                   <div className="ux-track-meta">
                     <span className="bc-tabular">03</span>
-                    <span>Plain-English foundations · 6 core stages · 12 topics</span>
+                    <span>Harness Engineering · LLM Lifecycle · ChatGPT/Claude &amp; vLLM</span>
                   </div>
-                  <h3>Guided Visual Studio</h3>
+                  <h3>Harness Engineering &amp; Frontier LLM Masterclass</h3>
                   <p>
-                    Everyday analogies paired with live Mermaid architecture flows, step-by-step JSON
-                    animations, interactive parameter simulators, With-vs-Without outcomes, and Python
-                    coding checks.
+                    Master deterministic Agent Harness Engineering (DFD, 3 production case studies,
+                    Pass^k virtual simulator &amp; live runtime) alongside the full LLM Lifecycle,
+                    Trained vs. Untrained Lab, ML Models, and ChatGPT/Claude/vLLM internals.
                   </p>
                   <button
                     type="button"
                     className="ux-track-cta"
-                    onClick={() => navigateWorkspace('studio')}
+                    onClick={() => {
+                      setFrontierOpsTab('harness')
+                      navigateWorkspace('frontier-ops')
+                    }}
                   >
-                    <span>Open Guided Studio</span>
+                    <span>Open Harness Engineering &amp; Frontier</span>
                     <ArrowRight size={15} />
                   </button>
                 </article>
@@ -446,11 +453,46 @@ export default function App() {
         )}
 
         {/* ================================================================
-            WORKSPACE 3: GUIDED VISUAL STUDIO (PLAIN ENGLISH + 6 PILLARS)
+            WORKSPACE 3: GUIDED VISUAL STUDIO (DS & DE SERIAL + AI FOUNDATIONS)
         ================================================================= */}
         {workspace === 'studio' && (
           <div className="ux-workspace-view">
-            <InteractiveCurriculumModule />
+            <div className="ux-prod-switch-bar">
+              <div>
+                <div className="bc-meta-line">
+                  <span>Visualized Serial Study Studio</span>
+                  <span aria-hidden="true">·</span>
+                  <span>Animated DFDs, Virtual Simulators &amp; Live Code Playgrounds</span>
+                </div>
+                <h2>Guided Visual Learning &amp; Senior DS / DE Serial Track</h2>
+              </div>
+              <div className="bc-segmented" role="tablist" aria-label="Guided studio track">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={studioTrack === 'ds-de'}
+                  className={studioTrack === 'ds-de' ? 'active' : ''}
+                  onClick={() => setStudioTrack('ds-de')}
+                >
+                  Senior DS &amp; DE Serial Track (6 Chapters)
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={studioTrack === 'foundations'}
+                  className={studioTrack === 'foundations' ? 'active' : ''}
+                  onClick={() => setStudioTrack('foundations')}
+                >
+                  AI Foundations Visual Studio (12 Topics)
+                </button>
+              </div>
+            </div>
+
+            {studioTrack === 'ds-de' ? (
+              <DataScienceEngineeringStudio onLaunchVirtualLab={() => navigateWorkspace('vlab')} />
+            ) : (
+              <InteractiveCurriculumModule />
+            )}
           </div>
         )}
 
@@ -716,6 +758,15 @@ export default function App() {
                 <button
                   type="button"
                   role="tab"
+                  aria-selected={frontierOpsTab === 'harness'}
+                  className={frontierOpsTab === 'harness' ? 'active' : ''}
+                  onClick={() => setFrontierOpsTab('harness')}
+                >
+                  Harness Engineering (6)
+                </button>
+                <button
+                  type="button"
+                  role="tab"
                   aria-selected={frontierOpsTab === 'llm-masterclass'}
                   className={frontierOpsTab === 'llm-masterclass' ? 'active' : ''}
                   onClick={() => setFrontierOpsTab('llm-masterclass')}
@@ -752,6 +803,9 @@ export default function App() {
               </div>
             </div>
 
+            {frontierOpsTab === 'harness' && (
+              <HarnessEngineeringStudio onLaunchVirtualLab={() => navigateWorkspace('vlab')} />
+            )}
             {frontierOpsTab === 'llm-masterclass' && (
               <LLMDevelopmentMasterclass onLaunchVirtualLab={() => navigateWorkspace('vlab')} />
             )}
