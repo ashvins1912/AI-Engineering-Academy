@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowLeft, ArrowRight, RotateCcw, Workflow } from 'lucide-react'
+import { ArrowLeft, ArrowRight, RotateCcw } from 'lucide-react'
 
 const steps = [
   { title: 'User request', owner: 'Client', data: 'Question, authenticated session and request metadata', action: 'The application receives a task. User input is data, not permission to perform every requested action.', output: 'Request envelope' },
@@ -18,20 +18,20 @@ export default function ArchitectureFlow() {
   const step = steps[active]
   return <section className="architecture-flow">
     <div className="architecture-flow-head">
-      <div><span className="architecture-kicker"><Workflow size={13}/> SYSTEM DESIGN WALKTHROUGH</span><h2>How a production AI request flows end to end</h2><p>Step through identity, policy, retrieval, model, tools, durable state and observability. The active node is highlighted; each step explains the data crossing that boundary.</p></div>
-      <span className="architecture-count">{active + 1} / {steps.length}</span>
+      <div><div className="bc-meta-line"><span>End-to-End Mental Model</span><span aria-hidden="true">·</span><span>9 Production Trust Boundaries</span></div><h2>How a production AI request flows end to end</h2><p>Step through identity, policy, retrieval, model inference, tools, durable state, and observability. Select any node to inspect the data crossing that boundary.</p></div>
+      <span className="architecture-count bc-tabular">Step {active + 1} / {steps.length}</span>
     </div>
     <div className="architecture-track" aria-label="Production AI request flow">
       {steps.map((item, index) => <button key={item.title} className={`architecture-node ${index === active ? 'active' : ''} ${index < active ? 'visited' : ''}`} onClick={() => setActive(index)} aria-current={index === active ? 'step' : undefined}>
-        <span className="architecture-node-number">{String(index + 1).padStart(2,'0')}</span><strong>{item.title}</strong><small>{item.owner}</small>
+        <span className="architecture-node-number bc-tabular">{String(index + 1).padStart(2,'0')}</span><strong>{item.title}</strong><small>{item.owner}</small>
       </button>)}
     </div>
     <div className="architecture-detail" key={active}>
-      <div className="architecture-detail-top"><span>ACTIVE DATA-FLOW STEP</span><strong>{step.title}</strong></div>
+      <div className="architecture-detail-top"><span>Active data-flow boundary</span><strong>{step.title}</strong></div>
       <div className="architecture-detail-grid">
-        <div><small>DATA ENTERING</small><p>{step.data}</p></div>
-        <div><small>WHAT HAPPENS</small><p>{step.action}</p></div>
-        <div><small>OUTPUT / NEXT HOP</small><p>{step.output}</p></div>
+        <div><small>Data entering</small><p>{step.data}</p></div>
+        <div><small>What happens</small><p>{step.action}</p></div>
+        <div><small>Output / next hop</small><p>{step.output}</p></div>
       </div>
       <div className="architecture-controls">
         <button onClick={() => setActive(v => Math.max(0, v - 1))} disabled={active === 0}><ArrowLeft size={14}/>Previous</button>

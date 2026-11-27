@@ -1,84 +1,45 @@
 import { useEffect, useMemo, useState } from 'react'
-import { BrainCircuit, Bookmark, Check, ChevronRight, CircleCheck, Code2, Cpu, GitBranch, Search, ShieldCheck, Sparkles, Workflow, X, GraduationCap, Target, Layers3 } from 'lucide-react'
+import {
+  ArrowRight,
+  Bookmark,
+  BookOpen,
+  BrainCircuit,
+  Check,
+  ChevronRight,
+  CircleCheck,
+  Code2,
+  Cpu,
+  GraduationCap,
+  Layers3,
+  Search,
+  ShieldCheck,
+  Sliders,
+  Target,
+  Workflow,
+  X
+} from 'lucide-react'
 import { curriculum, type Lesson } from './data/curriculum'
-import MathLabs from './components/MathLabs'
-import Stage1MasteryLabs from './components/Stage1MasteryLabs'
-import MLLabs from './components/MLLabs'
-import Stage3MasteryLabs from './components/Stage3MasteryLabs'
-import Stage2MasteryLabs from './components/Stage2MasteryLabs'
-import TransformerLabs from './components/TransformerLabs'
-import Stage4MasteryLabs from './components/Stage4MasteryLabs'
-import RAGLabs from './components/RAGLabs'
-import Stage5MasteryLabs from './components/Stage5MasteryLabs'
 import LessonPractice from './components/LessonPractice'
 import TopicLearningStudio from './components/TopicLearningStudio'
 import AssessmentEngine from './components/AssessmentEngine'
 import ProductionLabs from './components/ProductionLabs'
 import AgenticInterviewStudio from './components/AgenticInterviewStudio'
-import AgentLoopVisualizer from './components/AgentLoopVisualizer'
-import AgentLoopLessonDetails from './components/AgentLoopLessonDetails'
-import PlanningVisualizer from './components/PlanningVisualizer'
-import PlanningLessonDetails from './components/PlanningLessonDetails'
-import MemoryVisualizer from './components/MemoryVisualizer'
-import MemoryLessonDetails from './components/MemoryLessonDetails'
-import DurableStateVisualizer from './components/DurableStateVisualizer'
-import DurableStateLessonDetails from './components/DurableStateLessonDetails'
-import HumanLoopVisualizer from './components/HumanLoopVisualizer'
-import HumanLoopLessonDetails from './components/HumanLoopLessonDetails'
-import AgentPatternsVisualizer from './components/AgentPatternsVisualizer'
-import AgentPatternsLessonDetails from './components/AgentPatternsLessonDetails'
-import GraphOrchestrationVisualizer from './components/GraphOrchestrationVisualizer'
-import GraphOrchestrationLessonDetails from './components/GraphOrchestrationLessonDetails'
-import FrameworkComparisonVisualizer from './components/FrameworkComparisonVisualizer'
-import FrameworkComparisonLessonDetails from './components/FrameworkComparisonLessonDetails'
-import AgentEvaluationVisualizer from './components/AgentEvaluationVisualizer'
-import AgentEvaluationLessonDetails from './components/AgentEvaluationLessonDetails'
-import MCPArchitectureVisualizer from './components/MCPArchitectureVisualizer'
-import MCPArchitectureLessonDetails from './components/MCPArchitectureLessonDetails'
-import MCPPrimitivesVisualizer from './components/MCPPrimitivesVisualizer'
-import MCPPrimitivesLessonDetails from './components/MCPPrimitivesLessonDetails'
-import MCPAdvancedVisualizer from './components/MCPAdvancedVisualizer'
-import MCPAdvancedLessonDetails from './components/MCPAdvancedLessonDetails'
-import MCPSecurityVisualizer from './components/MCPSecurityVisualizer'
-import MCPSecurityLessonDetails from './components/MCPSecurityLessonDetails'
-import MCPTransportsVisualizer from './components/MCPTransportsVisualizer'
-import MCPTransportsLessonDetails from './components/MCPTransportsLessonDetails'
-import MCPObservabilityVisualizer from './components/MCPObservabilityVisualizer'
-import MCPObservabilityLessonDetails from './components/MCPObservabilityLessonDetails'
-import A2AVisualizer from './components/A2AVisualizer'
-import A2ALessonDetails from './components/A2ALessonDetails'
-import IBMACPMigrationVisualizer from './components/IBMACPMigrationVisualizer'
-import IBMACPLessonDetails from './components/IBMACPLessonDetails'
-import AgentClientProtocolVisualizer from './components/AgentClientProtocolVisualizer'
-import AgentClientProtocolLessonDetails from './components/AgentClientProtocolLessonDetails'
-import ToolIntegrationVisualizer from './components/ToolIntegrationVisualizer'
-import ToolIntegrationLessonDetails from './components/ToolIntegrationLessonDetails'
-import WorkflowPatternsVisualizer from './components/WorkflowPatternsVisualizer'
-import WorkflowPatternsLessonDetails from './components/WorkflowPatternsLessonDetails'
-import EventDrivenVisualizer from './components/EventDrivenVisualizer'
-import EventDrivenLessonDetails from './components/EventDrivenLessonDetails'
-import DurableWorkflowVisualizer from './components/DurableWorkflowVisualizer'
-import DurableWorkflowLessonDetails from './components/DurableWorkflowLessonDetails'
-import AutomationPlatformVisualizer from './components/AutomationPlatformVisualizer'
-import AutomationPlatformLessonDetails from './components/AutomationPlatformLessonDetails'
-import ExperimentTrackingVisualizer from './components/ExperimentTrackingVisualizer'
-import ExperimentTrackingLessonDetails from './components/ExperimentTrackingLessonDetails'
-import ModelRegistryVisualizer from './components/ModelRegistryVisualizer'
-import ModelRegistryLessonDetails from './components/ModelRegistryLessonDetails'
-import EvaluationCIVisualizer from './components/EvaluationCIVisualizer'
-import EvaluationCILessonDetails from './components/EvaluationCILessonDetails'
-import DataPipelineVisualizer from './components/DataPipelineVisualizer'
-import DataPipelineLessonDetails from './components/DataPipelineLessonDetails'
-import ContainerVisualizer from './components/ContainerVisualizer'
-import ContainerLessonDetails from './components/ContainerLessonDetails'
-import CICDVisualizer from './components/CICDVisualizer'
-import CICDLessonDetails from './components/CICDLessonDetails'
-import IaCVisualizer from './components/IaCVisualizer'
-import IaCLessonDetails from './components/IaCLessonDetails'
 import ArchitectureFlow from './components/ArchitectureFlow'
 import StudentReflection from './components/StudentReflection'
+import InteractiveCurriculumModule from './components/InteractiveCurriculumModule'
+import FrontierArchitectureDeepDive from './components/FrontierArchitectureDeepDive'
+import StageLabsDrawer from './components/StageLabsDrawer'
+import VirtualLabWorkspace from './components/VirtualLabWorkspace'
+import LLMDevelopmentMasterclass from './components/LLMDevelopmentMasterclass'
 
-const validLessonIds = new Set(curriculum.flatMap(stage => stage.modules.flatMap(module => module.lessons.map(lesson => lesson.id))))
+type WorkspaceView = 'overview' | 'vlab' | 'studio' | 'curriculum' | 'frontier-ops'
+type FrontierOpsTab = 'llm-masterclass' | 'frontier' | 'labs' | 'interviews'
+type LessonFilter = 'all' | 'remaining' | 'completed' | 'bookmarked'
+type ModalTab = 'learn' | 'practice' | 'assess'
+
+const validLessonIds = new Set(
+  curriculum.flatMap(stage => stage.modules.flatMap(module => module.lessons.map(lesson => lesson.id)))
+)
 
 const readList = (key: string): string[] => {
   try {
@@ -86,178 +47,937 @@ const readList = (key: string): string[] => {
     if (!raw) return []
     const parsed: unknown = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
-    return [...new Set(parsed.filter((value): value is string =>
-      typeof value === 'string' && validLessonIds.has(value)
-    ))]
-  } catch { return [] }
+    return [
+      ...new Set(
+        parsed.filter((value): value is string => typeof value === 'string' && validLessonIds.has(value))
+      )
+    ]
+  } catch {
+    return []
+  }
 }
 
 const persistList = (key: string, value: string[]) => {
-  try { localStorage.setItem(key, JSON.stringify(value)) } catch {
+  try {
+    localStorage.setItem(key, JSON.stringify(value))
+  } catch {
     // Storage can be disabled or full. Keep the in-memory learner experience usable.
   }
 }
 
 export default function App() {
+  const [workspace, setWorkspace] = useState<WorkspaceView>('overview')
+  const [frontierOpsTab, setFrontierOpsTab] = useState<FrontierOpsTab>('llm-masterclass')
   const [query, setQuery] = useState('')
+  const [lessonFilter, setLessonFilter] = useState<LessonFilter>('all')
   const [activeStage, setActiveStage] = useState(curriculum[0].id)
   const [completed, setCompleted] = useState<string[]>(() => readList('ai-academy.completed.v1'))
   const [bookmarks, setBookmarks] = useState<string[]>(() => readList('ai-academy.bookmarks.v1'))
   const [expanded, setExpanded] = useState<string[]>([curriculum[0].modules[0].id])
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
-  const [showLabs, setShowLabs] = useState(false)
-  const [showMLLabs, setShowMLLabs] = useState(false)
-  const [showDeepLabs, setShowDeepLabs] = useState(false)
-  const [showTransformerLabs, setShowTransformerLabs] = useState(false)
-  const [showRAGLabs, setShowRAGLabs] = useState(false)
-  const [showAgentLoop, setShowAgentLoop] = useState(false)
-  const [showPlanning, setShowPlanning] = useState(false)
-  const [showMemory, setShowMemory] = useState(false)
-  const [showDurableState, setShowDurableState] = useState(false)
-  const [showHumanLoop, setShowHumanLoop] = useState(false)
-  const [showAgentPatterns, setShowAgentPatterns] = useState(false)
-  const [showGraphOrchestration, setShowGraphOrchestration] = useState(false)
-  const [showFrameworkComparison, setShowFrameworkComparison] = useState(false)
-  const [showAgentEvaluation, setShowAgentEvaluation] = useState(false)
-  const [showMCPArchitecture, setShowMCPArchitecture] = useState(false)
-  const [showMCPPrimitives, setShowMCPPrimitives] = useState(false)
-  const [showMCPAdvanced, setShowMCPAdvanced] = useState(false)
-  const [showMCPSecurity, setShowMCPSecurity] = useState(false)
-  const [showMCPTransports, setShowMCPTransports] = useState(false)
-  const [showMCPObservability, setShowMCPObservability] = useState(false)
-  const [showA2A, setShowA2A] = useState(false)
-  const [showIBMAMigration, setShowIBMAMigration] = useState(false)
-  const [showClientACP, setShowClientACP] = useState(false)
-  const [showToolIntegration, setShowToolIntegration] = useState(false)
-  const [showWorkflowPatterns, setShowWorkflowPatterns] = useState(false)
-  const [showEventDriven, setShowEventDriven] = useState(false)
-  const [showDurableWorkflows, setShowDurableWorkflows] = useState(false)
-  const [showAutomationPlatform, setShowAutomationPlatform] = useState(false)
-  const [showExperimentTracking, setShowExperimentTracking] = useState(false)
-  const [showModelRegistry, setShowModelRegistry] = useState(false)
-  const [showEvaluationCI, setShowEvaluationCI] = useState(false)
-  const [showDataPipeline, setShowDataPipeline] = useState(false)
-  const [showContainers, setShowContainers] = useState(false)
-  const [showCICD, setShowCICD] = useState(false)
-  const [showIaC, setShowIaC] = useState(false)
+  const [modalTab, setModalTab] = useState<ModalTab>('learn')
 
-  useEffect(() => { persistList('ai-academy.completed.v1', completed) }, [completed])
-  useEffect(() => { persistList('ai-academy.bookmarks.v1', bookmarks) }, [bookmarks])
+  useEffect(() => {
+    persistList('ai-academy.completed.v1', completed)
+  }, [completed])
+  useEffect(() => {
+    persistList('ai-academy.bookmarks.v1', bookmarks)
+  }, [bookmarks])
 
-  const allLessons = useMemo(() => curriculum.flatMap(s => s.modules.flatMap(m => m.lessons)), [])
+  useEffect(() => {
+    if (selectedLesson) setModalTab('learn')
+  }, [selectedLesson?.id])
+
+  const allLessons = useMemo(
+    () => curriculum.flatMap(s => s.modules.flatMap(m => m.lessons)),
+    []
+  )
+
+  const nextRecommendedLesson = useMemo(
+    () => allLessons.find(l => !completed.includes(l.id)) ?? allLessons[0],
+    [allLessons, completed]
+  )
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return curriculum
-    return curriculum.map(s => ({...s, modules:s.modules.map(m => ({...m, lessons:m.lessons.filter(l => `${l.title} ${l.depth} ${l.lab} ${m.title} ${s.title}`.toLowerCase().includes(q))})).filter(m => m.lessons.length || `${m.title} ${m.description}`.toLowerCase().includes(q))})).filter(s => s.modules.length || s.title.toLowerCase().includes(q))
-  }, [query])
+    const matchesFilter = (lessonId: string) => {
+      if (lessonFilter === 'completed') return completed.includes(lessonId)
+      if (lessonFilter === 'remaining') return !completed.includes(lessonId)
+      if (lessonFilter === 'bookmarked') return bookmarks.includes(lessonId)
+      return true
+    }
+
+    return curriculum
+      .map(s => ({
+        ...s,
+        modules: s.modules
+          .map(m => ({
+            ...m,
+            lessons: m.lessons.filter(l => {
+              if (!matchesFilter(l.id)) return false
+              if (!q) return true
+              return `${l.title} ${l.depth} ${l.lab} ${m.title} ${s.title}`.toLowerCase().includes(q)
+            })
+          }))
+          .filter(m => {
+            if (m.lessons.length > 0) return true
+            if (lessonFilter !== 'all') return false
+            return Boolean(q && `${m.title} ${m.description}`.toLowerCase().includes(q))
+          })
+      }))
+      .filter(s => {
+        if (s.modules.length > 0) return true
+        if (lessonFilter !== 'all') return false
+        return Boolean(!q || s.title.toLowerCase().includes(q))
+      })
+  }, [query, lessonFilter, completed, bookmarks])
+
   const active = filtered.find(s => s.id === activeStage) ?? filtered[0] ?? curriculum[0]
   const total = allLessons.length
-  const progress = Math.round(completed.length / total * 100)
-  const toggle = (id: string) => setCompleted(v => v.includes(id) ? v.filter(x => x !== id) : [...v, id])
-  const toggleBookmark = (id: string) => setBookmarks(v => v.includes(id) ? v.filter(x => x !== id) : [...v, id])
-  const moduleCount = curriculum.reduce((n,s)=>n+s.modules.length,0)
+  const progress = Math.round((completed.length / total) * 100)
+  const moduleCount = curriculum.reduce((n, s) => n + s.modules.length, 0)
   const stageNumber = curriculum.findIndex(s => s.id === active.id) + 1
 
-  return <div className="app-shell">
-    <header className="topbar"><div className="brand"><div className="brand-mark"><BrainCircuit size={22}/></div><div><strong>AI Engineering Academy</strong><span>Understand · Build · Evaluate · Deploy</span></div></div><div className="top-actions"><span className="status"><i/> Curriculum preview</span><a href="https://github.com/" target="_blank" rel="noreferrer">GitHub <GitBranch size={14}/></a></div></header>
-    <main>
-      <section className="hero"><div className="eyebrow"><Sparkles size={14}/> INDEPENDENT LEARNING PLATFORM</div><h1>Become an <em>AI Systems Engineer.</em></h1><p>From mathematical intuition to autonomous agents, advanced RAG, MCP, A2A, LLMOps and production-grade AI platforms.</p><div className="hero-stats"><div><strong>{curriculum.length}</strong><span>Learning stages</span></div><div><strong>{moduleCount}</strong><span>Modules</span></div><div><strong>{total}</strong><span>Lesson blueprints</span></div><div><strong>{progress}%</strong><span>Browser-saved progress</span></div></div></section>
-      <section className="progress-card"><div className="progress-copy"><div><span className="eyebrow">YOUR LEARNING JOURNEY</span><h2>Mastery overview</h2></div><strong>{completed.length} / {total} lessons</strong></div><div className="progress-track"><span style={{width:`${progress}%`}}/></div><p>Progress and bookmarks are saved in this browser. Account-level synchronization will be added with the authentication and database milestone.</p></section>
-      <ArchitectureFlow/>
-      <ProductionLabs/>
-      <AgenticInterviewStudio/>
-      <div className="content-grid"><aside className="sidebar"><div className="side-heading">CURRICULUM <span>{filtered.length} / {curriculum.length} STAGES</span></div><label className="search"><Search size={16}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search topics, tools, labs..."/>{query && <button className="clear-search" onClick={()=>setQuery('')} aria-label="Clear search"><X size={14}/></button>}</label><nav>{filtered.map((s)=><button key={s.id} className={`stage-link ${active.id===s.id?'selected':''}`} onClick={()=>setActiveStage(s.id)}><span className="stage-num">{String(curriculum.findIndex(x=>x.id===s.id)+1).padStart(2,'0')}</span><span>{s.title}</span><ChevronRight size={15}/></button>)}</nav><div className="sidebar-foot"><span><Bookmark size={13}/> {bookmarks.length} bookmarked</span><span><CircleCheck size={13}/> {completed.length} completed</span></div></aside>
-      <section className="main-panel"><div className="stage-heading"><div><div className="eyebrow">STAGE {String(stageNumber).padStart(2,'0')} · LEARNING PATH</div><h2>{active.title}</h2><p>{active.outcome}</p></div><div className="stage-icon"><Cpu size={27}/></div></div>
-        {active.id==='stage-1'&&<div className="phase-lab-launch"><div><strong>Interactive foundations lab</strong><p>Seven guided topics with step-by-step numerical animations, failure labs and mastery checks.</p></div><button className="lab-primary" onClick={()=>setShowLabs(v=>!v)}>{showLabs?'Hide labs':'Open 7 mastery gates'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-1'&&showLabs&&<><Stage1MasteryLabs/><MathLabs/></>}
-        {active.id==='stage-2'&&<div className="phase-lab-launch"><div><strong>Interactive machine learning workbench</strong><p>Seven classical ML topics with editable numerical experiments, failure analysis and practical mastery evidence.</p></div><button className="lab-primary" onClick={()=>setShowMLLabs(v=>!v)}>{showMLLabs?'Hide workbench':'Open 7 mastery gates + workbench'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-2'&&showMLLabs&&<><Stage2MasteryLabs/><MLLabs/></>}
-        {active.id==='stage-3'&&<div className="phase-lab-launch"><div><strong>Interactive neural network lab</strong><p>Seven deep-learning topics with interactive forward/backward traces, optimizer experiments, CNN/RNN walkthroughs and generalization evidence.</p></div><button className="lab-primary" onClick={()=>setShowDeepLabs(v=>!v)}>{showDeepLabs?'Hide neural lab':'Open 7 mastery gates + neural lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-3'&&showDeepLabs&&<><Stage3MasteryLabs/><MLLabs initialTab="network"/></>}
-        {active.id==='stage-4'&&<div className="phase-lab-launch"><div><strong>Interactive transformer and LLM workbench</strong><p>Eight topic-first mastery gates for tokenization, embeddings, Q/K/V, causal masking, multi-head attention, transformer blocks, decoding and LLM engineering.</p></div><button className="lab-primary" onClick={()=>setShowTransformerLabs(v=>!v)}>{showTransformerLabs?'Hide transformer labs':'Open 8 mastery gates + transformer labs'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-4'&&showTransformerLabs&&<><Stage4MasteryLabs/><TransformerLabs/></>}
-        {active.id==='stage-5'&&<div className="phase-lab-launch"><div><strong>Interactive RAG engineering workbench</strong><p>Experiment with ingestion, chunking, dense and sparse retrieval, reranking, GraphRAG, Visual RAG and evaluation metrics.</p></div><button className="lab-primary" onClick={()=>setShowRAGLabs(v=>!v)}>{showRAGLabs?'Hide RAG labs':'Open 12 mastery gates + 7 RAG workbenches'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-5'&&showRAGLabs&&<><Stage5MasteryLabs/><RAGLabs/></>}
-        {active.id==='stage-6'&&<div className="phase-lab-launch"><div><strong>Interactive agent control-flow lab</strong><p>Start Stage 6 with an animated, numerical tool-using agent. Inspect decisions, policy checks, observations, budgets and stop conditions.</p></div><button className="lab-primary" onClick={()=>setShowAgentLoop(v=>!v)}>{showAgentLoop?'Hide agent loop':'Open agent loop animation'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-6'&&showAgentLoop&&<><AgentLoopVisualizer/><AgentLoopLessonDetails/></>}
-        {active.id==='stage-6'&&<div className="phase-lab-launch"><div><strong>Topic 2 · Planning and task decomposition</strong><p>Build a dependency DAG, calculate ready-task priority and critical path, execute safely and replan after failure.</p></div><button className="lab-primary" onClick={()=>setShowPlanning(v=>!v)}>{showPlanning?'Hide planning lab':'Open planning mastery lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-6'&&showPlanning&&<><PlanningVisualizer/><PlanningLessonDetails/></>}
-        {active.id==='stage-6'&&<div className="phase-lab-launch"><div><strong>Topic 3 · Agent memory and context engineering</strong><p>Explore working, episodic and semantic memory; scoped retrieval, provenance, token budgets, summarization, expiry and deletion.</p></div><button className="lab-primary" onClick={()=>setShowMemory(v=>!v)}>{showMemory?'Hide memory lab':'Open memory mastery lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-6'&&showMemory&&<><MemoryVisualizer/><MemoryLessonDetails/></>}
-        {active.id==='stage-6'&&<div className="phase-lab-launch"><div><strong>Topic 4 · State, checkpoints and durable execution</strong><p>Model state machines, recover after crashes, deduplicate side effects, fence stale workers and pause for human approval.</p></div><button className="lab-primary" onClick={()=>setShowDurableState(v=>!v)}>{showDurableState?'Hide durable execution lab':'Open durable execution mastery lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-6'&&showDurableState&&<><DurableStateVisualizer/><DurableStateLessonDetails/></>}
-        {active.id==='stage-6'&&<div className="phase-lab-launch"><div><strong>Topic 5 · Human-in-the-loop controls</strong><p>Enforce approval gates, reviewer identity, separation of duties, exact action binding, quorum, expiry and auditable workflow resume.</p></div><button className="lab-primary" onClick={()=>setShowHumanLoop(v=>!v)}>{showHumanLoop?'Hide approval lab':'Open human approval mastery lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-6'&&showHumanLoop&&<><HumanLoopVisualizer/><HumanLoopLessonDetails/></>}
-        {active.id==='stage-6'&&<div className="phase-lab-launch"><div><strong>Topic 6 · Agent design patterns</strong><p>Compare router, supervisor-worker, parallel, hierarchical, reflection and event-driven topologies with bounded execution labs.</p></div><button className="lab-primary" onClick={()=>setShowAgentPatterns(v=>!v)}>{showAgentPatterns?'Hide pattern lab':'Open agent topology mastery lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-6'&&showAgentPatterns&&<><AgentPatternsVisualizer/><AgentPatternsLessonDetails/></>}
-        {active.id==='stage-6'&&<div className="phase-lab-launch"><div><strong>Topic 7 · Graph-based agent orchestration</strong><p>Learn nodes, edges, conditional routing, reducers, checkpoints, interrupts and resumable graph execution.</p></div><button className="lab-primary" onClick={()=>setShowGraphOrchestration(v=>!v)}>{showGraphOrchestration?'Hide graph lab':'Open graph orchestration mastery lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-6'&&showGraphOrchestration&&<><GraphOrchestrationVisualizer/><GraphOrchestrationLessonDetails/></>}
-        {active.id==='stage-6'&&<div className="phase-lab-launch"><div><strong>Topic 8 · Agent framework comparison</strong><p>Compare Agents SDK, CrewAI, LlamaIndex, Haystack, PydanticAI and Semantic Kernel using one shared task contract and safety-first benchmark.</p></div><button className="lab-primary" onClick={()=>setShowFrameworkComparison(v=>!v)}>{showFrameworkComparison?'Hide framework lab':'Open framework decision mastery lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-6'&&showFrameworkComparison&&<><FrameworkComparisonVisualizer/><FrameworkComparisonLessonDetails/></>}
-        {active.id==='stage-6'&&<div className="phase-lab-launch"><div><strong>Topic 9 · Agent evaluation</strong><p>Evaluate task success, tool accuracy, citations, trajectories, safety, latency and cost with hard release gates.</p></div><button className="lab-primary" onClick={()=>setShowAgentEvaluation(v=>!v)}>{showAgentEvaluation?'Hide evaluation lab':'Open agent evaluation mastery lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-6'&&showAgentEvaluation&&<><AgentEvaluationVisualizer/><AgentEvaluationLessonDetails/></>}
-        {active.id==='stage-7'&&<div className="phase-lab-launch"><div><strong>Stage 7 · Topic 1 — MCP architecture and lifecycle</strong><p>Understand host/client/server boundaries, stateless JSON-RPC requests, per-request metadata, capability discovery, consent and safe tool invocation.</p></div><button className="lab-primary" onClick={()=>setShowMCPArchitecture(v=>!v)}>{showMCPArchitecture?'Hide MCP lab':'Open MCP protocol mastery lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-7'&&showMCPArchitecture&&<><MCPArchitectureVisualizer/><MCPArchitectureLessonDetails/></>}
-        {active.id==='stage-7'&&<div className="phase-lab-launch"><div><strong>Stage 7 · Topic 2 — MCP tools, resources and prompts</strong><p>Model actions, read-only context, URI templates and reusable prompts with independent schemas, cache semantics and authorization rules.</p></div><button className="lab-primary" onClick={()=>setShowMCPPrimitives(v=>!v)}>{showMCPPrimitives?'Hide primitives lab':'Open MCP primitives mastery lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-7'&&showMCPPrimitives&&<><MCPPrimitivesVisualizer/><MCPPrimitivesLessonDetails/></>}
-        {active.id==='stage-7'&&<div className="phase-lab-launch"><div><strong>Stage 7 · Topic 3 — MCP advanced capabilities</strong><p>Build stateless multi-round input flows, signed requestState, the Tasks extension, progress, cooperative cancellation and subscriptions.</p></div><button className="lab-primary" onClick={()=>setShowMCPAdvanced(v=>!v)}>{showMCPAdvanced?'Hide advanced lab':'Open MCP advanced capabilities lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-7'&&showMCPAdvanced&&<><MCPAdvancedVisualizer/><MCPAdvancedLessonDetails/></>}
-        {active.id==='stage-7'&&<div className="phase-lab-launch"><div><strong>Stage 7 · Topic 4 — Transport and deployment</strong><p>Compare STDIO and Streamable HTTP, secure the remote edge, prevent DNS rebinding, and scale stateless replicas without sticky sessions.</p></div><button className="lab-primary" onClick={()=>setShowMCPTransports(v=>!v)}>{showMCPTransports?'Hide transport lab':'Open MCP transport mastery lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-7'&&showMCPTransports&&<><MCPTransportsVisualizer/><MCPTransportsLessonDetails/></>}
-        {active.id==='stage-7'&&<div className="phase-lab-launch"><div><strong>Stage 7 · Topic 5 — MCP security engineering</strong><p>Protect stateless MCP endpoints with OAuth 2.1, PRM discovery, issuer/audience validation, per-tool scopes, step-up and tenant-level authorization.</p></div><button className="lab-primary" onClick={()=>setShowMCPSecurity(v=>!v)}>{showMCPSecurity?'Hide security lab':'Open MCP security mastery lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-7'&&showMCPSecurity&&<><MCPSecurityVisualizer/><MCPSecurityLessonDetails/></>}
-        {active.id==='stage-7'&&<div className="phase-lab-launch"><div><strong>Supplementary lab · MCP observability and reliability</strong><p>Instrument redacted traces, measure p50/p95, apply safe retries and circuit breakers, and reconcile idempotent operations after crashes.</p></div><button className="lab-primary" onClick={()=>setShowMCPObservability(v=>!v)}>{showMCPObservability?'Hide operations lab':'Open MCP reliability mastery lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-7'&&showMCPObservability&&<><MCPObservabilityVisualizer/><MCPObservabilityLessonDetails/></>}
-        {active.id==='stage-7'&&<div className="phase-lab-launch"><div><strong>Stage 7 · Topic 6 — Agent2Agent (A2A) protocol</strong><p>Discover independent agents, validate Agent Cards, negotiate interfaces, delegate tasks, stream progress and validate artifacts across trust boundaries.</p></div><button className="lab-primary" onClick={()=>setShowA2A(v=>!v)}>{showA2A?'Hide A2A lab':'Open A2A interoperability mastery lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-7'&&showA2A&&<><A2AVisualizer/><A2ALessonDetails/></>}
-        {active.id==='stage-7'&&<div className="phase-lab-launch"><div><strong>Stage 7 · Topic 7 — IBM/BeeAI ACP history and A2A migration</strong><p>Understand the legacy HTTP/SSE protocol, current A2A direction, semantic mapping, compatibility adapters, parity testing and safe cutover.</p></div><button className="lab-primary" onClick={()=>setShowIBMAMigration(v=>!v)}>{showIBMAMigration?'Hide migration lab':'Open ACP migration mastery lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-7'&&showIBMAMigration&&<><IBMACPMigrationVisualizer/><IBMACPLessonDetails/></>}
-        {active.id==='stage-7'&&<div className="phase-lab-launch"><div><strong>Stage 7 · Topic 8 — Agent Client Protocol (IDE ↔ coding agent)</strong><p>Negotiate ACP v2 capabilities, manage IDE sessions, stream tool calls, enforce permission requests and sandbox workspace/terminal operations.</p></div><button className="lab-primary" onClick={()=>setShowClientACP(v=>!v)}>{showClientACP?'Hide client protocol lab':'Open Agent Client Protocol mastery lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-7'&&showClientACP&&<><AgentClientProtocolVisualizer/><AgentClientProtocolLessonDetails/></>}
-        {active.id==='stage-7'&&<div className="phase-lab-launch"><div><strong>Stage 7 · Topic 9 — Production tool integration engineering</strong><p>Build typed tool contracts with tenant authorization, rate limits, idempotency, bounded retries, circuit breakers, reconciliation and redacted observability.</p></div><button className="lab-primary" onClick={()=>setShowToolIntegration(v=>!v)}>{showToolIntegration?'Hide tool integration lab':'Open production tool integration mastery lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-7'&&showToolIntegration&&<><ToolIntegrationVisualizer/><ToolIntegrationLessonDetails/></>}
-        {active.id==='stage-8'&&<div className="phase-lab-launch"><div><strong>Stage 8 · Topic 1 — Workflow patterns</strong><p>Design sequential, parallel, branching, fan-out/fan-in, map-reduce and saga workflows with durable recovery and compensation.</p></div><button className="lab-primary" onClick={()=>setShowWorkflowPatterns(v=>!v)}>{showWorkflowPatterns?'Hide workflow lab':'Open workflow patterns mastery lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-8'&&showWorkflowPatterns&&<><WorkflowPatternsVisualizer/><WorkflowPatternsLessonDetails/></>}
-        {active.id==='stage-8'&&<div className="phase-lab-launch"><div><strong>Stage 8 · Topic 2 — Event-driven automation</strong><p>Build reliable event pipelines with queues, webhooks, transactional outbox/inbox, ordering, retries, DLQ and scheduled triggers.</p></div><button className="lab-primary" onClick={()=>setShowEventDriven(v=>!v)}>{showEventDriven?'Hide event lab':'Open event-driven automation mastery lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-8'&&showEventDriven&&<><EventDrivenVisualizer/><EventDrivenLessonDetails/></>}
-        {active.id==='stage-8'&&<div className="phase-lab-launch"><div><strong>Stage 8 · Topic 3 — Durable workflow engines</strong><p>Compare Temporal, Prefect, Airflow and Dagster; implement durable replay, activities, heartbeats, leases, fencing, signals and continue-as-new.</p></div><button className="lab-primary" onClick={()=>setShowDurableWorkflows(v=>!v)}>{showDurableWorkflows?'Hide durable workflow lab':'Open durable workflow engine mastery lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-8'&&showDurableWorkflows&&<><DurableWorkflowVisualizer/><DurableWorkflowLessonDetails/></>}
-        {active.id==='stage-8'&&<div className="phase-lab-launch"><div><strong>Stage 8 · Topic 4 — Automation platform integration</strong><p>Integrate n8n workflows, scoped API connectors, isolated browser automation, human approvals, idempotent execution and audit.</p></div><button className="lab-primary" onClick={()=>setShowAutomationPlatform(v=>!v)}>{showAutomationPlatform?'Hide automation platform lab':'Open automation platform mastery lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-8'&&showAutomationPlatform&&<><AutomationPlatformVisualizer/><AutomationPlatformLessonDetails/></>}
-        {active.id==='stage-9'&&<div className="phase-lab-launch"><div><strong>Stage 9 · Topic 1 — Experiment tracking</strong><p>Track MLflow/W&B-style runs, immutable parameters, dataset manifests, metric histories, artifacts and reproducibility.</p></div><button className="lab-primary" onClick={()=>setShowExperimentTracking(v=>!v)}>{showExperimentTracking?'Hide experiment lab':'Open experiment tracking mastery lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-9'&&showExperimentTracking&&<><ExperimentTrackingVisualizer/><ExperimentTrackingLessonDetails/></>}
-        {active.id==='stage-9'&&<div className="phase-lab-launch"><div><strong>Stage 9 · Topic 2 — Model and prompt registry</strong><p>Govern immutable model and prompt versions, release bundles, independent approvals, compatibility, alias promotion and full-bundle rollback.</p></div><button className="lab-primary" onClick={()=>setShowModelRegistry(v=>!v)}>{showModelRegistry?'Hide registry lab':'Open model registry mastery lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-9'&&showModelRegistry&&<><ModelRegistryVisualizer/><ModelRegistryLessonDetails/></>}
-        {active.id==='stage-9'&&<div className="phase-lab-launch"><div><strong>Stage 9 · Topic 3 — Evaluation in CI</strong><p>Build golden-set benchmarks, compare candidate vs baseline, enforce safety/quality/latency/cost thresholds and block regressions before promotion.</p></div><button className="lab-primary" onClick={()=>setShowEvaluationCI(v=>!v)}>{showEvaluationCI?'Hide evaluation lab':'Open evaluation CI mastery lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-9'&&showEvaluationCI&&<><EvaluationCIVisualizer/><EvaluationCILessonDetails/></>}
-        {active.id==='stage-9'&&<div className="phase-lab-launch"><div><strong>Stage 9 · Topic 4 — Data and feature pipelines</strong><p>Build contract-first, leakage-safe and reproducible datasets with immutable lineage, feature parity and drift monitoring.</p></div><button className="lab-primary" onClick={()=>setShowDataPipeline(v=>!v)}>{showDataPipeline?'Hide data pipeline lab':'Open data pipeline mastery lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-9'&&showDataPipeline&&<><DataPipelineVisualizer/><DataPipelineLessonDetails/></>}
-        {active.id==='stage-9'&&<div className="phase-lab-launch"><div><strong>Stage 9 · Topic 5 — Containers and images</strong><p>Build multi-stage inference images, run non-root with resource limits, verify health lifecycle and inspect image supply-chain evidence.</p></div><button className="lab-primary" onClick={()=>setShowContainers(v=>!v)}>{showContainers?'Hide container lab':'Open container mastery lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-9'&&showContainers&&<><ContainerVisualizer/><ContainerLessonDetails/></>}
-        {active.id==='stage-9'&&<div className="phase-lab-launch"><div><strong>Stage 9 · Topic 6 — CI/CD pipelines</strong><p>Connect tests, AI evaluation, security, SBOM, provenance, immutable digest promotion, approvals, canary analysis and rollback.</p></div><button className="lab-primary" onClick={()=>setShowCICD(v=>!v)}>{showCICD?'Hide CI/CD lab':'Open CI/CD release mastery lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-9'&&showCICD&&<><CICDVisualizer/><CICDLessonDetails/></>}
-        {active.id==='stage-9'&&<div className="phase-lab-launch"><div><strong>Stage 9 · Topic 7 — Infrastructure as Code</strong><p>Model private inference infrastructure with Terraform, protected state, workload identity, policy checks and cost-aware plan review.</p></div><button className="lab-primary" onClick={()=>setShowIaC(v=>!v)}>{showIaC?'Hide IaC lab':'Open infrastructure as code mastery lab'} <ChevronRight size={15}/></button></div>}
-        {active.id==='stage-9'&&showIaC&&<><IaCVisualizer/><IaCLessonDetails/></>}
-        {active.modules.map((m,mi)=><article className="module" key={m.id}><button className="module-head" onClick={()=>setExpanded(v=>v.includes(m.id)?v.filter(x=>x!==m.id):[...v,m.id])}><div className="module-index">{String(mi+1).padStart(2,'0')}</div><div className="module-title"><h3>{m.title}</h3><p>{m.description}</p><span>{m.lessons.length} lessons · {m.lessons.filter(l=>completed.includes(l.id)).length} completed</span></div><ChevronRight className={expanded.includes(m.id)?'rotate':''} size={18}/></button>
-          {expanded.includes(m.id)&&<div className="lesson-list">{m.lessons.map(l=><div className={`lesson ${completed.includes(l.id)?'lesson-complete':''}`} key={l.id}><button className={`check ${completed.includes(l.id)?'done':''}`} onClick={()=>toggle(l.id)} aria-label={completed.includes(l.id)?'Mark lesson incomplete':'Mark lesson complete'}>{completed.includes(l.id)?<CircleCheck size={18}/>:<span/>}</button><button className="lesson-open" onClick={()=>setSelectedLesson(l)}><div className="lesson-body"><strong>{l.title}</strong><p>{l.depth}</p><div className="lab"><Code2 size={13}/><span>LAB</span>{l.lab}</div></div></button><button className={`bookmark-btn ${bookmarks.includes(l.id)?'saved':''}`} onClick={()=>toggleBookmark(l.id)} aria-label={bookmarks.includes(l.id)?'Remove bookmark':'Bookmark lesson'}><Bookmark size={16} fill={bookmarks.includes(l.id)?'currentColor':'none'}/></button></div>)}</div>}
-        </article>)}
-        {active.modules.length===0&&<div className="empty-state"><Search size={25}/><strong>No matching lessons in this stage</strong><p>Try another search term or clear your search.</p></div>}
-        <div className="note"><ShieldCheck size={18}/><div><strong>Engineering standard</strong><p>Lessons include intuition, prerequisites, worked examples, step-by-step execution, implementation exercises, assessment and production considerations. Interactive numerical labs are available for foundations, classical ML, deep learning, transformer internals and RAG engineering. Larger model training and GPU-backed execution remain separate milestones.</p></div></div>
-      </section></div>
-      <section className="bottom-callout"><div className="callout-icon"><Workflow size={23}/></div><div><h3>Built for real engineering capability</h3><p>Learn to design, implement, test, secure, optimize and operate AI systems—not just call an LLM API.</p></div></section>
-    </main><footer>AI Engineering Academy · Independent project · Curriculum and lesson engine milestone</footer>
+  const toggle = (id: string) =>
+    setCompleted(v => (v.includes(id) ? v.filter(x => x !== id) : [...v, id]))
+  const toggleBookmark = (id: string) =>
+    setBookmarks(v => (v.includes(id) ? v.filter(x => x !== id) : [...v, id]))
 
-    {selectedLesson && <div className="lesson-overlay" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setSelectedLesson(null)}}><section className="lesson-detail" role="dialog" aria-modal="true" aria-labelledby="lesson-title"><header className="detail-header"><div><div className="eyebrow"><GraduationCap size={14}/> GUIDED LESSON</div><h2 id="lesson-title">{selectedLesson.title}</h2><p>{selectedLesson.depth}</p></div><button className="close-detail" onClick={()=>setSelectedLesson(null)} aria-label="Close lesson"><X/></button></header><div className="detail-scroll"><div className="detail-lab"><Code2 size={17}/><div><span>HANDS-ON LAB</span><strong>{selectedLesson.lab}</strong></div></div>
-      <section className="detail-section"><h3><Target size={17}/> Learning objectives</h3><ul>{selectedLesson.objectives.map(x=><li key={x}>{x}</li>)}</ul></section>
-      <section className="detail-section"><h3><Layers3 size={17}/> Prerequisites</h3><ul>{selectedLesson.prerequisites.map(x=><li key={x}>{x}</li>)}</ul></section>
-      <section className="detail-section"><h3>01 · Build intuition</h3><p>{selectedLesson.intuition}</p></section>
-      <section className="detail-section"><h3>02 · Worked example</h3><p>{selectedLesson.workedExample}</p></section>
-      <section className="detail-section"><h3>03 · Step-by-step execution</h3><ol>{selectedLesson.workflow.map(x=><li key={x}>{x}</li>)}</ol></section>
-      <TopicLearningStudio lesson={selectedLesson}/>
-      <AssessmentEngine key={selectedLesson.id} lesson={selectedLesson}/>
-      <LessonPractice lesson={selectedLesson}/>
-      <section className="detail-section"><h3>04 · Practice exercises</h3><ol>{selectedLesson.exercises.map(x=><li key={x}>{x}</li>)}</ol></section>
-      <section className="detail-section assessment"><h3>05 · Assessment criteria</h3><p>{selectedLesson.assessment}</p></section>
-      <section className="detail-section"><h3>Production engineering note</h3><p>{selectedLesson.productionNote}</p></section><StudentReflection key={selectedLesson.id} lesson={selectedLesson}/></div><footer className="detail-footer"><button className="secondary-action" onClick={()=>toggleBookmark(selectedLesson.id)}><Bookmark size={15} fill={bookmarks.includes(selectedLesson.id)?'currentColor':'none'}/>{bookmarks.includes(selectedLesson.id)?'Bookmarked':'Bookmark'}</button><button className="primary-action" onClick={()=>toggle(selectedLesson.id)}>{completed.includes(selectedLesson.id)?<><Check size={16}/> Completed</>:<><CircleCheck size={16}/> Mark complete</>}</button></footer></section></div>}
-  </div>
+  const navigateWorkspace = (next: WorkspaceView) => {
+    setWorkspace(next)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const openStage = (stageId: string) => {
+    setActiveStage(stageId)
+    const stageObj = curriculum.find(s => s.id === stageId)
+    if (stageObj?.modules[0]) {
+      setExpanded(prev => (prev.includes(stageObj.modules[0].id) ? prev : [...prev, stageObj.modules[0].id]))
+    }
+    navigateWorkspace('curriculum')
+  }
+
+  const shouldExpandModule = (moduleId: string) =>
+    Boolean(query.trim()) || lessonFilter !== 'all' || expanded.includes(moduleId)
+
+  return (
+    <div className="app-shell">
+      {/* Strict 3-Zone Top Navigation Bar */}
+      <header className="topbar">
+        <button
+          type="button"
+          className="brand-wordmark"
+          onClick={() => navigateWorkspace('overview')}
+        >
+          <BrainCircuit size={20} />
+          <span>AI Engineering Academy</span>
+        </button>
+
+        <nav className="top-nav" aria-label="Learning workspaces">
+          {(
+            [
+              { id: 'overview', label: 'Overview' },
+              { id: 'vlab', label: 'Virtual Lab' },
+              { id: 'studio', label: 'Guided Studio' },
+              { id: 'curriculum', label: '12-Stage Path' },
+              { id: 'frontier-ops', label: 'Frontier & Ops' }
+            ] as { id: WorkspaceView; label: string }[]
+          ).map(item => (
+            <button
+              key={item.id}
+              type="button"
+              className={`ux-nav-btn ${workspace === item.id ? 'active' : ''}`}
+              aria-current={workspace === item.id ? 'page' : undefined}
+              onClick={() => navigateWorkspace(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
+
+        <button
+          type="button"
+          className="top-cta"
+          onClick={() => navigateWorkspace('vlab')}
+        >
+          Run Virtual Lab
+        </button>
+      </header>
+
+      <main className="ux-main">
+        {/* ================================================================
+            WORKSPACE 1: OVERVIEW & LEARNING PATH HUB
+        ================================================================= */}
+        {workspace === 'overview' && (
+          <div className="ux-overview">
+            <section className="hero ux-hero">
+              <div className="bc-meta-line">
+                <span>Independent Learning Platform</span>
+                <span aria-hidden="true">·</span>
+                <span>Foundations to Production</span>
+                <span aria-hidden="true">·</span>
+                <span>Interactive DFDs &amp; Simulators</span>
+              </div>
+              <h1>
+                Become an <em>AI Systems Engineer.</em>
+              </h1>
+              <p>
+                Master the complete AI engineering stack—from Python pipelines, math intuition, and
+                transformer internals to ChatGPT &amp; Claude alignment, vLLM serving, durable agents,
+                and enterprise governance—inside focused, distraction-free workspaces.
+              </p>
+
+              <div className="ux-hero-actions">
+                <button
+                  type="button"
+                  className="bc-btn-primary ux-hero-primary"
+                  onClick={() => navigateWorkspace('vlab')}
+                >
+                  <span>Launch Virtual Lab &amp; All Simulators</span>
+                  <ArrowRight size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="bc-btn-secondary ux-hero-secondary"
+                  onClick={() => navigateWorkspace('studio')}
+                >
+                  <span>Start Guided Visual Studio</span>
+                </button>
+              </div>
+
+              <div className="hero-stats ux-kpi-strip">
+                <div>
+                  <strong className="bc-tabular">{curriculum.length}</strong>
+                  <span>Structured stages</span>
+                </div>
+                <div>
+                  <strong className="bc-tabular">{moduleCount}</strong>
+                  <span>Engineering modules</span>
+                </div>
+                <div>
+                  <strong className="bc-tabular">{total}</strong>
+                  <span>Interactive lessons</span>
+                </div>
+                <div>
+                  <strong className="bc-tabular">{progress}%</strong>
+                  <span>Personal mastery ({completed.length}/{total})</span>
+                </div>
+              </div>
+            </section>
+
+            {/* Compact Mastery & Resume Bar */}
+            <section className="ux-resume-bar" aria-label="Learning progress">
+              <div className="ux-resume-left">
+                <div className="ux-resume-meta">
+                  <strong>Your Learning Progress</strong>
+                  <span className="bc-tabular">
+                    {completed.length} / {total} completed · {bookmarks.length} bookmarked
+                  </span>
+                </div>
+                <progress className="ux-progress" value={completed.length} max={total} />
+                <p className="ux-resume-next">
+                  Recommended next lesson: <strong>{nextRecommendedLesson.title}</strong>
+                </p>
+              </div>
+              <button
+                type="button"
+                className="bc-btn-secondary"
+                onClick={() => setSelectedLesson(nextRecommendedLesson)}
+              >
+                <span>Open Next Lesson</span>
+                <ChevronRight size={15} />
+              </button>
+            </section>
+
+            {/* 4 Focused Learning Workspaces */}
+            <section className="ux-tracks-section" aria-label="Choose a learning workspace">
+              <div className="ux-section-intro">
+                <h2>Choose Your Learning Workspace</h2>
+                <p>
+                  Every capability is separated into a dedicated studio so you can learn step-by-step
+                  without endless scrolling or visual clutter.
+                </p>
+              </div>
+
+              <div className="ux-track-grid">
+                <article className="ux-track-card">
+                  <div className="ux-track-meta">
+                    <span className="bc-tabular">01</span>
+                    <span>Live sandbox runtime · 8 runnable labs · 20 simulators</span>
+                  </div>
+                  <h3>Virtual Lab &amp; All Simulators Control Room</h3>
+                  <p>
+                    Read and edit real executable code for Transformers, vLLM PagedAttention,
+                    Mini-LLM Training (Untrained → Trained), ML Model Benchmarks, Hybrid RAG,
+                    Durable Agents, and Claude FinOps—plus all 20 interactive simulators live.
+                  </p>
+                  <button
+                    type="button"
+                    className="ux-track-cta"
+                    onClick={() => navigateWorkspace('vlab')}
+                  >
+                    <span>Open Virtual Lab &amp; Simulators</span>
+                    <ArrowRight size={15} />
+                  </button>
+                </article>
+
+                <article className="ux-track-card">
+                  <div className="ux-track-meta">
+                    <span className="bc-tabular">02</span>
+                    <span>Complete LLM lifecycle · Trained vs Untrained · ML Models</span>
+                  </div>
+                  <h3>LLM Development, Algorithms &amp; Frontier Deep Dive</h3>
+                  <p>
+                    Trace the full 8-stage LLM lifecycle DFD, compare Untrained vs. Pretrained vs.
+                    Post-Trained models live, explore why LLMs work internally, master pretraining
+                    algorithms &amp; ML model families, plus ChatGPT/Claude &amp; Google → vLLM.
+                  </p>
+                  <button
+                    type="button"
+                    className="ux-track-cta"
+                    onClick={() => {
+                      setFrontierOpsTab('llm-masterclass')
+                      navigateWorkspace('frontier-ops')
+                    }}
+                  >
+                    <span>Open LLM Complete Masterclass</span>
+                    <ArrowRight size={15} />
+                  </button>
+                </article>
+
+                <article className="ux-track-card">
+                  <div className="ux-track-meta">
+                    <span className="bc-tabular">03</span>
+                    <span>Plain-English foundations · 6 core stages · 12 topics</span>
+                  </div>
+                  <h3>Guided Visual Studio</h3>
+                  <p>
+                    Everyday analogies paired with live Mermaid architecture flows, step-by-step JSON
+                    animations, interactive parameter simulators, With-vs-Without outcomes, and Python
+                    coding checks.
+                  </p>
+                  <button
+                    type="button"
+                    className="ux-track-cta"
+                    onClick={() => navigateWorkspace('studio')}
+                  >
+                    <span>Open Guided Studio</span>
+                    <ArrowRight size={15} />
+                  </button>
+                </article>
+
+                <article className="ux-track-card">
+                  <div className="ux-track-meta">
+                    <span className="bc-tabular">04</span>
+                    <span>Complete blueprint · 12 stages · 93 lessons</span>
+                  </div>
+                  <h3>12-Stage Production Curriculum</h3>
+                  <p>
+                    Deep progression from linear algebra and classical ML through RAG, multi-agent
+                    orchestration, MCP/A2A/ACP protocols, MLOps, security, and capstone defense—with
+                    live DFD + simulator inside every lesson.
+                  </p>
+                  <button
+                    type="button"
+                    className="ux-track-cta"
+                    onClick={() => navigateWorkspace('curriculum')}
+                  >
+                    <span>Explore All 12 Stages</span>
+                    <ArrowRight size={15} />
+                  </button>
+                </article>
+              </div>
+            </section>
+
+            {/* Quick Stage Jump Index */}
+            <section className="ux-stage-index" aria-label="12-stage curriculum index">
+              <div className="ux-section-intro">
+                <h2>The 12-Stage Curriculum Map</h2>
+                <p>Jump straight into any stage to explore its modules, interactive labs, and lessons.</p>
+              </div>
+              <div className="ux-stage-map-grid">
+                {curriculum.map((stage, idx) => {
+                  const stageLessons = stage.modules.flatMap(m => m.lessons)
+                  const stageDone = stageLessons.filter(l => completed.includes(l.id)).length
+                  return (
+                    <button
+                      key={stage.id}
+                      type="button"
+                      className="ux-stage-map-item"
+                      onClick={() => openStage(stage.id)}
+                    >
+                      <span className="ux-stage-map-num bc-tabular">
+                        Stage {String(idx + 1).padStart(2, '0')}
+                      </span>
+                      <strong>{stage.title}</strong>
+                      <small className="bc-tabular">
+                        {stageLessons.length} lessons · {stageDone} done
+                      </small>
+                    </button>
+                  )
+                })}
+              </div>
+            </section>
+
+            {/* Unifying End-to-End Request Architecture Mental Model */}
+            <div id="system-flow">
+              <ArchitectureFlow />
+            </div>
+          </div>
+        )}
+
+        {/* ================================================================
+            WORKSPACE 2: VIRTUAL LAB, LIVE RUN ENV & ALL SIMULATORS WALL
+        ================================================================= */}
+        {workspace === 'vlab' && (
+          <div className="ux-workspace-view">
+            <VirtualLabWorkspace
+              onOpenFrontier={() => {
+                setFrontierOpsTab('frontier')
+                navigateWorkspace('frontier-ops')
+              }}
+              onOpenProduction={() => {
+                setFrontierOpsTab('labs')
+                navigateWorkspace('frontier-ops')
+              }}
+              onOpenCurriculumStage={openStage}
+            />
+          </div>
+        )}
+
+        {/* ================================================================
+            WORKSPACE 3: GUIDED VISUAL STUDIO (PLAIN ENGLISH + 6 PILLARS)
+        ================================================================= */}
+        {workspace === 'studio' && (
+          <div className="ux-workspace-view">
+            <InteractiveCurriculumModule />
+          </div>
+        )}
+
+        {/* ================================================================
+            WORKSPACE 3: FULL 12-STAGE CURRICULUM EXPLORER (93 LESSONS)
+        ================================================================= */}
+        {workspace === 'curriculum' && (
+          <div className="ux-workspace-view" id="full-curriculum">
+            <header className="ux-view-banner">
+              <div>
+                <div className="bc-meta-line">
+                  <span>Complete Learning Blueprint</span>
+                  <span aria-hidden="true">·</span>
+                  <span>{curriculum.length} Stages</span>
+                  <span aria-hidden="true">·</span>
+                  <span>{total} Lessons</span>
+                  <span aria-hidden="true">·</span>
+                  <span className="bc-tabular">{completed.length} Completed</span>
+                </div>
+                <h2>12-Stage AI Systems Curriculum</h2>
+                <p>
+                  Select any stage on the left, filter by completion or bookmarks, launch stage-wide
+                  visual labs on demand, or click any lesson to open its full 3-tab interactive studio.
+                </p>
+              </div>
+              <div className="ux-filter-row" role="tablist" aria-label="Filter lessons">
+                {(
+                  [
+                    { id: 'all', label: `All (${total})` },
+                    { id: 'remaining', label: `Remaining (${total - completed.length})` },
+                    { id: 'completed', label: `Done (${completed.length})` },
+                    { id: 'bookmarked', label: `Saved (${bookmarks.length})` }
+                  ] as { id: LessonFilter; label: string }[]
+                ).map(tab => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={lessonFilter === tab.id}
+                    className={`ux-filter-btn ${lessonFilter === tab.id ? 'active' : ''}`}
+                    onClick={() => setLessonFilter(tab.id)}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </header>
+
+            <div className="content-grid">
+              <aside className="sidebar">
+                <div className="side-heading">
+                  <span>Curriculum Stages</span>
+                  <span className="bc-tabular">
+                    {filtered.length} / {curriculum.length}
+                  </span>
+                </div>
+                <label className="search">
+                  <Search size={16} />
+                  <input
+                    value={query}
+                    onChange={e => setQuery(e.target.value)}
+                    placeholder="Search topics, tools, labs..."
+                  />
+                  {query && (
+                    <button
+                      type="button"
+                      className="clear-search"
+                      onClick={() => setQuery('')}
+                      aria-label="Clear search"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </label>
+
+                <nav aria-label="Curriculum stages">
+                  {filtered.map(s => {
+                    const idx = curriculum.findIndex(x => x.id === s.id) + 1
+                    const sLessons = s.modules.flatMap(m => m.lessons)
+                    const sDone = sLessons.filter(l => completed.includes(l.id)).length
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        className={`stage-link ${active.id === s.id ? 'selected' : ''}`}
+                        onClick={() => setActiveStage(s.id)}
+                      >
+                        <span className="stage-num bc-tabular">{String(idx).padStart(2, '0')}</span>
+                        <span className="ux-stage-link-body">
+                          <span>{s.title}</span>
+                          <small className="bc-tabular">
+                            {sDone}/{sLessons.length}
+                          </small>
+                        </span>
+                        <ChevronRight size={15} />
+                      </button>
+                    )
+                  })}
+                </nav>
+
+                <div className="sidebar-foot">
+                  <span className="bc-tabular">
+                    <Bookmark size={13} /> {bookmarks.length} saved
+                  </span>
+                  <span className="bc-tabular">
+                    <CircleCheck size={13} /> {completed.length} completed
+                  </span>
+                </div>
+              </aside>
+
+              <section className="main-panel">
+                <div className="stage-heading">
+                  <div>
+                    <div className="bc-meta-line">
+                      <span>Stage {String(stageNumber).padStart(2, '0')}</span>
+                      <span aria-hidden="true">·</span>
+                      <span>Learning Path</span>
+                    </div>
+                    <h2>{active.title}</h2>
+                    <p>{active.outcome}</p>
+                  </div>
+                  <div className="stage-icon">
+                    <Cpu size={24} />
+                  </div>
+                </div>
+
+                {/* Collapsible, Zero-Clutter Stage Lab Launcher */}
+                <StageLabsDrawer stageId={active.id} />
+
+                {/* Stage Modules & Lessons */}
+                {active.modules.map((m, mi) => {
+                  const isOpen = shouldExpandModule(m.id)
+                  const doneCount = m.lessons.filter(l => completed.includes(l.id)).length
+                  return (
+                    <article className="module" key={m.id}>
+                      <button
+                        type="button"
+                        className="module-head"
+                        aria-expanded={isOpen}
+                        onClick={() =>
+                          setExpanded(v =>
+                            v.includes(m.id) ? v.filter(x => x !== m.id) : [...v, m.id]
+                          )
+                        }
+                      >
+                        <div className="module-index bc-tabular">{String(mi + 1).padStart(2, '0')}</div>
+                        <div className="module-title">
+                          <h3>{m.title}</h3>
+                          <p>{m.description}</p>
+                          <span className="bc-tabular">
+                            {m.lessons.length} lessons · {doneCount} completed
+                          </span>
+                        </div>
+                        <ChevronRight className={isOpen ? 'rotate' : ''} size={18} />
+                      </button>
+
+                      {isOpen && (
+                        <div className="lesson-list">
+                          {m.lessons.map(l => (
+                            <div
+                              className={`lesson ${completed.includes(l.id) ? 'lesson-complete' : ''}`}
+                              key={l.id}
+                            >
+                              <button
+                                type="button"
+                                className={`check ${completed.includes(l.id) ? 'done' : ''}`}
+                                onClick={() => toggle(l.id)}
+                                aria-label={
+                                  completed.includes(l.id)
+                                    ? 'Mark lesson incomplete'
+                                    : 'Mark lesson complete'
+                                }
+                              >
+                                {completed.includes(l.id) ? <CircleCheck size={18} /> : <span />}
+                              </button>
+
+                              <button
+                                type="button"
+                                className="lesson-open"
+                                onClick={() => setSelectedLesson(l)}
+                              >
+                                <div className="lesson-body">
+                                  <strong>{l.title}</strong>
+                                  <p>{l.depth}</p>
+                                  <div className="lab">
+                                    <Code2 size={14} />
+                                    <span>Lab</span>
+                                    {l.lab}
+                                  </div>
+                                </div>
+                              </button>
+
+                              <button
+                                type="button"
+                                className={`bookmark-btn ${bookmarks.includes(l.id) ? 'saved' : ''}`}
+                                onClick={() => toggleBookmark(l.id)}
+                                aria-label={
+                                  bookmarks.includes(l.id) ? 'Remove bookmark' : 'Bookmark lesson'
+                                }
+                              >
+                                <Bookmark
+                                  size={16}
+                                  fill={bookmarks.includes(l.id) ? 'currentColor' : 'none'}
+                                />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </article>
+                  )
+                })}
+
+                {active.modules.length === 0 && (
+                  <div className="empty-state">
+                    <Search size={24} />
+                    <strong>No matching lessons in this view</strong>
+                    <p>Try clearing your search query or switching back to All lessons.</p>
+                    <button
+                      type="button"
+                      className="bc-btn-secondary"
+                      onClick={() => {
+                        setQuery('')
+                        setLessonFilter('all')
+                      }}
+                    >
+                      Reset Filters
+                    </button>
+                  </div>
+                )}
+
+                <div className="note">
+                  <ShieldCheck size={18} />
+                  <div>
+                    <strong>Engineering standard</strong>
+                    <p>
+                      Every lesson pairs plain-English intuition, worked examples, live animated
+                      Mermaid DFDs, a With-vs-Without virtual simulator, production best practices,
+                      starter code, and assessment verification.
+                    </p>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+        )}
+
+        {/* ================================================================
+            WORKSPACE 5: FRONTIER LLM, vLLM, PRODUCTION LABS & INTERVIEWS
+        ================================================================= */}
+        {workspace === 'frontier-ops' && (
+          <div className="ux-workspace-view">
+            <div className="ux-prod-switch-bar">
+              <div>
+                <div className="bc-meta-line">
+                  <span>Frontier Architecture &amp; Applied Operations</span>
+                  <span aria-hidden="true">·</span>
+                  <span>Deep Internals, Fault Injection &amp; Career Defense</span>
+                </div>
+                <h2>Frontier LLMs, Production Failure Labs &amp; Senior Interviews</h2>
+              </div>
+              <div className="bc-segmented" role="tablist" aria-label="Frontier and operations mode">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={frontierOpsTab === 'llm-masterclass'}
+                  className={frontierOpsTab === 'llm-masterclass' ? 'active' : ''}
+                  onClick={() => setFrontierOpsTab('llm-masterclass')}
+                >
+                  LLM Lifecycle &amp; ML Models (5)
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={frontierOpsTab === 'frontier'}
+                  className={frontierOpsTab === 'frontier' ? 'active' : ''}
+                  onClick={() => setFrontierOpsTab('frontier')}
+                >
+                  ChatGPT, Claude &amp; vLLM (4)
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={frontierOpsTab === 'labs'}
+                  className={frontierOpsTab === 'labs' ? 'active' : ''}
+                  onClick={() => setFrontierOpsTab('labs')}
+                >
+                  Production Failure Labs (4)
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={frontierOpsTab === 'interviews'}
+                  className={frontierOpsTab === 'interviews' ? 'active' : ''}
+                  onClick={() => setFrontierOpsTab('interviews')}
+                >
+                  Senior Interviews (5)
+                </button>
+              </div>
+            </div>
+
+            {frontierOpsTab === 'llm-masterclass' && (
+              <LLMDevelopmentMasterclass onLaunchVirtualLab={() => navigateWorkspace('vlab')} />
+            )}
+            {frontierOpsTab === 'frontier' && <FrontierArchitectureDeepDive />}
+            {frontierOpsTab === 'labs' && <ProductionLabs/>}
+            {frontierOpsTab === 'interviews' && <AgenticInterviewStudio />}
+          </div>
+        )}
+      </main>
+
+      <footer className="ux-footer">
+        <div className="ux-footer-inner">
+          <span>AI Engineering Academy · Independent Curriculum Platform</span>
+          <div className="ux-footer-links">
+            <button type="button" onClick={() => navigateWorkspace('vlab')}>
+              Virtual Lab
+            </button>
+            <button type="button" onClick={() => navigateWorkspace('studio')}>
+              Guided Studio
+            </button>
+            <button type="button" onClick={() => navigateWorkspace('curriculum')}>
+              12-Stage Path
+            </button>
+            <button type="button" onClick={() => navigateWorkspace('frontier-ops')}>
+              Frontier &amp; Ops
+            </button>
+          </div>
+        </div>
+      </footer>
+
+      {/* ====================================================================
+          REDESIGNED 3-TAB GUIDED LESSON WORKSPACE MODAL (1040px WIDE)
+      ===================================================================== */}
+      {selectedLesson && (
+        <div
+          className="lesson-overlay"
+          role="presentation"
+          onMouseDown={e => {
+            if (e.target === e.currentTarget) setSelectedLesson(null)
+          }}
+        >
+          <section
+            className="lesson-detail ux-lesson-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="lesson-title"
+          >
+            <header className="detail-header">
+              <div>
+                <div className="bc-meta-line">
+                  <GraduationCap size={14} />
+                  <span>Guided Lesson Workspace</span>
+                  <span aria-hidden="true">·</span>
+                  <span>{selectedLesson.id.replace(':', ' / ')}</span>
+                </div>
+                <h2 id="lesson-title">{selectedLesson.title}</h2>
+                <p>{selectedLesson.depth}</p>
+              </div>
+              <button
+                type="button"
+                className="close-detail"
+                onClick={() => setSelectedLesson(null)}
+                aria-label="Close lesson"
+              >
+                <X size={18} />
+              </button>
+            </header>
+
+            {/* Focused 3-Tab Lesson Navigation */}
+            <div className="ux-modal-tabs" role="tablist" aria-label="Lesson workspace sections">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={modalTab === 'learn'}
+                className={modalTab === 'learn' ? 'active' : ''}
+                onClick={() => setModalTab('learn')}
+              >
+                <BookOpen size={15} />
+                <span>01. Concept, DFD &amp; Simulator</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={modalTab === 'practice'}
+                className={modalTab === 'practice' ? 'active' : ''}
+                onClick={() => setModalTab('practice')}
+              >
+                <Code2 size={15} />
+                <span>02. Hands-On Lab &amp; Code</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={modalTab === 'assess'}
+                className={modalTab === 'assess' ? 'active' : ''}
+                onClick={() => setModalTab('assess')}
+              >
+                <Sliders size={15} />
+                <span>03. Assessment &amp; Reflection</span>
+              </button>
+            </div>
+
+            <div className="detail-scroll">
+              {modalTab === 'learn' && (
+                <>
+                  <div className="detail-lab">
+                    <Workflow size={18} />
+                    <div>
+                      <span>Hands-on lab target</span>
+                      <strong>{selectedLesson.lab}</strong>
+                    </div>
+                  </div>
+
+                  <div className="ux-lesson-two-col">
+                    <section className="detail-section">
+                      <h3>
+                        <Target size={16} /> Learning objectives
+                      </h3>
+                      <ul>
+                        {selectedLesson.objectives.map(x => (
+                          <li key={x}>{x}</li>
+                        ))}
+                      </ul>
+                    </section>
+                    <section className="detail-section">
+                      <h3>
+                        <Layers3 size={16} /> Prerequisites
+                      </h3>
+                      <ul>
+                        {selectedLesson.prerequisites.map(x => (
+                          <li key={x}>{x}</li>
+                        ))}
+                      </ul>
+                    </section>
+                  </div>
+
+                  <section className="detail-section">
+                    <h3>01. Build intuition</h3>
+                    <p>{selectedLesson.intuition}</p>
+                  </section>
+
+                  <section className="detail-section">
+                    <h3>02. Worked example</h3>
+                    <p>{selectedLesson.workedExample}</p>
+                  </section>
+
+                  <TopicLearningStudio lesson={selectedLesson}/>
+                </>
+              )}
+
+              {modalTab === 'practice' && (
+                <>
+                  <LessonPractice lesson={selectedLesson}/>
+                  <section className="detail-section">
+                    <h3>Practice exercises</h3>
+                    <ol>
+                      {selectedLesson.exercises.map(x => (
+                        <li key={x}>{x}</li>
+                      ))}
+                    </ol>
+                  </section>
+                  <section className="detail-section">
+                    <h3>Production engineering note</h3>
+                    <p>{selectedLesson.productionNote}</p>
+                  </section>
+                </>
+              )}
+
+              {modalTab === 'assess' && (
+                <>
+                  <AssessmentEngine key={selectedLesson.id} lesson={selectedLesson} />
+                  <section className="detail-section assessment">
+                    <h3>Mastery assessment criteria</h3>
+                    <p>{selectedLesson.assessment}</p>
+                  </section>
+                  <StudentReflection key={selectedLesson.id} lesson={selectedLesson} />
+                </>
+              )}
+            </div>
+
+            <footer className="detail-footer">
+              <button
+                type="button"
+                className="secondary-action"
+                onClick={() => toggleBookmark(selectedLesson.id)}
+              >
+                <Bookmark
+                  size={15}
+                  fill={bookmarks.includes(selectedLesson.id) ? 'currentColor' : 'none'}
+                />
+                <span>{bookmarks.includes(selectedLesson.id) ? 'Bookmarked' : 'Save Bookmark'}</span>
+              </button>
+
+              <div className="ux-modal-footer-right">
+                {modalTab !== 'assess' && (
+                  <button
+                    type="button"
+                    className="secondary-action"
+                    onClick={() => setModalTab(modalTab === 'learn' ? 'practice' : 'assess')}
+                  >
+                    <span>
+                      {modalTab === 'learn' ? 'Next: Hands-On Lab' : 'Next: Assessment'}
+                    </span>
+                    <ArrowRight size={14} />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="primary-action"
+                  onClick={() => toggle(selectedLesson.id)}
+                >
+                  {completed.includes(selectedLesson.id) ? (
+                    <>
+                      <Check size={16} /> Completed
+                    </>
+                  ) : (
+                    <>
+                      <CircleCheck size={16} /> Mark Complete
+                    </>
+                  )}
+                </button>
+              </div>
+            </footer>
+          </section>
+        </div>
+      )}
+    </div>
+  )
 }
