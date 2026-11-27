@@ -33,9 +33,10 @@ import VirtualLabWorkspace from './components/VirtualLabWorkspace'
 import LLMDevelopmentMasterclass from './components/LLMDevelopmentMasterclass'
 import DataScienceEngineeringStudio from './components/DataScienceEngineeringStudio'
 import HarnessEngineeringStudio from './components/HarnessEngineeringStudio'
+import MLRoadmap2026Studio from './components/MLRoadmap2026Studio'
 
 type WorkspaceView = 'overview' | 'vlab' | 'studio' | 'curriculum' | 'frontier-ops'
-type StudioTrack = 'ds-de' | 'foundations'
+type StudioTrack = 'ml-2026' | 'ds-de' | 'foundations'
 type FrontierOpsTab = 'harness' | 'llm-masterclass' | 'frontier' | 'labs' | 'interviews'
 type LessonFilter = 'all' | 'remaining' | 'completed' | 'bookmarked'
 type ModalTab = 'learn' | 'practice' | 'assess'
@@ -70,7 +71,7 @@ const persistList = (key: string, value: string[]) => {
 
 export default function App() {
   const [workspace, setWorkspace] = useState<WorkspaceView>('overview')
-  const [studioTrack, setStudioTrack] = useState<StudioTrack>('ds-de')
+  const [studioTrack, setStudioTrack] = useState<StudioTrack>('ml-2026')
   const [frontierOpsTab, setFrontierOpsTab] = useState<FrontierOpsTab>('harness')
   const [query, setQuery] = useState('')
   const [lessonFilter, setLessonFilter] = useState<LessonFilter>('all')
@@ -243,9 +244,12 @@ export default function App() {
                 <button
                   type="button"
                   className="bc-btn-secondary ux-hero-secondary"
-                  onClick={() => navigateWorkspace('studio')}
+                  onClick={() => {
+                    setStudioTrack('ml-2026')
+                    navigateWorkspace('studio')
+                  }}
                 >
-                  <span>Start Guided Visual Studio</span>
+                  <span>Open ML Roadmap 2026 (16 Tracks)</span>
                 </button>
               </div>
 
@@ -328,23 +332,23 @@ export default function App() {
                 <article className="ux-track-card">
                   <div className="ux-track-meta">
                     <span className="bc-tabular">02</span>
-                    <span>Serial study track · 6 chapters · live code + virtual simulators</span>
+                    <span>16 Tracks · 157 Audited Topics · Animated DFDs &amp; Simulators</span>
                   </div>
-                  <h3>Senior Data Science &amp; Data Engineering Serial Studio</h3>
+                  <h3>Machine Learning Roadmap 2026 &amp; DS / DE Visual Studio</h3>
                   <p>
-                    Chapter-by-chapter visualized mastery of A/B Testing &amp; CUPED, Causal DiD &amp;
-                    Time-Series, Imbalance/Calibration/SHAP, Iceberg Lakehouse &amp; Spark Skew,
-                    CDC Watermarks &amp; ASOF Feature Stores, and PSI Drift + MinHash LLM Data.
+                    Complete audited coverage of Python, Math, Preprocessing, Classical ML, Deep
+                    Learning, Frameworks, CV, NLP, GenAI/LLMs, RL, MLOps, Cloud Deployment, and 14
+                    Real-World Projects—plus the 6-chapter Senior DS &amp; DE Serial Track.
                   </p>
                   <button
                     type="button"
                     className="ux-track-cta"
                     onClick={() => {
-                      setStudioTrack('ds-de')
+                      setStudioTrack('ml-2026')
                       navigateWorkspace('studio')
                     }}
                   >
-                    <span>Start DS &amp; DE Serial Study Track</span>
+                    <span>Open ML Roadmap 2026 Studio</span>
                     <ArrowRight size={15} />
                   </button>
                 </article>
@@ -453,7 +457,7 @@ export default function App() {
         )}
 
         {/* ================================================================
-            WORKSPACE 3: GUIDED VISUAL STUDIO (DS & DE SERIAL + AI FOUNDATIONS)
+            WORKSPACE 3: GUIDED VISUAL STUDIO (ML ROADMAP 2026 + DS/DE + FOUNDATIONS)
         ================================================================= */}
         {workspace === 'studio' && (
           <div className="ux-workspace-view">
@@ -464,9 +468,18 @@ export default function App() {
                   <span aria-hidden="true">·</span>
                   <span>Animated DFDs, Virtual Simulators &amp; Live Code Playgrounds</span>
                 </div>
-                <h2>Guided Visual Learning &amp; Senior DS / DE Serial Track</h2>
+                <h2>Machine Learning Roadmap 2026 &amp; Guided Visual Studios</h2>
               </div>
               <div className="bc-segmented" role="tablist" aria-label="Guided studio track">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={studioTrack === 'ml-2026'}
+                  className={studioTrack === 'ml-2026' ? 'active' : ''}
+                  onClick={() => setStudioTrack('ml-2026')}
+                >
+                  ML Roadmap 2026 (16 Tracks)
+                </button>
                 <button
                   type="button"
                   role="tab"
@@ -474,7 +487,7 @@ export default function App() {
                   className={studioTrack === 'ds-de' ? 'active' : ''}
                   onClick={() => setStudioTrack('ds-de')}
                 >
-                  Senior DS &amp; DE Serial Track (6 Chapters)
+                  Senior DS &amp; DE Serial Track (6)
                 </button>
                 <button
                   type="button"
@@ -483,16 +496,18 @@ export default function App() {
                   className={studioTrack === 'foundations' ? 'active' : ''}
                   onClick={() => setStudioTrack('foundations')}
                 >
-                  AI Foundations Visual Studio (12 Topics)
+                  AI Foundations Visual Studio (12)
                 </button>
               </div>
             </div>
 
-            {studioTrack === 'ds-de' ? (
-              <DataScienceEngineeringStudio onLaunchVirtualLab={() => navigateWorkspace('vlab')} />
-            ) : (
-              <InteractiveCurriculumModule />
+            {studioTrack === 'ml-2026' && (
+              <MLRoadmap2026Studio onLaunchVirtualLab={() => navigateWorkspace('vlab')} />
             )}
+            {studioTrack === 'ds-de' && (
+              <DataScienceEngineeringStudio onLaunchVirtualLab={() => navigateWorkspace('vlab')} />
+            )}
+            {studioTrack === 'foundations' && <InteractiveCurriculumModule />}
           </div>
         )}
 

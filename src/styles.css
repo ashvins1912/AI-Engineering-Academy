@@ -2542,6 +2542,126 @@
   .rag-ctx-legend{grid-template-columns:1fr}
 }
 
+/* ============================================================================
+   MACHINE LEARNING ROADMAP 2026 COMPLETE STUDIO (.ml26-*)
+   ============================================================================ */
+.ml26-progress-box{min-width:240px}
+.ml26-body{display:grid;grid-template-columns:320px minmax(0,1fr);align-items:start}
+
+/* Left Rail: Search, Phase Filter & 16-Track List */
+.ml26-rail{padding:18px;border-right:1px solid #1e2c48;background:#09101f;display:grid;gap:12px;align-content:start}
+.ml26-search{display:flex;align-items:center;gap:8px;padding:9px 11px;border:1px solid #243554;border-radius:10px;background:#0e172b;color:#8fa3c8}
+.ml26-search:focus-within{border-color:#7d8fff}
+.ml26-search input{flex:1;min-width:0;border:0;background:transparent;color:#f1f5ff;font:400 13px 'DM Sans',sans-serif;outline:none}
+.ml26-search input::placeholder{color:#7486a8}
+.ml26-search-clear{border:0;background:transparent;color:#8fa3c8;cursor:pointer;display:grid;place-items:center;padding:2px}
+.ml26-search-clear:hover{color:#ffffff}
+
+.ml26-phase-row{display:flex;flex-wrap:wrap;gap:6px}
+.ml26-phase-btn{border:1px solid #223250;background:#0e172a;color:#9eb0cf;border-radius:8px;padding:5px 9px;font:500 11.5px 'DM Sans',sans-serif;cursor:pointer;transition:border-color .15s ease,background .15s ease,color .15s ease}
+.ml26-phase-btn:hover{border-color:#53689c;color:#eef3ff}
+.ml26-phase-btn.active{border-color:#7d8fff;background:#1b2c52;color:#ffffff;font-weight:600}
+
+.ml26-track-list{display:grid;gap:6px;max-height:740px;overflow-y:auto;padding-right:2px}
+.ml26-track-item{display:flex;align-items:center;gap:10px;text-align:left;padding:10px 11px;border:1px solid #1e2d48;border-radius:10px;background:#0d1628;color:#a9b8d4;cursor:pointer;transition:border-color .15s ease,background .15s ease}
+.ml26-track-item:hover{border-color:#53689c;color:#f1f5ff}
+.ml26-track-item.active{border-color:#7d8fff;background:#182647;color:#ffffff}
+.ml26-track-item.complete:not(.active){border-color:#265b4a;background:#0c1e1f}
+.ml26-track-num{flex-shrink:0;width:28px;height:28px;border-radius:7px;background:#13203b;color:#8fa3ff;display:grid;place-items:center;font:600 12px 'DM Mono',monospace}
+.ml26-track-item.active .ml26-track-num{background:#2a4073;color:#ffffff}
+.ml26-track-copy{flex:1;min-width:0;display:grid;gap:2px}
+.ml26-track-copy strong{font:600 13px/1.3 'Space Grotesk',sans-serif;color:inherit;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ml26-track-copy small{font-size:11px;color:#889bb8}
+.ml26-done-icon{flex-shrink:0;color:#6ee2ba}
+.ml26-empty{padding:16px;border:1px solid #223250;border-radius:10px;background:#0d1628;text-align:center;display:grid;gap:10px;justify-items:center;color:#9eb0cf;font-size:13px}
+
+/* Right Stage */
+.ml26-stage{padding:24px 26px;display:grid;gap:18px;align-content:start;min-width:0}
+.ml26-audit-note{display:flex;align-items:flex-start;gap:11px;padding:13px 16px;border:1px solid #274469;border-radius:11px;background:#0d1a31}
+.ml26-audit-note>svg{flex-shrink:0;color:#8fa3ff;margin-top:2px}
+.ml26-audit-note strong{display:block;font:600 13px 'Space Grotesk',sans-serif;color:#e7eeff;margin-bottom:3px}
+.ml26-audit-note p{margin:0;font-size:13.5px;line-height:1.58;color:#b8c8e4}
+
+/* Tab 1: Complete Topics Master-Detail */
+.ml26-topics-layout{display:grid;grid-template-columns:280px minmax(0,1fr);gap:16px;align-items:start}
+.ml26-topic-index{display:grid;gap:6px;max-height:660px;overflow-y:auto;padding-right:2px}
+.ml26-topic-btn{display:flex;align-items:center;gap:9px;text-align:left;padding:10px 12px;border:1px solid #202f4d;border-radius:9px;background:#0d1629;color:#aebdd7;cursor:pointer;transition:border-color .15s ease,background .15s ease}
+.ml26-topic-btn:hover{border-color:#53689c;color:#f3f6ff}
+.ml26-topic-btn.active{border-color:#7d8fff;background:#19284a;color:#ffffff}
+.ml26-topic-btn.done:not(.active){border-color:#265b4a;background:#0d1e20}
+.ml26-topic-idx{flex-shrink:0;font:500 11px 'DM Mono',monospace;color:#8fa3ff}
+.ml26-topic-title{flex:1;min-width:0;font:500 13px/1.35 'DM Sans',sans-serif;color:inherit}
+.ml26-topic-check{flex-shrink:0;color:#6ee2ba}
+
+.ml26-topic-detail{border:1px solid #223250;border-radius:12px;background:#0e172a;padding:22px;display:grid;gap:16px}
+.ml26-topic-detail-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid #1e2c48}
+.ml26-topic-detail-head h4{font:600 20px/1.25 'Space Grotesk',sans-serif;color:#f3f6ff;margin:4px 0 0}
+.ml26-detail-block{display:grid;gap:6px}
+.ml26-detail-block h5{font:600 14px 'Space Grotesk',sans-serif;color:#dbe5ff;margin:0}
+.ml26-detail-block p{font-size:14.5px;line-height:1.68;color:#c3d1e8;margin:0}
+.ml26-inline-icon{display:inline-flex;align-items:center;gap:6px}
+
+.ml26-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.ml26-subcard{border:1px solid #223250;border-radius:10px;background:#0a1120;padding:14px 15px;display:grid;gap:6px;align-content:start}
+.ml26-subcard.pitfall{border-color:#683343;background:#1c1119}
+.ml26-subcard p{font-size:13.5px;line-height:1.6;color:#c0cee6;margin:0}
+.ml26-pitfall-kicker{display:inline-flex;align-items:center;gap:6px;font:500 11px 'DM Mono',monospace;color:#ff9aa6}
+
+.ml26-snippet-box{border:1px solid #202f4d;border-radius:10px;background:#080e1c;overflow:hidden;display:grid}
+.ml26-snippet-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid #1a2740;background:#0c1425}
+.ml26-snippet-box pre{margin:0;padding:14px;overflow-x:auto;font:400 12.5px/1.6 'DM Mono',monospace;color:#c7d8ff}
+
+.ml26-topic-pager{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-top:12px;border-top:1px solid #1e2c48}
+.ml26-pager-meta{font:500 12px 'DM Mono',monospace;color:#8fa3c8}
+
+/* Tab 3: Progress Meter Bars (Zero Inline Styles) */
+.ml26-bar-meter{width:100%;height:9px;border:0;border-radius:999px;background:#18243d;overflow:hidden;appearance:none}
+.ml26-bar-meter::-webkit-progress-bar{background:#18243d;border-radius:999px}
+.ml26-bar-meter::-webkit-progress-value{border-radius:999px;background:#7d8fff}
+.ml26-bar-meter.tone-positive::-webkit-progress-value{background:#52d1a3}
+.ml26-bar-meter.tone-warning::-webkit-progress-value{background:#e9b956}
+.ml26-bar-meter.tone-danger::-webkit-progress-value{background:#f06c7f}
+.ml26-bar-meter::-moz-progress-bar{border-radius:999px;background:#7d8fff}
+.ml26-bar-meter.tone-positive::-moz-progress-bar{background:#52d1a3}
+.ml26-bar-meter.tone-warning::-moz-progress-bar{background:#e9b956}
+.ml26-bar-meter.tone-danger::-moz-progress-bar{background:#f06c7f}
+
+/* Tab 4: Live Code Playground */
+.ml26-play-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.85fr);gap:16px;align-items:start}
+.ml26-play-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.ml26-play-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ml26-code-editor{width:100%;min-height:330px;padding:14px;border:1px solid #243554;border-radius:10px;background:#070d1a;color:#d6e3ff;font:400 12.5px/1.6 'DM Mono',monospace;resize:vertical;outline:none}
+.ml26-code-editor:focus{border-color:#7d8fff}
+.ml26-python-view{margin:0;min-height:240px;padding:14px;border:1px solid #243554;border-radius:10px;background:#070d1a;color:#9fe8cc;font:400 12.5px/1.6 'DM Mono',monospace;overflow-x:auto}
+
+.ml26-out-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.ml26-runtime-ms{font:500 12px 'DM Mono',monospace;color:#6ee2ba}
+.ml26-run-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.ml26-assertions{display:grid;gap:8px}
+.ml26-assertions ul{margin:0;padding:0;list-style:none;display:grid;gap:6px}
+.ml26-assertions li{display:flex;align-items:center;gap:7px;font-size:12.5px;padding:8px 10px;border-radius:8px;border:1px solid #202f4d;background:#0a1120}
+.ml26-assertions li.pass{border-color:#265b4a;color:#b8f3dc}
+.ml26-assertions li.pass svg{color:#6ee2ba;flex-shrink:0}
+.ml26-assertions li.fail{border-color:#7d3345;color:#ffc1ca}
+.ml26-assertions li.fail svg{color:#ff8f9c;flex-shrink:0}
+.ml26-console-box{border:1px solid #202f4d;border-radius:10px;background:#070d1a;padding:12px 14px;display:grid;gap:6px}
+.ml26-console-box pre{margin:0;font:400 12px/1.55 'DM Mono',monospace;color:#cfe0ff;white-space:pre-wrap;word-break:break-word}
+.ml26-artifacts{display:grid;gap:10px}
+
+/* Bottom Track Stepper Footer */
+.ml26-stage-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-top:16px;border-top:1px solid #1e2c48}
+
+@media(max-width:1180px){
+  .ml26-body{grid-template-columns:1fr}
+  .ml26-rail{border-right:0;border-bottom:1px solid #1e2c48}
+  .ml26-track-list{max-height:260px}
+  .ml26-play-grid{grid-template-columns:1fr}
+}
+@media(max-width:860px){
+  .ml26-topics-layout,.ml26-detail-grid,.ml26-run-metrics{grid-template-columns:1fr}
+  .ml26-topic-index{max-height:240px}
+}
+
 
 
 
