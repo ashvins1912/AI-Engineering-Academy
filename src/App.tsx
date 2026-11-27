@@ -11,6 +11,7 @@ import {
   Cpu,
   GraduationCap,
   Layers3,
+  Menu,
   Search,
   ShieldCheck,
   Sliders,
@@ -34,12 +35,21 @@ import LLMDevelopmentMasterclass from './components/LLMDevelopmentMasterclass'
 import DataScienceEngineeringStudio from './components/DataScienceEngineeringStudio'
 import HarnessEngineeringStudio from './components/HarnessEngineeringStudio'
 import MLRoadmap2026Studio from './components/MLRoadmap2026Studio'
+import BuildAiSystemsStudio from './components/BuildAiSystemsStudio'
 
 type WorkspaceView = 'overview' | 'vlab' | 'studio' | 'curriculum' | 'frontier-ops'
 type StudioTrack = 'ml-2026' | 'ds-de' | 'foundations'
-type FrontierOpsTab = 'harness' | 'llm-masterclass' | 'frontier' | 'labs' | 'interviews'
+type FrontierOpsTab = 'build-ai' | 'harness' | 'llm-masterclass' | 'frontier' | 'labs' | 'interviews'
 type LessonFilter = 'all' | 'remaining' | 'completed' | 'bookmarked'
 type ModalTab = 'learn' | 'practice' | 'assess'
+
+const WORKSPACE_NAV_ITEMS: { id: WorkspaceView; label: string }[] = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'vlab', label: 'Virtual Lab' },
+  { id: 'studio', label: 'Guided Studio' },
+  { id: 'curriculum', label: '12-Stage Path' },
+  { id: 'frontier-ops', label: 'Frontier & Ops' }
+]
 
 const validLessonIds = new Set(
   curriculum.flatMap(stage => stage.modules.flatMap(module => module.lessons.map(lesson => lesson.id)))
@@ -72,7 +82,7 @@ const persistList = (key: string, value: string[]) => {
 export default function App() {
   const [workspace, setWorkspace] = useState<WorkspaceView>('overview')
   const [studioTrack, setStudioTrack] = useState<StudioTrack>('ml-2026')
-  const [frontierOpsTab, setFrontierOpsTab] = useState<FrontierOpsTab>('harness')
+  const [frontierOpsTab, setFrontierOpsTab] = useState<FrontierOpsTab>('build-ai')
   const [query, setQuery] = useState('')
   const [lessonFilter, setLessonFilter] = useState<LessonFilter>('all')
   const [activeStage, setActiveStage] = useState(curriculum[0].id)
@@ -81,6 +91,7 @@ export default function App() {
   const [expanded, setExpanded] = useState<string[]>([curriculum[0].modules[0].id])
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
   const [modalTab, setModalTab] = useState<ModalTab>('learn')
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   useEffect(() => {
     persistList('ai-academy.completed.v1', completed)
@@ -92,6 +103,15 @@ export default function App() {
   useEffect(() => {
     if (selectedLesson) setModalTab('learn')
   }, [selectedLesson?.id])
+
+  useEffect(() => {
+    if (!mobileNavOpen) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileNavOpen(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [mobileNavOpen])
 
   const allLessons = useMemo(
     () => curriculum.flatMap(s => s.modules.flatMap(m => m.lessons)),
@@ -150,6 +170,7 @@ export default function App() {
 
   const navigateWorkspace = (next: WorkspaceView) => {
     setWorkspace(next)
+    setMobileNavOpen(false)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -167,7 +188,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      {/* Strict 3-Zone Top Navigation Bar */}
+      {/* Strict 3-Zone Top Navigation Bar + Responsive Mobile Toggle */}
       <header className="topbar">
         <button
           type="button"
@@ -179,15 +200,7 @@ export default function App() {
         </button>
 
         <nav className="top-nav" aria-label="Learning workspaces">
-          {(
-            [
-              { id: 'overview', label: 'Overview' },
-              { id: 'vlab', label: 'Virtual Lab' },
-              { id: 'studio', label: 'Guided Studio' },
-              { id: 'curriculum', label: '12-Stage Path' },
-              { id: 'frontier-ops', label: 'Frontier & Ops' }
-            ] as { id: WorkspaceView; label: string }[]
-          ).map(item => (
+          {WORKSPACE_NAV_ITEMS.map(item => (
             <button
               key={item.id}
               type="button"
@@ -207,7 +220,49 @@ export default function App() {
         >
           Run Virtual Lab
         </button>
+
+        <button
+          type="button"
+          className="ux-mobile-menu-btn"
+          aria-expanded={mobileNavOpen}
+          aria-controls="mobile-workspace-drawer"
+          aria-label={mobileNavOpen ? 'Close navigation menu' : 'Open navigation menu'}
+          onClick={() => setMobileNavOpen(v => !v)}
+        >
+          {mobileNavOpen ? <X size={19} /> : <Menu size={19} />}
+          <span>{mobileNavOpen ? 'Close' : 'Menu'}</span>
+        </button>
       </header>
+
+      {mobileNavOpen && (
+        <nav
+          id="mobile-workspace-drawer"
+          className="ux-mobile-drawer"
+          aria-label="Mobile workspace navigation"
+        >
+          <div className="ux-mobile-drawer-list">
+            {WORKSPACE_NAV_ITEMS.map(item => (
+              <button
+                key={item.id}
+                type="button"
+                className={`ux-mobile-nav-item ${workspace === item.id ? 'active' : ''}`}
+                aria-current={workspace === item.id ? 'page' : undefined}
+                onClick={() => navigateWorkspace(item.id)}
+              >
+                <span>{item.label}</span>
+                <ChevronRight size={15} />
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="bc-btn-primary ux-mobile-cta"
+            onClick={() => navigateWorkspace('vlab')}
+          >
+            Run Virtual Lab
+          </button>
+        </nav>
+      )}
 
       <main className="ux-main">
         {/* ================================================================
@@ -356,23 +411,23 @@ export default function App() {
                 <article className="ux-track-card">
                   <div className="ux-track-meta">
                     <span className="bc-tabular">03</span>
-                    <span>Harness Engineering · LLM Lifecycle · ChatGPT/Claude &amp; vLLM</span>
+                    <span>Build ChatGPT, Claude &amp; Copilot · Transformers · RAG · MCP · ACP</span>
                   </div>
-                  <h3>Harness Engineering &amp; Frontier LLM Masterclass</h3>
+                  <h3>Build ChatGPT, Claude &amp; Copilot + Frontier AI Architecture</h3>
                   <p>
-                    Master deterministic Agent Harness Engineering (DFD, 3 production case studies,
-                    Pass^k virtual simulator &amp; live runtime) alongside the full LLM Lifecycle,
-                    Trained vs. Untrained Lab, ML Models, and ChatGPT/Claude/vLLM internals.
+                    Complete Python/TypeScript code, simple-English Transformer deep dives, animated
+                    Model + RAG + MCP + ACP data-flow diagrams, unified virtual architect playground,
+                    Harness Engineering, and vLLM serving internals.
                   </p>
                   <button
                     type="button"
                     className="ux-track-cta"
                     onClick={() => {
-                      setFrontierOpsTab('harness')
+                      setFrontierOpsTab('build-ai')
                       navigateWorkspace('frontier-ops')
                     }}
                   >
-                    <span>Open Harness Engineering &amp; Frontier</span>
+                    <span>Build ChatGPT, Claude &amp; Copilot</span>
                     <ArrowRight size={15} />
                   </button>
                 </article>
@@ -773,6 +828,15 @@ export default function App() {
                 <button
                   type="button"
                   role="tab"
+                  aria-selected={frontierOpsTab === 'build-ai'}
+                  className={frontierOpsTab === 'build-ai' ? 'active' : ''}
+                  onClick={() => setFrontierOpsTab('build-ai')}
+                >
+                  Build ChatGPT, Claude &amp; Copilot (5)
+                </button>
+                <button
+                  type="button"
+                  role="tab"
                   aria-selected={frontierOpsTab === 'harness'}
                   className={frontierOpsTab === 'harness' ? 'active' : ''}
                   onClick={() => setFrontierOpsTab('harness')}
@@ -818,6 +882,9 @@ export default function App() {
               </div>
             </div>
 
+            {frontierOpsTab === 'build-ai' && (
+              <BuildAiSystemsStudio onLaunchVirtualLab={() => navigateWorkspace('vlab')} />
+            )}
             {frontierOpsTab === 'harness' && (
               <HarnessEngineeringStudio onLaunchVirtualLab={() => navigateWorkspace('vlab')} />
             )}

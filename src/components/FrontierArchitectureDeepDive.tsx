@@ -30,6 +30,7 @@ import {
   type DfdStep
 } from '../data/frontierArchitectureData'
 import MermaidDiagram from './MermaidDiagram'
+import SelfAttentionVisualizer from './SelfAttentionVisualizer'
 
 const TABS: { id: DeepDiveTabId; shortLabel: string; title: string; subtitle: string }[] = [
   {
@@ -383,16 +384,19 @@ export default function FrontierArchitectureDeepDive() {
             TAB-SPECIFIC VIRTUAL SIMULATORS & DEEP ARCHITECTURAL CONTENT
         ================================================================== */}
 
-        {/* TAB 1: DL & TRANSFORMER SIMULATOR */}
+        {/* TAB 1: DL & TRANSFORMER SIMULATOR + INTERACTIVE SELF-ATTENTION */}
         {activeTab === 'dl-transformer' && (
-          <div className="fd-sim-block">
-            <div className="bc-section-head">
-              <div className="bc-section-title">
-                <Cpu size={17} />
-                <h4>Virtual Transformer Sizing &amp; KV-Cache Simulator</h4>
+          <>
+            <SelfAttentionVisualizer />
+
+            <div className="fd-sim-block">
+              <div className="bc-section-head">
+                <div className="bc-section-title">
+                  <Cpu size={17} />
+                  <h4>Virtual Transformer Sizing &amp; KV-Cache Simulator</h4>
+                </div>
+                <span className="bc-section-sub">Compare classic Multi-Head Attention (MHA) vs. modern Grouped-Query Attention (GQA)</span>
               </div>
-              <span className="bc-section-sub">Compare classic Multi-Head Attention (MHA) vs. modern Grouped-Query Attention (GQA)</span>
-            </div>
 
             <div className="bc-sim-controls">
               <div className="bc-control-card">
@@ -453,6 +457,7 @@ export default function FrontierArchitectureDeepDive() {
               </div>
             </div>
           </div>
+          </>
         )}
 
         {/* TAB 2: CHATGPT / CLAUDE TRAINING & ALIGNMENT SIMULATOR */}
