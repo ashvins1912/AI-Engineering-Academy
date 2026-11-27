@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ArrowLeft, ArrowRight, Pause, Play, RotateCcw } from 'lucide-react'
+import TokenStreamTypewriter from './TokenStreamTypewriter'
 
 type FlowStep = {
   title: string
@@ -174,7 +175,13 @@ export default function ArchitectureFlow() {
           </div>
           <div>
             <small>What happens (simple English)</small>
-            <p>{step.action}</p>
+            <TokenStreamTypewriter
+              text={step.action}
+              streamKey={`af-step-${active}`}
+              variant="prose"
+              showControls={false}
+              tokenDelayMs={26}
+            />
           </div>
           <div>
             <small>Live packet crossing boundary</small>

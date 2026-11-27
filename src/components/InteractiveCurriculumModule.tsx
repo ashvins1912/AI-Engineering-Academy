@@ -28,6 +28,7 @@ import {
   type BeginnerCurriculumTopic
 } from '../data/beginnerCurriculum'
 import { interactiveTopicOutcomes } from '../data/withWithoutBestPractices'
+import TokenStreamTypewriter from './TokenStreamTypewriter'
 import MermaidDiagram from './MermaidDiagram'
 
 const STORAGE_KEY = 'ai-academy.beginner-curriculum.mastered.v1'
@@ -798,9 +799,13 @@ export default function InteractiveCurriculumModule() {
             </div>
 
             {/* Live Simulated Output Box */}
-            <div className={`bc-sim-output bc-output-${simResult.healthStatus}`} aria-live="polite">
-              <div className="bc-sim-output-label">Live Simulated Output</div>
-              <p>{simResult.simulatedOutput}</p>
+            <div className={`bc-sim-output bc-output-${simResult.healthStatus}`}>
+              <TokenStreamTypewriter
+                text={simResult.simulatedOutput}
+                streamKey={`${topic.id}-${simResult.healthStatus}-${simResult.accuracyScore}-${simResult.latencyMs}`}
+                label="Live Simulated Output"
+                variant="prose"
+              />
             </div>
 
             {/* Formula Rules Transparency Panel */}

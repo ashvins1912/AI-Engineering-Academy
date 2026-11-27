@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Activity, AlertTriangle, ArrowRight, CheckCircle2, Cloud, Database, GitBranch, Play, RotateCcw, ShieldCheck, Workflow } from 'lucide-react'
+import TokenStreamTypewriter from './TokenStreamTypewriter'
 
 type LabKey = 'rag' | 'agents' | 'finetune' | 'aws'
 type Scenario = { id:string; title:string; description:string; outcome:string; diagnosis:string; fix:string; signals:string[]; failedAt?:number }
@@ -91,7 +92,15 @@ export default function ProductionLabs() {
     </div>
     <aside className="production-lab-observe"><div className="production-observe-head"><span><Activity size={15}/> TRACE INSPECTOR</span><span className={`trace-pill ${ran?(scenario.failedAt===undefined?'ok':'warn'):''}`}>{ran?(scenario.failedAt===undefined?'PASS':'DEGRADED'):'IDLE'}</span></div>
      {!ran?<div className="production-empty-trace"><GitBranch size={25}/><strong>Waiting for a run</strong><p>Choose a scenario and run it to inspect the execution path, error boundary and recovery recommendation.</p></div>:<>
-      <div className="production-outcome"><span>OBSERVED OUTCOME</span><p>{scenario.outcome}</p></div>
+      <div className="production-outcome">
+        <TokenStreamTypewriter
+          text={scenario.outcome}
+          streamKey={`prod-${active.id}-${scenario.id}-${configValue}`}
+          label="OBSERVED OUTCOME"
+          variant="prose"
+          tokenDelayMs={28}
+        />
+      </div>
       <div className="production-diagnosis"><strong><AlertTriangle size={15}/> Root-cause analysis</strong><p>{scenario.diagnosis}</p></div>
       <div className="production-recommendation"><strong><ShieldCheck size={15}/> Recommended fix / improvement</strong><p>{scenario.fix}</p></div>
       <div className="production-metrics"><strong>SIMULATED SIGNALS</strong>{scenario.signals.map(x=><span key={x}>{x}</span>)}<span>{configLabel}: {configValue} {configUnit}</span></div>

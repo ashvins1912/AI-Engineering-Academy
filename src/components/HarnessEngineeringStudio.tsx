@@ -29,6 +29,7 @@ import {
 import { runInVirtualSandbox, type SandboxRunResult } from '../utils/sandboxRunner'
 import MermaidDiagram from './MermaidDiagram'
 import HarnessDfdEditor from './HarnessDfdEditor'
+import TokenStreamTypewriter from './TokenStreamTypewriter'
 
 type HarnessTab = 'overview' | 'editor' | 'dfd' | 'cases' | 'simulator' | 'playground'
 
@@ -643,12 +644,13 @@ export default function HarnessEngineeringStudio({ onLaunchVirtualLab }: Props) 
                     Harness lifts {horizonTurns}-turn pass@1 from {sim.rawPassAt1Pct}% to{' '}
                     {sim.harnessPassAt1Pct}% (+{sim.liftPts} pts on identical LLM weights)
                   </strong>
-                  <p>
-                    Over {horizonTurns} chained steps, an unharnessed {baseStepAcc}% model decays to{' '}
-                    {sim.rawPassAt1Pct}% pass@1 ({sim.rawPassPow3Pct}% pass^3). Verifier backpressure
-                    + timely compaction cuts cost per solved task from ${sim.costPerSolvedRaw} to $
-                    {sim.costPerSolvedHarness}.
-                  </p>
+                  <TokenStreamTypewriter
+                    text={`Over ${horizonTurns} chained steps, an unharnessed ${baseStepAcc}% model decays to ${sim.rawPassAt1Pct}% pass@1 (${sim.rawPassPow3Pct}% pass^3). Verifier backpressure + timely compaction cuts cost per solved task from $${sim.costPerSolvedRaw} to $${sim.costPerSolvedHarness}.`}
+                    streamKey={`harness-${horizonTurns}-${baseStepAcc}-${sim.harnessPassAt1Pct}-${sim.costPerSolvedHarness}`}
+                    label="Synthesized Harness Verdict"
+                    variant="prose"
+                    tokenDelayMs={28}
+                  />
                 </div>
               </div>
 
@@ -859,11 +861,13 @@ export default function HarnessEngineeringStudio({ onLaunchVirtualLab }: Props) 
 
                     {runResult.logs.length > 0 && (
                       <div className="dsde-logs">
-                        {runResult.logs.map((entry, idx) => (
-                          <div className={`dsde-log-line ${entry.level}`} key={idx}>
-                            <code>{entry.text}</code>
-                          </div>
-                        ))}
+                        <TokenStreamTypewriter
+                          text={runResult.logs.map(entry => entry.text).join('\n')}
+                          streamKey={`harness-log-${runResult.durationMs}-${runResult.logs.length}`}
+                          label="Live Execution Trace"
+                          variant="code"
+                          tokenDelayMs={20}
+                        />
                       </div>
                     )}
 

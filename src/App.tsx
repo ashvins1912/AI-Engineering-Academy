@@ -8,12 +8,9 @@ import {
   ChevronRight,
   CircleCheck,
   Code2,
-  Cpu,
   GraduationCap,
   Layers3,
   Menu,
-  Search,
-  ShieldCheck,
   Sliders,
   Target,
   Workflow,
@@ -29,13 +26,13 @@ import ArchitectureFlow from './components/ArchitectureFlow'
 import StudentReflection from './components/StudentReflection'
 import InteractiveCurriculumModule from './components/InteractiveCurriculumModule'
 import FrontierArchitectureDeepDive from './components/FrontierArchitectureDeepDive'
-import StageLabsDrawer from './components/StageLabsDrawer'
 import VirtualLabWorkspace from './components/VirtualLabWorkspace'
 import LLMDevelopmentMasterclass from './components/LLMDevelopmentMasterclass'
 import DataScienceEngineeringStudio from './components/DataScienceEngineeringStudio'
 import HarnessEngineeringStudio from './components/HarnessEngineeringStudio'
 import MLRoadmap2026Studio from './components/MLRoadmap2026Studio'
 import BuildAiSystemsStudio from './components/BuildAiSystemsStudio'
+import AtlasLessonShell from './components/AtlasLessonShell'
 
 type WorkspaceView = 'overview' | 'vlab' | 'studio' | 'curriculum' | 'frontier-ops'
 type StudioTrack = 'ml-2026' | 'ds-de' | 'foundations'
@@ -85,11 +82,10 @@ export default function App() {
   const [frontierOpsTab, setFrontierOpsTab] = useState<FrontierOpsTab>('build-ai')
   const [query, setQuery] = useState('')
   const [lessonFilter, setLessonFilter] = useState<LessonFilter>('all')
-  const [activeStage, setActiveStage] = useState(curriculum[0].id)
   const [completed, setCompleted] = useState<string[]>(() => readList('ai-academy.completed.v1'))
   const [bookmarks, setBookmarks] = useState<string[]>(() => readList('ai-academy.bookmarks.v1'))
-  const [expanded, setExpanded] = useState<string[]>([curriculum[0].modules[0].id])
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
+  const [atlasLessonId, setAtlasLessonId] = useState<string>(curriculum[0].modules[0].lessons[0].id)
   const [modalTab, setModalTab] = useState<ModalTab>('learn')
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
@@ -157,11 +153,9 @@ export default function App() {
       })
   }, [query, lessonFilter, completed, bookmarks])
 
-  const active = filtered.find(s => s.id === activeStage) ?? filtered[0] ?? curriculum[0]
   const total = allLessons.length
   const progress = Math.round((completed.length / total) * 100)
   const moduleCount = curriculum.reduce((n, s) => n + s.modules.length, 0)
-  const stageNumber = curriculum.findIndex(s => s.id === active.id) + 1
 
   const toggle = (id: string) =>
     setCompleted(v => (v.includes(id) ? v.filter(x => x !== id) : [...v, id]))
@@ -174,17 +168,38 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const openStage = (stageId: string) => {
-    setActiveStage(stageId)
-    const stageObj = curriculum.find(s => s.id === stageId)
-    if (stageObj?.modules[0]) {
-      setExpanded(prev => (prev.includes(stageObj.modules[0].id) ? prev : [...prev, stageObj.modules[0].id]))
+  const activeAtlasMeta = useMemo(() => {
+    for (let sIdx = 0; sIdx < curriculum.length; sIdx++) {
+      const st = curriculum[sIdx]
+      for (const mod of st.modules) {
+        const found = mod.lessons.find(l => l.id === atlasLessonId)
+        if (found) {
+          return { lesson: found, stage: st, moduleTitle: mod.title, stageIndex: sIdx + 1 }
+        }
+      }
     }
+    const fallbackStage = curriculum[0]
+    const fallbackMod = fallbackStage.modules[0]
+    return {
+      lesson: fallbackMod.lessons[0],
+      stage: fallbackStage,
+      moduleTitle: fallbackMod.title,
+      stageIndex: 1
+    }
+  }, [atlasLessonId])
+
+  const openAtlasLesson = (lesson: Lesson) => {
+    setAtlasLessonId(lesson.id)
     navigateWorkspace('curriculum')
   }
 
-  const shouldExpandModule = (moduleId: string) =>
-    Boolean(query.trim()) || lessonFilter !== 'all' || expanded.includes(moduleId)
+  const openStage = (stageId: string) => {
+    const stageObj = curriculum.find(s => s.id === stageId)
+    if (stageObj?.modules[0]?.lessons[0]) {
+      setAtlasLessonId(stageObj.modules[0].lessons[0].id)
+    }
+    navigateWorkspace('curriculum')
+  }
 
   return (
     <div className="app-shell">
@@ -264,7 +279,7 @@ export default function App() {
         </nav>
       )}
 
-      <main className="ux-main">
+      <main className={`ux-main ${workspace === 'curriculum' ? 'ux-main-atlas' : ''}`}>
         {/* ================================================================
             WORKSPACE 1: OVERVIEW & LEARNING PATH HUB
         ================================================================= */}
@@ -345,7 +360,7 @@ export default function App() {
               <button
                 type="button"
                 className="bc-btn-secondary"
-                onClick={() => setSelectedLesson(nextRecommendedLesson)}
+                onClick={() => openAtlasLesson(nextRecommendedLesson)}
               >
                 <span>Open Next Lesson</span>
                 <ChevronRight size={15} />
@@ -570,243 +585,28 @@ export default function App() {
             WORKSPACE 3: FULL 12-STAGE CURRICULUM EXPLORER (93 LESSONS)
         ================================================================= */}
         {workspace === 'curriculum' && (
-          <div className="ux-workspace-view" id="full-curriculum">
-            <header className="ux-view-banner">
-              <div>
-                <div className="bc-meta-line">
-                  <span>Complete Learning Blueprint</span>
-                  <span aria-hidden="true">·</span>
-                  <span>{curriculum.length} Stages</span>
-                  <span aria-hidden="true">·</span>
-                  <span>{total} Lessons</span>
-                  <span aria-hidden="true">·</span>
-                  <span className="bc-tabular">{completed.length} Completed</span>
-                </div>
-                <h2>12-Stage AI Systems Curriculum</h2>
-                <p>
-                  Select any stage on the left, filter by completion or bookmarks, launch stage-wide
-                  visual labs on demand, or click any lesson to open its full 3-tab interactive studio.
-                </p>
-              </div>
-              <div className="ux-filter-row" role="tablist" aria-label="Filter lessons">
-                {(
-                  [
-                    { id: 'all', label: `All (${total})` },
-                    { id: 'remaining', label: `Remaining (${total - completed.length})` },
-                    { id: 'completed', label: `Done (${completed.length})` },
-                    { id: 'bookmarked', label: `Saved (${bookmarks.length})` }
-                  ] as { id: LessonFilter; label: string }[]
-                ).map(tab => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={lessonFilter === tab.id}
-                    className={`ux-filter-btn ${lessonFilter === tab.id ? 'active' : ''}`}
-                    onClick={() => setLessonFilter(tab.id)}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-            </header>
-
-            <div className="content-grid">
-              <aside className="sidebar">
-                <div className="side-heading">
-                  <span>Curriculum Stages</span>
-                  <span className="bc-tabular">
-                    {filtered.length} / {curriculum.length}
-                  </span>
-                </div>
-                <label className="search">
-                  <Search size={16} />
-                  <input
-                    value={query}
-                    onChange={e => setQuery(e.target.value)}
-                    placeholder="Search topics, tools, labs..."
-                  />
-                  {query && (
-                    <button
-                      type="button"
-                      className="clear-search"
-                      onClick={() => setQuery('')}
-                      aria-label="Clear search"
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
-                </label>
-
-                <nav aria-label="Curriculum stages">
-                  {filtered.map(s => {
-                    const idx = curriculum.findIndex(x => x.id === s.id) + 1
-                    const sLessons = s.modules.flatMap(m => m.lessons)
-                    const sDone = sLessons.filter(l => completed.includes(l.id)).length
-                    return (
-                      <button
-                        key={s.id}
-                        type="button"
-                        className={`stage-link ${active.id === s.id ? 'selected' : ''}`}
-                        onClick={() => setActiveStage(s.id)}
-                      >
-                        <span className="stage-num bc-tabular">{String(idx).padStart(2, '0')}</span>
-                        <span className="ux-stage-link-body">
-                          <span>{s.title}</span>
-                          <small className="bc-tabular">
-                            {sDone}/{sLessons.length}
-                          </small>
-                        </span>
-                        <ChevronRight size={15} />
-                      </button>
-                    )
-                  })}
-                </nav>
-
-                <div className="sidebar-foot">
-                  <span className="bc-tabular">
-                    <Bookmark size={13} /> {bookmarks.length} saved
-                  </span>
-                  <span className="bc-tabular">
-                    <CircleCheck size={13} /> {completed.length} completed
-                  </span>
-                </div>
-              </aside>
-
-              <section className="main-panel">
-                <div className="stage-heading">
-                  <div>
-                    <div className="bc-meta-line">
-                      <span>Stage {String(stageNumber).padStart(2, '0')}</span>
-                      <span aria-hidden="true">·</span>
-                      <span>Learning Path</span>
-                    </div>
-                    <h2>{active.title}</h2>
-                    <p>{active.outcome}</p>
-                  </div>
-                  <div className="stage-icon">
-                    <Cpu size={24} />
-                  </div>
-                </div>
-
-                {/* Collapsible, Zero-Clutter Stage Lab Launcher */}
-                <StageLabsDrawer stageId={active.id} />
-
-                {/* Stage Modules & Lessons */}
-                {active.modules.map((m, mi) => {
-                  const isOpen = shouldExpandModule(m.id)
-                  const doneCount = m.lessons.filter(l => completed.includes(l.id)).length
-                  return (
-                    <article className="module" key={m.id}>
-                      <button
-                        type="button"
-                        className="module-head"
-                        aria-expanded={isOpen}
-                        onClick={() =>
-                          setExpanded(v =>
-                            v.includes(m.id) ? v.filter(x => x !== m.id) : [...v, m.id]
-                          )
-                        }
-                      >
-                        <div className="module-index bc-tabular">{String(mi + 1).padStart(2, '0')}</div>
-                        <div className="module-title">
-                          <h3>{m.title}</h3>
-                          <p>{m.description}</p>
-                          <span className="bc-tabular">
-                            {m.lessons.length} lessons · {doneCount} completed
-                          </span>
-                        </div>
-                        <ChevronRight className={isOpen ? 'rotate' : ''} size={18} />
-                      </button>
-
-                      {isOpen && (
-                        <div className="lesson-list">
-                          {m.lessons.map(l => (
-                            <div
-                              className={`lesson ${completed.includes(l.id) ? 'lesson-complete' : ''}`}
-                              key={l.id}
-                            >
-                              <button
-                                type="button"
-                                className={`check ${completed.includes(l.id) ? 'done' : ''}`}
-                                onClick={() => toggle(l.id)}
-                                aria-label={
-                                  completed.includes(l.id)
-                                    ? 'Mark lesson incomplete'
-                                    : 'Mark lesson complete'
-                                }
-                              >
-                                {completed.includes(l.id) ? <CircleCheck size={18} /> : <span />}
-                              </button>
-
-                              <button
-                                type="button"
-                                className="lesson-open"
-                                onClick={() => setSelectedLesson(l)}
-                              >
-                                <div className="lesson-body">
-                                  <strong>{l.title}</strong>
-                                  <p>{l.depth}</p>
-                                  <div className="lab">
-                                    <Code2 size={14} />
-                                    <span>Lab</span>
-                                    {l.lab}
-                                  </div>
-                                </div>
-                              </button>
-
-                              <button
-                                type="button"
-                                className={`bookmark-btn ${bookmarks.includes(l.id) ? 'saved' : ''}`}
-                                onClick={() => toggleBookmark(l.id)}
-                                aria-label={
-                                  bookmarks.includes(l.id) ? 'Remove bookmark' : 'Bookmark lesson'
-                                }
-                              >
-                                <Bookmark
-                                  size={16}
-                                  fill={bookmarks.includes(l.id) ? 'currentColor' : 'none'}
-                                />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </article>
-                  )
-                })}
-
-                {active.modules.length === 0 && (
-                  <div className="empty-state">
-                    <Search size={24} />
-                    <strong>No matching lessons in this view</strong>
-                    <p>Try clearing your search query or switching back to All lessons.</p>
-                    <button
-                      type="button"
-                      className="bc-btn-secondary"
-                      onClick={() => {
-                        setQuery('')
-                        setLessonFilter('all')
-                      }}
-                    >
-                      Reset Filters
-                    </button>
-                  </div>
-                )}
-
-                <div className="note">
-                  <ShieldCheck size={18} />
-                  <div>
-                    <strong>Engineering standard</strong>
-                    <p>
-                      Every lesson pairs plain-English intuition, worked examples, live animated
-                      Mermaid DFDs, a With-vs-Without virtual simulator, production best practices,
-                      starter code, and assessment verification.
-                    </p>
-                  </div>
-                </div>
-              </section>
-            </div>
+          <div className="ux-workspace-view atlas-workspace-wrap">
+            <AtlasLessonShell
+              curriculum={curriculum}
+              filteredCurriculum={filtered}
+              activeLesson={activeAtlasMeta.lesson}
+              activeStage={activeAtlasMeta.stage}
+              activeModuleTitle={activeAtlasMeta.moduleTitle}
+              stageIndex={activeAtlasMeta.stageIndex}
+              completed={completed}
+              bookmarks={bookmarks}
+              query={query}
+              lessonFilter={lessonFilter}
+              totalLessons={total}
+              onQueryChange={setQuery}
+              onFilterChange={setLessonFilter}
+              onSelectLesson={lesson => {
+                setAtlasLessonId(lesson.id)
+              }}
+              onToggleComplete={toggle}
+              onToggleBookmark={toggleBookmark}
+              practiceNode={<LessonPractice lesson={activeAtlasMeta.lesson} />}
+            />
           </div>
         )}
 
@@ -1058,12 +858,12 @@ export default function App() {
 
               {modalTab === 'assess' && (
                 <>
-                  <AssessmentEngine key={selectedLesson.id} lesson={selectedLesson} />
+                  <AssessmentEngine key={`modal-assess-${selectedLesson.id}`} lesson={selectedLesson} />
                   <section className="detail-section assessment">
                     <h3>Mastery assessment criteria</h3>
                     <p>{selectedLesson.assessment}</p>
                   </section>
-                  <StudentReflection key={selectedLesson.id} lesson={selectedLesson} />
+                  <StudentReflection key={`modal-reflect-${selectedLesson.id}`} lesson={selectedLesson} />
                 </>
               )}
             </div>

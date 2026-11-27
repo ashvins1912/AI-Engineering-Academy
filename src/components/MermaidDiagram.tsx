@@ -6,6 +6,7 @@ interface MermaidDiagramProps {
   diagramType: 'flowchart' | 'sequenceDiagram'
   highlightNode?: string
   nodeLabels: Record<string, string>
+  allowPan?: boolean
 }
 
 let mermaidInitialized = false
@@ -16,32 +17,38 @@ function ensureMermaidInit() {
     startOnLoad: false,
     securityLevel: 'strict',
     theme: 'base',
-    fontFamily: '"DM Sans", sans-serif',
+    fontFamily: '"Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif',
     themeVariables: {
       darkMode: true,
-      background: '#0b1324',
-      primaryColor: '#16233d',
-      primaryTextColor: '#e6edf8',
-      primaryBorderColor: '#3b4e74',
-      lineColor: '#7689b2',
-      secondaryColor: '#121d33',
-      tertiaryColor: '#1b2b4a',
-      actorBkg: '#16233d',
-      actorBorder: '#475c87',
-      actorTextColor: '#e6edf8',
-      actorLineColor: '#4c5f86',
-      signalColor: '#9fb0d6',
-      signalTextColor: '#dce6fa',
-      labelBoxBkgColor: '#142038',
-      labelBoxBorderColor: '#3a4d73',
-      labelTextColor: '#dce6fa',
-      noteBkgColor: '#192a4a',
-      noteBorderColor: '#6b7fff',
-      noteTextColor: '#eef2ff'
+      background: '#090D16',
+      primaryColor: '#0F172A',
+      primaryTextColor: '#F1F5F9',
+      primaryBorderColor: '#334155',
+      lineColor: '#64748B',
+      secondaryColor: '#111C31',
+      tertiaryColor: '#17253D',
+      clusterBkg: '#0B1220',
+      clusterBorder: '#1E293B',
+      titleColor: '#94A3B8',
+      edgeLabelBackground: '#090D16',
+      actorBkg: '#0F172A',
+      actorBorder: '#38BDF8',
+      actorTextColor: '#F1F5F9',
+      actorLineColor: '#475569',
+      signalColor: '#94A3B8',
+      signalTextColor: '#E2E8F0',
+      labelBoxBkgColor: '#0F172A',
+      labelBoxBorderColor: '#334155',
+      labelTextColor: '#E2E8F0',
+      noteBkgColor: '#131F36',
+      noteBorderColor: '#818CF8',
+      noteTextColor: '#EEF2FF'
     },
     flowchart: {
       curve: 'basis',
-      padding: 14,
+      padding: 16,
+      nodeSpacing: 36,
+      rankSpacing: 46,
       htmlLabels: false,
       useMaxWidth: true
     },
@@ -62,11 +69,10 @@ function buildHighlightedSyntax(
 ): string {
   if (!highlightNode) return syntax
   if (diagramType === 'flowchart') {
-    // Only apply class styling if the node ID appears in the flowchart definition
     const escaped = highlightNode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     const nodeRegex = new RegExp(`\\b${escaped}\\b`)
     if (!nodeRegex.test(syntax)) return syntax
-    return `${syntax}\n    classDef activeStep fill:#2b3e7a,stroke:#8b9dff,stroke-width:3px,color:#ffffff\n    class ${highlightNode} activeStep`
+    return `${syntax}\n    classDef activeStep fill:#0C2D48,stroke:#38BDF8,stroke-width:2.5px,color:#F8FAFC\n    class ${highlightNode} activeStep`
   }
   return syntax
 }
@@ -75,7 +81,8 @@ export default function MermaidDiagram({
   syntax,
   diagramType,
   highlightNode,
-  nodeLabels
+  nodeLabels,
+  allowPan = false
 }: MermaidDiagramProps) {
   const reactId = useId().replace(/:/g, '')
   const [svgMarkup, setSvgMarkup] = useState<string>('')
@@ -95,7 +102,6 @@ export default function MermaidDiagram({
         const uniqueId = `mmd-${reactId}-${Math.random().toString(36).slice(2, 7)}`
         const { svg } = await mermaid.render(uniqueId, decoratedSyntax)
         if (!cancelled) {
-          // For sequence diagrams, highlight the active actor box cleanly via SVG string class/attribute match
           let finalSvg = svg
           if (diagramType === 'sequenceDiagram' && highlightNode) {
             const labelText = nodeLabels[highlightNode] ?? highlightNode
@@ -103,7 +109,6 @@ export default function MermaidDiagram({
               new RegExp(`(<rect[^>]*class="actor[^"]*"[^>]*name="${highlightNode}"[^>]*>)`, 'g'),
               match => match.replace('class="actor', 'class="actor mmd-seq-active')
             )
-            // Also inject a subtle top highlight class if actor matched by title text
             if (finalSvg === svg && labelText) {
               const escapedLabel = labelText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
               finalSvg = svg.replace(
@@ -149,7 +154,7 @@ export default function MermaidDiagram({
   }
 
   return (
-    <div className="bc-mermaid-stage">
+    <div className={`bc-mermaid-stage ${allowPan ? 'atlas-mermaid-stage' : ''}`}>
       {highlightNode && (
         <div className="bc-active-node-bar" aria-live="polite">
           <span>Active highlighted node</span>
@@ -159,7 +164,7 @@ export default function MermaidDiagram({
         </div>
       )}
       <div
-        className="bc-mermaid-svg"
+        className={`bc-mermaid-svg ${allowPan ? 'atlas-mermaid-pan' : ''}`}
         aria-label="Interactive architecture flow diagram"
         dangerouslySetInnerHTML={{ __html: svgMarkup }}
       />

@@ -27,6 +27,7 @@ import { mlRoadmapTracksPart2 } from '../data/mlRoadmap2026Part2'
 import type { RoadmapPhase, RoadmapTrack } from '../data/mlRoadmap2026Types'
 import { runInVirtualSandbox, type SandboxRunResult } from '../utils/sandboxRunner'
 import MermaidDiagram from './MermaidDiagram'
+import TokenStreamTypewriter from './TokenStreamTypewriter'
 
 const ALL_TRACKS: RoadmapTrack[] = [...mlRoadmapTracksPart1, ...mlRoadmapTracksPart2]
 const ALL_TOPIC_IDS = new Set(ALL_TRACKS.flatMap(t => t.topics.map(tp => tp.id)))
@@ -737,7 +738,13 @@ export default function MLRoadmap2026Studio({ onLaunchVirtualLab }: Props) {
                       SYSTEM VERDICT · {statusLabel(simOutput.health).toUpperCase()}
                     </span>
                     <strong>{simOutput.headline}</strong>
-                    <p>{simOutput.explanation}</p>
+                    <TokenStreamTypewriter
+                      text={simOutput.explanation}
+                      streamKey={`ml26-verdict-${simOutput.health}-${simOutput.headline}`}
+                      label="Synthesized System Analysis"
+                      variant="prose"
+                      tokenDelayMs={28}
+                    />
                   </div>
                 </div>
 
@@ -919,14 +926,24 @@ export default function MLRoadmap2026Studio({ onLaunchVirtualLab }: Props) {
                 )}
 
                 <div className="ml26-console-box">
-                  <span className="dsde-kicker">CONSOLE LOGS</span>
-                  <pre>
-                    {activeRunResult && activeRunResult.logs.length > 0
-                      ? activeRunResult.logs.map(l => l.text).join('\n')
-                      : isRunningCode
-                        ? 'Executing in isolated Web Worker...'
-                        : 'Click "Run Code" to execute this track sandbox.'}
-                  </pre>
+                  {activeRunResult && activeRunResult.logs.length > 0 ? (
+                    <TokenStreamTypewriter
+                      text={activeRunResult.logs.map(l => l.text).join('\n')}
+                      streamKey={`ml26-log-${activeRunResult.durationMs}-${activeRunResult.logs.length}`}
+                      label="CONSOLE LOGS · LIVE STREAM"
+                      variant="code"
+                      tokenDelayMs={22}
+                    />
+                  ) : (
+                    <>
+                      <span className="dsde-kicker">CONSOLE LOGS</span>
+                      <pre>
+                        {isRunningCode
+                          ? 'Executing in isolated Web Worker...'
+                          : 'Click "Run Code" to execute this track sandbox.'}
+                      </pre>
+                    </>
+                  )}
                 </div>
 
                 {activeRunResult && activeRunResult.artifacts.length > 0 && (

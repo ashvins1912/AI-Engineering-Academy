@@ -16,6 +16,7 @@ import {
   getDefaultSimulatorValues,
   type BeginnerCurriculumTopic
 } from '../data/beginnerCurriculum'
+import TokenStreamTypewriter from './TokenStreamTypewriter'
 
 type SimCategory = 'all' | 'foundations' | 'ml-dl' | 'llm-vllm-claude' | 'rag-agents' | 'mlops-prod'
 
@@ -128,7 +129,15 @@ function TopicSimulatorTile({ topic }: { topic: BeginnerCurriculumTopic }) {
         </div>
       </div>
 
-      <p className="vlab-sim-output">{result.simulatedOutput}</p>
+      <div className="vlab-sim-output">
+        <TokenStreamTypewriter
+          text={result.simulatedOutput}
+          streamKey={`wall-${topic.id}-${result.healthStatus}-${result.latencyMs}-${result.accuracyScore}`}
+          label="Live Simulator Output"
+          variant="prose"
+          tokenDelayMs={26}
+        />
+      </div>
     </article>
   )
 }

@@ -20,6 +20,7 @@ import {
 import { dsDeSerialModules, type DsDeSerialModule } from '../data/dsDeSerialTrackData'
 import { runInVirtualSandbox, type SandboxRunResult } from '../utils/sandboxRunner'
 import MermaidDiagram from './MermaidDiagram'
+import TokenStreamTypewriter from './TokenStreamTypewriter'
 
 type StepTab = 'visual' | 'simulator' | 'playground' | 'quiz'
 type CodeView = 'sandbox' | 'blueprint'
@@ -517,7 +518,13 @@ export default function DataScienceEngineeringStudio({ onLaunchVirtualLab }: Pro
                 <div>
                   <span className="dsde-health-tag">System Verdict: {healthMeta.label}</span>
                   <strong>{simResult.headline}</strong>
-                  <p>{simResult.explanation}</p>
+                  <TokenStreamTypewriter
+                    text={simResult.explanation}
+                    streamKey={`dsde-verdict-${mod.id}-${simResult.health}-${simResult.headline}`}
+                    label="Live System Analysis"
+                    variant="prose"
+                    tokenDelayMs={28}
+                  />
                 </div>
               </div>
 
@@ -737,11 +744,13 @@ export default function DataScienceEngineeringStudio({ onLaunchVirtualLab }: Pro
 
                     {activeRun.logs.length > 0 && (
                       <div className="dsde-logs">
-                        {activeRun.logs.map((entry, idx) => (
-                          <div className={`dsde-log-line ${entry.level}`} key={idx}>
-                            <code>{entry.text}</code>
-                          </div>
-                        ))}
+                        <TokenStreamTypewriter
+                          text={activeRun.logs.map(entry => entry.text).join('\n')}
+                          streamKey={`dsde-log-${mod.id}-${activeRun.durationMs}-${activeRun.logs.length}`}
+                          label="Live Sandbox Output"
+                          variant="code"
+                          tokenDelayMs={20}
+                        />
                       </div>
                     )}
 

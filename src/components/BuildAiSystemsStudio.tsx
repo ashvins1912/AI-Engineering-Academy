@@ -19,6 +19,7 @@ import {
   Workflow,
   XCircle
 } from 'lucide-react'
+import TokenStreamTypewriter from './TokenStreamTypewriter'
 import {
   aiSystemModules,
   ARCHITECT_PRESETS,
@@ -559,14 +560,24 @@ export default function BuildAiSystemsStudio({ onLaunchVirtualLab }: Props) {
                   )}
 
                   <div className="ml26-console-box">
-                    <span className="dsde-kicker">CONSOLE LOGS</span>
-                    <pre>
-                      {activeRunResult && activeRunResult.logs.length > 0
-                        ? activeRunResult.logs.map(l => l.text).join('\n')
-                        : runningSandbox
-                          ? 'Running in Web Worker...'
-                          : 'Click "Run Code" to inspect live output.'}
-                    </pre>
+                    {activeRunResult && activeRunResult.logs.length > 0 ? (
+                      <TokenStreamTypewriter
+                        text={activeRunResult.logs.map(l => l.text).join('\n')}
+                        streamKey={`bais-log-${activeRunResult.durationMs}-${activeRunResult.logs.length}`}
+                        label="CONSOLE LOGS · LIVE STREAM"
+                        variant="code"
+                        tokenDelayMs={22}
+                      />
+                    ) : (
+                      <>
+                        <span className="dsde-kicker">CONSOLE LOGS</span>
+                        <pre>
+                          {runningSandbox
+                            ? 'Running in Web Worker...'
+                            : 'Click "Run Code" to inspect live output.'}
+                        </pre>
+                      </>
+                    )}
                   </div>
 
                   {activeRunResult && activeRunResult.artifacts.length > 0 && (
@@ -841,7 +852,13 @@ export default function BuildAiSystemsStudio({ onLaunchVirtualLab }: Props) {
                       ARCHITECT VERDICT · {simResult.health.toUpperCase()}
                     </span>
                     <strong>{simResult.verdictTitle}</strong>
-                    <p>{simResult.verdictDetail}</p>
+                    <TokenStreamTypewriter
+                      text={simResult.verdictDetail}
+                      streamKey={`bais-verdict-${simResult.health}-${simResult.ttftMs}-${simResult.reliabilityPct}`}
+                      label="Synthesized Architect Verdict"
+                      variant="prose"
+                      tokenDelayMs={28}
+                    />
                   </div>
                 </div>
 

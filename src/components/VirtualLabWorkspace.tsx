@@ -20,6 +20,7 @@ import { runInVirtualSandbox, type SandboxRunResult } from '../utils/sandboxRunn
 import MermaidDiagram from './MermaidDiagram'
 import AllSimulatorsWall from './AllSimulatorsWall'
 import RagSimulatorPlayground from './RagSimulatorPlayground'
+import TokenStreamTypewriter from './TokenStreamTypewriter'
 
 type WorkspaceMode = 'runtime' | 'rag-sim' | 'simulators'
 type CodeTab = 'sandbox' | 'python' | 'architecture'
@@ -540,21 +541,26 @@ export default function VirtualLabWorkspace({
 
                 {/* Live Captured Terminal Stdout / Stderr */}
                 <div className="vlab-console-box">
-                  <div className="vlab-sub-label">Live Stdout Console</div>
-                  <div className="vlab-console-lines">
-                    {activeResult && activeResult.logs.length > 0 ? (
-                      activeResult.logs.map((line, i) => (
-                        <div key={i} className={`vlab-log-line ${line.level}`}>
-                          <span className="vlab-log-ts bc-tabular">+{line.atMs.toFixed(1)}ms</span>
-                          <code>{line.text}</code>
+                  {activeResult && activeResult.logs.length > 0 ? (
+                    <TokenStreamTypewriter
+                      text={activeResult.logs
+                        .map(line => `[+${line.atMs.toFixed(1)}ms] ${line.text}`)
+                        .join('\n')}
+                      streamKey={`vlab-${activeResult.durationMs}-${activeResult.logs.length}`}
+                      label="Live Stdout Console"
+                      variant="code"
+                      tokenDelayMs={20}
+                    />
+                  ) : (
+                    <>
+                      <div className="vlab-sub-label">Live Stdout Console</div>
+                      <div className="vlab-console-lines">
+                        <div className="vlab-log-line log">
+                          <code>Press Run Code to execute this lab in the isolated Web Worker runtime.</code>
                         </div>
-                      ))
-                    ) : (
-                      <div className="vlab-log-line log">
-                        <code>Press Run Code to execute this lab in the isolated Web Worker runtime.</code>
                       </div>
-                    )}
-                  </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Structured JSON Artifacts */}

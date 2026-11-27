@@ -15,6 +15,7 @@ import {
   XCircle,
   Zap
 } from 'lucide-react'
+import TokenStreamTypewriter from './TokenStreamTypewriter'
 import {
   chatgptClaudeBuildMermaid,
   chatgptClaudeBuildSteps,
@@ -550,8 +551,13 @@ export default function FrontierArchitectureDeepDive() {
               </div>
             </div>
             <div className={`bc-sim-output bc-output-${sim2.status}`}>
-              <div className="bc-sim-output-label">Simulated Assistant Behavior</div>
-              <p>{sim2.output}</p>
+              <TokenStreamTypewriter
+                text={sim2.output}
+                streamKey={`frontier-sim2-${sim2.status}-${thinkingBudget}-${enableToolVerify}-${sim2.reasoningAccuracy}`}
+                label="Simulated Assistant Behavior"
+                variant="prose"
+                tokenDelayMs={30}
+              />
             </div>
           </div>
         )}

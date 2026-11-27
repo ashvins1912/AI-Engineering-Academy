@@ -22,6 +22,7 @@ import Stage3MasteryLabs from './Stage3MasteryLabs'
 import Stage4MasteryLabs from './Stage4MasteryLabs'
 import Stage5MasteryLabs from './Stage5MasteryLabs'
 import TopicSpecialistLab from './TopicSpecialistLab'
+import TokenStreamTypewriter from './TokenStreamTypewriter'
 
 type Props = { lesson: Lesson }
 
@@ -347,13 +348,33 @@ export default function TopicLearningStudio({ lesson }: Props) {
             <span>
               <XCircle size={14} /> Without It: {outcomeProfile.withoutConcept.headline}
             </span>
-            <p>{outcomeProfile.withoutConcept.whatBreaks}</p>
+            {!applyBestPractices ? (
+              <TokenStreamTypewriter
+                text={outcomeProfile.withoutConcept.whatBreaks}
+                streamKey={`${lesson.id}-without-${workloadScale}`}
+                label="Live Failure Mode Output"
+                variant="prose"
+                tokenDelayMs={28}
+              />
+            ) : (
+              <p>{outcomeProfile.withoutConcept.whatBreaks}</p>
+            )}
           </div>
           <div className={`tls-compare-item with ${applyBestPractices ? 'highlighted' : ''}`}>
             <span>
               <CheckCircle2 size={14} /> With It: {outcomeProfile.withConcept.headline}
             </span>
-            <p>{outcomeProfile.withConcept.whatIsAchieved}</p>
+            {applyBestPractices ? (
+              <TokenStreamTypewriter
+                text={outcomeProfile.withConcept.whatIsAchieved}
+                streamKey={`${lesson.id}-with-${workloadScale}`}
+                label="Live Production Outcome"
+                variant="prose"
+                tokenDelayMs={28}
+              />
+            ) : (
+              <p>{outcomeProfile.withConcept.whatIsAchieved}</p>
+            )}
           </div>
         </div>
 

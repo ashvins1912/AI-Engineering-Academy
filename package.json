@@ -34,6 +34,7 @@
     "pdfjs-dist": "^4.10.38",
     "react": "latest",
     "react-dom": "latest",
+    "react-type-animation": "^3.2.0",
     "typescript": "latest",
     "vite": "latest"
   },

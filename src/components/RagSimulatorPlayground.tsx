@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { TypeAnimation } from 'react-type-animation'
 import {
   AlertTriangle,
   ArrowLeftRight,
@@ -13,8 +14,10 @@ import {
   ShieldAlert,
   SlidersHorizontal,
   Sparkles,
+  Undo2,
   XCircle
 } from 'lucide-react'
+import TokenStreamTypewriter, { splitIntoLlmTokens } from './TokenStreamTypewriter'
 
 type ChunkRelevance = 'core' | 'supporting' | 'distractor' | 'injection'
 
@@ -848,22 +851,36 @@ function ContextBudgetSvgBar({
   )
 }
 
+const configsEqual = (a: RagConfig, b: RagConfig) =>
+  Math.abs(a.threshold - b.threshold) < 0.001 &&
+  a.topK === b.topK &&
+  a.topN === b.topN &&
+  Math.abs(a.rerankWeight - b.rerankWeight) < 0.001 &&
+  Math.abs(a.denseWeight - b.denseWeight) < 0.001 &&
+  a.contextBudget === b.contextBudget
+
 export default function RagSimulatorPlayground() {
   const [scenarioId, setScenarioId] = useState<string>(RAG_SCENARIOS[0].id)
   const [viewMode, setViewMode] = useState<'single' | 'compare'>('single')
 
-  // Single-mode config (also serves as Pipeline A when toggled or initialized)
+  // Single-mode config & Undo history stack
   const [config, setConfig] = useState<RagConfig>(() => getPresetConfig('balanced-recall'))
+  const [singleHistory, setSingleHistory] = useState<RagConfig[]>([])
 
-  // Compare-mode independent configs (default: Pure Vector vs. Keyword-Hybrid + Rerank)
+  // Compare-mode independent configs & Undo history stack
   const [configA, setConfigA] = useState<RagConfig>(() => getPresetConfig('pure-vector'))
   const [configB, setConfigB] = useState<RagConfig>(() => getPresetConfig('keyword-hybrid'))
+  const [compareHistory, setCompareHistory] = useState<{ a: RagConfig; b: RagConfig }[]>([])
 
-  // Retriever-Generator Synchronization Visualizer state (Single mode)
-  const [selectedSpanIdx, setSelectedSpanIdx] = useState<number>(1)
+  // Retriever-Generator Synchronization + react-type-animation Real-Time Token Streaming state
+  const [selectedSpanIdx, setSelectedSpanIdx] = useState<number>(0)
   const [selectedChunkId, setSelectedChunkId] = useState<string | null>(null)
-  const [streamingSync, setStreamingSync] = useState<boolean>(false)
-  const [revealedSpans, setRevealedSpans] = useState<number>(99)
+  const [streamingSync, setStreamingSync] = useState<boolean>(true)
+  const [activeStreamSpanIdx, setActiveStreamSpanIdx] = useState<number>(0)
+  const [singleReplayNonce, setSingleReplayNonce] = useState<number>(0)
+
+  // Compare-mode side-by-side streaming race trigger
+  const [compareReplayNonce, setCompareReplayNonce] = useState<number>(0)
 
   const scenario = useMemo(
     () => RAG_SCENARIOS.find(s => s.id === scenarioId) ?? RAG_SCENARIOS[0],
@@ -884,65 +901,110 @@ export default function RagSimulatorPlayground() {
   const simB = useMemo(() => runRagSimulation(scenario, configB), [scenario, configB])
 
   const spans = sim.generation.spans
-  const safeSpanIdx = Math.min(selectedSpanIdx, Math.max(0, spans.length - 1))
+
+  // Count total BPE-like tokens across all spans for live telemetry
+  const totalStreamTokens = useMemo(() => {
+    const count = spans.reduce(
+      (sum, sp) => sum + splitIntoLlmTokens(sp.text).filter(t => t.trim().length > 0).length,
+      0
+    )
+    return Math.max(1, count)
+  }, [spans])
+
+  const safeSpanIdx = Math.min(
+    streamingSync ? activeStreamSpanIdx : selectedSpanIdx,
+    Math.max(0, spans.length - 1)
+  )
   const activeSpan = spans[safeSpanIdx] ?? spans[0]
   const syncedChunkId = selectedChunkId ?? activeSpan?.sourceChunkId ?? null
   const syncedChunk = sim.allDisplayChunks.find(c => c.id === syncedChunkId) ?? null
 
-  // Live Token-by-Token Retriever-Generator Sync Playback
+  // Restart live react-type-animation streaming whenever the synthesized answer changes
+  const singleAnswerSignature = `${scenario.id}::${sim.generation.answer}`
   useEffect(() => {
-    if (!streamingSync) return
-    const timer = window.setInterval(() => {
-      setRevealedSpans(prev => {
-        const next = prev + 1
-        if (next > spans.length) {
-          setStreamingSync(false)
-          return spans.length
-        }
-        setSelectedSpanIdx(next - 1)
-        setSelectedChunkId(null)
-        return next
-      })
-    }, 950)
-    return () => window.clearInterval(timer)
-  }, [streamingSync, spans.length])
+    setActiveStreamSpanIdx(0)
+    setSelectedSpanIdx(0)
+    setSelectedChunkId(null)
+    setStreamingSync(true)
+    setSingleReplayNonce(n => n + 1)
+  }, [singleAnswerSignature])
 
-  // Keep revealedSpans synced when parameters change outside playback
+  // Restart Compare-mode side-by-side token race when switching to compare view or scenario
+  const compareSignature = `${scenario.id}::${viewMode}`
   useEffect(() => {
-    if (!streamingSync) {
-      setRevealedSpans(spans.length)
-      setSelectedChunkId(null)
-    }
-  }, [spans.length, scenarioId, streamingSync])
+    if (viewMode !== 'compare') return
+    setCompareReplayNonce(n => n + 1)
+  }, [compareSignature, viewMode])
 
-  const applyPreset = (
-    presetVal: string,
-    setter: (cfg: RagConfig) => void
-  ) => {
+  // History-aware setters so every slider move, preset, matchup, or reset is undoable
+  const updateSingleConfig = (next: RagConfig) => {
+    if (configsEqual(config, next)) return
+    setSingleHistory(prev => [...prev.slice(-24), { ...config }])
+    setConfig(next)
+    setSelectedChunkId(null)
+  }
+
+  const updateCompareConfigs = (nextA: RagConfig, nextB: RagConfig) => {
+    if (configsEqual(configA, nextA) && configsEqual(configB, nextB)) return
+    setCompareHistory(prev => [...prev.slice(-24), { a: { ...configA }, b: { ...configB } }])
+    setConfigA(nextA)
+    setConfigB(nextB)
+  }
+
+  const updateConfigA = (nextA: RagConfig) => updateCompareConfigs(nextA, configB)
+  const updateConfigB = (nextB: RagConfig) => updateCompareConfigs(configA, nextB)
+
+  const applyPreset = (presetVal: string, target: 'single' | 'A' | 'B') => {
     if (presetVal === 'custom') return
     const preset = RAG_PRESETS.find(p => p.id === presetVal)
-    if (preset) {
-      setter({ ...preset.config })
-      setStreamingSync(false)
+    if (!preset) return
+    const nextCfg = { ...preset.config }
+    if (target === 'single') updateSingleConfig(nextCfg)
+    else if (target === 'A') updateConfigA(nextCfg)
+    else updateConfigB(nextCfg)
+  }
+
+  const canUndo = viewMode === 'compare' ? compareHistory.length > 0 : singleHistory.length > 0
+  const undoDepth = viewMode === 'compare' ? compareHistory.length : singleHistory.length
+
+  const handleUndo = () => {
+    if (viewMode === 'compare') {
+      if (compareHistory.length === 0) return
+      const previous = compareHistory[compareHistory.length - 1]
+      setCompareHistory(prev => prev.slice(0, -1))
+      setConfigA(previous.a)
+      setConfigB(previous.b)
+    } else {
+      if (singleHistory.length === 0) return
+      const previous = singleHistory[singleHistory.length - 1]
+      setSingleHistory(prev => prev.slice(0, -1))
+      setConfig(previous)
       setSelectedChunkId(null)
     }
   }
 
   const resetDefaults = () => {
     if (viewMode === 'compare') {
-      setConfigA(getPresetConfig('pure-vector'))
-      setConfigB(getPresetConfig('keyword-hybrid'))
+      updateCompareConfigs(getPresetConfig('pure-vector'), getPresetConfig('keyword-hybrid'))
     } else {
-      setConfig(getPresetConfig('balanced-recall'))
-      setStreamingSync(false)
-      setSelectedChunkId(null)
-      setSelectedSpanIdx(1)
+      updateSingleConfig(getPresetConfig('balanced-recall'))
     }
   }
 
   const swapCompareConfigs = () => {
-    setConfigA(configB)
-    setConfigB(configA)
+    updateCompareConfigs(configB, configA)
+  }
+
+  const replaySingleStream = () => {
+    setActiveStreamSpanIdx(0)
+    setSelectedSpanIdx(0)
+    setSelectedChunkId(null)
+    setStreamingSync(true)
+    setSingleReplayNonce(n => n + 1)
+  }
+
+  const replayCompareStream = () => {
+    setCompareReplayNonce(n => n + 1)
   }
 
   const latencyDelta = simB.totalLatencyMs - simA.totalLatencyMs
@@ -965,8 +1027,8 @@ export default function RagSimulatorPlayground() {
           </div>
           <h3>RAG Retrieval Threshold, Top-K &amp; Reranking Live Simulator</h3>
           <p>
-            Configure presets or tune retrieval parameters to observe real-time chunk promotion,
-            context packing, token attribution, or contrast two retrieval pipelines side-by-side.
+            Configure presets or tune retrieval parameters to watch context chunks ingest into live
+            streaming tokens, revert any change with Undo, or contrast two pipelines side-by-side.
           </p>
         </div>
 
@@ -1011,7 +1073,7 @@ export default function RagSimulatorPlayground() {
         </div>
       </div>
 
-      {/* Active Query Strip + Quick Presets Onboarding Bar */}
+      {/* Active Query Strip + Presets + Undo + Reset Controls */}
       <div className="rag-query-strip">
         <Database size={16} />
         <div>
@@ -1019,28 +1081,48 @@ export default function RagSimulatorPlayground() {
           <strong>“{scenario.query}”</strong>
         </div>
 
-        {viewMode === 'single' && (
-          <label className="rag-preset-picker">
-            <span>Preset Profile</span>
-            <select
-              aria-label="Select RAG configuration preset"
-              value={activePresetId}
-              onChange={e => applyPreset(e.target.value, setConfig)}
-            >
-              {RAG_PRESETS.map(p => (
-                <option key={p.id} value={p.id}>
-                  {p.label}
-                </option>
-              ))}
-              {activePresetId === 'custom' && <option value="custom">Custom Parameters</option>}
-            </select>
-          </label>
-        )}
+        <div className="rag-query-actions">
+          {viewMode === 'single' && (
+            <label className="rag-preset-picker">
+              <span>Preset Profile</span>
+              <select
+                aria-label="Select RAG configuration preset"
+                value={activePresetId}
+                onChange={e => applyPreset(e.target.value, 'single')}
+              >
+                {RAG_PRESETS.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.label}
+                  </option>
+                ))}
+                {activePresetId === 'custom' && <option value="custom">Custom Parameters</option>}
+              </select>
+            </label>
+          )}
 
-        <button type="button" className="bc-btn-secondary" onClick={resetDefaults}>
-          <RotateCcw size={13} />
-          <span>{viewMode === 'compare' ? 'Reset Matchup' : 'Reset Defaults'}</span>
-        </button>
+          <button
+            type="button"
+            className="bc-btn-secondary rag-undo-btn"
+            disabled={!canUndo}
+            onClick={handleUndo}
+            aria-label="Undo last retrieval parameter change"
+            title={
+              canUndo
+                ? `Revert to previous parameters (${undoDepth} step${undoDepth === 1 ? '' : 's'} saved)`
+                : 'Adjust any parameter or preset to enable Undo'
+            }
+          >
+            <Undo2 size={13} />
+            <span className="bc-tabular">
+              Undo{undoDepth > 0 ? ` (${undoDepth})` : ''}
+            </span>
+          </button>
+
+          <button type="button" className="bc-btn-secondary" onClick={resetDefaults}>
+            <RotateCcw size={13} />
+            <span>{viewMode === 'compare' ? 'Reset Matchup' : 'Reset Defaults'}</span>
+          </button>
+        </div>
       </div>
 
       {/* ====================================================================
@@ -1065,7 +1147,7 @@ export default function RagSimulatorPlayground() {
               <RagConfigSliders
                 config={config}
                 maxChunks={scenario.chunks.length}
-                onChange={setConfig}
+                onChange={updateSingleConfig}
               />
             </div>
 
@@ -1187,16 +1269,14 @@ export default function RagSimulatorPlayground() {
                   onClick={() => {
                     if (streamingSync) {
                       setStreamingSync(false)
+                      setActiveStreamSpanIdx(Math.max(0, spans.length - 1))
                     } else {
-                      setRevealedSpans(1)
-                      setSelectedSpanIdx(0)
-                      setSelectedChunkId(null)
-                      setStreamingSync(true)
+                      replaySingleStream()
                     }
                   }}
                 >
                   {streamingSync ? <Pause size={14} /> : <Play size={14} />}
-                  <span>{streamingSync ? 'Pause Stream' : 'Stream Token Sync'}</span>
+                  <span>{streamingSync ? 'Complete Instantly' : 'Replay Token Stream'}</span>
                 </button>
               </div>
 
@@ -1221,9 +1301,11 @@ export default function RagSimulatorPlayground() {
                             className={`rag-sync-chunk rel-${ch.relevance} ${
                               isSynced ? 'synced' : ''
                             }`}
-                            onClick={() =>
+                            onClick={() => {
+                              setStreamingSync(false)
+                              setActiveStreamSpanIdx(Math.max(0, spans.length - 1))
                               setSelectedChunkId(prev => (prev === ch.id ? null : ch.id))
-                            }
+                            }}
                           >
                             <div className="rag-sync-chunk-top">
                               <strong>
@@ -1253,13 +1335,25 @@ export default function RagSimulatorPlayground() {
                   )}
                 </div>
 
-                {/* Right: Live Token-Span Generator Output */}
+                {/* Right: Live Token-Streaming Generator Output powered by react-type-animation */}
                 <div className="rag-sync-col">
-                  <span className="dsde-kicker">
-                    2. GENERATOR TOKENS (CLICK ANY SPAN TO TRACE SOURCE)
-                  </span>
+                  <div className="rag-stream-status bc-tabular">
+                    <span className="dsde-kicker">
+                      2. GENERATOR TOKENS (REAL-TIME TYPE STREAM)
+                    </span>
+                    <small>
+                      {streamingSync
+                        ? `Streaming span ${Math.min(activeStreamSpanIdx + 1, spans.length)}/${spans.length} · ${totalStreamTokens} tok${
+                            syncedChunk ? ` · Ingesting [${syncedChunk.citation}]` : ''
+                          }`
+                        : `Complete · ${totalStreamTokens} tokens (click any span)`}
+                    </small>
+                  </div>
                   <div className="rag-token-stream" aria-live="polite">
-                    {spans.slice(0, revealedSpans).map((sp, idx) => {
+                    {spans.map((sp, idx) => {
+                      if (streamingSync && idx > activeStreamSpanIdx) return null
+                      const isCurrentlyStreamingSpan =
+                        streamingSync && idx === activeStreamSpanIdx
                       const isSelected =
                         selectedChunkId !== null
                           ? sp.sourceChunkId === selectedChunkId
@@ -1270,14 +1364,40 @@ export default function RagSimulatorPlayground() {
                           type="button"
                           className={`rag-gen-span ground-${sp.grounding} ${
                             isSelected ? 'active' : ''
-                          }`}
+                          } ${isCurrentlyStreamingSpan ? 'is-streaming' : ''}`}
                           onClick={() => {
                             setStreamingSync(false)
+                            setActiveStreamSpanIdx(Math.max(0, spans.length - 1))
                             setSelectedChunkId(null)
                             setSelectedSpanIdx(idx)
                           }}
                         >
-                          {sp.text}
+                          {isCurrentlyStreamingSpan ? (
+                            <TypeAnimation
+                              key={`${singleAnswerSignature}::${singleReplayNonce}::${sp.id}`}
+                              sequence={[
+                                sp.text,
+                                () => {
+                                  if (idx + 1 < spans.length) {
+                                    setActiveStreamSpanIdx(idx + 1)
+                                    setSelectedSpanIdx(idx + 1)
+                                  } else {
+                                    setStreamingSync(false)
+                                    setSelectedSpanIdx(idx)
+                                  }
+                                }
+                              ]}
+                              splitter={splitIntoLlmTokens}
+                              speed={{ type: 'keyStrokeDelayInMs', value: 38 }}
+                              cursor={true}
+                              omitDeletionAnimation={true}
+                              repeat={0}
+                              wrapper="span"
+                              className="rag-type-span"
+                            />
+                          ) : (
+                            sp.text
+                          )}
                         </button>
                       )
                     })}
@@ -1414,50 +1534,64 @@ export default function RagSimulatorPlayground() {
                 <button
                   type="button"
                   className={`bc-btn-secondary ${
-                    presetAId === 'pure-vector' && presetBId === 'keyword-hybrid' ? 'rag-match-active' : ''
+                    presetAId === 'pure-vector' && presetBId === 'keyword-hybrid'
+                      ? 'rag-match-active'
+                      : ''
                   }`}
-                  onClick={() => {
-                    setConfigA(getPresetConfig('pure-vector'))
-                    setConfigB(getPresetConfig('keyword-hybrid'))
-                  }}
+                  onClick={() =>
+                    updateCompareConfigs(
+                      getPresetConfig('pure-vector'),
+                      getPresetConfig('keyword-hybrid')
+                    )
+                  }
                 >
                   Pure Vector vs. Keyword-Hybrid
                 </button>
                 <button
                   type="button"
                   className={`bc-btn-secondary ${
-                    presetAId === 'low-latency' && presetBId === 'high-precision' ? 'rag-match-active' : ''
+                    presetAId === 'low-latency' && presetBId === 'high-precision'
+                      ? 'rag-match-active'
+                      : ''
                   }`}
-                  onClick={() => {
-                    setConfigA(getPresetConfig('low-latency'))
-                    setConfigB(getPresetConfig('high-precision'))
-                  }}
+                  onClick={() =>
+                    updateCompareConfigs(
+                      getPresetConfig('low-latency'),
+                      getPresetConfig('high-precision')
+                    )
+                  }
                 >
                   Low Latency vs. High Precision
                 </button>
                 <button
                   type="button"
                   className={`bc-btn-secondary ${
-                    presetAId === 'balanced-recall' && presetBId === 'high-precision' ? 'rag-match-active' : ''
+                    presetAId === 'balanced-recall' && presetBId === 'high-precision'
+                      ? 'rag-match-active'
+                      : ''
                   }`}
-                  onClick={() => {
-                    setConfigA(getPresetConfig('balanced-recall'))
-                    setConfigB(getPresetConfig('high-precision'))
-                  }}
+                  onClick={() =>
+                    updateCompareConfigs(
+                      getPresetConfig('balanced-recall'),
+                      getPresetConfig('high-precision')
+                    )
+                  }
                 >
                   Balanced Recall vs. High Precision
                 </button>
               </div>
             </div>
 
-            <button
-              type="button"
-              className="bc-btn-secondary"
-              onClick={swapCompareConfigs}
-            >
-              <ArrowLeftRight size={14} />
-              <span>Swap A / B</span>
-            </button>
+            <div className="rag-cmp-actions">
+              <button type="button" className="bc-btn-secondary" onClick={replayCompareStream}>
+                <Play size={13} />
+                <span>Replay Stream Race</span>
+              </button>
+              <button type="button" className="bc-btn-secondary" onClick={swapCompareConfigs}>
+                <ArrowLeftRight size={14} />
+                <span>Swap A / B</span>
+              </button>
+            </div>
           </div>
 
           {/* Real-Time Latency & Accuracy Delta Scorecard */}
@@ -1559,146 +1693,157 @@ export default function RagSimulatorPlayground() {
                   key: 'A' as const,
                   title: 'Pipeline A',
                   cfg: configA,
-                  setCfg: setConfigA,
+                  onChange: updateConfigA,
                   presetId: presetAId,
                   result: simA,
-                  otherPackedIds: simB.packedIds
+                  otherPackedIds: simB.packedIds,
+                  tokenDelayMs: Math.max(22, Math.min(72, Math.round(simA.totalLatencyMs * 0.16)))
                 },
                 {
                   key: 'B' as const,
                   title: 'Pipeline B',
                   cfg: configB,
-                  setCfg: setConfigB,
+                  onChange: updateConfigB,
                   presetId: presetBId,
                   result: simB,
-                  otherPackedIds: simA.packedIds
+                  otherPackedIds: simA.packedIds,
+                  tokenDelayMs: Math.max(22, Math.min(72, Math.round(simB.totalLatencyMs * 0.16)))
                 }
               ] as const
-            ).map(pane => (
-              <div key={pane.key} className={`rag-cmp-pane pane-${pane.key.toLowerCase()}`}>
-                <div className="rag-cmp-pane-head">
-                  <div>
-                    <span className="dsde-kicker">{pane.title}</span>
-                    <div className="rag-cmp-verdict-line">
-                      {pane.result.generation.verdict === 'grounded' ? (
-                        <CheckCircle2 size={15} className="rag-ico-good" />
-                      ) : pane.result.generation.verdict === 'poisoned' ? (
-                        <ShieldAlert size={15} className="rag-ico-bad" />
-                      ) : pane.result.generation.verdict === 'noisy' ? (
-                        <XCircle size={15} className="rag-ico-bad" />
-                      ) : (
-                        <AlertTriangle size={15} className="rag-ico-warn" />
-                      )}
-                      <strong>{verdictLabel(pane.result.generation.verdict)}</strong>
-                      <span aria-hidden="true">·</span>
-                      <span className="bc-tabular">{pane.result.accuracyPct}% Accuracy</span>
-                      <span aria-hidden="true">·</span>
-                      <span className="bc-tabular">{pane.result.totalLatencyMs} ms</span>
+            ).map(pane => {
+              return (
+                <div key={pane.key} className={`rag-cmp-pane pane-${pane.key.toLowerCase()}`}>
+                  <div className="rag-cmp-pane-head">
+                    <div>
+                      <span className="dsde-kicker">{pane.title}</span>
+                      <div className="rag-cmp-verdict-line">
+                        {pane.result.generation.verdict === 'grounded' ? (
+                          <CheckCircle2 size={15} className="rag-ico-good" />
+                        ) : pane.result.generation.verdict === 'poisoned' ? (
+                          <ShieldAlert size={15} className="rag-ico-bad" />
+                        ) : pane.result.generation.verdict === 'noisy' ? (
+                          <XCircle size={15} className="rag-ico-bad" />
+                        ) : (
+                          <AlertTriangle size={15} className="rag-ico-warn" />
+                        )}
+                        <strong>{verdictLabel(pane.result.generation.verdict)}</strong>
+                        <span aria-hidden="true">·</span>
+                        <span className="bc-tabular">{pane.result.accuracyPct}% Accuracy</span>
+                        <span aria-hidden="true">·</span>
+                        <span className="bc-tabular">{pane.result.totalLatencyMs} ms</span>
+                      </div>
+                    </div>
+
+                    <label className="rag-preset-picker compact">
+                      <span>Preset</span>
+                      <select
+                        aria-label={`Select preset for ${pane.title}`}
+                        value={pane.presetId}
+                        onChange={e => applyPreset(e.target.value, pane.key)}
+                      >
+                        {RAG_PRESETS.map(p => (
+                          <option key={p.id} value={p.id}>
+                            {p.label}
+                          </option>
+                        ))}
+                        {pane.presetId === 'custom' && (
+                          <option value="custom">Custom Parameters</option>
+                        )}
+                      </select>
+                    </label>
+                  </div>
+
+                  {/* Per-Pane Live KPI Strip */}
+                  <div className="rag-cmp-mini-kpis bc-tabular">
+                    <div>
+                      <span>Latency</span>
+                      <strong>{pane.result.totalLatencyMs} ms</strong>
+                    </div>
+                    <div>
+                      <span>Accuracy F1</span>
+                      <strong>{pane.result.accuracyPct}%</strong>
+                    </div>
+                    <div>
+                      <span>Recall</span>
+                      <strong>{pane.result.recallPct}%</strong>
+                    </div>
+                    <div>
+                      <span>Precision</span>
+                      <strong>{pane.result.precisionPct}%</strong>
                     </div>
                   </div>
 
-                  <label className="rag-preset-picker compact">
-                    <span>Preset</span>
-                    <select
-                      aria-label={`Select preset for ${pane.title}`}
-                      value={pane.presetId}
-                      onChange={e => applyPreset(e.target.value, pane.setCfg)}
-                    >
-                      {RAG_PRESETS.map(p => (
-                        <option key={p.id} value={p.id}>
-                          {p.label}
-                        </option>
-                      ))}
-                      {pane.presetId === 'custom' && (
-                        <option value="custom">Custom Parameters</option>
-                      )}
-                    </select>
-                  </label>
-                </div>
+                  {/* Live Parameter Sliders */}
+                  <RagConfigSliders
+                    config={pane.cfg}
+                    maxChunks={scenario.chunks.length}
+                    compact
+                    onChange={pane.onChange}
+                  />
 
-                {/* Per-Pane Live KPI Strip */}
-                <div className="rag-cmp-mini-kpis bc-tabular">
-                  <div>
-                    <span>Latency</span>
-                    <strong>{pane.result.totalLatencyMs} ms</strong>
+                  {/* Stacked Context Window Bar */}
+                  <div className="rag-cmp-ctx-block">
+                    <div className="rag-cmp-ctx-top bc-tabular">
+                      <span>
+                        Context: {pane.result.totalContextUsed.toLocaleString()} /{' '}
+                        {pane.cfg.contextBudget.toLocaleString()} tok ({pane.result.contextUtilPct}
+                        %)
+                      </span>
+                      <span className="leg-noise">Noise: {pane.result.noiseTokens} tok</span>
+                    </div>
+                    <ContextBudgetSvgBar sim={pane.result} contextBudget={pane.cfg.contextBudget} />
                   </div>
-                  <div>
-                    <span>Accuracy F1</span>
-                    <strong>{pane.result.accuracyPct}%</strong>
-                  </div>
-                  <div>
-                    <span>Recall</span>
-                    <strong>{pane.result.recallPct}%</strong>
-                  </div>
-                  <div>
-                    <span>Precision</span>
-                    <strong>{pane.result.precisionPct}%</strong>
-                  </div>
-                </div>
 
-                {/* Live Parameter Sliders */}
-                <RagConfigSliders
-                  config={pane.cfg}
-                  maxChunks={scenario.chunks.length}
-                  compact
-                  onChange={pane.setCfg}
-                />
-
-                {/* Stacked Context Window Bar */}
-                <div className="rag-cmp-ctx-block">
-                  <div className="rag-cmp-ctx-top bc-tabular">
-                    <span>
-                      Context: {pane.result.totalContextUsed.toLocaleString()} /{' '}
-                      {pane.cfg.contextBudget.toLocaleString()} tok ({pane.result.contextUtilPct}%)
+                  {/* Packed Chunks + Side-by-Side Diff Marker */}
+                  <div className="rag-cmp-chunks">
+                    <span className="dsde-kicker">
+                      Packed Context Chunks ({pane.result.packed.length}/{pane.cfg.topN})
                     </span>
-                    <span className="leg-noise">Noise: {pane.result.noiseTokens} tok</span>
-                  </div>
-                  <ContextBudgetSvgBar sim={pane.result} contextBudget={pane.cfg.contextBudget} />
-                </div>
-
-                {/* Packed Chunks + Side-by-Side Diff Marker */}
-                <div className="rag-cmp-chunks">
-                  <span className="dsde-kicker">
-                    Packed Context Chunks ({pane.result.packed.length}/{pane.cfg.topN})
-                  </span>
-                  {pane.result.packed.length === 0 ? (
-                    <div className="rag-sync-empty">
-                      0 chunks packed — threshold filtered out all candidates.
-                    </div>
-                  ) : (
-                    <div className="rag-cmp-chunk-list">
-                      {pane.result.packed.map(ch => {
-                        const shared = pane.otherPackedIds.has(ch.id)
-                        return (
-                          <div
-                            key={`${pane.key}-${ch.id}`}
-                            className={`rag-cmp-chunk-item rel-${ch.relevance}`}
-                          >
-                            <div className="rag-cmp-chunk-top">
-                              <strong>
-                                #{ch.finalRank} [{ch.citation}]
-                              </strong>
-                              <span className="bc-tabular">
-                                Score {ch.finalScore.toFixed(2)} ·{' '}
-                                {shared ? 'Shared' : `Unique to ${pane.key}`}
-                              </span>
+                    {pane.result.packed.length === 0 ? (
+                      <div className="rag-sync-empty">
+                        0 chunks packed — threshold filtered out all candidates.
+                      </div>
+                    ) : (
+                      <div className="rag-cmp-chunk-list">
+                        {pane.result.packed.map(ch => {
+                          const shared = pane.otherPackedIds.has(ch.id)
+                          return (
+                            <div
+                              key={`${pane.key}-${ch.id}`}
+                              className={`rag-cmp-chunk-item rel-${ch.relevance}`}
+                            >
+                              <div className="rag-cmp-chunk-top">
+                                <strong>
+                                  #{ch.finalRank} [{ch.citation}]
+                                </strong>
+                                <span className="bc-tabular">
+                                  Score {ch.finalScore.toFixed(2)} ·{' '}
+                                  {shared ? 'Shared' : `Unique to ${pane.key}`}
+                                </span>
+                              </div>
+                              <small>{ch.title}</small>
                             </div>
-                            <small>{ch.title}</small>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
 
-                {/* Live Generated Output & Diagnosis */}
-                <div className={`rag-cmp-answer verdict-${pane.result.generation.verdict}`}>
-                  <span className="dsde-health-tag">Synthesized Output · {pane.title}</span>
-                  <p>{pane.result.generation.answer}</p>
-                  <small>{pane.result.generation.diagnostic}</small>
+                  {/* Live Token-Streaming Generated Output & Diagnosis */}
+                  <div className={`rag-cmp-answer verdict-${pane.result.generation.verdict}`}>
+                    <TokenStreamTypewriter
+                      text={pane.result.generation.answer}
+                      streamKey={`${scenario.id}-${pane.key}-${pane.result.totalLatencyMs}-${pane.result.accuracyPct}`}
+                      replayTrigger={compareReplayNonce}
+                      tokenDelayMs={pane.tokenDelayMs}
+                      label={`Synthesized Output · ${pane.title}`}
+                      variant="prose"
+                    />
+                    <small>{pane.result.generation.diagnostic}</small>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
